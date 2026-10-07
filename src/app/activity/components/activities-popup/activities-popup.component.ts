@@ -880,7 +880,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const store = this.activitiesStore;
       this.activitiesPrimaryFilter       = store.activitiesPrimaryFilter() as ContractTypes.ActivitiesPrimaryFilter;
       this.activitiesEventScope          = store.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
-      this.activitiesChatContextFilter   = store.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;
+      const chatFilter = store.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;
+      this.activitiesChatContextFilter = this.isChatContextAvailable(chatFilter) ? chatFilter : 'all';
+      if (chatFilter !== this.activitiesChatContextFilter) store.setActivitiesChatContextFilter('all');
       this.activitiesSupportCaseFilter   = store.activitiesSupportCaseFilter() as ContractTypes.SupportCaseFilter;
       this.activitiesSecondaryFilter     = store.activitiesSecondaryFilter() as ContractTypes.ActivitiesSecondaryFilter;
       this.hostingPublicationFilter      = store.activitiesHostingPublicationFilter() as ContractTypes.HostingPublicationFilter;
@@ -1561,7 +1563,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesChatContextMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
-    return APP_STATIC_DATA.activitiesChatContextFilters.map(option => this.activitiesMenuItem({
+    return APP_STATIC_DATA.activitiesChatContextFilters.filter(option => this.isChatContextAvailable(option.key)).map(option => this.activitiesMenuItem({
       id: `chat-context:${option.key}`,
       label: option.label,
       icon: option.icon,
@@ -1570,6 +1572,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
       active: option.key === this.activitiesChatContextFilter,
       context: { menu: 'chat-context', value: option.key }
     }));
+  }
+
+  private isChatContextAvailable(filter: ContractTypes.ActivitiesChatContextFilter): boolean {
+    if (filter === 'campaign') return this.workspace.isWork();
+    if (filter === 'cases') return this.workspace.isCommunity();
+    return true;
   }
 
   private activitiesRateMenuTrigger(): AppMenuTrigger {
@@ -2102,7 +2110,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesChatContextFilterCount(filter: ContractTypes.ActivitiesChatContextFilter): number {
-    if (this.activitiesPrimaryFilter !== 'chats') {
+    if (this.activitiesPrimaryFilter !== 'chats' || !this.isChatContextAvailable(filter)) {
       return 0;
     }
     return this.normalizeBadgeCounter(this.chatContextUnreadCountsForActiveUser()[filter]);
@@ -3005,7 +3013,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   selectActivitiesChatContextFilter(filter: ContractTypes.ActivitiesChatContextFilter): void {
-    if (this.activitiesPrimaryFilter !== 'chats') {
+    if (this.activitiesPrimaryFilter !== 'chats' || !this.isChatContextAvailable(filter)) {
       return;
     }
     const currentFilter = this.activitiesStore.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;

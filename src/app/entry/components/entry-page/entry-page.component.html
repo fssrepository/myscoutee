@@ -18,10 +18,13 @@
   (termsRequested)="openEntryTermsPopup()"
 ></app-entry-landing>
 
-<app-document-viewer
-  [config]="entryPrivacyDocumentConfig()"
-  (action)="onEntryPrivacyDocumentAction($event)"
-></app-document-viewer>
+@if (showEntryConsentPopup) {
+  <app-document-viewer
+    [appLandingGuideSurface]="entryPrivacyLoading || entryConsentViewOnly ? null : 'landing.consent'"
+    [config]="entryPrivacyDocumentConfig()"
+    (action)="onEntryPrivacyDocumentAction($event)"
+  ></app-document-viewer>
+}
 
 <app-document-viewer
   [config]="entryTermsDocumentConfig()"
@@ -47,4 +50,4 @@
 ></app-profile-onboarding-popup>
 
 
-<app-explanation-launcher></app-explanation-launcher>
+<app-explanation-launcher [introduce]="!entryPrivacyLoading"></app-explanation-launcher>

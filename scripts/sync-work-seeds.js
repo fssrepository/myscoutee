@@ -46,8 +46,10 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
     _id: `work-parameters-v${config.version}`, key: group.id }));
   write(configFile, [...configs, ...workConfigs]);
   const helpFile = path.join(dir, 'helpCenterRevisions.json');
-  write(helpFile, [...read(helpFile).filter(row => row.baseGroupId !== group.id),
-    ...read(path.join(data, 'work-help-center.json'))]);
+  const helpDefaults = read(path.join(data, 'work-help-center.json'));
+  const helpDefaultIds = new Set(helpDefaults.map(row => row._id));
+  write(helpFile, [...read(helpFile).filter(row => row.baseGroupId !== group.id && !helpDefaultIds.has(row._id)),
+    ...helpDefaults]);
   const rateFile = path.join(dir, 'exchangeRates.json');
   const ratesCatalog = read(rateFile).filter(row => row.baseGroupId !== group.id);
   write(rateFile, [...ratesCatalog, ...ratesCatalog.filter(row => !row.baseGroupId).map(row => ({

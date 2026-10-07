@@ -26,6 +26,7 @@ import type {
 } from '../../contracts/chat.interface';
 import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
+import type { ChatCallEvent, ChatCallRequest } from '../../contracts/chat-call.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import {
   SessionService
@@ -212,7 +213,7 @@ interface HttpChatMembersPageResponseDto {
 }
 
 interface HttpChatSocketEventDto {
-  type: 'message' | 'ack' | 'typing' | 'read' | 'error';
+  type: 'message' | 'ack' | 'typing' | 'read' | 'error' | 'call';
   chatId: string;
   message?: HttpChatMessageDto | null;
   typing?: HttpChatTypingDto | null;
@@ -220,6 +221,7 @@ interface HttpChatSocketEventDto {
   messageId?: string | null;
   clientId?: string | null;
   error?: string | null;
+  kind?: ChatCallEvent['kind'];
 }
 
 @Injectable({
@@ -762,6 +764,12 @@ export class HttpChatsService implements IChatsService {
         onMessage(event.message);
       }
     });
+  }
+
+  async sendChatCall(chat: ChatDTO, call: ChatCallRequest): Promise<void> {
+    const socket = await this.ensureSocket(chat);
+    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error('Chat call signaling is unavailable.');
+    socket.send(JSON.stringify({ type: 'call', call }));
   }
 
   private mapChatDTO(item: HttpChatDto, ownerUserId: string): ChatDTO {
@@ -1322,6 +1330,9 @@ export class HttpChatsService implements IChatsService {
 
     const type = payload.type ?? 'message';
     const chatId = `${payload.chatId ?? fallbackChatId}`.trim() || fallbackChatId;
+    if (type === 'call' && payload.kind) {
+      return { type: 'call', chatId, call: payload as unknown as ChatCallEvent };
+    }
     if (type === 'ack') {
       return {
         type: 'ack',
@@ -1493,6 +1504,7 @@ export class HttpChatsService implements IChatsService {
     if (this.socketChatId && this.socketChatId !== chatId) {
       return;
     }
+    this.emitSocketEvent({ type: 'disconnected', chatId });
     this.clearSocketReconnectTimer();
     this.clearPendingSocketMessages();
     this.socket = null;
@@ -1653,6 +1665,7 @@ export class HttpChatsService implements IChatsService {
     if (this.socketChatId && this.socketChatId !== chatId) {
       return;
     }
+    this.emitSocketEvent({ type: 'disconnected', chatId });
     this.clearPendingSocketMessages();
     this.socket = null;
     this.socketPromise = null;

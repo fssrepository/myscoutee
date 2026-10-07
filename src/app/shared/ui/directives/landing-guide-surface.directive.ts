@@ -4,7 +4,7 @@ import { LANDING_EXPLANATION_GUIDE } from '../../core/base/services/landing-expl
 @Directive({ selector: '[appLandingGuideSurface]', standalone: true,
   host: { '[attr.data-guide-surface]': 'appLandingGuideSurface' } })
 export class LandingGuideSurfaceDirective implements OnChanges, OnDestroy {
-  @Input({ required: true }) appLandingGuideSurface = '';
+  @Input({ required: true }) appLandingGuideSurface: string | null = '';
   private readonly guide = inject(LANDING_EXPLANATION_GUIDE);
   private unregister?: () => void;
   ngOnChanges(): void {

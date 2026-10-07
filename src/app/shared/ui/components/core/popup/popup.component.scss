@@ -847,3 +847,5 @@ app-popup {
   font-size: .8rem;
   font-weight: 700;
 }
+
+.ui-popup__action .ui-popup__icon--mirrored { transform: scaleX(-1); }

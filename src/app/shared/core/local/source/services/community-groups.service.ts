@@ -109,7 +109,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         && (!g.moderationStatus || g.moderationStatus === 'accepted');
     }).filter(g => !query.filters?.category || query.filters.category === g.category)
       .map(g => this.dto(userId, g)).sort((a, b) =>
-        (groupSort(bucket, query.sort) === 'distance'
+        Number(isBaseGroupId(b.id)) - Number(isBaseGroupId(a.id)) || (groupSort(bucket, query.sort) === 'distance'
           ? (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
           : b.updatedAtIso.localeCompare(a.updatedAtIso)) || a.id.localeCompare(b.id));
     const offset = Number(query.cursor ?? 0); if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');

@@ -1,4 +1,5 @@
-import { isBaseGroupId } from '../../../core/contracts/group-type';
+import { baseGroupType, isBaseGroupId } from '../../../core/contracts/group-type';
+import { groupTypeTrigger } from '../../converters/group-type-menu';
 import { AdminWorkspaceStore } from "./admin-workspace.store";
 import { AdminMenuStore } from "./admin-menu.store";
 import { AdminWorkspaceDataService } from "../../../core/base/services/admin-workspace-data.service";
@@ -137,15 +138,23 @@ export class GroupWorkspaceStore {
     const ids = this.workspaces().map(w => w.groupId).sort();
     return palettes[Math.max(0, ids.indexOf(id)) % palettes.length];
   }
+  trigger(workspace: GroupWorkspace | null): Pick<AppMenuItem, 'label' | 'icon' | 'palette' | 'imageFallback' | 'imageShape'> {
+    const type = baseGroupType(workspace?.groupId);
+    if (!workspace || type) {
+      const { label, icon, palette } = groupTypeTrigger(type ?? 'dating');
+      return { label, icon, palette };
+    }
+    return { label: workspace.name, icon: '', imageFallback: AppUtils.initialsFromText(workspace.name),
+      imageShape: 'circle', palette: this.palette(workspace.groupId) };
+  }
   menuItems(selected: string, includeAll = false): AppMenuItem[] {
     const accountCount = this.accountAttention();
     const items: AppMenuItem[] = [
       ...(includeAll ? [{ id: 'all', label: 'All', icon: 'apps', palette: 'slate' as const }] : []),
-      { id: 'main', label: this.profile.activeUserProfile()?.admin ? 'group.type.dating' : 'groups.workspace.main', icon: 'public', palette: 'green',
+      { id: 'main', ...this.trigger(null),
         counter: includeAll ? null : accountCount || null, counterTone: 'alert' },
       ...this.workspaces().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId)).map(workspace => ({
-        id: workspace.groupId, label: workspace.name, imageFallback: AppUtils.initialsFromText(workspace.name),
-        imageShape: 'circle' as const, palette: this.palette(workspace.groupId), counter: includeAll ? null : workspace.activity || null,
+        id: workspace.groupId, ...this.trigger(workspace), counter: includeAll ? null : workspace.activity || null,
         counterTone: 'alert' as const
       }))
     ];

@@ -1392,11 +1392,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-chats-default-en-v4",
+    "_id": "work:explanation-chats-default-en-v5",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 4,
+    "version": 5,
     "active": true,
     "title": "Chats",
     "summary": "Find conversations, send messages, and use chat tools.",
@@ -1404,7 +1404,7 @@
     "headerColor": "violet",
     "createdDate": "2026-09-29T00:00:00.000Z",
     "createdUser": "system",
-    "updatedDate": "2026-09-29T00:00:00.000Z",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
     "updatedUser": "system",
     "sections": [
       {
@@ -1472,6 +1472,14 @@
         "contentHtml": "<p>Open the plus menu to attach a photo, voice clip, poll, event, or asset. This lets you share context in the conversation instead of sending text alone.</p>"
       },
       {
+        "id": "guide-chat-call",
+        "guideStepId": "chat-call",
+        "icon": "help_outline",
+        "title": "Start or join a call",
+        "blurb": "",
+        "contentHtml": "<p>The green phone opens an audio call immediately. Turn on your camera inside the call if you want. A red crossed phone means calling is unavailable.</p>"
+      },
+      {
         "id": "guide-close",
         "guideStepId": "close",
         "icon": "close",
@@ -1485,11 +1493,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-chats-default-hu-v4",
+    "_id": "work:explanation-chats-default-hu-v5",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 4,
+    "version": 5,
     "active": true,
     "title": "Beszélgetések",
     "summary": "Beszélgetések keresése, üzenetküldés és további eszközök.",
@@ -1497,7 +1505,7 @@
     "headerColor": "violet",
     "createdDate": "2026-09-29T00:00:00.000Z",
     "createdUser": "system",
-    "updatedDate": "2026-09-29T00:00:00.000Z",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
     "updatedUser": "system",
     "sections": [
       {
@@ -1563,6 +1571,14 @@
         "title": "Melléklet hozzáadása",
         "blurb": "",
         "contentHtml": "<p>A plusz menüből fotót, hangfelvételt, szavazást, eseményt vagy eszközt csatolhatsz. Így a szöveg mellett hasznos tartalmat is megoszthatsz.</p>"
+      },
+      {
+        "id": "guide-chat-call",
+        "guideStepId": "chat-call",
+        "icon": "help_outline",
+        "title": "Hívás indítása vagy csatlakozás",
+        "blurb": "",
+        "contentHtml": "<p>A zöld telefon rögtön hanghívást nyit. A kamerát a hívásban kapcsolhatod be. A piros áthúzott telefon azt jelzi, hogy a hívás most nem érhető el.</p>"
       },
       {
         "id": "guide-close",
@@ -10648,11 +10664,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-event-chat-default-en-v4",
+    "_id": "work:explanation-event-chat-default-en-v5",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 4,
+    "version": 5,
     "active": true,
     "title": "Event chat",
     "summary": "Coordinate with the event community.",
@@ -10660,7 +10676,7 @@
     "headerColor": "violet",
     "createdDate": "2026-09-29T00:00:00.000Z",
     "createdUser": "system",
-    "updatedDate": "2026-09-29T00:00:00.000Z",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
     "updatedUser": "system",
     "sections": [
       {
@@ -10712,11 +10728,19 @@
         "contentHtml": "<p>Open participant details to see who can take part in this conversation. Membership context helps you understand who will receive shared updates.</p>"
       },
       {
+        "id": "guide-chat-call",
+        "guideStepId": "chat-call",
+        "icon": "help_outline",
+        "title": "Start or join a call",
+        "blurb": "",
+        "contentHtml": "<p>The green phone opens an audio call immediately. Turn on your camera inside the call if you want. A red crossed phone means calling is unavailable.</p>"
+      },
+      {
         "id": "guide-close",
         "guideStepId": "close",
-        "icon": "help_outline",
-        "blurb": "",
+        "icon": "close",
         "title": "Return without submitting",
+        "blurb": "",
         "contentHtml": "<p>Closes this screen. Closing is separate from Save, sending a request or confirming a payment; use the relevant action when you intend to submit.</p>"
       }
     ],
@@ -10725,11 +10749,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-event-chat-default-hu-v4",
+    "_id": "work:explanation-event-chat-default-hu-v5",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 4,
+    "version": 5,
     "active": true,
     "title": "Eseménychat",
     "summary": "Egyeztetés az esemény közösségével.",
@@ -10737,7 +10761,7 @@
     "headerColor": "violet",
     "createdDate": "2026-09-29T00:00:00.000Z",
     "createdUser": "system",
-    "updatedDate": "2026-09-29T00:00:00.000Z",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
     "updatedUser": "system",
     "sections": [
       {
@@ -10789,11 +10813,19 @@
         "contentHtml": "<p>Nyisd meg a résztvevői részleteket, hogy lásd, kik vehetnek részt a beszélgetésben. A tagsági kontextusból kiderül, kik kapják meg a megosztott híreket.</p>"
       },
       {
+        "id": "guide-chat-call",
+        "guideStepId": "chat-call",
+        "icon": "help_outline",
+        "title": "Hívás indítása vagy csatlakozás",
+        "blurb": "",
+        "contentHtml": "<p>A zöld telefon rögtön hanghívást nyit. A kamerát a hívásban kapcsolhatod be. A piros áthúzott telefon azt jelzi, hogy a hívás most nem érhető el.</p>"
+      },
+      {
         "id": "guide-close",
         "guideStepId": "close",
-        "icon": "help_outline",
-        "blurb": "",
+        "icon": "close",
         "title": "Visszatérés beküldés nélkül",
+        "blurb": "",
         "contentHtml": "<p>Bezárja ezt a felületet. A bezárás különbözik a mentéstől, kérelemküldéstől és fizetésmegerősítéstől; beküldéshez a megfelelő műveletet használd.</p>"
       }
     ],
@@ -15140,11 +15172,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-navigation-menu-default-en-v6",
+    "_id": "work:explanation-navigation-menu-default-en-v7",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
-    "version": 6,
+    "version": 7,
     "active": true,
     "title": "Avatar menu",
     "summary": "Choose a workspace or application section.",
@@ -15177,7 +15209,7 @@
         "icon": "help_outline",
         "title": "Updates requiring attention",
         "blurb": "",
-        "contentHtml": "<p>Opens notifications for the current account. The badge counts unread updates; muted notifications and a missing location can affect availability.</p>"
+        "contentHtml": "<p>Open notifications here even after hiding the bell. The badge counts unread updates. Drag the bell or lightbulb to move it; drop on the red X to hide it.</p>"
       },
       {
         "id": "guide-explanations",
@@ -15185,7 +15217,7 @@
         "icon": "help_outline",
         "title": "Show contextual guides",
         "blurb": "",
-        "contentHtml": "<p>Turns the explanation launcher on or off across the app. Each guide includes only steps available on the current screen.</p>"
+        "contentHtml": "<p>Turns the guide button off or back on permanently. The lightbulb offers step-by-step help. Drag the lightbulb or bell to move it; drop on the red X to hide it temporarily.</p>"
       },
       {
         "id": "guide-settings",
@@ -15425,11 +15457,11 @@
     "baseGroupId": "myscoutee-work"
   },
   {
-    "_id": "work:explanation-navigation-menu-default-hu-v6",
+    "_id": "work:explanation-navigation-menu-default-hu-v7",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
-    "version": 6,
+    "version": 7,
     "active": true,
     "title": "Avatar menü",
     "summary": "Munkatér és alkalmazásfelület választása.",
@@ -15462,7 +15494,7 @@
         "icon": "help_outline",
         "title": "Figyelmet igénylő frissítések",
         "blurb": "",
-        "contentHtml": "<p>A fiók értesítéseit nyitja meg. A jelvény az olvasatlan frissítéseket számolja; a némítás és a hiányzó helyszín hat az elérhetőségre.</p>"
+        "contentHtml": "<p>Innen a csengő elrejtése után is eléred az értesítéseket. A jelvény az olvasatlanokat számolja. A csengő és a villanykörte húzható; piros X-re ejtve elrejthető.</p>"
       },
       {
         "id": "guide-explanations",
@@ -15470,7 +15502,7 @@
         "icon": "help_outline",
         "title": "Helyi magyarázatok megjelenítése",
         "blurb": "",
-        "contentHtml": "<p>Az alkalmazás magyarázatindítóját kapcsolja be vagy ki. A guide csak az aktuális felületen elérhető lépéseket tartalmazza.</p>"
+        "contentHtml": "<p>A súgógomb tartós ki-/bekapcsolása. A villanykörte lépésenként segít. A villanykörte és a csengő húzható; piros X-re ejtve ideiglenesen elrejthető. Itt visszakapcsolhatod a súgót.</p>"
       },
       {
         "id": "guide-settings",
@@ -21734,6 +21766,840 @@
     "updatedUser": "system",
     "sections": [],
     "contextKey": "community.service-feedback",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "explanation-chat-call-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Chat call",
+    "summary": "Talk with people in this chat.",
+    "description": "Control your microphone, camera and what you hear or see.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "chat.call",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "explanation-chat-call-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Hívás a chatben",
+    "summary": "Beszélgess a chat résztvevőivel.",
+    "description": "Állítsd a mikrofonodat, kamerádat és a fogadott hangot, képet.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "chat.call",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "explanation-chat-call-volume-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Call volume and video",
+    "summary": "Adjust incoming sound and each participant’s video.",
+    "description": "Your playback settings apply only to this device.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "chat.call.volume",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "explanation-chat-call-volume-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Hívás hangereje és videói",
+    "summary": "Állítsd a bejövő hangot és az egyes résztvevők videóját.",
+    "description": "A lejátszási beállításaid csak erre az eszközre érvényesek.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "chat.call.volume",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "explanation-landing-guide-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Your guide button",
+    "summary": "Help for the screen you are viewing.",
+    "description": "Learn how to use and move the floating buttons.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "landing.guide",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "explanation-landing-guide-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "A magyarázó gomb",
+    "summary": "Segítség az éppen megnyitott képernyőhöz.",
+    "description": "Ismerd meg a lebegő gombok használatát és mozgatását.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "landing.guide",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "work:explanation-chat-call-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Chat call",
+    "summary": "Talk with people in this chat.",
+    "description": "Control your microphone, camera and what you hear or see.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-call-participants",
+        "guideStepId": "call-participants",
+        "icon": "touch_app",
+        "title": "Participants",
+        "blurb": "",
+        "contentHtml": "<p>Each tile belongs to one participant. Swipe or use the arrows for more people. Offscreen video pauses while their audio continues.</p>"
+      },
+      {
+        "id": "guide-call-follow-speakers",
+        "guideStepId": "call-follow-speakers",
+        "icon": "help_outline",
+        "title": "Follow speakers",
+        "blurb": "",
+        "contentHtml": "<p>Turn this on to keep the current and most recent speakers visible. Turn it off to choose a page yourself.</p>"
+      },
+      {
+        "id": "guide-call-self-mute",
+        "guideStepId": "call-self-mute",
+        "icon": "touch_app",
+        "title": "Your microphone",
+        "blurb": "",
+        "contentHtml": "<p>Mute or restore your microphone here or with the bottom microphone button. Red means muted. An admin mute must first be released by an admin.</p>"
+      },
+      {
+        "id": "guide-call-self-camera",
+        "guideStepId": "call-self-camera",
+        "icon": "touch_app",
+        "title": "Your camera",
+        "blurb": "",
+        "contentHtml": "<p>Switch your own camera on or off. This matches the bottom camera button and the camera in your volume block. Audio can stay on.</p>"
+      },
+      {
+        "id": "guide-call-peer-mute",
+        "guideStepId": "call-peer-mute",
+        "icon": "touch_app",
+        "title": "Mute one person for yourself",
+        "blurb": "",
+        "contentHtml": "<p>Mute this participant only on your device. Others still hear them. Their volume-panel mute controls the same setting.</p>"
+      },
+      {
+        "id": "guide-call-peer-video",
+        "guideStepId": "call-peer-video",
+        "icon": "touch_app",
+        "title": "Receive this video",
+        "blurb": "",
+        "contentHtml": "<p>Stop or restore video from this participant to save bandwidth. Audio continues. This matches their camera control in the volume panel.</p>"
+      },
+      {
+        "id": "guide-call-admin-mute",
+        "guideStepId": "call-admin-mute",
+        "icon": "touch_app",
+        "title": "Mute for everyone",
+        "blurb": "",
+        "contentHtml": "<p>As an admin, mute this participant for the whole call. Releasing the restriction lets them switch their own microphone back on; it does not turn it on for them.</p>"
+      },
+      {
+        "id": "guide-call-zoom",
+        "guideStepId": "call-zoom",
+        "icon": "touch_app",
+        "title": "Enlarge a participant",
+        "blurb": "",
+        "contentHtml": "<p>Show one tile at full size. Press again to return to the grid. Other participants remain audible.</p>"
+      },
+      {
+        "id": "guide-call-spectrum",
+        "guideStepId": "call-spectrum",
+        "icon": "touch_app",
+        "title": "Speech activity",
+        "blurb": "",
+        "contentHtml": "<p>The bars show the microphone sound level across frequencies. The green microphone and frame show speech; a red crossed microphone means muted.</p>"
+      },
+      {
+        "id": "guide-call-accept",
+        "guideStepId": "call-accept",
+        "icon": "touch_app",
+        "title": "Join with audio",
+        "blurb": "",
+        "contentHtml": "<p>Join this call with your microphone. Your camera starts off and can be enabled later.</p>"
+      },
+      {
+        "id": "guide-call-decline",
+        "guideStepId": "call-decline",
+        "icon": "touch_app",
+        "title": "Decline the call",
+        "blurb": "",
+        "contentHtml": "<p>Decline this invitation without starting your microphone or camera. The chat remains available.</p>"
+      },
+      {
+        "id": "guide-call-microphone",
+        "guideStepId": "call-microphone",
+        "icon": "touch_app",
+        "title": "Microphone on or off",
+        "blurb": "",
+        "contentHtml": "<p>Choose whether others can hear you. This does not mute incoming sound. The red button and your tile show when you are muted.</p>"
+      },
+      {
+        "id": "guide-call-camera",
+        "guideStepId": "call-camera",
+        "icon": "touch_app",
+        "title": "Camera on or off",
+        "blurb": "",
+        "contentHtml": "<p>Choose whether to send your camera picture. You can keep talking with the camera off.</p>"
+      },
+      {
+        "id": "guide-call-volume",
+        "guideStepId": "call-volume",
+        "icon": "touch_app",
+        "title": "Volume and received video",
+        "blurb": "",
+        "contentHtml": "<p>Open playback volume and individual participant controls. Each named block lets you adjust sound or stop receiving that person’s video.</p>"
+      },
+      {
+        "id": "guide-call-play-audio",
+        "guideStepId": "call-play-audio",
+        "icon": "touch_app",
+        "title": "Allow audio playback",
+        "blurb": "",
+        "contentHtml": "<p>Your browser paused incoming audio. Press this button to allow playback on this device.</p>"
+      },
+      {
+        "id": "guide-call-hangup",
+        "guideStepId": "call-hangup",
+        "icon": "touch_app",
+        "title": "Leave the call",
+        "blurb": "",
+        "contentHtml": "<p>Leave the call and release your microphone and camera. The chat stays open and the others can continue talking.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "close",
+        "title": "Close and leave",
+        "blurb": "",
+        "contentHtml": "<p>Closing this call window also leaves the call. Closing only the explanation guide does not leave it.</p>"
+      }
+    ],
+    "contextKey": "chat.call",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-chat-call-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Hívás a chatben",
+    "summary": "Beszélgess a chat résztvevőivel.",
+    "description": "Állítsd a mikrofonodat, kamerádat és a fogadott hangot, képet.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-call-participants",
+        "guideStepId": "call-participants",
+        "icon": "touch_app",
+        "title": "Résztvevők",
+        "blurb": "",
+        "contentHtml": "<p>Minden csempe egy résztvevőé. További emberekhez lapozz vagy használd a nyilakat. A nem látható videó szünetel, a hang tovább szól.</p>"
+      },
+      {
+        "id": "guide-call-follow-speakers",
+        "guideStepId": "call-follow-speakers",
+        "icon": "help_outline",
+        "title": "Beszélők követése",
+        "blurb": "",
+        "contentHtml": "<p>Bekapcsolva az aktuális és a legutóbbi beszélők maradnak láthatók. Kikapcsolva te választod ki a lapot.</p>"
+      },
+      {
+        "id": "guide-call-self-mute",
+        "guideStepId": "call-self-mute",
+        "icon": "touch_app",
+        "title": "Saját mikrofon",
+        "blurb": "",
+        "contentHtml": "<p>Itt vagy az alsó mikrofongombbal némíthatsz és kapcsolhatsz vissza. A piros némítást jelez. Az admin némítását előbb az adminnak kell feloldania.</p>"
+      },
+      {
+        "id": "guide-call-self-camera",
+        "guideStepId": "call-self-camera",
+        "icon": "touch_app",
+        "title": "Saját kamera",
+        "blurb": "",
+        "contentHtml": "<p>Kapcsold be vagy ki a saját kamerádat. Az alsó kameragomb és a hangerőpanel saját kameragombja is ezt kapcsolja. A hang bekapcsolva maradhat.</p>"
+      },
+      {
+        "id": "guide-call-peer-mute",
+        "guideStepId": "call-peer-mute",
+        "icon": "touch_app",
+        "title": "Egy résztvevő helyi némítása",
+        "blurb": "",
+        "contentHtml": "<p>Csak a saját eszközödön némítod ezt a résztvevőt. Mások tovább hallják. A hangerőpanel név szerinti némítógombja ugyanezt kapcsolja.</p>"
+      },
+      {
+        "id": "guide-call-peer-video",
+        "guideStepId": "call-peer-video",
+        "icon": "touch_app",
+        "title": "Egy videó fogadása",
+        "blurb": "",
+        "contentHtml": "<p>Állítsd le vagy engedélyezd ennek a résztvevőnek a videóját a kapcsolat kíméléséhez. A hang megmarad. A hangerőpanel név szerinti kameragombja ugyanezt állítja.</p>"
+      },
+      {
+        "id": "guide-call-admin-mute",
+        "guideStepId": "call-admin-mute",
+        "icon": "touch_app",
+        "title": "Némítás mindenkinél",
+        "blurb": "",
+        "contentHtml": "<p>Adminként az egész hívásban némíthatod ezt a résztvevőt. Feloldás után ő kapcsolhatja vissza a mikrofonját; az nem indul el magától.</p>"
+      },
+      {
+        "id": "guide-call-zoom",
+        "guideStepId": "call-zoom",
+        "icon": "touch_app",
+        "title": "Résztvevő nagyítása",
+        "blurb": "",
+        "contentHtml": "<p>Mutass egy csempét nagy méretben. Újabb kattintással visszatérsz a rácshoz. A többiek hangját továbbra is hallod.</p>"
+      },
+      {
+        "id": "guide-call-spectrum",
+        "guideStepId": "call-spectrum",
+        "icon": "touch_app",
+        "title": "Beszédjelzés",
+        "blurb": "",
+        "contentHtml": "<p>Az oszlopok a mikrofon hangját mutatják frekvenciák szerint. A zöld mikrofon és keret beszédet, a piros áthúzott mikrofon némítást jelez.</p>"
+      },
+      {
+        "id": "guide-call-accept",
+        "guideStepId": "call-accept",
+        "icon": "touch_app",
+        "title": "Csatlakozás hanggal",
+        "blurb": "",
+        "contentHtml": "<p>Csatlakozz a híváshoz mikrofonnal. A kamerád kezdetben ki van kapcsolva, később bekapcsolhatod.</p>"
+      },
+      {
+        "id": "guide-call-decline",
+        "guideStepId": "call-decline",
+        "icon": "touch_app",
+        "title": "Hívás elutasítása",
+        "blurb": "",
+        "contentHtml": "<p>Utasítsd el a meghívást a mikrofon és a kamera elindítása nélkül. A chat tovább használható.</p>"
+      },
+      {
+        "id": "guide-call-microphone",
+        "guideStepId": "call-microphone",
+        "icon": "touch_app",
+        "title": "Mikrofon be vagy ki",
+        "blurb": "",
+        "contentHtml": "<p>Állítsd be, halljanak-e téged a többiek. Ez nem némítja a bejövő hangot. Némításkor a gomb és a saját csempéd is piros jelzést kap.</p>"
+      },
+      {
+        "id": "guide-call-camera",
+        "guideStepId": "call-camera",
+        "icon": "touch_app",
+        "title": "Kamera be vagy ki",
+        "blurb": "",
+        "contentHtml": "<p>Állítsd be, küldöd-e a kameraképedet. Kikapcsolt kamerával is beszélgethetsz.</p>"
+      },
+      {
+        "id": "guide-call-volume",
+        "guideStepId": "call-volume",
+        "icon": "touch_app",
+        "title": "Hangerő és fogadott videók",
+        "blurb": "",
+        "contentHtml": "<p>Nyisd meg a lejátszási hangerőt és a résztvevők vezérlőit. A név szerinti blokkban állíthatod a hangot vagy letilthatod az adott videó fogadását.</p>"
+      },
+      {
+        "id": "guide-call-play-audio",
+        "guideStepId": "call-play-audio",
+        "icon": "touch_app",
+        "title": "Hang lejátszásának engedélyezése",
+        "blurb": "",
+        "contentHtml": "<p>A böngésző megállította a bejövő hang lejátszását. Ezzel a gombbal engedélyezheted ezen az eszközön.</p>"
+      },
+      {
+        "id": "guide-call-hangup",
+        "guideStepId": "call-hangup",
+        "icon": "touch_app",
+        "title": "Kilépés a hívásból",
+        "blurb": "",
+        "contentHtml": "<p>Lépj ki és engedd el a mikrofont, kamerát. A chat nyitva marad, a többiek folytathatják a beszélgetést.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "close",
+        "title": "Bezárás és kilépés",
+        "blurb": "",
+        "contentHtml": "<p>A hívásablak bezárásával a hívásból is kilépsz. Csak a magyarázó bezárása nem szakítja meg a hívást.</p>"
+      }
+    ],
+    "contextKey": "chat.call",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-chat-call-volume-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Call volume and video",
+    "summary": "Adjust incoming sound and each participant’s video.",
+    "description": "Your playback settings apply only to this device.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-master-volume",
+        "guideStepId": "master-volume",
+        "icon": "touch_app",
+        "title": "Overall playback volume",
+        "blurb": "",
+        "contentHtml": "<p>The Me slider controls all incoming sound on this device. It does not change your microphone or what others hear.</p>"
+      },
+      {
+        "id": "guide-master-mute",
+        "guideStepId": "master-mute",
+        "icon": "touch_app",
+        "title": "Mute incoming sound",
+        "blurb": "",
+        "contentHtml": "<p>Mute all incoming audio on this device. Unmute to return to the previous volume. The outer volume button turns red while muted.</p>"
+      },
+      {
+        "id": "guide-self-camera",
+        "guideStepId": "self-camera",
+        "icon": "touch_app",
+        "title": "Your camera",
+        "blurb": "",
+        "contentHtml": "<p>This switches your own camera, just like the bottom camera button and the icon on your tile. It does not switch everyone’s video.</p>"
+      },
+      {
+        "id": "guide-peer-volume",
+        "guideStepId": "peer-volume",
+        "icon": "touch_app",
+        "title": "This person’s volume",
+        "blurb": "",
+        "contentHtml": "<p>Adjust the participant named above this slider. The setting combines with your overall playback volume and does not affect other listeners.</p>"
+      },
+      {
+        "id": "guide-peer-mute",
+        "guideStepId": "peer-mute",
+        "icon": "touch_app",
+        "title": "Mute this person",
+        "blurb": "",
+        "contentHtml": "<p>Mute only this participant on your device. Unmuting keeps their previous volume. Their tile microphone shows the same setting.</p>"
+      },
+      {
+        "id": "guide-peer-video",
+        "guideStepId": "peer-video",
+        "icon": "touch_app",
+        "title": "This person’s video",
+        "blurb": "",
+        "contentHtml": "<p>Stop or allow their video on your device; their audio stays on. Allowing it resumes video when their tile is visible.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "close",
+        "title": "Close the volume panel",
+        "blurb": "",
+        "contentHtml": "<p>Return to the call with your settings kept. Closing this panel does not leave the call.</p>"
+      }
+    ],
+    "contextKey": "chat.call.volume",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-chat-call-volume-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Hívás hangereje és videói",
+    "summary": "Állítsd a bejövő hangot és az egyes résztvevők videóját.",
+    "description": "A lejátszási beállításaid csak erre az eszközre érvényesek.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-master-volume",
+        "guideStepId": "master-volume",
+        "icon": "touch_app",
+        "title": "Közös lejátszási hangerő",
+        "blurb": "",
+        "contentHtml": "<p>Az Én csúszka az összes bejövő hang erejét állítja ezen az eszközön. Nem a mikrofonodat és nem a többiek által hallott hangerőt változtatja.</p>"
+      },
+      {
+        "id": "guide-master-mute",
+        "guideStepId": "master-mute",
+        "icon": "touch_app",
+        "title": "Bejövő hang némítása",
+        "blurb": "",
+        "contentHtml": "<p>Némítsd az összes bejövő hangot ezen az eszközön. Feloldáskor visszatér a korábbi hangerő. Némításkor a külső hangerőgomb is piros.</p>"
+      },
+      {
+        "id": "guide-self-camera",
+        "guideStepId": "self-camera",
+        "icon": "touch_app",
+        "title": "Saját kamera",
+        "blurb": "",
+        "contentHtml": "<p>Ez a saját kamerádat kapcsolja, ugyanúgy, mint az alsó gomb és a saját csempéd ikonja. Nem az összes résztvevő videóját állítja.</p>"
+      },
+      {
+        "id": "guide-peer-volume",
+        "guideStepId": "peer-volume",
+        "icon": "touch_app",
+        "title": "Ennek a résztvevőnek a hangereje",
+        "blurb": "",
+        "contentHtml": "<p>A csúszka feletti névhez tartozó hangot állítod. A közös hangerővel együtt érvényesül, a többiek lejátszását nem változtatja.</p>"
+      },
+      {
+        "id": "guide-peer-mute",
+        "guideStepId": "peer-mute",
+        "icon": "touch_app",
+        "title": "Ennek a résztvevőnek a némítása",
+        "blurb": "",
+        "contentHtml": "<p>Csak ezt a résztvevőt némítod a saját eszközödön. Feloldás után megmarad a korábbi hangereje. A csempe mikrofonikonja ugyanezt jelzi.</p>"
+      },
+      {
+        "id": "guide-peer-video",
+        "guideStepId": "peer-video",
+        "icon": "touch_app",
+        "title": "Ennek a résztvevőnek a videója",
+        "blurb": "",
+        "contentHtml": "<p>Tiltsd vagy engedélyezd a videóját a saját eszközödön; a hang megmarad. Engedélyezés után akkor indul újra a kép, amikor a csempe látható.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "close",
+        "title": "Hangerőpanel bezárása",
+        "blurb": "",
+        "contentHtml": "<p>Térj vissza a híváshoz a beállítások megtartásával. Ennek a panelnek a bezárása nem léptet ki a hívásból.</p>"
+      }
+    ],
+    "contextKey": "chat.call.volume",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-landing-guide-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Your guide button",
+    "summary": "Help for the screen you are viewing.",
+    "description": "Learn how to use and move the floating buttons.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-guide-launcher",
+        "guideStepId": "guide-launcher",
+        "icon": "touch_app",
+        "title": "Help when you need it",
+        "blurb": "",
+        "contentHtml": "<p>Help: Next, Back, Done. Drag the lightbulb or notification bell; drop on the red X to hide. Turn help off or back on permanently: side menu → Explanations.</p>"
+      }
+    ],
+    "contextKey": "landing.guide",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-landing-guide-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "A magyarázó gomb",
+    "summary": "Segítség az éppen megnyitott képernyőhöz.",
+    "description": "Ismerd meg a lebegő gombok használatát és mozgatását.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-guide-launcher",
+        "guideStepId": "guide-launcher",
+        "icon": "touch_app",
+        "title": "Segítség, amikor kell",
+        "blurb": "",
+        "contentHtml": "<p>Súgó: Előre, Vissza, Kész. A villanykörte és az értesítési csengő húzható; piros X-re ejtve elrejthető. Tartós ki-/bekapcsolás: oldalsó menü → Magyarázatok.</p>"
+      }
+    ],
+    "contextKey": "landing.guide",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-profile-integration-access-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Connection access",
+    "summary": "Choose the access level and confirm the draft.",
+    "description": "API and MCP permissions stay within the selected profile’s existing rights.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-06T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-06T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-integration-access-level",
+        "guideStepId": "integration-access-level",
+        "icon": "help_outline",
+        "title": "Three access levels",
+        "blurb": "",
+        "contentHtml": "<p>Choose one access pack: red Blocked, amber Write, or green Full. The colored shield and the state label follow your draft immediately. These are complete packs; there are no separate operation switches.</p>"
+      },
+      {
+        "id": "guide-integration-access-apply",
+        "guideStepId": "integration-access-apply",
+        "icon": "help_outline",
+        "title": "Confirm selection",
+        "blurb": "",
+        "contentHtml": "<p>The tick appears when the level differs from the opening value. It closes this popup and updates the parent draft. Save that parent draft to persist the change.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "close",
+        "title": "Discard this selection",
+        "blurb": "",
+        "contentHtml": "<p>Close without confirming to keep the parent draft unchanged.</p>"
+      }
+    ],
+    "contextKey": "profile.integration-access",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-profile-integration-access-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Kapcsolat jogosultsága",
+    "summary": "Válaszd ki a jogosultsági szintet, majd erősítsd meg a piszkozatot.",
+    "description": "Az API- és MCP-jogosultságok a kiválasztott profil meglévő jogain belül maradnak.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-06T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-06T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-integration-access-level",
+        "guideStepId": "integration-access-level",
+        "icon": "help_outline",
+        "title": "Három jogosultsági szint",
+        "blurb": "",
+        "contentHtml": "<p>Válassz egy jogosultságcsomagot: piros Tiltva, borostyán Írás vagy zöld Teljes. A pajzs színe és az állapotfelirat azonnal követi a piszkozatot. Ezek teljes csomagok, műveletenkénti kapcsolók nincsenek.</p>"
+      },
+      {
+        "id": "guide-integration-access-apply",
+        "guideStepId": "integration-access-apply",
+        "icon": "help_outline",
+        "title": "Választás megerősítése",
+        "blurb": "",
+        "contentHtml": "<p>A pipa akkor jelenik meg, ha eltérsz a megnyitáskor érvényes szinttől. Bezárja ezt a popupot, és frissíti a szülőablak piszkozatát. A véglegesítéshez azt a piszkozatot is mentsd el.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "close",
+        "title": "Választás elvetése",
+        "blurb": "",
+        "contentHtml": "<p>Megerősítés nélkül bezárva a szülőablak piszkozata változatlan marad.</p>"
+      }
+    ],
+    "contextKey": "profile.integration-access",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "work:explanation-landing-consent-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Privacy consent",
+    "summary": "Accept the current privacy terms.",
+    "description": "Your choice is remembered for this version.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-entry-privacy-accept",
+        "guideStepId": "entry-privacy-accept",
+        "icon": "policy",
+        "title": "Privacy consent",
+        "blurb": "",
+        "contentHtml": "<p>Accept the data handling terms to continue. This browser remembers your choice: accept each version once; a new version asks again.</p>"
+      }
+    ],
+    "contextKey": "landing.consent",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "explanation-landing-consent-default-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Privacy consent",
+    "summary": "Accept the current privacy terms.",
+    "description": "Your choice is remembered for this version.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "landing.consent",
+    "presentation": "tour",
+    "baseGroupId": null
+  },
+  {
+    "_id": "work:explanation-landing-consent-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Adatvédelmi hozzájárulás",
+    "summary": "Az aktuális adatvédelmi feltételek elfogadása.",
+    "description": "A böngésző megjegyzi az elfogadott verziót.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-entry-privacy-accept",
+        "guideStepId": "entry-privacy-accept",
+        "icon": "policy",
+        "title": "Adatvédelmi hozzájárulás",
+        "blurb": "",
+        "contentHtml": "<p>A folytatáshoz az adatkezelési feltételeket fogadod el. A böngésző megjegyzi: ugyanazt a verziót egyszer kell elfogadni, új verziónál újra kéri.</p>"
+      }
+    ],
+    "contextKey": "landing.consent",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work"
+  },
+  {
+    "_id": "explanation-landing-consent-default-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Adatvédelmi hozzájárulás",
+    "summary": "Az aktuális adatvédelmi feltételek elfogadása.",
+    "description": "A böngésző megjegyzi az elfogadott verziót.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [],
+    "contextKey": "landing.consent",
     "presentation": "tour",
     "baseGroupId": null
   }

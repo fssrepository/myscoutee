@@ -315,11 +315,13 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return `landing.${this.landingMode() === 'dating' ? '' : `${this.landingMode()}.`}hero.${part}`;
   }
 
+  protected readonly usageModeMenuModel: AppMenuModel = { density: 'compact' };
+
   protected readonly usageModeItems = computed<AppMenuItem[]>(() => {
     const selected = this.landingMode();
     const trigger = groupTypeTrigger(selected);
     return [{ id: 'usage-mode', kind: 'select-trigger', label: trigger.label, icon: trigger.icon,
-      palette: trigger.palette, compactOnMobile: true, layout: 'pill', surface: 'tinted',
+      palette: trigger.palette, layout: 'pill', surface: 'tinted',
       items: groupTypeMenuItems(selected) }];
   });
 
@@ -425,7 +427,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     if (this.entryAuthButtonShowsAvatar) {
       return this.firebaseAuthProfile?.name ?? 'Continue';
     }
-    return 'Login';
+    return 'landing.login';
   }
 
   protected get entryPrimaryCtaIcon(): string {
