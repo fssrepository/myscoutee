@@ -2,6 +2,7 @@ import type * as AppConstants from '../common/constants';
 import type { ActivityEventStatus } from './activity.interface';
 import type { SubEventDTO } from './event.interface';
 import type { UserChatCountersDto } from './user.interface';
+import type { ChatCallEvent } from './chat-call.interface';
 
 export const RANDOM_ROOM_WELCOME_MESSAGE =
   'Welcome! We matched you here by affinity and past interactions. Leave anytime. '
@@ -109,6 +110,8 @@ export interface ChatReadReceipt {
 }
 
 export type ChatLiveEvent =
+  | { type: 'call'; chatId: string; call: ChatCallEvent }
+  | { type: 'disconnected'; chatId: string }
   | { type: 'message'; chatId: string; message: ChatMessageDto }
   | { type: 'ack'; chatId: string; message?: ChatMessageDto; messageId?: string; clientId?: string }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }

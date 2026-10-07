@@ -27,11 +27,13 @@ export class ExplanationGuideService {
   private readonly enabledRef = signal(true);
   private readonly currentContextRef = signal<string | null>(null);
   private readonly popupOpenRef = signal(false);
+  private readonly tourVisibleRef = signal(false);
   private readonly popupModeRef = signal<'document' | 'tour'>('tour');
   private readonly stepIndexRef = signal(0);
   private readonly launcherDismissedRef = signal(false);
   private readonly loadingRef = signal(false);
   private readonly loadErrorRef = signal(false);
+  private readonly noGuideRef = signal(false);
   private readonly visibleRevisionRef = signal<HelpCenterRevisionDto | null>(null);
   private readonly visibleGuideFieldsRef = signal<HelpCenterGuideFieldDto[]>([]);
   private readonly loadedContextRef = signal<string | null>(null);
@@ -39,6 +41,8 @@ export class ExplanationGuideService {
   private readonly resolvedContextRef = signal<string | null>(null);
   private readonly contextStack: Array<{ contextKey: string | null }> = [];
   private loadSerial = 0;
+  private introductionOffered = false;
+  private releaseIntroduction: (() => void) | null = null;
 
   readonly enabled = this.enabledRef.asReadonly();
   readonly currentContextKey = this.currentContextRef.asReadonly();
@@ -47,16 +51,19 @@ export class ExplanationGuideService {
   readonly stepIndex = this.stepIndexRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
   readonly loadError = this.loadErrorRef.asReadonly();
+  readonly noGuide = this.noGuideRef.asReadonly();
   readonly visibleRevision = this.visibleRevisionRef.asReadonly();
   readonly visibleGuideFields = this.visibleGuideFieldsRef.asReadonly();
-  readonly hasVisiblePopup = computed(() => this.popupOpenRef());
+  readonly hasVisiblePopup = computed(() => this.popupOpenRef() && !this.loadingRef()
+    && (this.noGuideRef() || this.loadErrorRef() || (this.popupModeRef() === 'document'
+      ? Boolean(this.visibleRevisionRef()) : this.tourVisibleRef())));
   readonly hasVisibleRevision = computed(() => Boolean(this.visibleRevisionRef()));
   readonly launcherVisible = computed(() => {
     const contextKey = this.currentContextRef();
     return this.enabledRef()
       && !this.launcherDismissedRef()
       && Boolean(contextKey && this.isExplainableContext(contextKey))
-      && (this.resolvedContextRef() !== contextKey || this.hasVisibleRevision());
+      && (this.resolvedContextRef() !== contextKey || this.hasVisibleRevision() || this.noGuideRef());
   });
 
   constructor(@Inject(EXPLANATION_GUIDE_OPTIONS) private readonly options: ExplanationGuideOptions) {
@@ -79,9 +86,11 @@ export class ExplanationGuideService {
     });
   }
 
-  registerContext(contextKey: string): () => void {
+  // A null modal context temporarily hides the underlying surface's guide.
+  registerContext(contextKey: string | null): () => void {
+    if (this.releaseIntroduction) this.closePopup();
     const normalized = this.normalizeContextKey(contextKey);
-    if (!normalized) {
+    if (!normalized && contextKey !== null) {
       return () => undefined;
     }
     const registration = {
@@ -119,6 +128,7 @@ export class ExplanationGuideService {
   }
 
   openCurrent(): void {
+    if (this.releaseIntroduction) this.closePopup();
     if (this.popupOpenRef()) {
       this.closePopup();
       return;
@@ -133,6 +143,7 @@ export class ExplanationGuideService {
     }
 
     const language = this.i18n.currentLanguage();
+    this.noGuideRef.set(false);
     const hasCurrentLanguageRevision = this.loadedContextRef() === contextKey
       && this.loadedLanguageRef() === language
       && Boolean(this.visibleRevisionRef());
@@ -143,12 +154,26 @@ export class ExplanationGuideService {
     if (hasCurrentLanguageRevision) {
       return;
     }
+    if (this.resolvedContextRef() === contextKey && this.loadedLanguageRef() === language && !this.visibleRevisionRef()) {
+      this.showNoGuide();
+      return;
+    }
     void this.loadForContext(contextKey, language);
   }
 
   nextStep(): void {
     if (this.popupModeRef() !== 'tour' || !this.popupOpenRef()) return;
     this.stepIndexRef.update(step => step + 1);
+  }
+
+  // Opening requests a guide; the existing target resolver confirms visibility.
+  setTourVisible(visible: boolean): void {
+    this.tourVisibleRef.set(visible);
+  }
+
+  showNoGuide(): void {
+    this.noGuideRef.set(true);
+    this.popupModeRef.set('tour');
   }
 
   setStepIndex(step: number): void {
@@ -163,6 +188,31 @@ export class ExplanationGuideService {
       this.loadingRef.set(false);
     }
     this.popupOpenRef.set(false);
+    this.tourVisibleRef.set(false);
+    if (this.releaseIntroduction) {
+      const release = this.releaseIntroduction;
+      this.releaseIntroduction = null;
+      if (this.loadedContextRef() === 'landing.guide') {
+        try { localStorage.setItem(APP_STORAGE_KEYS.explanationGuideIntroductionSeen, 'true'); } catch { /* Session-only when storage is unavailable. */ }
+      }
+      release();
+    }
+  }
+
+  canOfferLauncherIntroduction(): boolean {
+    return !this.introductionOffered && !this.popupOpenRef() && this.launcherVisible();
+  }
+
+  offerLauncherIntroduction(): void {
+    if (!this.canOfferLauncherIntroduction()) return;
+    this.introductionOffered = true;
+    try {
+      if (localStorage.getItem(APP_STORAGE_KEYS.explanationGuideIntroductionSeen) === 'true'
+        || localStorage.getItem(APP_STORAGE_KEYS.entryConsent)) return;
+    } catch { /* The introduction can still be shown once in this session. */ }
+    const release = this.registerContext('landing.guide');
+    this.openCurrent();
+    this.releaseIntroduction = release;
   }
 
   beginVisit(): void {
@@ -183,6 +233,7 @@ export class ExplanationGuideService {
     ++this.loadSerial;
     this.loadingRef.set(false);
     this.loadErrorRef.set(false);
+    this.noGuideRef.set(false);
     this.visibleRevisionRef.set(null);
     this.visibleGuideFieldsRef.set([]);
     this.loadedContextRef.set(null);
@@ -204,6 +255,7 @@ export class ExplanationGuideService {
     const serial = ++this.loadSerial;
     this.loadingRef.set(true);
     this.loadErrorRef.set(false);
+    this.noGuideRef.set(false);
     try {
       const state = await this.options.loadState(contextKey, language);
       if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey) {
@@ -224,7 +276,7 @@ export class ExplanationGuideService {
       this.resolvedContextRef.set(contextKey);
       this.loadingRef.set(false);
       if (!usableRevision) {
-        this.popupOpenRef.set(false);
+        this.showNoGuide();
       } else {
         this.popupModeRef.set(usableRevision.presentation === 'document' ? 'document' : 'tour');
         this.stepIndexRef.set(0);

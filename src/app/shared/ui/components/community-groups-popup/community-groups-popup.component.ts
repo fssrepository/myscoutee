@@ -13,6 +13,7 @@ import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, Gro
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
 import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import { isBaseGroupId } from '../../../core/contracts/group-type';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
@@ -55,8 +56,8 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
     cacheable: { identity: card => card.id }, pollIntervalMs: 30000,
     headerProgress: { enabled: true, placement: 'inline' },
     sortable: { sortKey: (card, _index, query) => groupSort(query.filters?.bucket ?? 'explore', query.sort) === 'distance'
-      ? [card.distanceMetersExact ?? Number.MAX_SAFE_INTEGER, card.id]
-      : [-Date.parse(card.dateIso ?? ''), card.id] },
+      ? [isBaseGroupId(card.id) ? 0 : 1, card.distanceMetersExact ?? Number.MAX_SAFE_INTEGER, card.id]
+      : [isBaseGroupId(card.id) ? 0 : 1, -Date.parse(card.dateIso ?? ''), card.id] },
     pollDelta: {
       revision: card => card.eagerDetail?.revision ?? JSON.stringify(card.eagerDetail),
       position: card => card.id,
@@ -80,7 +81,7 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
   }
   private card(group: CommunityGroupSummary, sort: GroupSort = groupSort(this.query.filters.bucket, this.query.sort)) {
     const card = CommunityGroupConverter.card(this.withModeration(group), key => this.i18n.translate(key));
-    if (sort === 'updated') card.groupLabel = AppUtils.smartListDayLabel(new Date(group.updatedAtIso));
+    if (sort === 'updated' && !isBaseGroupId(group.id)) card.groupLabel = AppUtils.smartListDayLabel(new Date(group.updatedAtIso));
     return card;
   }
   constructor() {

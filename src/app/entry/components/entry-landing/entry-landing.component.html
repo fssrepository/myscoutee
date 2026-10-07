@@ -15,7 +15,7 @@
         </span>
       </div>
       <app-menu class="entry-usage-menu" data-guide-field="usage-mode" kind="inline" layout="row"
-        [items]="usageModeItems()" (itemSelect)="selectUsageMode($event)"></app-menu>
+        [model]="usageModeMenuModel" [items]="usageModeItems()" (itemSelect)="selectUsageMode($event)"></app-menu>
       <div class="entry-header-actions">
         <button
           type="button"

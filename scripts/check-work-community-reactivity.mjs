@@ -27,7 +27,7 @@ const pending=new Set(),destroy=[];
 let runs=0;
 const scheduler={add:n=>pending.add(n),schedule:n=>pending.add(n),remove:n=>pending.delete(n)};
 function flush(){let count=0;while(pending.size){if(++count>50)throw Error('Reactive cycle: >50 effect executions');const n=pending.values().next().value;pending.delete(n);n.run();}runs+=count;return count;}
-const store={board:signal(null),quotations:signal(null),quotationFocus:signal(null),session:signal({userId:'work-member',tasks:false}),changed:signal(null),taskChanged:signal(null),busy:signal(false),error:signal(''),editor:signal(null),groups:signal([]),managedGroups:signal([]),groupId:signal('homes'),userId:signal('member'),canManage:signal(true),unitRows:signal([]),profileId:signal('work-member'),accountId:signal('account'),calendarCancelled:signal(null),staffMembers:signal([])};
+const store={board:signal(null),quotations:signal(null),quotationFocus:signal(null),session:signal({userId:'work-member',tasks:false,list:true}),changed:signal(null),taskChanged:signal(null),busy:signal(false),error:signal(''),editor:signal(null),groups:signal([]),managedGroups:signal([]),groupId:signal('homes'),userId:signal('member'),canManage:signal(true),unitRows:signal([]),profileId:signal('work-member'),accountId:signal('account'),calendarCancelled:signal(null),staffMembers:signal([])};
 Object.assign(store,{historyTarget:signal(null),selectedId:signal(null),selected:signal(null),taskCounters:signal({total:0,active:0,paused:0,trash:0}),counters:signal({total:0}),activeGroup:signal(null),audienceMembers:signal([]),audienceLoading:signal(false)});
 const otherStores = new Map(['CommunityCasesStore','ServiceOfferingsStore','CommunityAnnouncementsStore'].map(name => [name, {...store, changed: signal(null)}]));
 const i18n={currentLanguage:signal('en'),translate:k=>k};
@@ -226,9 +226,39 @@ page=await local.page('work-member',{pageSize:5,filters:{status:'completed',case
 await local.read('work-member','r1');page=await local.page('work-member',{pageSize:5,filters:{status:'active'}});
 assert.equal(page.context.total,28);assert.equal(page.context['open:fault'],10);
 console.log('PASS local case item counters across pagination/filtering/viewing and account/base-group isolation');
+const CommunityCasesStore=await compiledSymbol('CommunityCasesStore');
+// A chat reference loads one board, without mounting the case list or priming its task counters.
+const referenceStore=Object.create(CommunityCasesStore.prototype),referenceCalls={read:0,tasks:0};
+Object.assign(referenceStore,{workspace:{isCommunity:()=>true,accountId:id=>id},profile:{activeUserId:()=> 'work-member'},
+  generation:0,taskRevision:0,known:new Map(),count:signal(0),counters:signal({total:0}),taskCounters:signal({total:0,active:0,paused:0,trash:0}),
+  session:signal(null),component:signal(CommunityCasesPopupComponent),board:signal(null),quotations:signal(null),quotationFocus:signal(null),editor:signal(null),
+  chatContext:signal(null),changed:signal(null),busy:signal(false),error:signal(''),audienceMembers:signal([]),audienceLoading:signal(false),
+  service:{read:async()=>{referenceCalls.read++;return exampleCase;},tasks:async()=>{referenceCalls.tasks++;return {items:[],context:{total:0,active:0,paused:0,trash:0}};}}});
+await referenceStore.openReference(exampleCase.id,false);
+assert.equal(referenceStore.session().list,false,'Chat board opening must not mount the case list');
+assert.deepEqual(referenceCalls,{read:1,tasks:0},'The chat reference makes only the board detail request');
+assert.equal(referenceStore.board().id,exampleCase.id);
+referenceStore.closeBoard();assert.equal(referenceStore.session(),null);assert.equal(referenceStore.board(),null);
+await referenceStore.openReference(exampleCase.id);
+assert.equal(referenceStore.session().list,true,'Existing list/notification navigation keeps its case list');
+assert.deepEqual(referenceCalls,{read:2,tasks:1});
+referenceStore.closeBoard();assert.ok(referenceStore.session(),'Closing a board opened from the case list retains that list');
+referenceStore.service.read=async()=>{throw {status:403};};
+await referenceStore.openReference(exampleCase.id,false);
+assert.equal(referenceStore.board(),null);assert.equal(referenceStore.error(),'case.save.forbidden','A failed direct load remains an explicit error');
+let resolveReference;
+referenceStore.service.read=()=>new Promise(resolve=>resolveReference=resolve);
+const lateReference=referenceStore.openReference(exampleCase.id,false);await Promise.resolve();
+assert.equal(referenceStore.busy(),true);referenceStore.close();resolveReference(exampleCase);await lateReference;
+assert.equal(referenceStore.session(),null);assert.equal(referenceStore.board(),null,'A late response cannot reopen a closed board');
+const EventChatPopupComponent=await compiledSymbol('EventChatPopupComponent'),chatReference=Object.create(EventChatPopupComponent.prototype),chatOpens=[];
+let stopped=0;
+Object.assign(chatReference,{session:()=>({item:{channelType:'case',ownerId:exampleCase.id}}),communityCases:{openReference:(...args)=>chatOpens.push(args)}});
+chatReference.openSelectedChatPrimaryContext({stopPropagation:()=>stopped++});
+assert.deepEqual(chatOpens,[[exampleCase.id,false]]);assert.equal(stopped,1);
+console.log('PASS chat task button loads only its board; list navigation, close, permission errors and late-response isolation remain correct');
 // Apply server responses through the real store so reads and status moves cannot
 // silently turn the menu counters back into unread counts.
-const CommunityCasesStore=await compiledSymbol('CommunityCasesStore');
 const countStore=Object.create(CommunityCasesStore.prototype),menuCount=signal(1);
 const countedCase={...exampleCase,id:'counted',status:'open',caseType:'fault',unread:true};
 Object.assign(countStore,{known:new Map([[countedCase.id,countedCase]]),count:menuCount,

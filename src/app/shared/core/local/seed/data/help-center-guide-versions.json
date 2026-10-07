@@ -21,7 +21,7 @@
   "landing.home": 5,
   "members": 5,
   "members.select": 5,
-  "navigation.menu": 5,
+  "navigation.menu": 6,
   "work.campaign.editor": 6,
   "work.campaign.history": 6,
   "work.campaign.select": 5,
@@ -29,5 +29,11 @@
   "work.home": 5,
   "profile.integrations": 6,
   "profile.integration-access": 1,
-  "community.service-feedback": 1
+  "community.service-feedback": 1,
+  "chats": 5,
+  "event.chat": 5,
+  "chat.call": 1,
+  "chat.call.volume": 1,
+  "landing.guide": 1,
+  "landing.consent": 1
 }

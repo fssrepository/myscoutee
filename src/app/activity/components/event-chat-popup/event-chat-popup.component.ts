@@ -118,6 +118,8 @@ import {
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 import { mergeChatReadAvatars } from './chat-message-read-state';
+import { ChatCallPopupComponent } from './chat-call-popup.component';
+import { ChatCallService } from '../../../shared/core/base/services/chat-call.service';
 import {
   UiPollCoordinator,
   UiTaskScheduler
@@ -236,7 +238,8 @@ interface ChatHeaderPollState {
     PopupComponent,
     AppMenuComponent,
     AppMenuTriggerComponent,
-    SmartListComponent
+    SmartListComponent,
+    ChatCallPopupComponent
   ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
@@ -256,6 +259,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly chatsService = inject(ChatsService);
+  protected readonly calls = inject(ChatCallService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
@@ -485,6 +489,14 @@ export class EventChatPopupComponent implements OnDestroy {
   private registeredExplanationContextKey: string | null = null;
 
   constructor() {
+    let boundCallKey = '';
+    effect(() => {
+      const chat = this.session()?.item ?? null;
+      const key = chat ? `${this.activeUserId()}:${chat.id}` : '';
+      if (key === boundCallKey) return;
+      boundCallKey = key;
+      untracked(() => { void this.calls.bindChat(chat); });
+    });
     let loadedCaseChat='';
     effect(() => {
       const chat=this.session()?.item, key=chat?.channelType==='case'?`${this.activeUserId()}:${chat.id}`:'';
@@ -604,6 +616,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    void this.calls.bindChat(null);
     this.destroyed = true;
     this.unregisterExplanationContext?.();
     this.unregisterExplanationContext = null;
@@ -665,6 +678,7 @@ export class EventChatPopupComponent implements OnDestroy {
       headerControls: this.chatPopupHeaderControls(),
       toolbarControls: this.chatPopupToolbarControls(),
       onClose: () => this.close(),
+      onAction: event => { if (event.action.id === 'chat-call') this.calls.show(); },
       onMenuSelect: event => this.onInlineChatMenuSelect(event.itemSelect)
     };
   }
@@ -749,12 +763,13 @@ export class EventChatPopupComponent implements OnDestroy {
     const supportHistoryControls = this.isAdminRoleActive() && this.isAppSupportChat()
       ? [this.chatHeaderHistoryControl()]
       : [];
+    const controls: PopupControl<ChatMenuContext>[] = [...supportHistoryControls];
     if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
       || this.session()?.item.channelType === 'groupSupport'
       || this.session()?.item.channelType === 'contact'
       || this.isServiceChat()
       || this.isBlockedSupportChat()) {
-      return supportHistoryControls;
+      return controls;
     }
     if (this.selectedChatHasSubEventMenu()) {
       return [{
@@ -765,14 +780,14 @@ export class EventChatPopupComponent implements OnDestroy {
         trigger: this.selectedChatContextMenuTrigger(),
         groups: this.selectedChatContextMenuGroupsModel(),
         panelAlign: 'end'
-      }, ...supportHistoryControls];
+      }, ...controls];
     }
     return [{
       kind: 'menu',
       id: 'chat-context-primary',
       menuKind: 'select',
       trigger: this.selectedChatPrimaryActionTrigger()
-    }, ...supportHistoryControls];
+    }, ...controls];
   }
 
   private chatHeaderHistoryControl(): PopupControl<ChatMenuContext> {
@@ -789,6 +804,11 @@ export class EventChatPopupComponent implements OnDestroy {
       ? null
       : this.chatHeaderMembersControl();
     return [{
+      id: 'chat-call', align: 'end', icon: this.calls.available() ? 'call' : 'phone_disabled',
+      mirrorIcon: !this.calls.available(),
+      palette: this.calls.available() ? 'green' : 'danger', ariaLabel: this.i18n.translate('chat.call.open'),
+      disabled: !this.calls.available() || !this.calls.supported() || this.isBlockedSupportChat()
+    }, {
       kind: 'menu',
       id: 'chat-header-actions',
       align: 'end',
@@ -1585,7 +1605,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatPrimaryContext(event?: Event): void {
     const caseChat = this.session()?.item;
-    if (caseChat?.channelType === 'case') { event?.stopPropagation(); void this.communityCases.openReference(caseChat.ownerId ?? ''); return; }
+    if (caseChat?.channelType === 'case') { event?.stopPropagation(); void this.communityCases.openReference(caseChat.ownerId ?? '', false); return; }
     if (this.isServiceChat()) {
       event?.stopPropagation();
       return;
@@ -4105,6 +4125,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
 
+    if (event.type !== 'message') return;
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {
       void this.markChatMessagesAsRead(chat, [event.message.id]);

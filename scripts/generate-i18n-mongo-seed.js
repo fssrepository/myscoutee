@@ -24,8 +24,9 @@ const messageDocs = buildMessageDocs(bundles);
 for (const databaseName of seedDatabases) {
   const databaseDir = path.join(mongoRoot, databaseName);
   fs.mkdirSync(databaseDir, { recursive: true });
-  writeJson(path.join(databaseDir, 'i18n_bundles.json'), bundleDocs);
   writeJson(path.join(databaseDir, 'i18n_messages.json'), messageDocs);
+  // Expose the new version only after its messages are ready for the seed watcher.
+  writeJson(path.join(databaseDir, 'i18n_bundles.json'), bundleDocs);
 }
 
 console.log(`Generated i18n Mongo seed for ${seedDatabases.join(', ')}.`);

@@ -152,6 +152,9 @@
       </div>
     </div>
   </app-popup>
+  @defer (when calls.open()) {
+    <app-chat-call-popup [zIndex]="chatDialogZIndex()"></app-chat-call-popup>
+  }
 }
 
 @if (pollComposerOpen) {

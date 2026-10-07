@@ -120,7 +120,7 @@ export class CommunityCaseBoardComponent {
   }
   protected readonly model = computed<PopupModel>(() => {
     const c = this.store.board()!;
-    return { errorMessage: this.task() ? null : this.store.error(), title: c.title, subtitle: 'case.board.title', size: 'wide', height: 'full', bodyLayout: 'fill', onClose: () => { this.store.board.set(null); },
+    return { errorMessage: this.task() ? null : this.store.error(), title: c.title, subtitle: 'case.board.title', size: 'wide', height: 'full', bodyLayout: 'fill', onClose: () => this.store.closeBoard(),
       headerControls: c.canManage && ['open','in-progress'].includes(c.status)
         ? [{id:'create',icon:'add',ariaLabel:'case.board.create',palette:'green'}] : [],
       onAction: () => { if (!c.canManage || !['open','in-progress'].includes(c.status)) return; this.store.error.set(''); this.task.set({ id: crypto.randomUUID(), title: '', description: '', status: 'todo', assigneeAccountIds: [], dependsOnIds: [], startAtIso: null, endAtIso: null }); } };
