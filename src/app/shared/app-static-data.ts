@@ -412,6 +412,8 @@ const DOCUMENT_VIEWER_HEADER_PALETTES = [
 ] as const;
 const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'landing.home', label: 'Getting started', icon: 'help_outline', owner: 'route', order: 1, enabled: true },
+  { key: 'landing.guide', label: 'Guide button introduction', icon: 'tips_and_updates', owner: 'route', order: 1.1, enabled: true },
+  { key: 'landing.consent', label: 'Privacy consent', icon: 'policy', owner: 'popup', order: 1.2, enabled: true },
   { key: 'landing.setup', label: 'Device setup', icon: 'help_outline', owner: 'popup', order: 2, enabled: true },
   { key: 'landing.demo', label: 'Choose a demo identity', icon: 'help_outline', owner: 'popup', order: 4, enabled: true },
   { key: 'landing.auth', label: 'Sign in or register', icon: 'help_outline', owner: 'popup', order: 5, enabled: true },
@@ -423,12 +425,15 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'notifications', label: 'Notifications', icon: 'notifications', owner: 'popup', order: 15, enabled: true },
   { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
   { key: 'chats', label: 'Chats', icon: 'forum', owner: 'popup', order: 25, enabled: true },
+  { key: 'chat.call', label: 'Chat call', icon: 'call', owner: 'popup', order: 25.1, enabled: true },
+  { key: 'chat.call.volume', label: 'Call volume and video reception', icon: 'volume_up', owner: 'popup', order: 25.2, enabled: true },
   { key: 'payment.history', label: 'Payment history', icon: 'receipt_long', owner: 'popup', order: 27, enabled: true },
   { key: 'payment.cash.receipt', label: 'Cash receipt', icon: 'payments', owner: 'popup', order: 27.5, enabled: true },
   { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
   { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
   { key: 'profile.impressions', label: 'Profile impressions', icon: 'psychology', owner: 'popup', order: 42, enabled: true },
   { key: 'profile.integrations', label: 'Integrations', icon: 'hub', owner: 'popup', order: 43, enabled: true },
+  { key: 'profile.integration-access', label: 'Integration permissions', icon: 'admin_panel_settings', owner: 'popup', order: 43.1, enabled: true },
   { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
   { key: 'community.services.home', label: 'Service priorities', icon: 'home_repair_service', owner: 'popup', order: 71, enabled: true },
   { key: 'community.services', label: 'Your services', icon: 'home_repair_service', owner: 'popup', order: 72, enabled: true },
@@ -1309,7 +1314,6 @@ const PRIVACY_CENTER_SECTIONS: HelpCenterSectionDto[] = [
     title: GDPR_CONTENT.title,
     blurb: GDPR_CONTENT.subtitle,
     contentHtml: `
-      <p>${GDPR_CONTENT.subtitle}</p>
       <p><strong>Last updated:</strong> February 1, 2026</p>
     `
   },

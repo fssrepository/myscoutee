@@ -40,7 +40,7 @@ export class CommunityCasesStore {
   private readonly dialogs = inject(DialogStore);
   private readonly picker = inject(ActivityInvitePopupStore);
   private readonly memberMenu = inject(MemberMenuStore);
-  readonly session = signal<{ userId: string; tasks: boolean } | null>(null);
+  readonly session = signal<{ userId: string; tasks: boolean; list: boolean } | null>(null);
   readonly component = signal<Type<unknown> | null>(null);
   readonly editor = signal<CaseEditorState | null>(null);
   readonly board = signal<CommunityCase | null>(null);
@@ -74,20 +74,23 @@ export class CommunityCasesStore {
       if (this.session() && (account !== this.session()?.userId || !this.workspace.isCommunity())) this.close();
     });
   }
-  async open(): Promise<void> {
+  async open(list = true): Promise<void> {
     if (!this.workspace.isCommunity()) return;
-    this.close(); this.session.set({ userId: this.workspace.accountId(this.profile.activeUserId()), tasks: false });
+    this.close();
+    const session = { userId: this.workspace.accountId(this.profile.activeUserId()), tasks: false, list };
+    this.session.set(session);
     if (!this.component()) this.component.set((await import('../../components/community-cases-popup/community-cases-popup.component')).CommunityCasesPopupComponent);
-    void this.tasks({page:0,pageSize:1,filters:{status:'active'}}).catch(()=>{});
+    if (list && session === this.session()) void this.tasks({page:0,pageSize:1,filters:{status:'active'}}).catch(()=>{});
   }
-  async openReference(id: string): Promise<void> {
-    await this.open(); const session = this.session(); if (!session) return;
+  async openReference(id: string, list = true): Promise<void> {
+    await this.open(list); const session = this.session(); if (!session) return;
     await this.mutate(async () => {
       const detail = await this.service.read(session.userId, id);
       return () => { this.publish(detail); this.board.set(detail); };
     });
   }
   close(): void { this.generation++; this.session.set(null); this.board.set(null); this.quotations.set(null); this.quotationFocus.set(null); this.editor.set(null); this.clearAudienceMembers(); this.busy.set(false); this.error.set(''); }
+  closeBoard(): void { if (this.session()?.list) this.board.set(null); else this.close(); }
   closeEditor(): void { this.generation++; this.editor.set(null); this.clearAudienceMembers(); this.busy.set(false); this.error.set(''); }
   showTasks(value: boolean): void { const s = this.session(); if (s) this.session.set({ ...s, tasks: value }); }
   async page(query: ListQuery<CaseFilters>, signal?: AbortSignal) {
@@ -233,12 +236,12 @@ export class CommunityCasesStore {
   async inviteRecommendation(attachment: ChatMessageAttachment): Promise<void> {
     const c=this.chatContext();if(!c||!this.canInviteRecommendation(attachment))return;
     const actor=this.workspace.accountId(this.profile.activeUserId());
-    if(!this.session())this.session.set({userId:actor,tasks:false});
+    if(!this.session())this.session.set({userId:actor,tasks:false,list:true});
     await this.command(c,{action:'invite-provider',providerAccountId:attachment.ownerUserId ?? '',serviceId:attachment.entityId!});
   }
   async fromChat(id: string, action: 'members' | 'recommend', onRecommend?: (attachment: ChatMessageAttachment) => void): Promise<void> {
     const actor = this.workspace.accountId(this.profile.activeUserId());
-    if (!this.session()) this.session.set({ userId: actor, tasks: false });
+    if (!this.session()) this.session.set({ userId: actor, tasks: false, list: true });
     try {
       const value = await this.service.detail(actor, id); if (actor !== this.workspace.accountId(this.profile.activeUserId())) return;
       this.publish(value);

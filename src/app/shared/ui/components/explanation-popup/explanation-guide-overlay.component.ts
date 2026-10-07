@@ -6,7 +6,6 @@ import { ExplanationGuideService, I18nService } from '../../../core';
 import type { HelpCenterGuideFieldDto, HelpCenterSectionDto } from '../../../core/contracts';
 import { I18nPipe } from '../../pipes';
 import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
-import { IndicatorComponent } from '../core/indicator';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuTrigger } from '../core/menu';
 
 type GuideRect = { left: number; top: number; width: number; height: number };
@@ -28,7 +27,7 @@ type GuideTarget = { element: HTMLElement; repeatedElements?: HTMLElement[]; men
 @Component({
   selector: 'app-explanation-guide-overlay',
   standalone: true,
-  imports: [I18nPipe, NgTemplateOutlet, IndicatorComponent, MatIconModule, AppMenuComponent],
+  imports: [I18nPipe, NgTemplateOutlet, MatIconModule, AppMenuComponent],
   templateUrl: './explanation-guide-overlay.component.html',
   styleUrl: './explanation-guide-overlay.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -38,7 +37,6 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly overlayNavigation = inject(OverlayNavigationStore);
   protected readonly frame = signal<GuideFrame | null>(null);
-  protected readonly positionPending = signal(true);
   protected readonly insideMenu = signal(false);
   protected readonly steps = signal<HelpCenterGuideFieldDto[]>([]);
   protected readonly step = this.guide.stepIndex;
@@ -49,7 +47,6 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private observedCard: HTMLElement | null = null;
   private pendingFrame = 0;
   private settleTimer: ReturnType<typeof setTimeout> | null = null;
-  private positioningKey = '';
   private actionTimer: ReturnType<typeof setTimeout> | null = null;
   private actingFromGuide = false;
   private autoOpenedMenuStepKey = '';
@@ -60,28 +57,28 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const stepIndex = this.guide.stepIndex();
+      this.guide.stepIndex();
       const loading = this.guide.loading();
       const loadError = this.guide.loadError();
+      const noGuide = this.guide.noGuide();
       const popupOpen = this.guide.popupOpen();
-      const fields = this.guide.visibleGuideFields();
+      this.guide.visibleGuideFields();
       this.guide.visibleRevision();
-      const contextKey = this.guide.currentContextKey();
-      const language = this.i18n.currentLanguage();
-      const stepId = fields[stepIndex]?.id ?? '';
+      this.guide.currentContextKey();
+      this.i18n.currentLanguage();
       if (!popupOpen) this.autoOpenedMenuStepKey = '';
-      const key = `${contextKey ?? ''}:${language}:${stepIndex}:${stepId}`;
-      if (key !== this.positioningKey) {
-        this.positioningKey = key;
-        // Keep the mounted card while preparing the next anchor (menus/scroll).
-        // Replacing its frame moves it without closing and recreating the popup.
-        this.positionPending.set(Boolean(stepId));
-      }
-      if (loading || loadError) {
+      if (loading || loadError || noGuide) {
         this.frame.set(null);
-        this.positionPending.set(false);
       }
       this.schedulePosition();
+    });
+    effect(() => {
+      const visible = !this.guide.loading() && (this.guide.noGuide() || this.guide.loadError() || Boolean(this.frame()));
+      this.guide.setTourVisible(visible);
+      // Register Back only for the actual guide or its stable feedback card.
+      if (visible && !this.navigationToken) {
+        this.navigationToken = this.overlayNavigation.register(() => this.guide.closePopup());
+      }
     });
   }
 
@@ -96,11 +93,11 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
     document.addEventListener('click', this.onSurfaceClick, true);
     document.addEventListener('keydown', this.onEscape, true);
     window.addEventListener('scroll', this.onViewportChange, true);
-    this.navigationToken = this.overlayNavigation.register(() => this.guide.closePopup());
     this.schedulePosition();
   }
 
   ngOnDestroy(): void {
+    this.guide.setTourVisible(false);
     this.observer?.disconnect();
     this.cardObserver?.disconnect();
     document.removeEventListener('click', this.onSurfaceClick, true);
@@ -132,6 +129,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   }
 
   protected heading(): string {
+    if (this.guide.noGuide()) return this.i18n.translate('explanations');
     return this.guide.visibleRevision()?.title || this.i18n.translate('explanations');
   }
 
@@ -305,13 +303,17 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private readonly onSurfaceClick = (event: MouseEvent): void => {
     const clicked = event.target instanceof Element ? event.target : null;
     if (!clicked || clicked.closest('.explanation-guide-overlay, .floating-launcher-rail') || this.actingFromGuide) return;
+    if (!this.guide.hasVisiblePopup()) {
+      this.guide.closePopup();
+      return;
+    }
     this.dismissAfterSurfaceAction();
   };
 
   private readonly onViewportChange = (): void => this.schedulePosition();
 
   private readonly onEscape = (event: KeyboardEvent): void => {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || !this.guide.hasVisiblePopup()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     this.guide.closePopup();
@@ -322,7 +324,6 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
     // Hide the old anchor before the user's action starts a slide or replaces
     // its surface. Keep the mode only if that action opens another popup.
     this.frame.set(null);
-    this.positionPending.set(true);
     const existingPopups = new Set(document.querySelectorAll<HTMLElement>('.ui-popup, [data-guide-surface]'));
     this.actionTimer = setTimeout(() => {
       this.actionTimer = null;
@@ -354,22 +355,19 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private position(): void {
     if (this.navigationToken) this.overlayNavigation.bringToFront(this.navigationToken);
     if (this.actionTimer) return;
-    if (this.guide.loading() || this.guide.loadError()) {
+    if (this.guide.loading() || this.guide.loadError() || this.guide.noGuide()) {
       this.frame.set(null);
       return;
     }
     const root = this.surfaceRoot();
     if (!root) {
-      this.frame.set(null);
-      this.insideMenu.set(false);
-      this.positionPending.set(false);
+      this.guide.showNoGuide();
       return;
     }
     if (root !== this.topSurface) {
       this.topSurface = root;
       this.steps.set([]);
       this.guide.setStepIndex(0);
-      this.promoteGuideNavigation();
     }
 
     // Expand a guide-enabled disclosure before counting its rendered controls.
@@ -382,7 +380,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
     this.indexFields(root);
     this.syncAvailableSteps(root);
     if (!this.steps().length) {
-      this.closeGuideWithoutTarget();
+      this.guide.showNoGuide();
       return;
     }
     const current = this.currentStep();
@@ -408,13 +406,9 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       return;
     }
     if (!target || !this.isRendered(target.element)) {
-      this.frame.set(null);
-      this.insideMenu.set(false);
-      this.positionPending.set(false);
+      this.guide.showNoGuide();
       return;
     }
-
-    this.positionPending.set(false);
 
     const panelRect = target.menuPanel?.getBoundingClientRect() ?? null;
     const rects = (target.repeatedElements ?? [target.element])
@@ -475,6 +469,9 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   }
 
   private surfaceRoot(): HTMLElement | null {
+    if (this.guide.currentContextKey() === 'landing.guide') {
+      return document.querySelector<HTMLElement>('app-explanation-launcher [data-guide-surface="landing.guide"]');
+    }
     const popups = Array.from(document.querySelectorAll<HTMLElement>('.ui-popup'))
       .filter(popup => this.isRendered(popup))
       .sort((left, right) => Number(getComputedStyle(left).zIndex) - Number(getComputedStyle(right).zIndex));
@@ -558,7 +555,6 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private closeGuideWithoutTarget(): void {
     this.frame.set(null);
     this.insideMenu.set(false);
-    this.positionPending.set(false);
     this.guide.closePopup();
   }
 
@@ -686,11 +682,6 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       if (style.position === 'fixed') break;
     }
     return new DOMRect(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
-  }
-
-  private promoteGuideNavigation(): void {
-    if (this.navigationToken) this.overlayNavigation.unregister(this.navigationToken);
-    this.navigationToken = this.overlayNavigation.register(() => this.guide.closePopup());
   }
 
   private clickFromGuide(target: HTMLElement): void {

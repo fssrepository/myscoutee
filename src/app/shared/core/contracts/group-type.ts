@@ -9,6 +9,9 @@ export function groupType(value: unknown): GroupType {
 export function baseGroupId(type: GroupType): string | null {
   return type === 'work' ? WORK_BASE_GROUP_ID : type === 'community' ? COMMUNITY_BASE_GROUP_ID : null;
 }
+export function baseGroupType(id: string | null | undefined): GroupType | null {
+  return GROUP_TYPES.find(type => baseGroupId(type) === (id ?? null)) ?? null;
+}
 export function isBaseGroupId(id: string | null | undefined): boolean {
   return !!id && BASE_GROUP_IDS.includes(id);
 }

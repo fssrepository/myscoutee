@@ -114,7 +114,7 @@ self.addEventListener('fetch', event => {
 
   if (url.origin === self.location.origin) {
     if (isLandingContentRequest(url)) {
-      event.respondWith(staleWhileRevalidate(request, API_CACHE, matchAnyLandingContent, event));
+      event.respondWith(staleWhileRevalidate(request, API_CACHE, event));
       return;
     }
     if (isStaticAsset(url, request)) {
@@ -257,7 +257,7 @@ async function matchAppBundleCache(request) {
   return null;
 }
 
-async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) {
+async function staleWhileRevalidate(request, cacheName, event) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
   const refresh = fetchAndCache(request, cache).catch(() => null);
@@ -265,10 +265,8 @@ async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) 
   if (cached) {
     return cached;
   }
-  const fallback = fallbackMatcher ? await fallbackMatcher(cache, request) : null;
-  if (fallback) {
-    return fallback;
-  }
+  // The query identifies the landing group and language, including its policy.
+  // A cache miss must wait for that response, never substitute another group.
   return await refresh || unavailableResponse(request);
 }
 
@@ -278,20 +276,6 @@ async function fetchAndCache(request, cache) {
     cache.put(request, response.clone());
   }
   return response;
-}
-
-async function matchAnyLandingContent(cache, request) {
-  const exact = await cache.match(request);
-  if (exact) {
-    return exact;
-  }
-  const keys = await cache.keys();
-  for (const key of keys) {
-    if (isLandingContentRequest(new URL(key.url))) {
-      return cache.match(key);
-    }
-  }
-  return null;
 }
 
 async function cacheFirst(request, cacheName) {

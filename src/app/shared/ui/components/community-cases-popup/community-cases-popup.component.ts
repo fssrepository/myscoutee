@@ -16,12 +16,17 @@ import { CommunityCaseConverter } from '../../converters/community-case.converte
 @Component({ selector: 'app-community-cases-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, SingleRowComponent, CommunityCaseEditorComponent, CommunityCaseBoardComponent, CommunityCaseQuotationsComponent],
   template: `@if (store.session(); as session) {
+    @if (session.list) {
     <app-popup [model]="model()" [zIndex]="14000" data-guide-context="community-cases">
       <app-smart-list data-guide-field="case-list" #caseList [config]="config" [loadPage]="loadPage" [query]="query()" [itemTemplate]="caseTemplate" (menuItemSelect)="action($event)"></app-smart-list>
       <ng-template #caseTemplate let-card let-openMenu="openMenu">
         <app-info-card [card]="card" [useSharedMenu]="true" (menuRequest)="openMenu($event)"></app-info-card>
       </ng-template>
     </app-popup>
+    }
+    @if (!session.list && !store.board() && store.error()) {
+      <app-popup [model]="referenceErrorModel()" [zIndex]="14500"></app-popup>
+    }
     @if (session.tasks) {
       <app-popup [model]="tasksModel()" [zIndex]="14500" data-guide-context="community-tasks">
         <app-smart-list data-guide-field="task-list" #taskList [config]="taskConfig" [loadPage]="loadTasks" [query]="taskQuery()" [itemTemplate]="taskTemplate" (menuItemSelect)="taskAction($event)"></app-smart-list>
@@ -62,7 +67,7 @@ export class CommunityCasesPopupComponent {
   constructor() {
     effect(onCleanup => {
       const session = this.store.session();
-      if (session) onCleanup(untracked(() => this.guide.registerContext(session.tasks ? 'community.tasks' : 'community.cases')));
+      if (session?.list) onCleanup(untracked(() => this.guide.registerContext(session.tasks ? 'community.tasks' : 'community.cases')));
     });
     effect(() => {
       const c = this.store.changed(); if (!c) return;
@@ -115,6 +120,9 @@ export class CommunityCasesPopupComponent {
     if(event.id==='view'||event.id==='edit')this.store.editTask(task,event.id==='view');
     else this.store.taskAction(task,event.id as ScheduledTaskAction);
   }
+  protected readonly referenceErrorModel = computed<PopupModel>(() => ({
+    title: 'case.action.view', errorMessage: this.store.error(), size: 'wide', onClose: () => this.store.close()
+  }));
   protected readonly tasksModel = computed<PopupModel>(()=>{
     const selected=this.taskQuery().filters.status??'active';
     const styles={active:{icon:'play_circle',palette:'green' as const},paused:{icon:'pause_circle',palette:'amber' as const},trash:{icon:'delete',palette:'danger' as const}};

@@ -40,6 +40,7 @@ export interface PopupAction extends PopupControlBase {
   variant?: 'badge';
   icon: string;
   iconSize?: PopupActionIconSize;
+  mirrorIcon?: boolean;
   label?: string | null;
   ariaLabel?: string | null;
   palette?: AppMenuPalette;

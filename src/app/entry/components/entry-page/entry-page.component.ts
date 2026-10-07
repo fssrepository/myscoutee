@@ -3,6 +3,7 @@ import type { LandingSlideDto } from '../../../shared/core/contracts/content.int
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
 import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
+import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
 import {
   ChangeDetectorRef,
@@ -129,6 +130,7 @@ interface EntryDemoNewProfileRequestEvent {
   standalone: true,
   imports: [
     ExplanationLauncherComponent,
+    LandingGuideSurfaceDirective,
     EntryLandingComponent,
     DocumentViewerComponent,
     EntryFirebaseAuthPopupComponent,
@@ -1269,10 +1271,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.landingIdeaCards = [];
     this.landingIdeaCount = 0;
     this.landingSlides = [];
-    void this.loadEntryContent();
+    void this.loadEntryContent({ promptConsent: false });
   }
 
-  private async loadEntryContent(): Promise<void> {
+  private async loadEntryContent(options: { promptConsent?: boolean } = {}): Promise<void> {
     if (this.entryContentLoadPromise) {
       return this.entryContentLoadPromise;
     }
@@ -1296,7 +1298,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
             this.syncLandingLoginAvailability(displayState.state.loginAvailability, 'bundle');
           }
-          this.finishEntryPrivacyLoad(requestToken);
+          this.finishEntryPrivacyLoad(requestToken, options.promptConsent !== false);
           this.changeDetectorRef.markForCheck();
         });
       } catch {
@@ -1308,7 +1310,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           this.landingIdeaCount = 0;
           this.landingSupportedCountries = [];
           this.markEntryNetworkUnavailable();
-          this.finishEntryPrivacyLoad(requestToken);
+          this.finishEntryPrivacyLoad(requestToken, options.promptConsent !== false);
         });
       }
     })().finally(() => {
@@ -1326,13 +1328,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return this.entryContentLoadPromise;
   }
 
-  private finishEntryPrivacyLoad(requestToken: number): void {
+  private finishEntryPrivacyLoad(requestToken: number, promptConsent: boolean): void {
     if (requestToken !== this.landingContentRequestToken) {
       return;
     }
     this.endEntryPrivacyLoadingWindow();
     this.syncEntryPrivacyApprovalsForRevision();
-    if (!this.entryNetworkUnavailable && !this.entryConsentViewOnly) {
+    if (promptConsent && !this.entryNetworkUnavailable && !this.entryConsentViewOnly) {
       this.showEntryConsentPopup = this.shouldPromptEntryConsent();
     }
     this.changeDetectorRef.markForCheck();

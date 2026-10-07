@@ -23,6 +23,7 @@ import type {
   ChatServiceEnsureInput
 } from '../../../contracts/chat.interface';
 import type { IChatsService } from '../../../contracts/activity.interface';
+import type { ChatCallRequest } from '../../../contracts/chat-call.interface';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
@@ -396,6 +397,10 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   async sendChatTyping(_chat: ChatDTO, _typing: boolean): Promise<void> {
     return;
+  }
+
+  async sendChatCall(_chat: ChatDTO, _request: ChatCallRequest): Promise<void> {
+    throw new Error('Calls require a backend-connected chat session.');
   }
 
   async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {

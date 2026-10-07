@@ -154,6 +154,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Input() groupBy: string | null = null;
 
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T, TFilters>>();
+  /** Items intersecting the native scroll viewport, including partially visible pages. */
+  @Output() readonly viewportItemsChange = new EventEmitter<readonly T[]>();
+  private viewportItems: readonly T[] = [];
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
   @Output() readonly menuItemSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
@@ -3762,7 +3765,26 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private emitState(): void {
     this.stateChange.emit(this.buildStateChange());
+    this.emitViewportItems();
     this.syncPaginationAutoplay();
+  }
+
+  private emitViewportItems(): void {
+    if (!this.viewportItemsChange.observed || this.currentViewMode !== 'list') return;
+    const host = this.scrollHostRef?.nativeElement;
+    if (!host) return;
+    const bounds = host.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) return;
+    const visible = this.ownedListElements<HTMLElement>(host, '[data-smart-list-index]').flatMap(element => {
+      const rect = element.getBoundingClientRect();
+      if (rect.right <= bounds.left + 1 || rect.left >= bounds.right - 1
+        || rect.bottom <= bounds.top + 1 || rect.top >= bounds.bottom - 1) return [];
+      const item = this.items[Number(element.dataset['smartListIndex'])];
+      return item === undefined ? [] : [item];
+    });
+    if (visible.length === this.viewportItems.length && visible.every((item, index) => item === this.viewportItems[index])) return;
+    this.viewportItems = visible;
+    this.viewportItemsChange.emit(visible);
   }
 
   private resolvedPaginationAutoplayMs(): number | null {

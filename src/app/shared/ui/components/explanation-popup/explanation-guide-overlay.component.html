@@ -1,18 +1,19 @@
+@if (!guide.loading() && (guide.noGuide() || guide.loadError() || frame())) {
 <div class="explanation-guide-overlay" role="dialog" [attr.aria-label]="heading()">
-  @if (guide.loading()) {
+  @if (guide.noGuide() || guide.loadError()) {
     <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
-    <div class="explanation-guide-overlay__loading-indicator" aria-hidden="true">
-      <app-indicator kind="load-ring" state="loading" [durationMs]="3000"></app-indicator>
-    </div>
-  } @else if (guide.loadError()) {
-    <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
-    <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" (pointerdown)="$event.stopPropagation()">
+    <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" [class.explanation-guide-overlay__card--message]="guide.noGuide()" (pointerdown)="$event.stopPropagation()">
       <header class="explanation-guide-overlay__header">
         <span class="explanation-guide-overlay__progress"></span>
         <button type="button" class="explanation-guide-overlay__close" (click)="guide.closePopup()" [attr.aria-label]="'close' | i18n"><mat-icon>close</mat-icon></button>
       </header>
-      <h3>{{ 'guide.load.error.title' | i18n: 'Guide unavailable' }}</h3>
-      <p>{{ 'guide.load.error.body' | i18n: 'The guide could not be loaded. Close this message and try again.' }}</p>
+      @if (guide.noGuide()) {
+        <h3>{{ 'explanations' | i18n }}</h3>
+        <p>{{ 'guide.empty.body' | i18n: 'There is no guide for this screen.' }}</p>
+      } @else {
+        <h3>{{ 'guide.load.error.title' | i18n: 'Guide unavailable' }}</h3>
+        <p>{{ 'guide.load.error.body' | i18n: 'The guide could not be loaded. Close this message and try again.' }}</p>
+      }
     </section>
   } @else if (frame(); as focus) {
     @for (shade of focus.shades; track $index) {
@@ -24,15 +25,9 @@
     <section class="explanation-guide-overlay__card" [class.explanation-guide-overlay__card--menu]="insideMenu()" [style.left.px]="focus.cardLeft" [style.top.px]="focus.cardTop" [style.width.px]="focus.cardWidth" (pointerdown)="$event.stopPropagation()">
       <ng-container *ngTemplateOutlet="tourContent"></ng-container>
     </section>
-  } @else {
-    <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
-    @if (!positionPending()) {
-      <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" (pointerdown)="$event.stopPropagation()">
-        <ng-container *ngTemplateOutlet="tourContent"></ng-container>
-      </section>
-    }
   }
 </div>
+}
 
 <ng-template #tourContent>
   <header class="explanation-guide-overlay__header">

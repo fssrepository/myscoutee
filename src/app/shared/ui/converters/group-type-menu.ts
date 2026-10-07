@@ -1,15 +1,19 @@
 import { GROUP_TYPES, type GroupType } from '../../core/contracts/group-type';
 import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
 
-const STYLES: Record<GroupType, { icon: string; palette: AppMenuPalette }> = {
-  dating: { icon: 'favorite', palette: 'rose' },
-  work: { icon: 'work', palette: 'blue' },
-  community: { icon: 'diversity_3', palette: 'green' }
-};
-export function groupTypeTrigger(type: GroupType): AppMenuTrigger {
-  return { label: `group.type.${type}`, ...STYLES[type], layout: 'pill' };
+export const GROUP_TYPE_STYLES = {
+  dating: { icon: 'favorite', palette: 'rose', accentHue: 340 },
+  work: { icon: 'work', palette: 'blue', accentHue: 215 },
+  community: { icon: 'diversity_3', palette: 'green', accentHue: 140 }
+} as const satisfies Record<GroupType, { icon: string; palette: AppMenuPalette; accentHue: number }>;
+export function groupTypeTrigger(type: GroupType) {
+  const { icon, palette } = GROUP_TYPE_STYLES[type];
+  return { label: `group.type.${type}`, icon, palette, layout: 'pill' } satisfies AppMenuTrigger;
 }
 export function groupTypeMenuItems(selected: GroupType): AppMenuItem[] {
-  return GROUP_TYPES.map(id => ({ id, value: id, label: `group.type.${id}`, ...STYLES[id],
-    kind: 'radio', active: id === selected, checked: id === selected, showCheck: true, surface: 'tinted' }));
+  return GROUP_TYPES.map(id => {
+    const { label, icon, palette } = groupTypeTrigger(id);
+    return { id, value: id, label, icon, palette,
+      kind: 'radio', active: id === selected, checked: id === selected, showCheck: true, surface: 'tinted' };
+  });
 }

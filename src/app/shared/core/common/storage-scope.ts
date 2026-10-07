@@ -70,6 +70,7 @@ export const APP_STORAGE_KEYS = {
   assetBorrowDrafts: scopedStorageKey('asset.borrow.drafts.v1'),
   eventCheckoutDrafts: scopedStorageKey('event.checkout.drafts.v1'),
   explanationGuideEnabled: scopedStorageKey('explanation-guide.enabled.v1'),
+  explanationGuideIntroductionSeen: scopedStorageKey('explanation-guide.introduction-seen.v1'),
   firebaseConfigurationInvalidation: scopedStorageKey(
     'firebase.configuration-invalidation.v1'
   ),

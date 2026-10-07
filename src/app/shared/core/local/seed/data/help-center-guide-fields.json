@@ -460,11 +460,18 @@
       "order": 7
     },
     {
+      "id": "chat-call",
+      "screenKey": "chats",
+      "group": "menus",
+      "i18nKey": "guide.chats.chat-call",
+      "order": 8
+    },
+    {
       "id": "close",
       "screenKey": "chats",
       "group": "popup",
       "i18nKey": "guide.common.close",
-      "order": 8
+      "order": 9
     }
   ],
   "profile.editor": [
@@ -4182,11 +4189,18 @@
       "order": 5
     },
     {
+      "id": "chat-call",
+      "screenKey": "event.chat",
+      "group": "menus",
+      "i18nKey": "guide.event.chat.chat-call",
+      "order": 6
+    },
+    {
       "id": "close",
       "screenKey": "event.chat",
       "group": "popup",
       "i18nKey": "guide.event.chat.close",
-      "order": 6
+      "order": 7
     }
   ],
   "event.members": [
@@ -8297,6 +8311,196 @@
       "group": "popup",
       "i18nKey": "guide.community.service-feedback.close",
       "order": 5
+    }
+  ],
+  "chat.call": [
+    {
+      "id": "call-participants",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-participants",
+      "order": 0
+    },
+    {
+      "id": "call-follow-speakers",
+      "screenKey": "chat.call",
+      "group": "menus",
+      "i18nKey": "guide.chat.call.call-follow-speakers",
+      "order": 1
+    },
+    {
+      "id": "call-self-mute",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-self-mute",
+      "order": 2
+    },
+    {
+      "id": "call-self-camera",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-self-camera",
+      "order": 3
+    },
+    {
+      "id": "call-peer-mute",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-peer-mute",
+      "order": 4
+    },
+    {
+      "id": "call-peer-video",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-peer-video",
+      "order": 5
+    },
+    {
+      "id": "call-admin-mute",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-admin-mute",
+      "order": 6
+    },
+    {
+      "id": "call-zoom",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-zoom",
+      "order": 7
+    },
+    {
+      "id": "call-spectrum",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-spectrum",
+      "order": 8
+    },
+    {
+      "id": "call-accept",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-accept",
+      "order": 9
+    },
+    {
+      "id": "call-decline",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-decline",
+      "order": 10
+    },
+    {
+      "id": "call-microphone",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-microphone",
+      "order": 11
+    },
+    {
+      "id": "call-camera",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-camera",
+      "order": 12
+    },
+    {
+      "id": "call-volume",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-volume",
+      "order": 13
+    },
+    {
+      "id": "call-play-audio",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-play-audio",
+      "order": 14
+    },
+    {
+      "id": "call-hangup",
+      "screenKey": "chat.call",
+      "group": "card",
+      "i18nKey": "guide.chat.call.call-hangup",
+      "order": 15
+    },
+    {
+      "id": "close",
+      "screenKey": "chat.call",
+      "group": "popup",
+      "i18nKey": "guide.chat.call.close",
+      "order": 16
+    }
+  ],
+  "chat.call.volume": [
+    {
+      "id": "master-volume",
+      "screenKey": "chat.call.volume",
+      "group": "card",
+      "i18nKey": "guide.chat.call.volume.master-volume",
+      "order": 0
+    },
+    {
+      "id": "master-mute",
+      "screenKey": "chat.call.volume",
+      "group": "card",
+      "i18nKey": "guide.chat.call.volume.master-mute",
+      "order": 1
+    },
+    {
+      "id": "self-camera",
+      "screenKey": "chat.call.volume",
+      "group": "card",
+      "i18nKey": "guide.chat.call.volume.self-camera",
+      "order": 2
+    },
+    {
+      "id": "peer-volume",
+      "screenKey": "chat.call.volume",
+      "group": "card",
+      "i18nKey": "guide.chat.call.volume.peer-volume",
+      "order": 3
+    },
+    {
+      "id": "peer-mute",
+      "screenKey": "chat.call.volume",
+      "group": "card",
+      "i18nKey": "guide.chat.call.volume.peer-mute",
+      "order": 4
+    },
+    {
+      "id": "peer-video",
+      "screenKey": "chat.call.volume",
+      "group": "card",
+      "i18nKey": "guide.chat.call.volume.peer-video",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "chat.call.volume",
+      "group": "popup",
+      "i18nKey": "guide.chat.call.volume.close",
+      "order": 6
+    }
+  ],
+  "landing.guide": [
+    {
+      "id": "guide-launcher",
+      "screenKey": "landing.guide",
+      "group": "card",
+      "i18nKey": "guide.landing.guide.guide-launcher",
+      "order": 1
+    }
+  ],
+  "landing.consent": [
+    {
+      "id": "entry-privacy-accept",
+      "screenKey": "landing.consent",
+      "group": "main",
+      "i18nKey": "guide.landing.consent.entry-privacy-accept",
+      "order": 1
     }
   ]
 }

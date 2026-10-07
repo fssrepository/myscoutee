@@ -4,10 +4,10 @@
 
 .explanation-guide-overlay { position: fixed; inset: 0; z-index: 24050; pointer-events: none; }
 .explanation-guide-overlay__shade { position: fixed; inset: 0; background: rgba(10, 18, 37, 0.73); pointer-events: auto; }
-.explanation-guide-overlay__loading-indicator { position: fixed; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; }
 .explanation-guide-overlay__focus { position: fixed; box-sizing: border-box; border: 2px solid #ffe58a; border-radius: 12px; box-shadow: 0 0 0 4px rgba(255, 229, 138, 0.23), 0 0 28px rgba(255, 213, 79, 0.72); pointer-events: none; animation: explanation-guide-overlay-pulse 1.8s ease-in-out infinite; }
 .explanation-guide-overlay__card { position: fixed; display: flex; flex-direction: column; box-sizing: border-box; min-height: min(248px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); z-index: 1; padding: 16px; border: 1px solid #e8d5a2; border-radius: 16px; background: #fffdf6; color: #26344b; box-shadow: 0 18px 60px rgba(4, 13, 32, 0.32); pointer-events: auto; }
 .explanation-guide-overlay__card--center { left: 50%; top: 50%; width: min(332px, calc(100vw - 24px)); transform: translate(-50%, -50%); }
+.explanation-guide-overlay__card--message { min-height: 0; }
 .explanation-guide-overlay__header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .explanation-guide-overlay__progress { color: #8a6110; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; }
 .explanation-guide-overlay__controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 4px; width: 100%; margin-top: auto; padding-top: 14px; }

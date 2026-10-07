@@ -6,6 +6,8 @@ import { appMenuAlertCounter, appMenuResolveLiveValue } from '../components/core
 import { contentModerationBadge } from './content-moderation-badge';
 import { ActivityEventInfoCardMenuConverter } from './activity-event-info-card-menu.converter';
 import { CARD_MENU_ACTIONS } from '../components/core/smart-list/card';
+import { baseGroupType } from '../../core/contracts/group-type';
+import { GROUP_TYPE_STYLES, groupTypeTrigger } from './group-type-menu';
 export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette; tone: InfoCardOverlayTone }> = {
   hosting: { icon: 'event_seat', palette: 'green', tone: 'stage-finalized' }, participation: { icon: 'groups', palette: 'orange', tone: 'orange' },
   invitations: { icon: 'mail', palette: 'violet', tone: 'purple' },
@@ -28,19 +30,22 @@ const GROUP_CATEGORY_HUE: Record<GroupCategory, number> = {
 };
 export class CommunityGroupConverter {
   static card(group: CommunityGroupSummary, translate: (key: string) => string): InfoCardData<CommunityGroupSummary> {
+    const baseType = baseGroupType(group.id);
+    const main = baseType ? groupTypeTrigger(baseType) : null;
+    const title = main ? translate(main.label) : group.name;
     const membersVisible = canPreviewGroupMembers(group);
     const menuCounter = appMenuAlertCounter(this.menu(group));
     const menuBadgeCount = Number(appMenuResolveLiveValue(
       menuCounter && typeof menuCounter === 'object' ? menuCounter.value : menuCounter
     )) || 0;
     return { id: group.id, smartListKey: `community:${group.id}`, ownerId: group.ownerUserId, ownerUserId: group.ownerUserId,
-      title: group.name, dateIso: group.updatedAtIso, imageUrl: group.imageUrl, mediaFit: 'contain',
-      placeholderLabel: group.imageUrl ? null : group.name,
-      groupLabel: group.distanceKm == null ? translate('groups.title') : AppUtils.activityGroupLabel({ distanceMetersExact: group.distanceKm * 1000 }, 'distance', { dateUnavailable: '', weekPrefix: '' }),
+      title, dateIso: group.updatedAtIso, imageUrl: group.imageUrl, mediaFit: 'contain',
+      placeholderLabel: group.imageUrl ? null : title,
+      groupLabel: main ? translate('groups.base') : group.distanceKm == null ? translate('groups.title') : AppUtils.activityGroupLabel({ distanceMetersExact: group.distanceKm * 1000 }, 'distance', { dateUnavailable: '', weekPrefix: '' }),
       distanceMetersExact: group.distanceKm == null ? undefined : group.distanceKm * 1000,
-      metaRows: [translate(`groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
-      leadingIcon: { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
-      surfaceTone: 'subevent-light', accentHue: GROUP_CATEGORY_HUE[group.category],
+      metaRows: [translate(main ? 'groups.base' : `groups.category.${group.category}`), ...(group.distanceKm == null ? [] : [`${group.distanceKm} km`])],
+      leadingIcon: main ? { icon: main.icon, palette: main.palette } : { icon: GROUP_CATEGORY_ICON[group.category], palette: GROUP_CATEGORY_PALETTE[group.category] },
+      surfaceTone: 'subevent-light', accentHue: baseType ? GROUP_TYPE_STYLES[baseType].accentHue : GROUP_CATEGORY_HUE[group.category],
       mediaStart: { variant: 'badge', layout: 'avatar-metric', tone: 'cool',
         leadingAccessory: { label: AppUtils.initialsFromText(group.ownerName), tone: 'default' },
         ariaLabel: group.ownerName, interactive: true },

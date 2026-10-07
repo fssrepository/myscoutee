@@ -16,6 +16,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
 import { RouteDelayService } from './route-delay.service';
 import type * as ActivityContracts from '../../contracts/activity.interface';
+import type { ChatCallRequest } from '../../contracts/chat-call.interface';
 
 type ChatMessagesLoadContext = {
   readReceipt?: ContractTypes.ChatReadReceipt | null;
@@ -154,6 +155,14 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async sendChatTyping(chat: ChatDTO, typing: boolean): Promise<void> {
     return this.chatsService.sendChatTyping(chat, typing);
+  }
+
+  chatCallsSupported(): boolean {
+    return !this.isLocalRouteEnabled(ChatsService.CHAT_ROUTE);
+  }
+
+  async sendChatCall(chat: ChatDTO, request: ChatCallRequest): Promise<void> {
+    return this.chatsService.sendChatCall(chat, request);
   }
 
   async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
