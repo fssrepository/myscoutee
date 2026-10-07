@@ -1,4 +1,3 @@
-import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type {
@@ -37,19 +36,6 @@ export class NotificationCenterStore {
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
 
-  private readonly launcherEnabledRef = signal(this.readLauncherEnabled());
-  readonly launcherEnabled = this.launcherEnabledRef.asReadonly();
-
-  setLauncherEnabled(enabled: boolean): void {
-    this.launcherEnabledRef.set(enabled);
-    try { localStorage.setItem(APP_STORAGE_KEYS.notificationLauncherEnabled, enabled ? '1' : '0'); } catch { /* Storage can be unavailable. */ }
-    if (enabled) this.requestAttention();
-  }
-
-  private readLauncherEnabled(): boolean {
-    try { return localStorage.getItem(APP_STORAGE_KEYS.notificationLauncherEnabled) !== '0'; } catch { return true; }
-  }
-
   private readonly activeUserIdRef = signal('');
   private readonly openRef = signal(false);
   private readonly unreadCountRef = signal(0);
@@ -68,7 +54,7 @@ export class NotificationCenterStore {
   readonly bucket = this.bucketRef.asReadonly();
   readonly workspace = signal('all');
   readonly attentionVisible = computed(() =>
-    this.launcherEnabledRef() && this.attentionRequestedRef()
+    this.attentionRequestedRef()
     && this.unreadCountRef() > 0
     && !this.muted()
     && !this.openRef()

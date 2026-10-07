@@ -14,9 +14,11 @@ for (const rows of catalogs) {
   const identities = rows.map(row => JSON.stringify([row.baseGroupId ?? null,row.documentType,row.lang,row.contextKey ?? null,row.version]));
   assert.equal(new Set(identities).size,identities.length,'Unique Mongo revision identity before import');
 }
-const [Guide, LocalHelp, Mapper, Store, Converter, Repo, RoleEvents, Popup, signal, run, Injector, DestroyRef] = await Promise.all(
+const [Guide, LocalHelp, Mapper, Store, Converter, Repo, RoleEvents, Popup, signal, run, Injector, DestroyRef,
+  Dialog, SideMenu, NotificationPopup] = await Promise.all(
   ['ExplanationGuideService','LocalHelpCenterService','LocalHelpCenterMapper','NotificationCenterStore','NotificationSingleRowConverter',
-   'LocalNotificationsRepository','LocalRoleNotificationsService','PopupComponent','signal','runInInjectionContext','Injector','DestroyRef'].map(compiled.symbol));
+   'LocalNotificationsRepository','LocalRoleNotificationsService','PopupComponent','signal','runInInjectionContext','Injector','DestroyRef',
+   'DialogStore','SideMenuComponent','NotificationCenterPopupComponent'].map(compiled.symbol));
 const storage = new Map();
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
 function context(providers = {}) {
@@ -91,14 +93,48 @@ const adminState=await help.loadAdminState('admin','explanation','en','landing.h
 assert.ok(adminState.revisions.length);assert.ok(adminState.revisions.every(r=>!r.isSystem));
 console.log('PASS local round-trip flag; active read; editor hides system content; create/copy/activate/delete rejected before writes');
 
-const storeCtx = context({NotificationsService:{}, ActivityStore:{setUserCounterOverride(){}},
+const dialog=context().make(Dialog), preferenceWrites=[];
+let savedMuted=false, preferenceFailure=false;
+const storeCtx = context({NotificationsService:{setMuted:async(userId,muted)=>{
+  preferenceWrites.push([userId,muted]);
+  if(preferenceFailure) throw new Error('Preference save failed');
+  savedMuted=muted;return {muted};
+}}, ActivityStore:{setUserCounterOverride(){}},
   UserProfileStore:{patchUserActivityCounters(){},patchUserNotificationPreferences(){}}});
 const store=storeCtx.make(Store);store.initialize('operator',4);assert.equal(store.attentionVisible(),true);
-store.setLauncherEnabled(false);assert.equal(store.attentionVisible(),false);assert.equal(store.unreadCount(),4);assert.equal(store.muted(),false);
-const reloaded=storeCtx.make(Store);assert.equal(reloaded.launcherEnabled(),false);reloaded.initialize('admin',2);reloaded.open();assert.equal(reloaded.isOpen(),true);
-reloaded.close();reloaded.setLauncherEnabled(true);assert.equal(reloaded.attentionVisible(),true);
+const toggleAlerts = store => {
+  const popup = Object.assign(Object.create(NotificationPopup.prototype), {
+    store, dialogStore:dialog, preferenceUnavailable:()=>false
+  });
+  popup.onHeaderMenuSelect({itemSelect:{id:'notification-attention-toggle',context:{action:'toggle-muted'},
+    sourceEvent:{preventDefault(){},stopPropagation(){}}}});
+};
+const side = Object.assign(Object.create(SideMenu.prototype), {
+  notificationCenterStore:store, connectionOffline:()=>false, accountLocationMissing:()=>false,
+  closeSideMenu(){}
+});
+side.onNavigatorHeaderActionMenuSelect({id:'notifications'});
+assert.equal(store.isOpen(),true);assert.equal(preferenceWrites.length,0);store.close();
+toggleAlerts(store);
+assert.equal(store.isOpen(),false);assert.equal(preferenceWrites.length,0);
+assert.equal(dialog.dialog().title,'Mute notification alerts?');await dialog.confirm();
+assert.deepEqual(preferenceWrites,[['operator',true]]);assert.equal(store.muted(),true);
+assert.equal(store.attentionVisible(),false);assert.equal(store.unreadCount(),4);
+const reloaded=storeCtx.make(Store);reloaded.initialize('operator',4,savedMuted);
+assert.equal(reloaded.muted(),true);assert.equal(reloaded.attentionVisible(),false);
+reloaded.open();assert.equal(reloaded.isOpen(),true);reloaded.close();
+toggleAlerts(reloaded);
+assert.equal(dialog.dialog().title,'Unmute notification alerts?');await dialog.confirm();
+assert.deepEqual(preferenceWrites,[['operator',true],['operator',false]]);assert.equal(reloaded.muted(),false);
+reloaded.syncUnreadCount(5,{announce:true});assert.equal(reloaded.attentionVisible(),true);
+SideMenu.prototype.dismissNotificationLauncher.call({notificationCenterStore:reloaded,offlineAttentionDismissed:signal(false)});
+assert.equal(reloaded.attentionVisible(),false);assert.equal(reloaded.muted(),false);assert.equal(preferenceWrites.length,2);
+reloaded.syncUnreadCount(6,{announce:true});assert.equal(reloaded.attentionVisible(),true);
+preferenceFailure=true;toggleAlerts(reloaded);await dialog.confirm();
+assert.equal(reloaded.muted(),false);assert.equal(reloaded.attentionVisible(),true);
+assert.equal(dialog.dialog().errorMessage,'Preference save failed');dialog.cancel();
 const token=reloaded.captureUnreadSyncToken();reloaded.syncUnreadCount(1);assert.equal(reloaded.applyRealtimeUnreadCount(token,9),false);
-console.log('PASS notification visibility persists, inbox stays reachable, unread/mute unaffected, stale realtime rejected');
+console.log('PASS bell opens inbox directly; popup mute controls the floating alert; reload, dismissal, save failure and stale realtime remain consistent');
 
 let memory={users:{byId:{op:{id:'op',operator:true,activities:{}},admin:{id:'admin',admin:true,activities:{}},member:{id:'member',activities:{}}},ids:['op','admin','member']},
   notifications:{byId:{},ids:[],idsByRecipientUserId:{},mutedByUserId:{},seededUserIds:[]}};
