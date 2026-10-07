@@ -1,4 +1,6 @@
 import { McpConnectionsComponent } from './mcp-connections.component';
+import { IntegrationAccessButtonComponent } from './integration-access-button.component';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
 import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/copy-link.component';
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
 import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
@@ -6,11 +8,10 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, computed, effect, untracked, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { IntegrationService } from '../../../shared/core';
+import { IntegrationService } from '../../../shared/core/base/services/integration.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import type {
-  IntegrationSettingsDto,
   IntegrationTokenDto
 } from '../../../shared/core/contracts/integration.interface';
 import { PopupComponent, type PopupActionEvent, type PopupModel } from '../../../shared/ui';
@@ -30,7 +31,9 @@ type IntegrationActionContext =
 @Component({
   selector: 'app-integration-settings-popup',
   standalone: true,
+  providers: [IntegrationSettingsStore],
   imports: [
+    IntegrationAccessButtonComponent,
     McpConnectionsComponent,
     CopyLinkComponent,
     SummaryCurrencyPopupComponent,
@@ -45,6 +48,7 @@ type IntegrationActionContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class IntegrationSettingsPopupComponent implements OnDestroy {
+  protected readonly store = inject(IntegrationSettingsStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private unregisterExplanationContext: (() => void) | null = null;
   @Input() adminMode = false;
@@ -58,7 +62,7 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
   protected readonly currencyPickerOpen = signal(false);
   private readonly currencyRefresh = effect(() => {
     const revision = this.paymentMethods.summaryCurrencyRevision();
-    if (revision > 0) untracked(() => { if (this.open() && !this.adminMode) void this.loadSettings(false); });
+    if (revision > 0) untracked(() => { if (this.open() && !this.adminMode) void this.store.reload(); });
   });
   protected readonly revenueOpen = signal(false);
   protected readonly revenue = computed(() => this.settings()?.affiliate?.revenue ?? {
@@ -77,12 +81,17 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     };
   }
 
-  protected readonly loading = signal(false);
-  protected readonly mutating = signal(false);
-  protected readonly settings = signal<IntegrationSettingsDto | null>(null);
+  protected readonly loading = this.store.loading;
+  protected readonly mutating = this.store.busy;
+  protected readonly settings = this.store.settings;
   protected readonly revealedToken = signal('');
   protected readonly revealedTokenId = signal('');
-  protected readonly errorMessage = signal('');
+  private readonly clearRevealedTokenOnContextChange = effect(() => {
+    this.store.contextVersion();
+    this.revealedToken.set('');
+    this.revealedTokenId.set('');
+  });
+  protected readonly errorMessage = this.store.error;
   protected readonly copiedValue = signal('');
   protected readonly baseUrl = computed(() => this.integrationService.absoluteBaseUrl(this.settings()?.baseUrl ?? ''));
   protected readonly affiliateUrl = computed(() =>
@@ -119,8 +128,9 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     progress: this.mutating() ? { state: 'loading', shape: 'button' } : null
   }]);
 
-  protected popupModel(): PopupModel {
+  protected readonly popupModel = computed<PopupModel>(() => {
     return {
+      errorMessage: this.errorMessage(),
       title: this.adminMode ? 'admin.api.title' : 'affiliate.title',
       subtitle: this.adminMode ? 'admin.api.subtitle' : 'affiliate.subtitle',
       ariaLabel: this.adminMode ? 'admin.api.title' : 'affiliate.open',
@@ -135,7 +145,10 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
           ariaLabel: 'affiliate.revenue.open', palette: 'green', layout: 'pill', action: 'custom' }
       }],
       onMenuSelect: () => { if (!this.adminMode) this.revenueOpen.set(true); },
-      headerActions: [{
+      headerActions: [...(!this.adminMode && this.store.dirty() ? [{
+        id: 'integration-save', icon: 'check', ariaLabel: 'save', palette: 'green' as const,
+        disabled: this.mutating() || this.loading(), guideFieldId: 'integration-access-save'
+      }] : []), {
         id: 'integration-help',
         icon: 'question_mark',
         ariaLabel: 'integration.help.aria',
@@ -144,7 +157,7 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
       onAction: event => this.onPopupAction(event),
       onClose: () => this.closePopup()
     };
-  }
+  });
 
   protected helpPopupModel(): PopupModel {
     return {
@@ -168,16 +181,19 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     this.revealedToken.set('');
     this.revealedTokenId.set('');
     this.errorMessage.set('');
-    void this.loadSettings();
+    void this.store.open(this.adminMode);
   }
 
   ngOnDestroy(): void {
+    this.store.close();
     this.unregisterExplanationContext?.();
     this.unregisterExplanationContext = null;
   }
 
   protected closePopup(): void {
+    if (this.mutating()) return;
     this.open.set(false);
+    this.store.close();
     this.unregisterExplanationContext?.();
     this.unregisterExplanationContext = null;
     this.helpOpen.set(false);
@@ -191,6 +207,8 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     event.sourceEvent.stopPropagation();
     if (event.action.id === 'integration-help') {
       this.helpOpen.set(true);
+    } else if (event.action.id === 'integration-save') {
+      void this.store.save().then(saved => { if (saved) this.closePopup(); });
     }
   }
 
@@ -214,15 +232,10 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
       confirmTone: 'accent',
       failureMessage: 'integration.token.generate.failed',
       onConfirm: async () => {
-        this.mutating.set(true);
-        try {
-          const created = await this.integrationService.createToken(name, expiresInDays, this.adminMode);
+          const created = await this.store.createApi(name, expiresInDays);
+          if (!created) return;
           this.revealedToken.set(created.value);
           this.revealedTokenId.set(created.token.id);
-          await this.loadSettings(false);
-        } finally {
-          this.mutating.set(false);
-        }
       }
     });
   }
@@ -243,13 +256,8 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
       confirmTone: 'danger',
       failureMessage: 'integration.token.revoke.failed',
       onConfirm: async () => {
-        this.mutating.set(true);
-        try {
-          await this.integrationService.revokeToken(token.id, this.adminMode);
-          await this.loadSettings(false);
-        } finally {
-          this.mutating.set(false);
-        }
+        await this.store.revokeApi(token.id);
+        if (this.revealedTokenId() === token.id) { this.revealedToken.set(''); this.revealedTokenId.set(''); }
       }
     });
   }
@@ -307,22 +315,6 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
     return Number.isFinite(date.getTime())
       ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
       : '—';
-  }
-
-  private async loadSettings(showLoading = true): Promise<void> {
-    if (showLoading) {
-      this.loading.set(true);
-    }
-    this.errorMessage.set('');
-    try {
-      this.settings.set(await this.integrationService.loadSettings(this.adminMode));
-    } catch {
-      this.errorMessage.set('integration.load.failed');
-    } finally {
-      if (showLoading) {
-        this.loading.set(false);
-      }
-    }
   }
 
   private copyMenu(id: string, value: string, ariaLabel: string) {

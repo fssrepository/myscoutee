@@ -5800,6 +5800,34 @@
       "group": "fields",
       "i18nKey": "guide.profile.integrations.revenue-commission",
       "order": 22
+    },
+    {
+      "id": "integration-token-access",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.integration-token-access",
+      "order": 23
+    },
+    {
+      "id": "mcp-main-access",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.mcp-main-access",
+      "order": 24
+    },
+    {
+      "id": "mcp-client-access",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.mcp-client-access",
+      "order": 25
+    },
+    {
+      "id": "integration-access-save",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.profile.integrations.integration-access-save",
+      "order": 26
     }
   ],
   "payment.cash.receipt": [
@@ -8202,6 +8230,73 @@
       "group": "overview",
       "i18nKey": "guide.members.select.invite-sort:trigger",
       "order": 4
+    }
+  ],
+  "profile.integration-access": [
+    {
+      "id": "integration-access-level",
+      "screenKey": "profile.integration-access",
+      "group": "fields",
+      "i18nKey": "guide.profile.integration-access.integration-access-level",
+      "order": 0
+    },
+    {
+      "id": "integration-access-apply",
+      "screenKey": "profile.integration-access",
+      "group": "menus",
+      "i18nKey": "guide.profile.integration-access.integration-access-apply",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "profile.integration-access",
+      "group": "popup",
+      "i18nKey": "guide.profile.integration-access.close",
+      "order": 2
+    }
+  ],
+  "community.service-feedback": [
+    {
+      "id": "service-feedback-quality",
+      "screenKey": "community.service-feedback",
+      "group": "fields",
+      "i18nKey": "guide.community.service-feedback.service-feedback-quality",
+      "order": 0
+    },
+    {
+      "id": "service-feedback-reliability",
+      "screenKey": "community.service-feedback",
+      "group": "fields",
+      "i18nKey": "guide.community.service-feedback.service-feedback-reliability",
+      "order": 1
+    },
+    {
+      "id": "service-feedback-communication",
+      "screenKey": "community.service-feedback",
+      "group": "fields",
+      "i18nKey": "guide.community.service-feedback.service-feedback-communication",
+      "order": 2
+    },
+    {
+      "id": "service-feedback-value",
+      "screenKey": "community.service-feedback",
+      "group": "fields",
+      "i18nKey": "guide.community.service-feedback.service-feedback-value",
+      "order": 3
+    },
+    {
+      "id": "form-save",
+      "screenKey": "community.service-feedback",
+      "group": "fields",
+      "i18nKey": "guide.community.service-feedback.form-save",
+      "order": 4
+    },
+    {
+      "id": "close",
+      "screenKey": "community.service-feedback",
+      "group": "popup",
+      "i18nKey": "guide.community.service-feedback.close",
+      "order": 5
     }
   ]
 }

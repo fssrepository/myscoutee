@@ -3,8 +3,6 @@
     <div class="integration-settings-body" data-guide-field="integration-settings">
       @if (loading()) {
         <div class="integration-settings-state">{{ 'integration.loading' | i18n }}</div>
-      } @else if (errorMessage()) {
-        <div class="integration-settings-state integration-settings-state--error">{{ errorMessage() | i18n }}</div>
       } @else if (settings(); as config) {
         @if (adminMode) {
           <app-menu class="integration-client-download" kind="inline" layout="row"
@@ -66,18 +64,14 @@
                         [attr.aria-label]="(token.claimedAt ? 'connected' : 'unconnected') | i18n"
                       >{{ token.claimedAt ? 'lock' : 'content_copy' }}</mat-icon>
                     </div>
-                    <span>{{ token.prefix }}…</span>
+                    <div class="integration-credential-row">
+                      <app-copy-link [value]="revealedTokenId() === token.id ? revealedToken() : token.prefix + '…'"
+                        [disabled]="revealedTokenId() !== token.id || !revealedToken()"
+                        label="integration.client.keys" copyLabel="integration.token.copy.aria"></app-copy-link>
+                      @if (!adminMode) { <app-integration-access-button data-guide-field="integration-token-access"
+                        [clientId]="token.id" [clientName]="token.name"></app-integration-access-button> }
+                    </div>
                     @if (revealedTokenId() === token.id && revealedToken()) {
-                      <div class="integration-token-secret">
-                        <code>{{ revealedToken() }}</code>
-                        <app-menu
-                          kind="inline"
-                          layout="row"
-                          [model]="actionMenuModel"
-                          [items]="copyTokenActions(revealedToken())"
-                          (itemSelect)="onTokenAction($event)"
-                        ></app-menu>
-                      </div>
                       <small>{{ 'integration.token.copy.now' | i18n }}</small>
                     }
                     <small class="integration-token-meta">

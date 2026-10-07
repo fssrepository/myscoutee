@@ -1144,7 +1144,7 @@ const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
     "icon": "api",
     "title": "API and AI assistance",
     "blurb": "Use the existing profile permissions for integrations.",
-    "contentHtml": "<ul><li>Copy the MCP URL from Profile editor → Affiliate → Client keys → AI / MCP connections into your AI client and choose Connect.</li><li>The client opens MyScoutee sign-in. Use the installation’s normal sign-in method, check the displayed profile and group, and approve access. Return to the client and enable the connection in your conversation. Automatic registration needs no manually copied client ID or secret.</li><li>Advanced contains the manual MCP client-key table. Generate immediately adds a row with a client ID and one-time secret; copy these into the client’s configuration. No name or callback form is needed. Its badge counts these keys. URL-based OAuth permissions remain in the main popup, with their own Revoke action and connection details. Never paste credentials into chat.</li><li>Anonymous /mcp reads the current help without login. Personal /mcp/private calls use only the approved profile’s existing API permissions. Each connection stays bound to that profile; an app group switch or a group name in a prompt cannot retarget it.</li><li>Asset creation requires a base-profile connection. Event operations follow the approved profile and group; invitation tools additionally require the appropriate administrator role. Discovery lists the currently allowed operations without probing write endpoints.</li><li>Connections expire after 90 days. Revoke in the same AI / MCP list to invalidate access and refresh tokens. Browser logout alone does not revoke an existing connection.</li><li>Browser-only local mode cannot receive external OAuth. Development with the backend running supports demo sign-in; deployed installations use their configured sign-in. The separate development client and setup commands are in the <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repository</a>.</li></ul>"
+    "contentHtml": "<ul><li>Copy the MCP URL from Profile editor → Affiliate → Client keys → AI / MCP connections into your AI client and choose Connect.</li><li>The client opens MyScoutee sign-in. Use the installation’s normal sign-in method, check the displayed profile and group, and approve access. Return to the client and enable the connection in your conversation. Automatic registration needs no manually copied client ID or secret.</li><li>Advanced contains the manual MCP client-key table. Generate immediately adds a row with a client ID and one-time secret; copy these into the client’s configuration. No name or callback form is needed. Its badge counts these keys. URL-based OAuth permissions remain in the main popup, with their own Revoke action and connection details. Never paste credentials into chat.</li><li>Anonymous /mcp reads the current help without login. Personal /mcp/private calls use only the approved profile’s existing API permissions. Each connection stays bound to that profile; an app group switch or a group name in a prompt cannot retarget it.</li><li>Asset creation requires a base-profile connection. Event operations follow the approved profile and group; invitation tools additionally require the appropriate administrator role. Discovery lists the currently allowed operations without probing write endpoints.</li><li>Connections expire after 90 days. Revoke in the same AI / MCP list to invalidate access and refresh tokens. Browser logout alone does not revoke an existing connection.</li><li>Browser-only local mode cannot receive external OAuth. Development with the backend running supports demo sign-in; deployed installations use their configured sign-in. The separate development client and setup commands are in the <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repository</a>.</li><li>With Full access on both the main MCP link and the connected client, an Events-capable AI host can monitor an event you organize or a base-profile asset you own. In ChatGPT use a supported Work/Cloud chat and name the resource and what to monitor. Updates carry short summaries, including completed Mingle results; ask for permitted details when needed. Each person authorizes their own MyScoutee profile through OAuth 2.1 with PKCE. Stop monitoring in the AI client, or revoke the connection here. Expired or overloaded intervals are not replayed. Personal ratings and decisions stay in the application.</li></ul>"
   },
   {
     "id": "profiles",
@@ -1396,7 +1396,7 @@ const HELP_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
     "icon": "api",
     "title": "API és AI-segítség",
     "blurb": "Az integrációk a meglévő profiljogosultságokat használják.",
-    "contentHtml": "<ul><li>A profilszerkesztő → Affiliate → Klienskulcsok → AI / MCP-kapcsolatok részből másold az MCP URL-t az AI-kliensbe, és válaszd a Connect lehetőséget.</li><li>A kliens megnyitja a MyScoutee belépését. Használd a telepítés szokásos belépési módját, ellenőrizd a megjelenő profilt és csoportot, majd engedélyezd a hozzáférést. A kliensbe visszatérve kapcsold be a kapcsolatot a beszélgetéshez. Automatikus regisztrációnál nem kell kézzel kliensazonosítót vagy titkot másolni.</li><li>A Haladó ablakban találod a kézzel generált MCP-klienskulcsok táblázatát. A Generálás azonnal új sort hoz létre kliensazonosítóval és egyszer megjelenő titokkal; ezeket másold a kliens beállításaiba. Név- vagy visszahívásicím-űrlap nincs. A gomb számlálója ezeket a kulcsokat mutatja. Az URL-en csatlakozott OAuth-engedélyek külön, a főablakban maradnak, saját visszavonással és kapcsolatadatokkal. Hitelesítési adatot ne másolj csevegésbe.</li><li>Az anonim /mcp belépés nélkül olvassa az aktuális súgót. A személyes /mcp/private kizárólag a jóváhagyott profil meglévő API-jogosultságait használja. A kapcsolat ehhez a profilhoz kötött; az alkalmazás csoportváltója vagy a csoport nevének megadása nem irányítja át.</li><li>Eszköz létrehozásához alapprofilhoz tartozó kapcsolat kell. Az eseményműveletek a jóváhagyott profil és csoport jogosultságait követik; meghíváshoz a megfelelő adminszerep is kell. A kliens a pillanatnyilag engedélyezett műveleteket kapja meg, próbafeltöltés nélkül.</li><li>A kapcsolat 90 nap után lejár. Ugyanebben az AI / MCP-listában a visszavonás érvényteleníti a hozzáférési és megújítási tokeneket is. A böngészős kijelentkezés önmagában nem vonja vissza a kapcsolatot.</li><li>A kizárólag böngészős local mód nem fogad külső OAuth-kérést. Devben futó backend mellett demóbelépés is használható; telepítéskor az ott beállított belépés érvényes. A külön fejlesztői kliens és az indítás lépései a <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repóban</a> találhatók.</li></ul>"
+    "contentHtml": "<ul><li>A profilszerkesztő → Affiliate → Klienskulcsok → AI / MCP-kapcsolatok részből másold az MCP URL-t az AI-kliensbe, és válaszd a Connect lehetőséget.</li><li>A kliens megnyitja a MyScoutee belépését. Használd a telepítés szokásos belépési módját, ellenőrizd a megjelenő profilt és csoportot, majd engedélyezd a hozzáférést. A kliensbe visszatérve kapcsold be a kapcsolatot a beszélgetéshez. Automatikus regisztrációnál nem kell kézzel kliensazonosítót vagy titkot másolni.</li><li>A Haladó ablakban találod a kézzel generált MCP-klienskulcsok táblázatát. A Generálás azonnal új sort hoz létre kliensazonosítóval és egyszer megjelenő titokkal; ezeket másold a kliens beállításaiba. Név- vagy visszahívásicím-űrlap nincs. A gomb számlálója ezeket a kulcsokat mutatja. Az URL-en csatlakozott OAuth-engedélyek külön, a főablakban maradnak, saját visszavonással és kapcsolatadatokkal. Hitelesítési adatot ne másolj csevegésbe.</li><li>Az anonim /mcp belépés nélkül olvassa az aktuális súgót. A személyes /mcp/private kizárólag a jóváhagyott profil meglévő API-jogosultságait használja. A kapcsolat ehhez a profilhoz kötött; az alkalmazás csoportváltója vagy a csoport nevének megadása nem irányítja át.</li><li>Eszköz létrehozásához alapprofilhoz tartozó kapcsolat kell. Az eseményműveletek a jóváhagyott profil és csoport jogosultságait követik; meghíváshoz a megfelelő adminszerep is kell. A kliens a pillanatnyilag engedélyezett műveleteket kapja meg, próbafeltöltés nélkül.</li><li>A kapcsolat 90 nap után lejár. Ugyanebben az AI / MCP-listában a visszavonás érvényteleníti a hozzáférési és megújítási tokeneket is. A böngészős kijelentkezés önmagában nem vonja vissza a kapcsolatot.</li><li>A kizárólag böngészős local mód nem fogad külső OAuth-kérést. Devben futó backend mellett demóbelépés is használható; telepítéskor az ott beállított belépés érvényes. A külön fejlesztői kliens és az indítás lépései a <a href=\"https://github.com/fssrepository/myscoutee-mcp\">MyScoutee MCP repóban</a> találhatók.</li><li>Ha a fő MCP-link és a kapcsolódó kliens is Teljes hozzáférésű, Events-képes AI-klienssel figyeltetheted az általad szervezett eseményt vagy az alapprofilod saját eszközét. ChatGPT-ben támogatott Work/Cloud beszélgetésben nevezd meg, mit és milyen célból figyeljen. Rövid összefoglalók érkeznek, a lezárt Mingle eredményekről is; a részleteket az engedélyezett olvasási műveletekkel kérheted le. Mindenki a saját MyScoutee-profilját engedélyezi OAuth 2.1 és PKCE használatával. A figyelést az AI-kliensben állítsd le, vagy itt vond vissza a kapcsolatot. A lejárt vagy túlterhelt időszakok kimaradásait nem játssza vissza. A személyes értékelések és döntések az alkalmazásban maradnak.</li></ul>"
   },
   {
     "id": "profiles",
@@ -1626,17 +1626,17 @@ const TERMS_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
 const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevisionDto = {
   "lang": "en",
   "languageLabel": "English",
-  "version": 3,
+  "version": 4,
   "title": "MyScoutee help",
   "summary": "A practical guide by topic",
   "description": "Profiles, communities, events, chats and tools: find the relevant topic and follow the steps.",
   "headerColor": "amber",
   "active": true,
-  "id": "help-default-v3",
+  "id": "help-default-v4",
   "documentKind": "help",
   "createdAtIso": "2026-09-26T00:00:00.000Z",
   "createdByUserId": "system",
-  "updatedAtIso": "2026-09-26T00:00:00.000Z",
+  "updatedAtIso": "2026-10-06T00:00:00.000Z",
   "updatedByUserId": "system",
   sections: HELP_CENTER_SECTIONS
 };
@@ -1644,17 +1644,17 @@ const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevisionDto = {
 const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   "lang": "hu",
   "languageLabel": "Magyar",
-  "version": 3,
+  "version": 4,
   "title": "MyScoutee súgó",
   "summary": "Gyakorlati útmutató témánként",
   "description": "Profilok, közösségek, események, beszélgetések és eszközök: válassz témát, és kövesd a lépéseket.",
   "headerColor": "amber",
   "active": true,
-  "id": "help-default-hu-v3",
+  "id": "help-default-hu-v4",
   "documentKind": "help",
   "createdAtIso": "2026-09-26T00:00:00.000Z",
   "createdByUserId": "system",
-  "updatedAtIso": "2026-09-26T00:00:00.000Z",
+  "updatedAtIso": "2026-10-06T00:00:00.000Z",
   "updatedByUserId": "system",
   sections: HELP_CENTER_SECTIONS_HU
 };

@@ -188,6 +188,18 @@ export class RateComponent implements OnDestroy, OnChanges {
   }
 
   protected sliderStyle(score: number): Record<string, string> {
+    const states = this.config?.stateColors;
+    if (states?.length) {
+      const index = Math.round(this.percent(score) * (states.length - 1) / 100);
+      const selected = states[Math.max(0, Math.min(states.length - 1, index))];
+      const stops = states.flatMap((state, i) => [
+        `${state.background} ${i === 0 ? 0 : (i - .5) * 100 / (states.length - 1)}%`,
+        `${state.background} ${i === states.length - 1 ? 100 : (i + .5) * 100 / (states.length - 1)}%`
+      ]);
+      return {'--rate-slider-accent': selected.background, '--rate-slider-accent-shadow': 'rgba(12, 24, 40, .2)',
+        '--rate-slider-accent-text': selected.text, '--rate-slider-accent-text-shadow': 'none',
+        '--rate-state-track': `linear-gradient(90deg, ${stops.join(', ')})`};
+    }
     const percent = this.percent(score);
     const hue = Math.round(210 - (percent / 100) * 230);
     const darkText = percent >= 38 && percent <= 82;
@@ -201,7 +213,7 @@ export class RateComponent implements OnDestroy, OnChanges {
   }
 
   protected get shouldShowCommitButton(): boolean {
-    return !this.resolvedReadonly;
+    return !this.resolvedReadonly && this.config?.showCommit !== false;
   }
 
   protected onSliderInput(event: Event): void {
