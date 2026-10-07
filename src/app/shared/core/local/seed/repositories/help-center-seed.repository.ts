@@ -50,6 +50,7 @@ export class SeedHelpCenterRepository {
     const current = this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
     const existing = current.baseGroups?.[baseId];
     const revisions = sourceRows.map(source => LocalHelpCenterMapper.toRecord({
+      isSystem: 'isSystem' in source && source.isSystem === true,
       id: source._id, documentKind: source.documentType as HelpCenterDocumentKind,
       contextKey: 'contextKey' in source ? String(source.contextKey) : null,
       lang: source.lang, languageLabel: source.languageLabel, version: source.version,

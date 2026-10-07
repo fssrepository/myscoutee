@@ -15177,7 +15177,7 @@
     "lang": "en",
     "languageLabel": "English",
     "version": 7,
-    "active": true,
+    "active": false,
     "title": "Avatar menu",
     "summary": "Choose a workspace or application section.",
     "description": "Understand account tools, community features and activity states.",
@@ -15462,7 +15462,7 @@
     "lang": "hu",
     "languageLabel": "Magyar",
     "version": 7,
-    "active": true,
+    "active": false,
     "title": "Avatar menü",
     "summary": "Munkatér és alkalmazásfelület választása.",
     "description": "Fiókeszközök, közösségi funkciók és aktivitási állapotok.",
@@ -22602,5 +22602,4397 @@
     "contextKey": "landing.consent",
     "presentation": "tour",
     "baseGroupId": null
+  },
+  {
+    "_id": "explanation-operator-home-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Operator workspace",
+    "summary": "Manage this node from the action buttons. Your avatar menu contains notifications and guide controls.",
+    "description": "Manage this node from the action buttons. Your avatar menu contains notifications and guide controls.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-updates",
+        "guideStepId": "updates",
+        "icon": "help_outline",
+        "title": "Updates",
+        "blurb": "",
+        "contentHtml": "<p>Check available versions and update progress.</p>"
+      },
+      {
+        "id": "guide-configuration",
+        "guideStepId": "configuration",
+        "icon": "help_outline",
+        "title": "Configuration",
+        "blurb": "",
+        "contentHtml": "<p>Configure this deployment and its connected services.</p>"
+      },
+      {
+        "id": "guide-registration",
+        "guideStepId": "registration",
+        "icon": "help_outline",
+        "title": "Registry connection",
+        "blurb": "",
+        "contentHtml": "<p>Manage registration and measurement reporting.</p>"
+      },
+      {
+        "id": "guide-claim",
+        "guideStepId": "claim",
+        "icon": "help_outline",
+        "title": "Operator claim",
+        "blurb": "",
+        "contentHtml": "<p>Link the deployment to your verified operator identity.</p>"
+      },
+      {
+        "id": "guide-revenue",
+        "guideStepId": "revenue",
+        "icon": "help_outline",
+        "title": "Revenue",
+        "blurb": "",
+        "contentHtml": "<p>Inspect revenue, receipts and synchronization.</p>"
+      },
+      {
+        "id": "guide-leaderboard",
+        "guideStepId": "leaderboard",
+        "icon": "help_outline",
+        "title": "Network ranking",
+        "blurb": "",
+        "contentHtml": "<p>Select a claimed operator to view its deployments.</p>"
+      }
+    ],
+    "contextKey": "operator.home",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-home-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Operátori felület",
+    "summary": "A gombokkal kezelheted ezt a node-ot. Az avatar menüben találod az értesítéseket és a guide kapcsolóit.",
+    "description": "A gombokkal kezelheted ezt a node-ot. Az avatar menüben találod az értesítéseket és a guide kapcsolóit.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-updates",
+        "guideStepId": "updates",
+        "icon": "help_outline",
+        "title": "Frissítések",
+        "blurb": "",
+        "contentHtml": "<p>Az elérhető verziót és a frissítés állapotát mutatja.</p>"
+      },
+      {
+        "id": "guide-configuration",
+        "guideStepId": "configuration",
+        "icon": "help_outline",
+        "title": "Beállítások",
+        "blurb": "",
+        "contentHtml": "<p>A telepítés és a kapcsolódó szolgáltatások beállításai.</p>"
+      },
+      {
+        "id": "guide-registration",
+        "guideStepId": "registration",
+        "icon": "help_outline",
+        "title": "Registry-kapcsolat",
+        "blurb": "",
+        "contentHtml": "<p>A regisztráció és a mérési jelentések kezelése.</p>"
+      },
+      {
+        "id": "guide-claim",
+        "guideStepId": "claim",
+        "icon": "help_outline",
+        "title": "Operátori igénylés",
+        "blurb": "",
+        "contentHtml": "<p>Kapcsold a telepítést az igazolt operátori azonosítódhoz.</p>"
+      },
+      {
+        "id": "guide-revenue",
+        "guideStepId": "revenue",
+        "icon": "help_outline",
+        "title": "Bevételek",
+        "blurb": "",
+        "contentHtml": "<p>Bevételek, bizonylatok és szinkronizálás.</p>"
+      },
+      {
+        "id": "guide-leaderboard",
+        "guideStepId": "leaderboard",
+        "icon": "help_outline",
+        "title": "Hálózati rangsor",
+        "blurb": "",
+        "contentHtml": "<p>Egy igazolt operátort kiválasztva láthatod a telepítéseit.</p>"
+      }
+    ],
+    "contextKey": "operator.home",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-updates-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Updates",
+    "summary": "Compare installed and available versions; progress and errors appear here.",
+    "description": "Compare installed and available versions; progress and errors appear here.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Updates",
+        "blurb": "",
+        "contentHtml": "<p>Compare installed and available versions; progress and errors appear here.</p>"
+      },
+      {
+        "id": "guide-operator-refresh-update",
+        "guideStepId": "operator-refresh-update",
+        "icon": "help_outline",
+        "title": "Check",
+        "blurb": "",
+        "contentHtml": "<p>Refresh the available signed release information.</p>"
+      },
+      {
+        "id": "guide-operator-apply-update",
+        "guideStepId": "operator-apply-update",
+        "icon": "help_outline",
+        "title": "Install",
+        "blurb": "",
+        "contentHtml": "<p>Start the displayed update and follow its progress here.</p>"
+      },
+      {
+        "id": "guide-operator-rollback-update",
+        "guideStepId": "operator-rollback-update",
+        "icon": "help_outline",
+        "title": "Restore version",
+        "blurb": "",
+        "contentHtml": "<p>Restore the supported previous release when available.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.updates",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-updates-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Frissítések",
+    "summary": "Itt láthatod a telepített és elérhető verziót, a folyamat állapotát és hibáit.",
+    "description": "Itt láthatod a telepített és elérhető verziót, a folyamat állapotát és hibáit.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Frissítések",
+        "blurb": "",
+        "contentHtml": "<p>Itt láthatod a telepített és elérhető verziót, a folyamat állapotát és hibáit.</p>"
+      },
+      {
+        "id": "guide-operator-refresh-update",
+        "guideStepId": "operator-refresh-update",
+        "icon": "help_outline",
+        "title": "Ellenőrzés",
+        "blurb": "",
+        "contentHtml": "<p>Az elérhető, aláírt kiadás adatainak frissítése.</p>"
+      },
+      {
+        "id": "guide-operator-apply-update",
+        "guideStepId": "operator-apply-update",
+        "icon": "help_outline",
+        "title": "Telepítés",
+        "blurb": "",
+        "contentHtml": "<p>Indítsd a megjelenített frissítést, és itt kövesd az állapotát.</p>"
+      },
+      {
+        "id": "guide-operator-rollback-update",
+        "guideStepId": "operator-rollback-update",
+        "icon": "help_outline",
+        "title": "Verzió visszaállítása",
+        "blurb": "",
+        "contentHtml": "<p>Az előző, támogatott kiadás visszaállítása, ha elérhető.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.updates",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-registration-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Registry connection",
+    "summary": "Review registration, heartbeat and measurement delivery for this deployment.",
+    "description": "Review registration, heartbeat and measurement delivery for this deployment.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Registry connection",
+        "blurb": "",
+        "contentHtml": "<p>Review registration, heartbeat and measurement delivery for this deployment.</p>"
+      },
+      {
+        "id": "guide-register",
+        "guideStepId": "register",
+        "icon": "help_outline",
+        "title": "Connect",
+        "blurb": "",
+        "contentHtml": "<p>Register this deployment with the displayed Registry.</p>"
+      },
+      {
+        "id": "guide-disconnect",
+        "guideStepId": "disconnect",
+        "icon": "help_outline",
+        "title": "Disconnect",
+        "blurb": "",
+        "contentHtml": "<p>Disconnect this deployment from the Registry.</p>"
+      },
+      {
+        "id": "guide-synchronize-measurements",
+        "guideStepId": "synchronize-measurements",
+        "icon": "help_outline",
+        "title": "Send measurements",
+        "blurb": "",
+        "contentHtml": "<p>Synchronize pending measurement reports.</p>"
+      },
+      {
+        "id": "guide-refresh",
+        "guideStepId": "refresh",
+        "icon": "help_outline",
+        "title": "Refresh status",
+        "blurb": "",
+        "contentHtml": "<p>Fetch the current registration and delivery state.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.registration",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-registration-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Registry-kapcsolat",
+    "summary": "A telepítés regisztrációja, életjele és mérési jelentései.",
+    "description": "A telepítés regisztrációja, életjele és mérési jelentései.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Registry-kapcsolat",
+        "blurb": "",
+        "contentHtml": "<p>A telepítés regisztrációja, életjele és mérési jelentései.</p>"
+      },
+      {
+        "id": "guide-register",
+        "guideStepId": "register",
+        "icon": "help_outline",
+        "title": "Csatlakozás",
+        "blurb": "",
+        "contentHtml": "<p>Regisztráld ezt a telepítést a megjelenített Registryben.</p>"
+      },
+      {
+        "id": "guide-disconnect",
+        "guideStepId": "disconnect",
+        "icon": "help_outline",
+        "title": "Leválasztás",
+        "blurb": "",
+        "contentHtml": "<p>A telepítés leválasztása a Registryről.</p>"
+      },
+      {
+        "id": "guide-synchronize-measurements",
+        "guideStepId": "synchronize-measurements",
+        "icon": "help_outline",
+        "title": "Mérések küldése",
+        "blurb": "",
+        "contentHtml": "<p>A függőben lévő mérési jelentések szinkronizálása.</p>"
+      },
+      {
+        "id": "guide-refresh",
+        "guideStepId": "refresh",
+        "icon": "help_outline",
+        "title": "Állapot frissítése",
+        "blurb": "",
+        "contentHtml": "<p>A regisztráció és a jelentésküldés aktuális állapotának lekérése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.registration",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-claim-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Operator claim",
+    "summary": "Choose company verification or an existing client code. The current review state is shown here.",
+    "description": "Choose company verification or an existing client code. The current review state is shown here.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Operator claim",
+        "blurb": "",
+        "contentHtml": "<p>Choose company verification or an existing client code. The current review state is shown here.</p>"
+      },
+      {
+        "id": "guide-operator-claim-path-company",
+        "guideStepId": "operator-claim-path-company",
+        "icon": "help_outline",
+        "title": "Company",
+        "blurb": "",
+        "contentHtml": "<p>Enter the legal entity and the authorized contact.</p>"
+      },
+      {
+        "id": "guide-operator-claim-path-client-code",
+        "guideStepId": "operator-claim-path-client-code",
+        "icon": "help_outline",
+        "title": "Client code",
+        "blurb": "",
+        "contentHtml": "<p>Use the code from an existing verified operator.</p>"
+      },
+      {
+        "id": "guide-operator-claim-legal-name",
+        "guideStepId": "operator-claim-legal-name",
+        "icon": "help_outline",
+        "title": "Legal name",
+        "blurb": "",
+        "contentHtml": "<p>Use the registered legal name of your company.</p>"
+      },
+      {
+        "id": "guide-operator-claim-attestation",
+        "guideStepId": "operator-claim-attestation",
+        "icon": "help_outline",
+        "title": "Authority",
+        "blurb": "",
+        "contentHtml": "<p>Confirm that you may act for this legal entity.</p>"
+      },
+      {
+        "id": "guide-operator-redeem-token",
+        "guideStepId": "operator-redeem-token",
+        "icon": "help_outline",
+        "title": "Redeem",
+        "blurb": "",
+        "contentHtml": "<p>Submit the entered client code to link this deployment.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.claim",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-claim-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Operátori igénylés",
+    "summary": "Válassz céges igazolást vagy meglévő ügyfélkódot. Itt látszik az elbírálás állapota.",
+    "description": "Válassz céges igazolást vagy meglévő ügyfélkódot. Itt látszik az elbírálás állapota.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Operátori igénylés",
+        "blurb": "",
+        "contentHtml": "<p>Válassz céges igazolást vagy meglévő ügyfélkódot. Itt látszik az elbírálás állapota.</p>"
+      },
+      {
+        "id": "guide-operator-claim-path-company",
+        "guideStepId": "operator-claim-path-company",
+        "icon": "help_outline",
+        "title": "Cég",
+        "blurb": "",
+        "contentHtml": "<p>Add meg a jogi személyt és a meghatalmazott kapcsolattartót.</p>"
+      },
+      {
+        "id": "guide-operator-claim-path-client-code",
+        "guideStepId": "operator-claim-path-client-code",
+        "icon": "help_outline",
+        "title": "Ügyfélkód",
+        "blurb": "",
+        "contentHtml": "<p>Egy meglévő, igazolt operátortól kapott kód használata.</p>"
+      },
+      {
+        "id": "guide-operator-claim-legal-name",
+        "guideStepId": "operator-claim-legal-name",
+        "icon": "help_outline",
+        "title": "Hivatalos név",
+        "blurb": "",
+        "contentHtml": "<p>A cég bejegyzett, hivatalos nevét add meg.</p>"
+      },
+      {
+        "id": "guide-operator-claim-attestation",
+        "guideStepId": "operator-claim-attestation",
+        "icon": "help_outline",
+        "title": "Jogosultság",
+        "blurb": "",
+        "contentHtml": "<p>Igazold, hogy jogosult vagy a jogi személy nevében eljárni.</p>"
+      },
+      {
+        "id": "guide-operator-redeem-token",
+        "guideStepId": "operator-redeem-token",
+        "icon": "help_outline",
+        "title": "Beváltás",
+        "blurb": "",
+        "contentHtml": "<p>A megadott ügyfélkóddal kapcsold hozzá a telepítést.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.claim",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-configuration-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Deployment configuration",
+    "summary": "Open a section to configure branding, administrators, privacy contacts and service connections. Save changes in that section.",
+    "description": "Open a section to configure branding, administrators, privacy contacts and service connections. Save changes in that section.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Deployment configuration",
+        "blurb": "",
+        "contentHtml": "<p>Open a section to configure branding, administrators, privacy contacts and service connections. Save changes in that section.</p>"
+      },
+      {
+        "id": "guide-operator-save-branding",
+        "guideStepId": "operator-save-branding",
+        "icon": "help_outline",
+        "title": "Branding",
+        "blurb": "",
+        "contentHtml": "<p>Save the product identity displayed on this deployment.</p>"
+      },
+      {
+        "id": "guide-operator-save-admin-emails",
+        "guideStepId": "operator-save-admin-emails",
+        "icon": "help_outline",
+        "title": "Administrators",
+        "blurb": "",
+        "contentHtml": "<p>Save the accounts allowed to use app administration.</p>"
+      },
+      {
+        "id": "guide-operator-save-privacy-contact",
+        "guideStepId": "operator-save-privacy-contact",
+        "icon": "help_outline",
+        "title": "Privacy contact",
+        "blurb": "",
+        "contentHtml": "<p>Save the controller and contact shown in privacy information.</p>"
+      },
+      {
+        "id": "guide-operator-save-firebase",
+        "guideStepId": "operator-save-firebase",
+        "icon": "help_outline",
+        "title": "Firebase",
+        "blurb": "",
+        "contentHtml": "<p>Save credentials before testing or activating the connection.</p>"
+      },
+      {
+        "id": "guide-operator-save-tls",
+        "guideStepId": "operator-save-tls",
+        "icon": "help_outline",
+        "title": "TLS",
+        "blurb": "",
+        "contentHtml": "<p>Save certificate settings; use the available checks before activation.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.configuration",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-configuration-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Telepítési beállítások",
+    "summary": "A szekciókban az arculatot, adminokat, adatvédelmi kapcsolatot és szolgáltatásokat állíthatod be. Szekciónként ments.",
+    "description": "A szekciókban az arculatot, adminokat, adatvédelmi kapcsolatot és szolgáltatásokat állíthatod be. Szekciónként ments.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Telepítési beállítások",
+        "blurb": "",
+        "contentHtml": "<p>A szekciókban az arculatot, adminokat, adatvédelmi kapcsolatot és szolgáltatásokat állíthatod be. Szekciónként ments.</p>"
+      },
+      {
+        "id": "guide-operator-save-branding",
+        "guideStepId": "operator-save-branding",
+        "icon": "help_outline",
+        "title": "Arculat",
+        "blurb": "",
+        "contentHtml": "<p>A telepítésen megjelenő arculat mentése.</p>"
+      },
+      {
+        "id": "guide-operator-save-admin-emails",
+        "guideStepId": "operator-save-admin-emails",
+        "icon": "help_outline",
+        "title": "Adminisztrátorok",
+        "blurb": "",
+        "contentHtml": "<p>Az alkalmazás adminisztrációjára jogosult fiókok mentése.</p>"
+      },
+      {
+        "id": "guide-operator-save-privacy-contact",
+        "guideStepId": "operator-save-privacy-contact",
+        "icon": "help_outline",
+        "title": "Adatvédelmi kapcsolat",
+        "blurb": "",
+        "contentHtml": "<p>Az adatvédelmi tájékoztató adatkezelőjének és kapcsolatának mentése.</p>"
+      },
+      {
+        "id": "guide-operator-save-firebase",
+        "guideStepId": "operator-save-firebase",
+        "icon": "help_outline",
+        "title": "Firebase",
+        "blurb": "",
+        "contentHtml": "<p>Mentsd a hitelesítő adatokat a kapcsolat tesztelése vagy aktiválása előtt.</p>"
+      },
+      {
+        "id": "guide-operator-save-tls",
+        "guideStepId": "operator-save-tls",
+        "icon": "help_outline",
+        "title": "TLS",
+        "blurb": "",
+        "contentHtml": "<p>Tanúsítványbeállítások mentése; aktiválás előtt használd az ellenőrzéseket.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.configuration",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-revenue-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Revenue",
+    "summary": "Review the ledger, settlement state and report delivery. Amounts follow the displayed currency and period.",
+    "description": "Review the ledger, settlement state and report delivery. Amounts follow the displayed currency and period.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Revenue",
+        "blurb": "",
+        "contentHtml": "<p>Review the ledger, settlement state and report delivery. Amounts follow the displayed currency and period.</p>"
+      },
+      {
+        "id": "guide-operator-synchronize-revenue",
+        "guideStepId": "operator-synchronize-revenue",
+        "icon": "help_outline",
+        "title": "Synchronize",
+        "blurb": "",
+        "contentHtml": "<p>Send pending revenue reports through the existing delivery queue.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.revenue",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-revenue-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Bevételek",
+    "summary": "A főkönyv, elszámolások és jelentésküldés állapota. Az összegek a kijelzett pénznemhez és időszakhoz tartoznak.",
+    "description": "A főkönyv, elszámolások és jelentésküldés állapota. Az összegek a kijelzett pénznemhez és időszakhoz tartoznak.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Bevételek",
+        "blurb": "",
+        "contentHtml": "<p>A főkönyv, elszámolások és jelentésküldés állapota. Az összegek a kijelzett pénznemhez és időszakhoz tartoznak.</p>"
+      },
+      {
+        "id": "guide-operator-synchronize-revenue",
+        "guideStepId": "operator-synchronize-revenue",
+        "icon": "help_outline",
+        "title": "Szinkronizálás",
+        "blurb": "",
+        "contentHtml": "<p>A függő bevételi jelentések küldése a kézbesítési soron keresztül.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.revenue",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-community-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Operator community",
+    "summary": "Read the operator community information and available announcements here.",
+    "description": "Read the operator community information and available announcements here.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Operator community",
+        "blurb": "",
+        "contentHtml": "<p>Read the operator community information and available announcements here.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.community",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-community-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Operátori közösség",
+    "summary": "Itt olvashatod az operátori közösség információit és az elérhető közleményeket.",
+    "description": "Itt olvashatod az operátori közösség információit és az elérhető közleményeket.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Operátori közösség",
+        "blurb": "",
+        "contentHtml": "<p>Itt olvashatod az operátori közösség információit és az elérhető közleményeket.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.community",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-deployments-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Operator deployments",
+    "summary": "These nodes belong to the selected operator. Inspect their reported status and contribution.",
+    "description": "These nodes belong to the selected operator. Inspect their reported status and contribution.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Operator deployments",
+        "blurb": "",
+        "contentHtml": "<p>These nodes belong to the selected operator. Inspect their reported status and contribution.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "operator.deployments",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-deployments-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Operátori telepítések",
+    "summary": "Ezek a kiválasztott operátor node-jai. Nézd meg a jelentett állapotukat és hozzájárulásukat.",
+    "description": "Ezek a kiválasztott operátor node-jai. Nézd meg a jelentett állapotukat és hozzájárulásukat.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Operátori telepítések",
+        "blurb": "",
+        "contentHtml": "<p>Ezek a kiválasztott operátor node-jai. Nézd meg a jelentett állapotukat és hozzájárulásukat.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "operator.deployments",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-home-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Administration",
+    "summary": "Open your avatar menu to choose moderation, content, jobs or monitoring. Notification and guide controls are also there.",
+    "description": "Open your avatar menu to choose moderation, content, jobs or monitoring. Notification and guide controls are also there.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Administration",
+        "blurb": "",
+        "contentHtml": "<p>Open your avatar menu to choose moderation, content, jobs or monitoring. Notification and guide controls are also there.</p>"
+      }
+    ],
+    "contextKey": "admin.home",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-home-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Adminisztráció",
+    "summary": "Az avatar menüből nyílik a moderálás, tartalom, feladatok és megfigyelés. Az értesítés és guide kapcsolója is ott van.",
+    "description": "Az avatar menüből nyílik a moderálás, tartalom, feladatok és megfigyelés. Az értesítés és guide kapcsolója is ott van.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Adminisztráció",
+        "blurb": "",
+        "contentHtml": "<p>Az avatar menüből nyílik a moderálás, tartalom, feladatok és megfigyelés. Az értesítés és guide kapcsolója is ott van.</p>"
+      }
+    ],
+    "contextKey": "admin.home",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-content-moderation-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Content moderation",
+    "summary": "Review submitted content and apply a decision within your current workspace.",
+    "description": "Review submitted content and apply a decision within your current workspace.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Content moderation",
+        "blurb": "",
+        "contentHtml": "<p>Review submitted content and apply a decision within your current workspace.</p>"
+      },
+      {
+        "id": "guide-status",
+        "guideStepId": "status",
+        "icon": "help_outline",
+        "title": "Status",
+        "blurb": "",
+        "contentHtml": "<p>Filter by the current review state.</p>"
+      },
+      {
+        "id": "guide-category",
+        "guideStepId": "category",
+        "icon": "help_outline",
+        "title": "Content type",
+        "blurb": "",
+        "contentHtml": "<p>Choose which content category to review.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Moderation settings",
+        "blurb": "",
+        "contentHtml": "<p>Configure the moderation rules for this workspace.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.content-moderation",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-content-moderation-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Tartalommoderálás",
+    "summary": "A beküldött tartalmak áttekintése és elbírálása az aktuális munkaterületen.",
+    "description": "A beküldött tartalmak áttekintése és elbírálása az aktuális munkaterületen.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Tartalommoderálás",
+        "blurb": "",
+        "contentHtml": "<p>A beküldött tartalmak áttekintése és elbírálása az aktuális munkaterületen.</p>"
+      },
+      {
+        "id": "guide-status",
+        "guideStepId": "status",
+        "icon": "help_outline",
+        "title": "Állapot",
+        "blurb": "",
+        "contentHtml": "<p>Szűrés az elbírálás állapotára.</p>"
+      },
+      {
+        "id": "guide-category",
+        "guideStepId": "category",
+        "icon": "help_outline",
+        "title": "Tartalomtípus",
+        "blurb": "",
+        "contentHtml": "<p>Válaszd ki az áttekintendő tartalomtípust.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Moderálási beállítások",
+        "blurb": "",
+        "contentHtml": "<p>A munkaterület moderálási szabályainak beállítása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.content-moderation",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-moderation-settings-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Moderation settings",
+    "summary": "Configure automatic review and enabled moderation categories, then save.",
+    "description": "Configure automatic review and enabled moderation categories, then save.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Moderation settings",
+        "blurb": "",
+        "contentHtml": "<p>Configure automatic review and enabled moderation categories, then save.</p>"
+      },
+      {
+        "id": "guide-save",
+        "guideStepId": "save",
+        "icon": "help_outline",
+        "title": "Save",
+        "blurb": "",
+        "contentHtml": "<p>Apply these moderation settings.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.moderation-settings",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-moderation-settings-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Moderálási beállítások",
+    "summary": "Állítsd be az automatikus ellenőrzést és a moderált kategóriákat, majd ments.",
+    "description": "Állítsd be az automatikus ellenőrzést és a moderált kategóriákat, majd ments.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Moderálási beállítások",
+        "blurb": "",
+        "contentHtml": "<p>Állítsd be az automatikus ellenőrzést és a moderált kategóriákat, majd ments.</p>"
+      },
+      {
+        "id": "guide-save",
+        "guideStepId": "save",
+        "icon": "help_outline",
+        "title": "Mentés",
+        "blurb": "",
+        "contentHtml": "<p>A moderálási beállítások alkalmazása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.moderation-settings",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-reports-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Reports",
+    "summary": "Open a report to inspect its evidence and available review actions.",
+    "description": "Open a report to inspect its evidence and available review actions.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Reports",
+        "blurb": "",
+        "contentHtml": "<p>Open a report to inspect its evidence and available review actions.</p>"
+      },
+      {
+        "id": "guide-reports-review-status-filter",
+        "guideStepId": "reports-review-status-filter",
+        "icon": "help_outline",
+        "title": "Filter",
+        "blurb": "",
+        "contentHtml": "<p>Choose pending or reviewed reports.</p>"
+      },
+      {
+        "id": "guide-blocked-users",
+        "guideStepId": "blocked-users",
+        "icon": "help_outline",
+        "title": "Blocked accounts",
+        "blurb": "",
+        "contentHtml": "<p>Inspect blocked accounts and their moderation state.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.reports",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-reports-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Bejelentések",
+    "summary": "Nyiss meg egy bejelentést a bizonyítékok és az elbírálási műveletek megtekintéséhez.",
+    "description": "Nyiss meg egy bejelentést a bizonyítékok és az elbírálási műveletek megtekintéséhez.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Bejelentések",
+        "blurb": "",
+        "contentHtml": "<p>Nyiss meg egy bejelentést a bizonyítékok és az elbírálási műveletek megtekintéséhez.</p>"
+      },
+      {
+        "id": "guide-reports-review-status-filter",
+        "guideStepId": "reports-review-status-filter",
+        "icon": "help_outline",
+        "title": "Szűrés",
+        "blurb": "",
+        "contentHtml": "<p>Függő vagy már elbírált bejelentések kiválasztása.</p>"
+      },
+      {
+        "id": "guide-blocked-users",
+        "guideStepId": "blocked-users",
+        "icon": "help_outline",
+        "title": "Letiltott fiókok",
+        "blurb": "",
+        "contentHtml": "<p>A letiltott fiókok és moderálási állapotuk megtekintése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.reports",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-report-detail-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Review report",
+    "summary": "Read the report and its context before choosing a review action.",
+    "description": "Read the report and its context before choosing a review action.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Review report",
+        "blurb": "",
+        "contentHtml": "<p>Read the report and its context before choosing a review action.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.report-detail",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-report-detail-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Bejelentés elbírálása",
+    "summary": "Az elbírálás előtt olvasd el a bejelentést és annak körülményeit.",
+    "description": "Az elbírálás előtt olvasd el a bejelentést és annak körülményeit.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Bejelentés elbírálása",
+        "blurb": "",
+        "contentHtml": "<p>Az elbírálás előtt olvasd el a bejelentést és annak körülményeit.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.report-detail",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-blocked-users-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Blocked accounts",
+    "summary": "Inspect restrictions and use the available account actions.",
+    "description": "Inspect restrictions and use the available account actions.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Blocked accounts",
+        "blurb": "",
+        "contentHtml": "<p>Inspect restrictions and use the available account actions.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.blocked-users",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-blocked-users-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Letiltott fiókok",
+    "summary": "A korlátozások áttekintése és az elérhető fiókműveletek használata.",
+    "description": "A korlátozások áttekintése és az elérhető fiókműveletek használata.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Letiltott fiókok",
+        "blurb": "",
+        "contentHtml": "<p>A korlátozások áttekintése és az elérhető fiókműveletek használata.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.blocked-users",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-feedback-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Feedback",
+    "summary": "Open a feedback item to read it and record its review state.",
+    "description": "Open a feedback item to read it and record its review state.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Feedback",
+        "blurb": "",
+        "contentHtml": "<p>Open a feedback item to read it and record its review state.</p>"
+      },
+      {
+        "id": "guide-feedback-review-status-filter",
+        "guideStepId": "feedback-review-status-filter",
+        "icon": "help_outline",
+        "title": "Filter",
+        "blurb": "",
+        "contentHtml": "<p>Filter feedback by review state.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.feedback",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-feedback-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Visszajelzések",
+    "summary": "Nyiss meg egy visszajelzést az elolvasásához és az elbírálási állapot rögzítéséhez.",
+    "description": "Nyiss meg egy visszajelzést az elolvasásához és az elbírálási állapot rögzítéséhez.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Visszajelzések",
+        "blurb": "",
+        "contentHtml": "<p>Nyiss meg egy visszajelzést az elolvasásához és az elbírálási állapot rögzítéséhez.</p>"
+      },
+      {
+        "id": "guide-feedback-review-status-filter",
+        "guideStepId": "feedback-review-status-filter",
+        "icon": "help_outline",
+        "title": "Szűrés",
+        "blurb": "",
+        "contentHtml": "<p>Visszajelzések szűrése az elbírálás állapotára.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.feedback",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-feedback-detail-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Review feedback",
+    "summary": "Read the submitted feedback and choose the appropriate review action.",
+    "description": "Read the submitted feedback and choose the appropriate review action.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Review feedback",
+        "blurb": "",
+        "contentHtml": "<p>Read the submitted feedback and choose the appropriate review action.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.feedback-detail",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-feedback-detail-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Visszajelzés kezelése",
+    "summary": "Olvasd el a beküldött visszajelzést, majd válaszd a megfelelő műveletet.",
+    "description": "Olvasd el a beküldött visszajelzést, majd válaszd a megfelelő műveletet.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Visszajelzés kezelése",
+        "blurb": "",
+        "contentHtml": "<p>Olvasd el a beküldött visszajelzést, majd válaszd a megfelelő műveletet.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.feedback-detail",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-chat-review-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Chat review",
+    "summary": "Inspect the selected report conversation. A warning sends your message to the affected user.",
+    "description": "Inspect the selected report conversation. A warning sends your message to the affected user.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Chat review",
+        "blurb": "",
+        "contentHtml": "<p>Inspect the selected report conversation. A warning sends your message to the affected user.</p>"
+      },
+      {
+        "id": "guide-message",
+        "guideStepId": "message",
+        "icon": "help_outline",
+        "title": "Warning text",
+        "blurb": "",
+        "contentHtml": "<p>Explain the issue briefly and clearly.</p>"
+      },
+      {
+        "id": "guide-send-warning",
+        "guideStepId": "send-warning",
+        "icon": "help_outline",
+        "title": "Send warning",
+        "blurb": "",
+        "contentHtml": "<p>Send the written warning to the selected user.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.chat-review",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-chat-review-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Beszélgetés ellenőrzése",
+    "summary": "A bejelentéshez tartozó beszélgetés. A figyelmeztetés elküldi az üzenetedet az érintett felhasználónak.",
+    "description": "A bejelentéshez tartozó beszélgetés. A figyelmeztetés elküldi az üzenetedet az érintett felhasználónak.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Beszélgetés ellenőrzése",
+        "blurb": "",
+        "contentHtml": "<p>A bejelentéshez tartozó beszélgetés. A figyelmeztetés elküldi az üzenetedet az érintett felhasználónak.</p>"
+      },
+      {
+        "id": "guide-message",
+        "guideStepId": "message",
+        "icon": "help_outline",
+        "title": "Figyelmeztetés szövege",
+        "blurb": "",
+        "contentHtml": "<p>Röviden és érthetően írd le a problémát.</p>"
+      },
+      {
+        "id": "guide-send-warning",
+        "guideStepId": "send-warning",
+        "icon": "help_outline",
+        "title": "Figyelmeztetés küldése",
+        "blurb": "",
+        "contentHtml": "<p>A megírt figyelmeztetés küldése a kiválasztott felhasználónak.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.chat-review",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-item-preview-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Reported item",
+    "summary": "Inspect the reported item before returning to its review.",
+    "description": "Inspect the reported item before returning to its review.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Reported item",
+        "blurb": "",
+        "contentHtml": "<p>Inspect the reported item before returning to its review.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.item-preview",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-item-preview-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Bejelentett tartalom",
+    "summary": "Tekintsd át a bejelentett tartalmat, majd térj vissza az elbíráláshoz.",
+    "description": "Tekintsd át a bejelentett tartalmat, majd térj vissza az elbíráláshoz.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Bejelentett tartalom",
+        "blurb": "",
+        "contentHtml": "<p>Tekintsd át a bejelentett tartalmat, majd térj vissza az elbíráláshoz.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.item-preview",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-help-editor-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Content editor",
+    "summary": "Manage help, policy and editable guide revisions. System guides are maintained with the application and are hidden here.",
+    "description": "Manage help, policy and editable guide revisions. System guides are maintained with the application and are hidden here.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Content editor",
+        "blurb": "",
+        "contentHtml": "<p>Manage help, policy and editable guide revisions. System guides are maintained with the application and are hidden here.</p>"
+      },
+      {
+        "id": "guide-help-document",
+        "guideStepId": "help-document",
+        "icon": "help_outline",
+        "title": "Document",
+        "blurb": "",
+        "contentHtml": "<p>Choose the document or editable guide to work on.</p>"
+      },
+      {
+        "id": "guide-help-language",
+        "guideStepId": "help-language",
+        "icon": "help_outline",
+        "title": "Language",
+        "blurb": "",
+        "contentHtml": "<p>Each language has its own revisions.</p>"
+      },
+      {
+        "id": "guide-help-new-revision",
+        "guideStepId": "help-new-revision",
+        "icon": "help_outline",
+        "title": "New revision",
+        "blurb": "",
+        "contentHtml": "<p>Create a draft; users see it after activation.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.help-editor",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-help-editor-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Tartalomszerkesztő",
+    "summary": "Súgó-, szabályzat- és szerkeszthető guide-verziók. A rendszer-guide-ok az alkalmazással frissülnek, itt nem jelennek meg.",
+    "description": "Súgó-, szabályzat- és szerkeszthető guide-verziók. A rendszer-guide-ok az alkalmazással frissülnek, itt nem jelennek meg.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Tartalomszerkesztő",
+        "blurb": "",
+        "contentHtml": "<p>Súgó-, szabályzat- és szerkeszthető guide-verziók. A rendszer-guide-ok az alkalmazással frissülnek, itt nem jelennek meg.</p>"
+      },
+      {
+        "id": "guide-help-document",
+        "guideStepId": "help-document",
+        "icon": "help_outline",
+        "title": "Dokumentum",
+        "blurb": "",
+        "contentHtml": "<p>Válaszd ki a dokumentumot vagy szerkeszthető guide-ot.</p>"
+      },
+      {
+        "id": "guide-help-language",
+        "guideStepId": "help-language",
+        "icon": "help_outline",
+        "title": "Nyelv",
+        "blurb": "",
+        "contentHtml": "<p>Minden nyelv saját verziókkal rendelkezik.</p>"
+      },
+      {
+        "id": "guide-help-new-revision",
+        "guideStepId": "help-new-revision",
+        "icon": "help_outline",
+        "title": "Új verzió",
+        "blurb": "",
+        "contentHtml": "<p>Hozz létre vázlatot; a felhasználók aktiválás után látják.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.help-editor",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-idea-editor-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Articles",
+    "summary": "Manage articles, drafts and published content in the selected language.",
+    "description": "Manage articles, drafts and published content in the selected language.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Articles",
+        "blurb": "",
+        "contentHtml": "<p>Manage articles, drafts and published content in the selected language.</p>"
+      },
+      {
+        "id": "guide-idea-filter",
+        "guideStepId": "idea-filter",
+        "icon": "help_outline",
+        "title": "Filter",
+        "blurb": "",
+        "contentHtml": "<p>Switch between published items, drafts and trash.</p>"
+      },
+      {
+        "id": "guide-idea-language",
+        "guideStepId": "idea-language",
+        "icon": "help_outline",
+        "title": "Language",
+        "blurb": "",
+        "contentHtml": "<p>Choose the article language.</p>"
+      },
+      {
+        "id": "guide-idea-new",
+        "guideStepId": "idea-new",
+        "icon": "help_outline",
+        "title": "New article",
+        "blurb": "",
+        "contentHtml": "<p>Create a new article draft.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.idea-editor",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-idea-editor-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Cikkek",
+    "summary": "Cikkek, vázlatok és közzétett tartalmak kezelése a kiválasztott nyelven.",
+    "description": "Cikkek, vázlatok és közzétett tartalmak kezelése a kiválasztott nyelven.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Cikkek",
+        "blurb": "",
+        "contentHtml": "<p>Cikkek, vázlatok és közzétett tartalmak kezelése a kiválasztott nyelven.</p>"
+      },
+      {
+        "id": "guide-idea-filter",
+        "guideStepId": "idea-filter",
+        "icon": "help_outline",
+        "title": "Szűrés",
+        "blurb": "",
+        "contentHtml": "<p>Váltás a közzétett cikkek, vázlatok és a lomtár között.</p>"
+      },
+      {
+        "id": "guide-idea-language",
+        "guideStepId": "idea-language",
+        "icon": "help_outline",
+        "title": "Nyelv",
+        "blurb": "",
+        "contentHtml": "<p>Válaszd ki a cikkek nyelvét.</p>"
+      },
+      {
+        "id": "guide-idea-new",
+        "guideStepId": "idea-new",
+        "icon": "help_outline",
+        "title": "Új cikk",
+        "blurb": "",
+        "contentHtml": "<p>Új cikkvázlat létrehozása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.idea-editor",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-article-view-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Article preview",
+    "summary": "Review the article as displayed to readers. Close to return to the editor.",
+    "description": "Review the article as displayed to readers. Close to return to the editor.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Article preview",
+        "blurb": "",
+        "contentHtml": "<p>Review the article as displayed to readers. Close to return to the editor.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.article-view",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-article-view-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Cikk előnézete",
+    "summary": "A cikk olvasói nézetének ellenőrzése. Bezárás után visszatérsz a szerkesztőhöz.",
+    "description": "A cikk olvasói nézetének ellenőrzése. Bezárás után visszatérsz a szerkesztőhöz.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Cikk előnézete",
+        "blurb": "",
+        "contentHtml": "<p>A cikk olvasói nézetének ellenőrzése. Bezárás után visszatérsz a szerkesztőhöz.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.article-view",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-article-edit-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Edit article",
+    "summary": "Edit the article and review its preview before saving.",
+    "description": "Edit the article and review its preview before saving.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Edit article",
+        "blurb": "",
+        "contentHtml": "<p>Edit the article and review its preview before saving.</p>"
+      },
+      {
+        "id": "guide-article-save",
+        "guideStepId": "article-save",
+        "icon": "help_outline",
+        "title": "Save",
+        "blurb": "",
+        "contentHtml": "<p>Save the current article changes.</p>"
+      },
+      {
+        "id": "guide-article-preview",
+        "guideStepId": "article-preview",
+        "icon": "help_outline",
+        "title": "Preview",
+        "blurb": "",
+        "contentHtml": "<p>Check how the article will appear.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.article-edit",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-article-edit-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Cikk szerkesztése",
+    "summary": "Szerkeszd a cikket, majd mentés előtt ellenőrizd az előnézetet.",
+    "description": "Szerkeszd a cikket, majd mentés előtt ellenőrizd az előnézetet.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Cikk szerkesztése",
+        "blurb": "",
+        "contentHtml": "<p>Szerkeszd a cikket, majd mentés előtt ellenőrizd az előnézetet.</p>"
+      },
+      {
+        "id": "guide-article-save",
+        "guideStepId": "article-save",
+        "icon": "help_outline",
+        "title": "Mentés",
+        "blurb": "",
+        "contentHtml": "<p>A cikk módosításainak mentése.</p>"
+      },
+      {
+        "id": "guide-article-preview",
+        "guideStepId": "article-preview",
+        "icon": "help_outline",
+        "title": "Előnézet",
+        "blurb": "",
+        "contentHtml": "<p>Ellenőrizd a cikk megjelenését.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.article-edit",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-notifications-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Jobs and notifications",
+    "summary": "Manage delivery rules, schedules and job runs. This is separate from your personal notification inbox.",
+    "description": "Manage delivery rules, schedules and job runs. This is separate from your personal notification inbox.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Jobs and notifications",
+        "blurb": "",
+        "contentHtml": "<p>Manage delivery rules, schedules and job runs. This is separate from your personal notification inbox.</p>"
+      },
+      {
+        "id": "guide-process-filter",
+        "guideStepId": "process-filter",
+        "icon": "help_outline",
+        "title": "Filter jobs",
+        "blurb": "",
+        "contentHtml": "<p>Choose which jobs and delivery rules to display.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.notifications",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-notifications-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Feladatok és értesítések",
+    "summary": "Kézbesítési szabályok, időzítések és futások kezelése. A saját értesítéseidet az értesítési központban találod.",
+    "description": "Kézbesítési szabályok, időzítések és futások kezelése. A saját értesítéseidet az értesítési központban találod.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Feladatok és értesítések",
+        "blurb": "",
+        "contentHtml": "<p>Kézbesítési szabályok, időzítések és futások kezelése. A saját értesítéseidet az értesítési központban találod.</p>"
+      },
+      {
+        "id": "guide-process-filter",
+        "guideStepId": "process-filter",
+        "icon": "help_outline",
+        "title": "Feladatok szűrése",
+        "blurb": "",
+        "contentHtml": "<p>A megjelenített feladatok és kézbesítési szabályok kiválasztása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.notifications",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-process-detail-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Job details",
+    "summary": "Review channels, parameters and recent runs before changing the rule.",
+    "description": "Review channels, parameters and recent runs before changing the rule.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Job details",
+        "blurb": "",
+        "contentHtml": "<p>Review channels, parameters and recent runs before changing the rule.</p>"
+      },
+      {
+        "id": "guide-process-detail-save",
+        "guideStepId": "process-detail-save",
+        "icon": "help_outline",
+        "title": "Save rule",
+        "blurb": "",
+        "contentHtml": "<p>Save the configured delivery rule.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.process-detail",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-process-detail-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Feladat részletei",
+    "summary": "A szabály módosítása előtt ellenőrizd a csatornákat, paramétereket és korábbi futásokat.",
+    "description": "A szabály módosítása előtt ellenőrizd a csatornákat, paramétereket és korábbi futásokat.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Feladat részletei",
+        "blurb": "",
+        "contentHtml": "<p>A szabály módosítása előtt ellenőrizd a csatornákat, paramétereket és korábbi futásokat.</p>"
+      },
+      {
+        "id": "guide-process-detail-save",
+        "guideStepId": "process-detail-save",
+        "icon": "help_outline",
+        "title": "Szabály mentése",
+        "blurb": "",
+        "contentHtml": "<p>A beállított kézbesítési szabály mentése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.process-detail",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-schedule-edit-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Schedule",
+    "summary": "Set when the selected job runs, including its interval or start time.",
+    "description": "Set when the selected job runs, including its interval or start time.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Schedule",
+        "blurb": "",
+        "contentHtml": "<p>Set when the selected job runs, including its interval or start time.</p>"
+      },
+      {
+        "id": "guide-schedule-save",
+        "guideStepId": "schedule-save",
+        "icon": "help_outline",
+        "title": "Save schedule",
+        "blurb": "",
+        "contentHtml": "<p>Apply the selected schedule.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.schedule-edit",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-schedule-edit-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Időzítés",
+    "summary": "Állítsd be a feladat futását: időközét vagy kezdési időpontját.",
+    "description": "Állítsd be a feladat futását: időközét vagy kezdési időpontját.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Időzítés",
+        "blurb": "",
+        "contentHtml": "<p>Állítsd be a feladat futását: időközét vagy kezdési időpontját.</p>"
+      },
+      {
+        "id": "guide-schedule-save",
+        "guideStepId": "schedule-save",
+        "icon": "help_outline",
+        "title": "Időzítés mentése",
+        "blurb": "",
+        "contentHtml": "<p>A kiválasztott időzítés alkalmazása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.schedule-edit",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-job-parameter-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Job parameter",
+    "summary": "Edit the selected job parameter and save the change.",
+    "description": "Edit the selected job parameter and save the change.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Job parameter",
+        "blurb": "",
+        "contentHtml": "<p>Edit the selected job parameter and save the change.</p>"
+      },
+      {
+        "id": "guide-parameter-save",
+        "guideStepId": "parameter-save",
+        "icon": "help_outline",
+        "title": "Save parameter",
+        "blurb": "",
+        "contentHtml": "<p>Apply this parameter value.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.job-parameter",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-job-parameter-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Feladatparaméter",
+    "summary": "Módosítsd a kiválasztott feladatparamétert, majd ments.",
+    "description": "Módosítsd a kiválasztott feladatparamétert, majd ments.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Feladatparaméter",
+        "blurb": "",
+        "contentHtml": "<p>Módosítsd a kiválasztott feladatparamétert, majd ments.</p>"
+      },
+      {
+        "id": "guide-parameter-save",
+        "guideStepId": "parameter-save",
+        "icon": "help_outline",
+        "title": "Paraméter mentése",
+        "blurb": "",
+        "contentHtml": "<p>A paraméterérték alkalmazása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.job-parameter",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-params-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Application parameters",
+    "summary": "Inspect current configuration, edit a parameter or view its history.",
+    "description": "Inspect current configuration, edit a parameter or view its history.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Application parameters",
+        "blurb": "",
+        "contentHtml": "<p>Inspect current configuration, edit a parameter or view its history.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.params",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-params-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Alkalmazásparaméterek",
+    "summary": "Az aktuális beállítások áttekintése, paraméter módosítása vagy előzményeinek megnyitása.",
+    "description": "Az aktuális beállítások áttekintése, paraméter módosítása vagy előzményeinek megnyitása.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Alkalmazásparaméterek",
+        "blurb": "",
+        "contentHtml": "<p>Az aktuális beállítások áttekintése, paraméter módosítása vagy előzményeinek megnyitása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.params",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-parameter-edit-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Edit parameter",
+    "summary": "Check the value and its validation before saving.",
+    "description": "Check the value and its validation before saving.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Edit parameter",
+        "blurb": "",
+        "contentHtml": "<p>Check the value and its validation before saving.</p>"
+      },
+      {
+        "id": "guide-save-edit",
+        "guideStepId": "save-edit",
+        "icon": "help_outline",
+        "title": "Save",
+        "blurb": "",
+        "contentHtml": "<p>Save the parameter value.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.parameter-edit",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-parameter-edit-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Paraméter módosítása",
+    "summary": "Mentés előtt ellenőrizd az értéket és az ellenőrzés eredményét.",
+    "description": "Mentés előtt ellenőrizd az értéket és az ellenőrzés eredményét.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Paraméter módosítása",
+        "blurb": "",
+        "contentHtml": "<p>Mentés előtt ellenőrizd az értéket és az ellenőrzés eredményét.</p>"
+      },
+      {
+        "id": "guide-save-edit",
+        "guideStepId": "save-edit",
+        "icon": "help_outline",
+        "title": "Mentés",
+        "blurb": "",
+        "contentHtml": "<p>A paraméterérték mentése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.parameter-edit",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-parameter-history-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Parameter history",
+    "summary": "Review earlier changes and their authors.",
+    "description": "Review earlier changes and their authors.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Parameter history",
+        "blurb": "",
+        "contentHtml": "<p>Review earlier changes and their authors.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.parameter-history",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-parameter-history-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Paraméterelőzmények",
+    "summary": "A korábbi változtatások és szerzőik áttekintése.",
+    "description": "A korábbi változtatások és szerzőik áttekintése.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Paraméterelőzmények",
+        "blurb": "",
+        "contentHtml": "<p>A korábbi változtatások és szerzőik áttekintése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.parameter-history",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-stats-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Statistics",
+    "summary": "Explore the displayed period and metrics. Use chart help for the selected graph.",
+    "description": "Explore the displayed period and metrics. Use chart help for the selected graph.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Statistics",
+        "blurb": "",
+        "contentHtml": "<p>Explore the displayed period and metrics. Use chart help for the selected graph.</p>"
+      },
+      {
+        "id": "guide-stats-refresh",
+        "guideStepId": "stats-refresh",
+        "icon": "help_outline",
+        "title": "Refresh",
+        "blurb": "",
+        "contentHtml": "<p>Refresh the displayed statistics.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.stats",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-stats-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Statisztika",
+    "summary": "A kijelzett időszak és mutatók áttekintése. A grafikon súgója az adott ábrát magyarázza.",
+    "description": "A kijelzett időszak és mutatók áttekintése. A grafikon súgója az adott ábrát magyarázza.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Statisztika",
+        "blurb": "",
+        "contentHtml": "<p>A kijelzett időszak és mutatók áttekintése. A grafikon súgója az adott ábrát magyarázza.</p>"
+      },
+      {
+        "id": "guide-stats-refresh",
+        "guideStepId": "stats-refresh",
+        "icon": "help_outline",
+        "title": "Frissítés",
+        "blurb": "",
+        "contentHtml": "<p>A megjelenített statisztikák frissítése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.stats",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-graph-help-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Chart explanation",
+    "summary": "This explanation describes the selected chart and how to read it.",
+    "description": "This explanation describes the selected chart and how to read it.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Chart explanation",
+        "blurb": "",
+        "contentHtml": "<p>This explanation describes the selected chart and how to read it.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.graph-help",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-graph-help-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Grafikonmagyarázat",
+    "summary": "Ez a magyarázat a kiválasztott grafikon értelmezését segíti.",
+    "description": "Ez a magyarázat a kiválasztott grafikon értelmezését segíti.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Grafikonmagyarázat",
+        "blurb": "",
+        "contentHtml": "<p>Ez a magyarázat a kiválasztott grafikon értelmezését segíti.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.graph-help",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-affinity-graph-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Affinity graph",
+    "summary": "Inspect the graph and its displayed relationships.",
+    "description": "Inspect the graph and its displayed relationships.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Affinity graph",
+        "blurb": "",
+        "contentHtml": "<p>Inspect the graph and its displayed relationships.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.affinity-graph",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-affinity-graph-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Kapcsolódási gráf",
+    "summary": "A gráf és a megjelenített kapcsolatok áttekintése.",
+    "description": "A gráf és a megjelenített kapcsolatok áttekintése.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Kapcsolódási gráf",
+        "blurb": "",
+        "contentHtml": "<p>A gráf és a megjelenített kapcsolatok áttekintése.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.affinity-graph",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-monitoring-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Monitoring",
+    "summary": "Review operational measurements and recent application activity.",
+    "description": "Review operational measurements and recent application activity.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Monitoring",
+        "blurb": "",
+        "contentHtml": "<p>Review operational measurements and recent application activity.</p>"
+      },
+      {
+        "id": "guide-monitoring-filter",
+        "guideStepId": "monitoring-filter",
+        "icon": "help_outline",
+        "title": "Filter",
+        "blurb": "",
+        "contentHtml": "<p>Choose the monitoring events to display.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.monitoring",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-monitoring-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Megfigyelés",
+    "summary": "Működési mérések és az alkalmazás legutóbbi eseményeinek áttekintése.",
+    "description": "Működési mérések és az alkalmazás legutóbbi eseményeinek áttekintése.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Megfigyelés",
+        "blurb": "",
+        "contentHtml": "<p>Működési mérések és az alkalmazás legutóbbi eseményeinek áttekintése.</p>"
+      },
+      {
+        "id": "guide-monitoring-filter",
+        "guideStepId": "monitoring-filter",
+        "icon": "help_outline",
+        "title": "Szűrés",
+        "blurb": "",
+        "contentHtml": "<p>A megjelenített megfigyelési események kiválasztása.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.monitoring",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-payment-simulator-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Payment simulator",
+    "summary": "Inspect simulated payment outcomes and use the provided test controls.",
+    "description": "Inspect simulated payment outcomes and use the provided test controls.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Payment simulator",
+        "blurb": "",
+        "contentHtml": "<p>Inspect simulated payment outcomes and use the provided test controls.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.payment-simulator",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-payment-simulator-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Fizetési szimulátor",
+    "summary": "Szimulált fizetési eredmények és a rendelkezésre álló tesztvezérlők.",
+    "description": "Szimulált fizetési eredmények és a rendelkezésre álló tesztvezérlők.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Fizetési szimulátor",
+        "blurb": "",
+        "contentHtml": "<p>Szimulált fizetési eredmények és a rendelkezésre álló tesztvezérlők.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.payment-simulator",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-payment-authorizations-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Payment authorizations",
+    "summary": "Review pending payment authorizations and decide only after checking their details.",
+    "description": "Review pending payment authorizations and decide only after checking their details.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Payment authorizations",
+        "blurb": "",
+        "contentHtml": "<p>Review pending payment authorizations and decide only after checking their details.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Close",
+        "blurb": "",
+        "contentHtml": "<p>Return to the previous surface.</p>"
+      }
+    ],
+    "contextKey": "admin.payment-authorizations",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-payment-authorizations-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Fizetési engedélyezések",
+    "summary": "Ellenőrizd a függő fizetési engedélyezések részleteit, mielőtt döntesz.",
+    "description": "Ellenőrizd a függő fizetési engedélyezések részleteit, mielőtt döntesz.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-overview",
+        "guideStepId": "overview",
+        "icon": "help_outline",
+        "title": "Fizetési engedélyezések",
+        "blurb": "",
+        "contentHtml": "<p>Ellenőrizd a függő fizetési engedélyezések részleteit, mielőtt döntesz.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Bezárás",
+        "blurb": "",
+        "contentHtml": "<p>Visszatérés az előző felülethez.</p>"
+      }
+    ],
+    "contextKey": "admin.payment-authorizations",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-navigation-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Administration menu",
+    "summary": "Administration menu",
+    "description": "Administration menu",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-notifications",
+        "guideStepId": "notifications",
+        "icon": "help_outline",
+        "title": "Notifications",
+        "blurb": "",
+        "contentHtml": "<p>Open your inbox, mark messages read and manage alert muting.</p>"
+      },
+      {
+        "id": "guide-notification-launcher",
+        "guideStepId": "notification-launcher",
+        "icon": "help_outline",
+        "title": "Notification button",
+        "blurb": "",
+        "contentHtml": "<p>Show or hide the floating notification button. Your inbox and delivery settings remain available.</p>"
+      },
+      {
+        "id": "guide-explanations",
+        "guideStepId": "explanations",
+        "icon": "help_outline",
+        "title": "Guide button",
+        "blurb": "",
+        "contentHtml": "<p>Switch guides off or on. Both floating buttons can be dragged to a convenient position.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Settings",
+        "blurb": "",
+        "contentHtml": "<p>Open language, policy, help and sign-out actions.</p>"
+      },
+      {
+        "id": "guide-adminModeration",
+        "guideStepId": "adminModeration",
+        "icon": "help_outline",
+        "title": "Moderation",
+        "blurb": "",
+        "contentHtml": "<p>Review submitted content.</p>"
+      },
+      {
+        "id": "guide-adminReports",
+        "guideStepId": "adminReports",
+        "icon": "help_outline",
+        "title": "Reports",
+        "blurb": "",
+        "contentHtml": "<p>Review reported users and their evidence.</p>"
+      },
+      {
+        "id": "guide-adminFeedback",
+        "guideStepId": "adminFeedback",
+        "icon": "help_outline",
+        "title": "Feedback",
+        "blurb": "",
+        "contentHtml": "<p>Review user feedback.</p>"
+      },
+      {
+        "id": "guide-adminChat",
+        "guideStepId": "adminChat",
+        "icon": "help_outline",
+        "title": "Chat review",
+        "blurb": "",
+        "contentHtml": "<p>Inspect reports and send appropriate warnings.</p>"
+      },
+      {
+        "id": "guide-adminJobs",
+        "guideStepId": "adminJobs",
+        "icon": "help_outline",
+        "title": "Jobs",
+        "blurb": "",
+        "contentHtml": "<p>Configure delivery rules and scheduled jobs.</p>"
+      },
+      {
+        "id": "guide-adminParams",
+        "guideStepId": "adminParams",
+        "icon": "help_outline",
+        "title": "Parameters",
+        "blurb": "",
+        "contentHtml": "<p>Manage application parameters and their history.</p>"
+      },
+      {
+        "id": "guide-adminContent",
+        "guideStepId": "adminContent",
+        "icon": "help_outline",
+        "title": "Content",
+        "blurb": "",
+        "contentHtml": "<p>Edit help, policies and editable guides; system guides are hidden.</p>"
+      },
+      {
+        "id": "guide-adminArticle",
+        "guideStepId": "adminArticle",
+        "icon": "help_outline",
+        "title": "Articles",
+        "blurb": "",
+        "contentHtml": "<p>Manage article drafts and publications.</p>"
+      },
+      {
+        "id": "guide-adminStats",
+        "guideStepId": "adminStats",
+        "icon": "help_outline",
+        "title": "Statistics",
+        "blurb": "",
+        "contentHtml": "<p>Inspect application statistics.</p>"
+      },
+      {
+        "id": "guide-adminMetrics",
+        "guideStepId": "adminMetrics",
+        "icon": "help_outline",
+        "title": "Monitoring",
+        "blurb": "",
+        "contentHtml": "<p>Inspect operational metrics and activity.</p>"
+      },
+      {
+        "id": "guide-adminGraph",
+        "guideStepId": "adminGraph",
+        "icon": "help_outline",
+        "title": "Graph",
+        "blurb": "",
+        "contentHtml": "<p>Explore the affinity graph.</p>"
+      },
+      {
+        "id": "guide-adminPaymentSimulator",
+        "guideStepId": "adminPaymentSimulator",
+        "icon": "help_outline",
+        "title": "Payment simulator",
+        "blurb": "",
+        "contentHtml": "<p>Open the configured payment test environment.</p>"
+      },
+      {
+        "id": "guide-adminPaymentAuthorizations",
+        "guideStepId": "adminPaymentAuthorizations",
+        "icon": "help_outline",
+        "title": "Authorizations",
+        "blurb": "",
+        "contentHtml": "<p>Review pending payment authorizations.</p>"
+      }
+    ],
+    "contextKey": "admin.navigation",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-admin-navigation-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Adminisztrációs menü",
+    "summary": "Adminisztrációs menü",
+    "description": "Adminisztrációs menü",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-notifications",
+        "guideStepId": "notifications",
+        "icon": "help_outline",
+        "title": "Értesítések",
+        "blurb": "",
+        "contentHtml": "<p>Nyisd meg az értesítési központot, jelöld olvasottnak az üzeneteket, és kezeld a némítást.</p>"
+      },
+      {
+        "id": "guide-notification-launcher",
+        "guideStepId": "notification-launcher",
+        "icon": "help_outline",
+        "title": "Értesítési gomb",
+        "blurb": "",
+        "contentHtml": "<p>A lebegő értesítési gomb ki- és bekapcsolása. Az értesítési központ és a kézbesítési beállítások továbbra is elérhetők.</p>"
+      },
+      {
+        "id": "guide-explanations",
+        "guideStepId": "explanations",
+        "icon": "help_outline",
+        "title": "Guide gomb",
+        "blurb": "",
+        "contentHtml": "<p>A guide ki- és bekapcsolása. Mindkét lebegő gombot a megfelelő helyre húzhatod.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Beállítások",
+        "blurb": "",
+        "contentHtml": "<p>Nyelv, szabályzatok, súgó és kijelentkezés.</p>"
+      },
+      {
+        "id": "guide-adminModeration",
+        "guideStepId": "adminModeration",
+        "icon": "help_outline",
+        "title": "Moderálás",
+        "blurb": "",
+        "contentHtml": "<p>Beküldött tartalmak elbírálása.</p>"
+      },
+      {
+        "id": "guide-adminReports",
+        "guideStepId": "adminReports",
+        "icon": "help_outline",
+        "title": "Bejelentések",
+        "blurb": "",
+        "contentHtml": "<p>Bejelentett felhasználók és bizonyítékok áttekintése.</p>"
+      },
+      {
+        "id": "guide-adminFeedback",
+        "guideStepId": "adminFeedback",
+        "icon": "help_outline",
+        "title": "Visszajelzések",
+        "blurb": "",
+        "contentHtml": "<p>Felhasználói visszajelzések kezelése.</p>"
+      },
+      {
+        "id": "guide-adminChat",
+        "guideStepId": "adminChat",
+        "icon": "help_outline",
+        "title": "Beszélgetések",
+        "blurb": "",
+        "contentHtml": "<p>Bejelentések ellenőrzése és indokolt figyelmeztetések küldése.</p>"
+      },
+      {
+        "id": "guide-adminJobs",
+        "guideStepId": "adminJobs",
+        "icon": "help_outline",
+        "title": "Feladatok",
+        "blurb": "",
+        "contentHtml": "<p>Kézbesítési szabályok és időzített feladatok kezelése.</p>"
+      },
+      {
+        "id": "guide-adminParams",
+        "guideStepId": "adminParams",
+        "icon": "help_outline",
+        "title": "Paraméterek",
+        "blurb": "",
+        "contentHtml": "<p>Alkalmazásparaméterek és előzmények kezelése.</p>"
+      },
+      {
+        "id": "guide-adminContent",
+        "guideStepId": "adminContent",
+        "icon": "help_outline",
+        "title": "Tartalom",
+        "blurb": "",
+        "contentHtml": "<p>Súgók, szabályzatok és szerkeszthető guide-ok; a rendszer-guide-ok rejtettek.</p>"
+      },
+      {
+        "id": "guide-adminArticle",
+        "guideStepId": "adminArticle",
+        "icon": "help_outline",
+        "title": "Cikkek",
+        "blurb": "",
+        "contentHtml": "<p>Cikkvázlatok és publikációk kezelése.</p>"
+      },
+      {
+        "id": "guide-adminStats",
+        "guideStepId": "adminStats",
+        "icon": "help_outline",
+        "title": "Statisztika",
+        "blurb": "",
+        "contentHtml": "<p>Alkalmazásstatisztikák áttekintése.</p>"
+      },
+      {
+        "id": "guide-adminMetrics",
+        "guideStepId": "adminMetrics",
+        "icon": "help_outline",
+        "title": "Megfigyelés",
+        "blurb": "",
+        "contentHtml": "<p>Működési mutatók és események áttekintése.</p>"
+      },
+      {
+        "id": "guide-adminGraph",
+        "guideStepId": "adminGraph",
+        "icon": "help_outline",
+        "title": "Gráf",
+        "blurb": "",
+        "contentHtml": "<p>A kapcsolódási gráf megtekintése.</p>"
+      },
+      {
+        "id": "guide-adminPaymentSimulator",
+        "guideStepId": "adminPaymentSimulator",
+        "icon": "help_outline",
+        "title": "Fizetési szimulátor",
+        "blurb": "",
+        "contentHtml": "<p>A beállított fizetési tesztkörnyezet megnyitása.</p>"
+      },
+      {
+        "id": "guide-adminPaymentAuthorizations",
+        "guideStepId": "adminPaymentAuthorizations",
+        "icon": "help_outline",
+        "title": "Engedélyezések",
+        "blurb": "",
+        "contentHtml": "<p>Függő fizetési engedélyezések kezelése.</p>"
+      }
+    ],
+    "contextKey": "admin.navigation",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-navigation-work-en-v1",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 1,
+    "active": true,
+    "title": "Operator menu",
+    "summary": "Operator menu",
+    "description": "Operator menu",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-notifications",
+        "guideStepId": "notifications",
+        "icon": "help_outline",
+        "title": "Notifications",
+        "blurb": "",
+        "contentHtml": "<p>Open your inbox, mark messages read and manage alert muting.</p>"
+      },
+      {
+        "id": "guide-notification-launcher",
+        "guideStepId": "notification-launcher",
+        "icon": "help_outline",
+        "title": "Notification button",
+        "blurb": "",
+        "contentHtml": "<p>Show or hide the floating notification button. Your inbox and delivery settings remain available.</p>"
+      },
+      {
+        "id": "guide-explanations",
+        "guideStepId": "explanations",
+        "icon": "help_outline",
+        "title": "Guide button",
+        "blurb": "",
+        "contentHtml": "<p>Switch guides off or on. Both floating buttons can be dragged to a convenient position.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Settings",
+        "blurb": "",
+        "contentHtml": "<p>Open language, policy, help and sign-out actions.</p>"
+      }
+    ],
+    "contextKey": "operator.navigation",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-operator-navigation-work-hu-v1",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 1,
+    "active": true,
+    "title": "Operátori menü",
+    "summary": "Operátori menü",
+    "description": "Operátori menü",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-notifications",
+        "guideStepId": "notifications",
+        "icon": "help_outline",
+        "title": "Értesítések",
+        "blurb": "",
+        "contentHtml": "<p>Nyisd meg az értesítési központot, jelöld olvasottnak az üzeneteket, és kezeld a némítást.</p>"
+      },
+      {
+        "id": "guide-notification-launcher",
+        "guideStepId": "notification-launcher",
+        "icon": "help_outline",
+        "title": "Értesítési gomb",
+        "blurb": "",
+        "contentHtml": "<p>A lebegő értesítési gomb ki- és bekapcsolása. Az értesítési központ és a kézbesítési beállítások továbbra is elérhetők.</p>"
+      },
+      {
+        "id": "guide-explanations",
+        "guideStepId": "explanations",
+        "icon": "help_outline",
+        "title": "Guide gomb",
+        "blurb": "",
+        "contentHtml": "<p>A guide ki- és bekapcsolása. Mindkét lebegő gombot a megfelelő helyre húzhatod.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Beállítások",
+        "blurb": "",
+        "contentHtml": "<p>Nyelv, szabályzatok, súgó és kijelentkezés.</p>"
+      }
+    ],
+    "contextKey": "operator.navigation",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": true
+  },
+  {
+    "_id": "explanation-navigation-menu-work-en-v8",
+    "documentType": "explanation",
+    "lang": "en",
+    "languageLabel": "English",
+    "version": 8,
+    "active": true,
+    "title": "Avatar menu",
+    "summary": "Choose a workspace or application section.",
+    "description": "Understand account tools, community features and activity states.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-navigation-profile",
+        "guideStepId": "navigation-profile",
+        "icon": "help_outline",
+        "title": "Edit the active profile",
+        "blurb": "",
+        "contentHtml": "<p>The pencil opens the active profile: photos, personal details and preferences. Save in that editor to apply changes.</p>"
+      },
+      {
+        "id": "guide-navigation-workspace",
+        "guideStepId": "navigation-workspace",
+        "icon": "help_outline",
+        "title": "Who you act for",
+        "blurb": "",
+        "contentHtml": "<p>Switch between your personal profile and available group workspaces. The selected workspace determines whose content and permissions you use.</p>"
+      },
+      {
+        "id": "guide-notifications",
+        "guideStepId": "notifications",
+        "icon": "help_outline",
+        "title": "Updates requiring attention",
+        "blurb": "",
+        "contentHtml": "<p>Open notifications here even after hiding the bell. The badge counts unread updates. Drag the bell or lightbulb to move it; drop on the red X to hide it.</p>"
+      },
+      {
+        "id": "guide-explanations",
+        "guideStepId": "explanations",
+        "icon": "help_outline",
+        "title": "Show contextual guides",
+        "blurb": "",
+        "contentHtml": "<p>Turns the guide button off or back on permanently. The lightbulb offers step-by-step help. Drag the lightbulb or bell to move it; drop on the red X to hide it temporarily.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Account and application tools",
+        "blurb": "",
+        "contentHtml": "<p>Opens help, privacy, terms and account actions. Read the relevant confirmation before choosing a destructive action such as deleting the account.</p>"
+      },
+      {
+        "id": "guide-feed",
+        "guideStepId": "feed",
+        "icon": "help_outline",
+        "title": "Photos with event context",
+        "blurb": "",
+        "contentHtml": "<p>Browse shared photos or create a post. Each uploaded feed photo needs an event link before the post can be submitted for moderation.</p>"
+      },
+      {
+        "id": "guide-followed",
+        "guideStepId": "followed",
+        "icon": "help_outline",
+        "title": "Keep track of organizers",
+        "blurb": "",
+        "contentHtml": "<p>Shows events from followed organizers. Following helps you find their events; it does not book a place or join those events.</p>"
+      },
+      {
+        "id": "guide-groups",
+        "guideStepId": "groups",
+        "icon": "help_outline",
+        "title": "Community membership",
+        "blurb": "",
+        "contentHtml": "<p>Review your groups, invitations and requests, or explore other communities. Membership and acting in a group workspace are separate choices.</p>"
+      },
+      {
+        "id": "guide-impressions",
+        "guideStepId": "impressions",
+        "icon": "help_outline",
+        "title": "How others experienced you",
+        "blurb": "",
+        "contentHtml": "<p>Shows feedback-based impressions of you as host and attendee. These describe past experiences, rather than editable profile preferences.</p>"
+      },
+      {
+        "id": "guide-navigation-feedback",
+        "guideStepId": "navigation-feedback",
+        "icon": "help_outline",
+        "title": "Reflect on attended events",
+        "blurb": "",
+        "contentHtml": "<p>Review pending and completed event feedback. This is feedback about participation; application support is available separately in Settings.</p>"
+      },
+      {
+        "id": "guide-rates",
+        "guideStepId": "rates",
+        "icon": "help_outline",
+        "title": "Review profile ratings",
+        "blurb": "",
+        "contentHtml": "<p>Shows your rating activity and its available filters. Rating a profile is separate from accepting an invitation or joining an event.</p>"
+      },
+      {
+        "id": "guide-chat",
+        "guideStepId": "chat",
+        "icon": "help_outline",
+        "title": "Conversations by context",
+        "blurb": "",
+        "contentHtml": "<p>Opens conversations for events, groups, contacts and support. Use context filters to find the correct conversation before sending a message.</p>"
+      },
+      {
+        "id": "guide-invitations",
+        "guideStepId": "invitations",
+        "icon": "help_outline",
+        "title": "Requests for your participation",
+        "blurb": "",
+        "contentHtml": "<p>Review invitations and their event details before responding. An invitation alone does not mean your participation or payment is confirmed.</p>"
+      },
+      {
+        "id": "guide-events",
+        "guideStepId": "events",
+        "icon": "help_outline",
+        "title": "Participation and hosting",
+        "blurb": "",
+        "contentHtml": "<p>Find events you attend or manage, plus pending and other states. The scope selector separates these roles and lifecycle states.</p>"
+      },
+      {
+        "id": "guide-payment-history",
+        "guideStepId": "payment-history",
+        "icon": "help_outline",
+        "title": "Payments and refunds",
+        "blurb": "",
+        "contentHtml": "<p>Review payment records and refund states. A pending refund is still in progress; opening this list does not start a payment or refund.</p>"
+      },
+      {
+        "id": "guide-transport",
+        "guideStepId": "transport",
+        "icon": "help_outline",
+        "title": "Vehicles and rides",
+        "blurb": "",
+        "contentHtml": "<p>Manage transport assets and inspect their availability. Owning a vehicle and joining a place on an event’s assigned vehicle are different actions.</p>"
+      },
+      {
+        "id": "guide-accommodation",
+        "guideStepId": "accommodation",
+        "icon": "help_outline",
+        "title": "Places to stay",
+        "blurb": "",
+        "contentHtml": "<p>Manage accommodation assets, capacity and availability. Booking or joining an assigned stay has its own review and confirmation flow.</p>"
+      },
+      {
+        "id": "guide-supplies",
+        "guideStepId": "supplies",
+        "icon": "help_outline",
+        "title": "Equipment and contributions",
+        "blurb": "",
+        "contentHtml": "<p>Manage supply assets and quantities. Event assignments and contributions determine how those supplies are used by a particular activity.</p>"
+      },
+      {
+        "id": "guide-tickets",
+        "guideStepId": "tickets",
+        "icon": "help_outline",
+        "title": "Entry tickets",
+        "blurb": "",
+        "contentHtml": "<p>View available ticket records and their state. Tickets represent entry rights; payment history records the associated financial transactions.</p>"
+      },
+      {
+        "id": "guide-contacts",
+        "guideStepId": "contacts",
+        "icon": "help_outline",
+        "title": "People and contact requests",
+        "blurb": "",
+        "contentHtml": "<p>Review contacts and incoming requests. The badge highlights pending requests, so it can differ from the total number of saved contacts.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Return to the current screen",
+        "blurb": "",
+        "contentHtml": "<p>Closes the avatar menu without opening another section.</p>"
+      },
+      {
+        "id": "guide-settings-permissions",
+        "guideStepId": "settings:permissions",
+        "icon": "help_outline",
+        "title": "Install and enable device features",
+        "blurb": "",
+        "contentHtml": "<p>Opens application installation and permission settings. Device permissions control which features can use notifications or location.</p>"
+      },
+      {
+        "id": "guide-settings-share",
+        "guideStepId": "settings:share",
+        "icon": "help_outline",
+        "title": "Share the application",
+        "blurb": "",
+        "contentHtml": "<p>Opens sharing options for this application. It shares the application link rather than your private profile settings.</p>"
+      },
+      {
+        "id": "guide-settings-help",
+        "guideStepId": "settings:help",
+        "icon": "help_outline",
+        "title": "Read the full help",
+        "blurb": "",
+        "contentHtml": "<p>Opens the active help document. Its version badge identifies the published help revision available in this installation.</p>"
+      },
+      {
+        "id": "guide-settings-feedback",
+        "guideStepId": "settings:feedback",
+        "icon": "help_outline",
+        "title": "Send application feedback",
+        "blurb": "",
+        "contentHtml": "<p>Opens application feedback for questions or suggestions. Use event feedback separately to describe an attended event.</p>"
+      },
+      {
+        "id": "guide-settings-report-bugs",
+        "guideStepId": "settings:report-bugs",
+        "icon": "help_outline",
+        "title": "Report a reproducible defect",
+        "blurb": "",
+        "contentHtml": "<p>Opens the project’s issue page in another tab. Describe what you did, what happened and what you expected.</p>"
+      },
+      {
+        "id": "guide-settings-privacy",
+        "guideStepId": "settings:privacy",
+        "icon": "help_outline",
+        "title": "Review data handling",
+        "blurb": "",
+        "contentHtml": "<p>Opens the current privacy document. Its version identifies which published data-handling terms you are reading.</p>"
+      },
+      {
+        "id": "guide-settings-terms",
+        "guideStepId": "settings:terms",
+        "icon": "help_outline",
+        "title": "Review usage conditions",
+        "blurb": "",
+        "contentHtml": "<p>Opens the current application terms. These describe application use; individual events and assets may have additional policies.</p>"
+      },
+      {
+        "id": "guide-settings-delete-account",
+        "guideStepId": "settings:delete-account",
+        "icon": "help_outline",
+        "title": "Start account deletion",
+        "blurb": "",
+        "contentHtml": "<p>Opens the account deletion flow. Read its consequences before confirming; closing the guide does not delete the account.</p>"
+      },
+      {
+        "id": "guide-settings-logout",
+        "guideStepId": "settings:logout",
+        "icon": "help_outline",
+        "title": "End this signed-in session",
+        "blurb": "",
+        "contentHtml": "<p>Signs you out of the current session. You must sign in again to continue actions that require your account.</p>"
+      },
+      {
+        "id": "guide-campaigns",
+        "guideStepId": "campaigns",
+        "icon": "help_outline",
+        "title": "Campaigns",
+        "blurb": "",
+        "contentHtml": "<p>Manage your campaigns here. Create a draft, publish it and open its Ratings action to review interest in that campaign.</p>"
+      },
+      {
+        "id": "guide-cases",
+        "guideStepId": "cases",
+        "icon": "help_outline",
+        "title": "Cases",
+        "blurb": "",
+        "contentHtml": "<p>Open cases for the current Community context. Enter a group to create a group case. Scheduled tasks open from the case header.</p>"
+      },
+      {
+        "id": "guide-services",
+        "guideStepId": "services",
+        "icon": "help_outline",
+        "title": "Services",
+        "blurb": "",
+        "contentHtml": "<p>Manage your service offers and staff, or inspect your provider calendar. Publishing makes an offer available in discovery.</p>"
+      },
+      {
+        "id": "guide-notification-launcher",
+        "guideStepId": "notification-launcher",
+        "icon": "help_outline",
+        "title": "Notification button",
+        "blurb": "",
+        "contentHtml": "<p>Show or hide the floating notification button. Your inbox and delivery settings remain available.</p>"
+      }
+    ],
+    "contextKey": "navigation.menu",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": false
+  },
+  {
+    "_id": "explanation-navigation-menu-work-hu-v8",
+    "documentType": "explanation",
+    "lang": "hu",
+    "languageLabel": "Magyar",
+    "version": 8,
+    "active": true,
+    "title": "Avatar menü",
+    "summary": "Munkatér és alkalmazásfelület választása.",
+    "description": "Fiókeszközök, közösségi funkciók és aktivitási állapotok.",
+    "headerColor": "violet",
+    "createdDate": "2026-10-07T00:00:00.000Z",
+    "createdUser": "system",
+    "updatedDate": "2026-10-07T00:00:00.000Z",
+    "updatedUser": "system",
+    "sections": [
+      {
+        "id": "guide-navigation-profile",
+        "guideStepId": "navigation-profile",
+        "icon": "help_outline",
+        "title": "Az aktív profil szerkesztése",
+        "blurb": "",
+        "contentHtml": "<p>A ceruza az aktív profil képeit, személyes adatait és preferenciáit nyitja meg. A módosításokat abban a szerkesztőben kell menteni.</p>"
+      },
+      {
+        "id": "guide-navigation-workspace",
+        "guideStepId": "navigation-workspace",
+        "icon": "help_outline",
+        "title": "Kinek a nevében dolgozol?",
+        "blurb": "",
+        "contentHtml": "<p>A személyes profil és az elérhető csoportmunkaterek között váltasz. A választás határozza meg, kinek a tartalmával és jogosultságaival dolgozol.</p>"
+      },
+      {
+        "id": "guide-notifications",
+        "guideStepId": "notifications",
+        "icon": "help_outline",
+        "title": "Figyelmet igénylő frissítések",
+        "blurb": "",
+        "contentHtml": "<p>Innen a csengő elrejtése után is eléred az értesítéseket. A jelvény az olvasatlanokat számolja. A csengő és a villanykörte húzható; piros X-re ejtve elrejthető.</p>"
+      },
+      {
+        "id": "guide-explanations",
+        "guideStepId": "explanations",
+        "icon": "help_outline",
+        "title": "Helyi magyarázatok megjelenítése",
+        "blurb": "",
+        "contentHtml": "<p>A súgógomb tartós ki-/bekapcsolása. A villanykörte lépésenként segít. A villanykörte és a csengő húzható; piros X-re ejtve ideiglenesen elrejthető. Itt visszakapcsolhatod a súgót.</p>"
+      },
+      {
+        "id": "guide-settings",
+        "guideStepId": "settings",
+        "icon": "help_outline",
+        "title": "Fiók- és alkalmazáseszközök",
+        "blurb": "",
+        "contentHtml": "<p>Súgót, adatvédelmet, feltételeket és fiókműveleteket nyit. Végleges művelet, például fióktörlés előtt olvasd el a megerősítést.</p>"
+      },
+      {
+        "id": "guide-feed",
+        "guideStepId": "feed",
+        "icon": "help_outline",
+        "title": "Képek eseményháttérrel",
+        "blurb": "",
+        "contentHtml": "<p>Közös képeket böngészhetsz vagy bejegyzést készíthetsz. Minden feltöltött feed-képhez esemény kell a moderációra beküldés előtt.</p>"
+      },
+      {
+        "id": "guide-followed",
+        "guideStepId": "followed",
+        "icon": "help_outline",
+        "title": "Szervezők követése",
+        "blurb": "",
+        "contentHtml": "<p>A követett szervezők eseményeit mutatja. A követés a megtalálásukat segíti; nem foglal helyet és nem léptet be az eseményekre.</p>"
+      },
+      {
+        "id": "guide-groups",
+        "guideStepId": "groups",
+        "icon": "help_outline",
+        "title": "Közösségi tagság",
+        "blurb": "",
+        "contentHtml": "<p>Áttekintheted csoportjaidat, meghívásaidat és kérelmeidet, vagy közösségeket kereshetsz. A tagság és a csoportmunkatér használata külön döntés.</p>"
+      },
+      {
+        "id": "guide-impressions",
+        "guideStepId": "impressions",
+        "icon": "help_outline",
+        "title": "Mások benyomásai rólad",
+        "blurb": "",
+        "contentHtml": "<p>Megmutatja a rólad mint szervezőről és résztvevőről alkotott benyomásokat. Ezek korábbi tapasztalatok, nem szerkeszthető profilpreferenciák.</p>"
+      },
+      {
+        "id": "guide-navigation-feedback",
+        "guideStepId": "navigation-feedback",
+        "icon": "help_outline",
+        "title": "Visszajelzés eseményekről",
+        "blurb": "",
+        "contentHtml": "<p>A függő és kitöltött eseményértékeléseket éred el. Ez részvételi visszajelzés; az alkalmazástámogatás külön, a Beállításokban található.</p>"
+      },
+      {
+        "id": "guide-rates",
+        "guideStepId": "rates",
+        "icon": "help_outline",
+        "title": "Profilértékelések áttekintése",
+        "blurb": "",
+        "contentHtml": "<p>Az értékelési aktivitásodat és szűrőit mutatja. Egy profil értékelése nem fogad el meghívást, és nem jelentkezik eseményre.</p>"
+      },
+      {
+        "id": "guide-chat",
+        "guideStepId": "chat",
+        "icon": "help_outline",
+        "title": "Beszélgetések témakörönként",
+        "blurb": "",
+        "contentHtml": "<p>Események, csoportok, kapcsolatok és támogatás beszélgetéseit nyitja. Üzenetküldés előtt a témaszűrőkkel keresd meg a megfelelő beszélgetést.</p>"
+      },
+      {
+        "id": "guide-invitations",
+        "guideStepId": "invitations",
+        "icon": "help_outline",
+        "title": "Részvételi meghívások",
+        "blurb": "",
+        "contentHtml": "<p>Válasz előtt nézd meg a meghívást és az esemény részleteit. A meghívás önmagában még nem igazol részvételt vagy rendezett fizetést.</p>"
+      },
+      {
+        "id": "guide-events",
+        "guideStepId": "events",
+        "icon": "help_outline",
+        "title": "Részvétel és szervezés",
+        "blurb": "",
+        "contentHtml": "<p>Résztvevőként vagy szervezőként érintett eseményeidet és függő ügyeidet találod itt. A szűrő elkülöníti a szerepeket és állapotokat.</p>"
+      },
+      {
+        "id": "guide-payment-history",
+        "guideStepId": "payment-history",
+        "icon": "help_outline",
+        "title": "Fizetések és visszatérítések",
+        "blurb": "",
+        "contentHtml": "<p>Fizetési bizonylatokat és visszatérítési állapotokat látsz. A függő visszatérítés még folyamatban van; a lista megnyitása nem indít pénzmozgást.</p>"
+      },
+      {
+        "id": "guide-transport",
+        "guideStepId": "transport",
+        "icon": "help_outline",
+        "title": "Járművek és fuvarok",
+        "blurb": "",
+        "contentHtml": "<p>Közlekedési eszközeidet és elérhetőségüket kezeled. Saját jármű kezelése és egy esemény járművére helyet kérni külön művelet.</p>"
+      },
+      {
+        "id": "guide-accommodation",
+        "guideStepId": "accommodation",
+        "icon": "help_outline",
+        "title": "Szálláshelyek",
+        "blurb": "",
+        "contentHtml": "<p>Szálláshelyeket, kapacitást és elérhetőséget kezelsz. Foglalás vagy eseményhez rendelt szálláshoz csatlakozás külön ellenőrzést és megerősítést igényel.</p>"
+      },
+      {
+        "id": "guide-supplies",
+        "guideStepId": "supplies",
+        "icon": "help_outline",
+        "title": "Felszerelések és hozzájárulások",
+        "blurb": "",
+        "contentHtml": "<p>Felszereléseket és mennyiségeket kezelsz. Az eseményhez rendelés és hozzájárulás szabja meg, hogyan használja őket az adott programrész.</p>"
+      },
+      {
+        "id": "guide-tickets",
+        "guideStepId": "tickets",
+        "icon": "help_outline",
+        "title": "Belépőjegyek",
+        "blurb": "",
+        "contentHtml": "<p>Jegyeidet és állapotukat mutatja. A jegy belépési jogosultságot jelöl; a kapcsolódó pénzmozgás a fizetési előzményekben szerepel.</p>"
+      },
+      {
+        "id": "guide-contacts",
+        "guideStepId": "contacts",
+        "icon": "help_outline",
+        "title": "Kapcsolatok és kérelmek",
+        "blurb": "",
+        "contentHtml": "<p>Kapcsolatokat és bejövő kérelmeket mutat. A jelvény a függő kérelmeket jelzi, ezért eltérhet a mentett kapcsolatok teljes számától.</p>"
+      },
+      {
+        "id": "guide-close",
+        "guideStepId": "close",
+        "icon": "help_outline",
+        "title": "Vissza az aktuális felületre",
+        "blurb": "",
+        "contentHtml": "<p>Másik felület megnyitása nélkül bezárja az avatar menüt.</p>"
+      },
+      {
+        "id": "guide-settings-permissions",
+        "guideStepId": "settings:permissions",
+        "icon": "help_outline",
+        "title": "Telepítés és eszközfunkciók",
+        "blurb": "",
+        "contentHtml": "<p>Az alkalmazás telepítését és engedélyeit nyitja meg. Az eszközengedélyek szabályozzák az értesítések és helyadatok használatát.</p>"
+      },
+      {
+        "id": "guide-settings-share",
+        "guideStepId": "settings:share",
+        "icon": "help_outline",
+        "title": "Az alkalmazás megosztása",
+        "blurb": "",
+        "contentHtml": "<p>Az alkalmazás megosztási lehetőségeit nyitja. Az alkalmazás linkjét osztja meg, nem a privát profilbeállításaidat.</p>"
+      },
+      {
+        "id": "guide-settings-help",
+        "guideStepId": "settings:help",
+        "icon": "help_outline",
+        "title": "A teljes súgó elolvasása",
+        "blurb": "",
+        "contentHtml": "<p>Az aktív súgódokumentumot nyitja. A verziójelvény az ezen a telepítésen közzétett súgóváltozatot azonosítja.</p>"
+      },
+      {
+        "id": "guide-settings-feedback",
+        "guideStepId": "settings:feedback",
+        "icon": "help_outline",
+        "title": "Alkalmazás-visszajelzés küldése",
+        "blurb": "",
+        "contentHtml": "<p>Alkalmazással kapcsolatos kérdést vagy javaslatot küldhetsz. Meglátogatott esemény értékeléséhez a külön esemény-visszajelzést használd.</p>"
+      },
+      {
+        "id": "guide-settings-report-bugs",
+        "guideStepId": "settings:report-bugs",
+        "icon": "help_outline",
+        "title": "Reprodukálható hiba jelentése",
+        "blurb": "",
+        "contentHtml": "<p>Másik lapon megnyitja a projekt hibajegyeit. Írd le a lépéseket, a tapasztalt hibát és az elvárt eredményt.</p>"
+      },
+      {
+        "id": "guide-settings-privacy",
+        "guideStepId": "settings:privacy",
+        "icon": "help_outline",
+        "title": "Adatkezelés áttekintése",
+        "blurb": "",
+        "contentHtml": "<p>Az aktuális adatvédelmi dokumentumot nyitja. A verzió jelzi, melyik közzétett adatkezelési tájékoztatót olvasod.</p>"
+      },
+      {
+        "id": "guide-settings-terms",
+        "guideStepId": "settings:terms",
+        "icon": "help_outline",
+        "title": "Használati feltételek áttekintése",
+        "blurb": "",
+        "contentHtml": "<p>Az alkalmazás aktuális feltételeit nyitja. Ezek az alkalmazáshasználatra vonatkoznak; eseményekhez és eszközökhöz külön szabályok is tartozhatnak.</p>"
+      },
+      {
+        "id": "guide-settings-delete-account",
+        "guideStepId": "settings:delete-account",
+        "icon": "help_outline",
+        "title": "Fióktörlés indítása",
+        "blurb": "",
+        "contentHtml": "<p>Elindítja a fióktörlés folyamatát. Megerősítés előtt olvasd el a következményeket; a guide bezárása nem törli a fiókot.</p>"
+      },
+      {
+        "id": "guide-settings-logout",
+        "guideStepId": "settings:logout",
+        "icon": "help_outline",
+        "title": "A bejelentkezés lezárása",
+        "blurb": "",
+        "contentHtml": "<p>Kijelentkeztet az aktuális munkamenetből. A fiókot igénylő műveletek folytatásához újra be kell jelentkezned.</p>"
+      },
+      {
+        "id": "guide-campaigns",
+        "guideStepId": "campaigns",
+        "icon": "help_outline",
+        "title": "Kampányok",
+        "blurb": "",
+        "contentHtml": "<p>Itt kezelheted a saját kampányaidat: piszkozatot készíthetsz, közzéteheted, majd az Értékelések menüponttal az adott kampány iránti érdeklődést nézheted meg.</p>"
+      },
+      {
+        "id": "guide-cases",
+        "guideStepId": "cases",
+        "icon": "help_outline",
+        "title": "Ügyek",
+        "blurb": "",
+        "contentHtml": "<p>Az aktuális Community környezet ügyeit nyitja meg. Csoportügy létrehozásához előbb lépj be a csoportba. Az ütemezett feladatokat az ügylista fejlécéből éred el.</p>"
+      },
+      {
+        "id": "guide-services",
+        "guideStepId": "services",
+        "icon": "help_outline",
+        "title": "Szolgáltatások",
+        "blurb": "",
+        "contentHtml": "<p>Kezeld a szolgáltatáshirdetéseidet és közreműködőidet, vagy nézd meg a szolgáltatói naptárat. A közzétett hirdetéseket a kereső felület is megjeleníti.</p>"
+      },
+      {
+        "id": "guide-notification-launcher",
+        "guideStepId": "notification-launcher",
+        "icon": "help_outline",
+        "title": "Értesítési gomb",
+        "blurb": "",
+        "contentHtml": "<p>A lebegő értesítési gomb ki- és bekapcsolása. Az értesítési központ és a kézbesítési beállítások továbbra is elérhetők.</p>"
+      }
+    ],
+    "contextKey": "navigation.menu",
+    "presentation": "tour",
+    "baseGroupId": "myscoutee-work",
+    "isSystem": false
   }
 ]

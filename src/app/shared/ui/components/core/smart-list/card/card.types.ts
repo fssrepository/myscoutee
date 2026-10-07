@@ -259,6 +259,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
   markNotificationRead: { label: 'Mark as read', icon: 'done_all', tone: 'accent' },
   openNotificationAccommodation: { label: 'Open accommodation', icon: 'apartment', tone: 'accent' },
+  openNotificationRoleTarget: { label: 'notification.action.open', icon: 'open_in_new', tone: 'accent' },
   openNotificationPayments: {label:'payment.history.title',icon:'receipt_long',tone:'accent'},
   openNotificationContacts: { label: 'Contacts', icon: 'contacts', tone: 'accent' },
   openNotificationChat: { label: 'chat', icon: 'chat', tone: 'accent' },

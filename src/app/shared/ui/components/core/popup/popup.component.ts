@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../../core/base/services/explanation-guide.service';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -48,6 +49,11 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
 
   private readonly popupPresenceStore = inject(PopupPresenceStore);
   private readonly overlayNavigation = inject(OverlayNavigationStore);
+  private readonly explanationGuide = inject(ExplanationGuideService);
+  private registeredGuideContext: string | undefined;
+  private releaseGuideContext: (() => void) | null = null;
+  @Input() guideContext: string | undefined;
+
   private navigationToken: symbol | null = null;
   private presenceToken: symbol | null = null;
   private registeredZIndex = 2300;
@@ -71,6 +77,12 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
   }
 
   private syncPresence(): void {
+    const context = this.active ? this.guideContext : undefined;
+    if (context !== this.registeredGuideContext) {
+      this.releaseGuideContext?.();
+      this.registeredGuideContext = context;
+      this.releaseGuideContext = context === undefined ? null : this.explanationGuide.registerContext(context);
+    }
     if (this.active && !this.presenceToken) {
       this.presenceToken = this.popupPresenceStore.register(this.zIndex, this.popupModel.backdrop !== false);
       this.registeredZIndex = this.popupPresenceStore.layer(this.presenceToken) ?? this.registeredZIndex;
@@ -108,6 +120,8 @@ export class PopupComponent<TContext = unknown> implements OnInit, OnChanges, On
   }
 
   ngOnDestroy(): void {
+    this.releaseGuideContext?.();
+    this.releaseGuideContext = null;
     this.detachedSurface?.remove();
     this.clearPresence();
   }

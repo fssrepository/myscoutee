@@ -1,5 +1,5 @@
 @if (admin.activePopup() === popupKey) {
-  <app-popup [model]="notificationsPopupModel()">
+  <app-popup guideContext="admin.notifications" [model]="notificationsPopupModel()">
       <ng-template #intervalText let-rule>
         <span>{{ jobI18n.interval.every | i18n }} </span>
         @for (part of intervalParts(rule); track $index; let last = $last) {
@@ -116,7 +116,7 @@
           </section>
 
           @if (detailOpen() && selectedRule(); as rule) {
-              <app-popup [model]="processDetailPopupModel(rule)" [zIndex]="2400">
+              <app-popup guideContext="admin.process-detail" [model]="processDetailPopupModel(rule)" [zIndex]="2400">
                 <div class="process-detail-scroll process-console" [ngClass]="statusClass(rule)">
                   <div class="process-hero">
                     <div class="process-hero-main">
@@ -298,7 +298,7 @@
       </div>
 
       @if (scheduleEditorOpen() && selectedRule(); as scheduleRule) {
-        <app-popup [model]="scheduleEditorPopupModel()" [zIndex]="2500">
+        <app-popup guideContext="admin.schedule-edit" [model]="scheduleEditorPopupModel()" [zIndex]="2500">
           @if (scheduleEditorDraft(); as timingDraft) {
             <div class="job-timing-editor">
               <article class="run-window-row">
@@ -326,7 +326,7 @@
       }
 
       @if (parameterDraft(); as draft) {
-        <app-popup [model]="parameterEditorPopupModel()" [zIndex]="2500">
+        <app-popup guideContext="admin.job-parameter" [model]="parameterEditorPopupModel()" [zIndex]="2500">
           <div class="run-window-list">
             @for (group of parameterFieldsByGroup(draft.fields); track group.group) {
               <article class="run-window-row job-parameters-group">

@@ -576,7 +576,7 @@ export class AdminHelpEditorPopupComponent {
 
   protected explainableSurfaces(): ExplainableSurface[] {
     return [...APP_STATIC_DATA.explainableSurfaces]
-      .filter(surface => surface.enabled)
+      .filter(surface => surface.enabled && !surface.isSystem)
       .sort((left, right) => left.order - right.order);
   }
 

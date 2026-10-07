@@ -222,6 +222,7 @@ type NavigatorSettingsMenuItemId =
 
 type NavigatorHeaderActionMenuItemId =
   | 'notifications'
+  | 'notification-launcher'
   | 'explanations'
   | 'share'
   | 'settings'
@@ -545,7 +546,7 @@ export class SideMenuComponent implements OnDestroy {
     || this.userProfileStore.activeUserLocationMissing()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   protected readonly notificationAttentionVisible = computed(() =>
-    !this.userProfileStore.activeUserLocationMissing()
+    this.notificationCenterStore.launcherEnabled() && !this.accountLocationMissing()
       && (this.notificationCenterStore.attentionVisible() || (this.connectionOffline()
         && !this.offlineAttentionDismissed() && !this.notificationCenterStore.isOpen()))
   );
@@ -696,7 +697,7 @@ export class SideMenuComponent implements OnDestroy {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
-    if (!this.isOperatorMode()) {
+    {
       items.push({
         id: 'notifications',
         label: 'Notifications',
@@ -713,7 +714,7 @@ export class SideMenuComponent implements OnDestroy {
           ? ' — ' + this.i18n.translate('game.location.required.title') : '')
       });
     }
-    if (!this.isPrivilegedWorkspaceMode()) {
+    {
       items.push(
         {
           id: 'explanations',
@@ -725,6 +726,11 @@ export class SideMenuComponent implements OnDestroy {
         }
       );
     }
+    items.push({
+      id: 'notification-launcher', label: 'notification.launcher.toggle', icon: 'notifications_active',
+      kind: 'toggle', checked: this.notificationCenterStore.launcherEnabled(),
+      ariaLabel: 'notification.launcher.toggle'
+    });
     items.push({
       id: 'settings',
       label: 'Settings',
@@ -1094,6 +1100,8 @@ export class SideMenuComponent implements OnDestroy {
       ]
     };
   });
+  protected readonly navigationGuideContext = computed(() => this.isOperatorMode() ? 'operator.navigation' : this.isAdminMode() ? 'admin.navigation' : 'navigation.menu');
+
   constructor() {
     const overlayNavigation = inject(OverlayNavigationStore);
     effect(onCleanup => {
@@ -1102,7 +1110,8 @@ export class SideMenuComponent implements OnDestroy {
         this.closeSideMenu();
         return;
       }
-      const unregisterGuide = untracked(() => this.explanationGuide.registerContext('navigation.menu'));
+      const guideContext = this.navigationGuideContext();
+      const unregisterGuide = untracked(() => this.explanationGuide.registerContext(guideContext));
       onCleanup(unregisterGuide);
       const token = overlayNavigation.register(() => this.closeSideMenu());
       onCleanup(() => overlayNavigation.unregister(token));
@@ -1187,12 +1196,6 @@ export class SideMenuComponent implements OnDestroy {
         this.profileStore.closeContactsPopup();
         return;
       }
-      if (this.isOperatorMode()) {
-        this.stopUserRealtimeLongPoll();
-        this.profileStore.closeImpressionsPopup();
-        this.profileStore.closeContactsPopup();
-        return;
-      }
       if (this.isAdminWorkspaceRoute() || this.userProfileStore.activeUserIsAdmin()) {
         this.profileStore.closeImpressionsPopup();
         this.profileStore.closeContactsPopup();
@@ -1208,8 +1211,7 @@ export class SideMenuComponent implements OnDestroy {
       const user = this.userProfileStore.activeUserProfile();
       const activeUserId = this.userProfileStore.activeUserId().trim();
       if (
-        this.isOperatorMode()
-        || !session
+        !session
         || !user
         || !activeUserId
         || user.id.trim() !== activeUserId
@@ -1495,7 +1497,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected dismissNotificationLauncher(): void {
-    this.notificationCenterStore.dismissAttention();
+    this.notificationCenterStore.setLauncherEnabled(false);
     this.offlineAttentionDismissed.set(true);
   }
 
@@ -1507,6 +1509,10 @@ export class SideMenuComponent implements OnDestroy {
     switch (event.id) {
       case 'notifications':
         this.openNotificationCenter(event.sourceEvent);
+        return;
+      case 'notification-launcher':
+        this.notificationCenterStore.setLauncherEnabled(!this.notificationCenterStore.launcherEnabled());
+        this.offlineAttentionDismissed.set(false);
         return;
       case 'explanations':
         this.onToggleExplanationGuide(event.sourceEvent);
@@ -2459,7 +2465,26 @@ export class SideMenuComponent implements OnDestroy {
 
   private openingNotificationRoute = '';
   private async openNotificationRoute(url: string): Promise<void> {
-    if (AppUtils.normalizeRoutePath(url) !== '/game' || this.openingNotificationRoute === url) return;
+    if (this.openingNotificationRoute === url) return;
+    const route = AppUtils.normalizeRoutePath(url);
+    const roleTarget = this.router.parseUrl(url).queryParams['notificationTarget'];
+    if (roleTarget && (route === '/operator' || route === '/admin')) {
+      if (route === '/operator' && this.isOperatorMode() && roleTarget === 'updates') this.operatorMenuStore.open('updates');
+      else if (route === '/admin' && this.isAdminMode()) {
+        if (roleTarget === 'reports') this.adminMenuStore.openReports();
+        else if (roleTarget === 'feedback') this.adminMenuStore.openFeedback();
+        else if (roleTarget === 'stats') this.adminMenuStore.openStats();
+        else return;
+      } else return;
+      this.openingNotificationRoute = url;
+      try {
+        const tree = this.router.parseUrl(url);
+        delete tree.queryParams['notificationTarget'];
+        if (this.router.url === url) await this.router.navigateByUrl(tree, { replaceUrl: true });
+      } finally { if (this.openingNotificationRoute === url) this.openingNotificationRoute = ''; }
+      return;
+    }
+    if (route !== '/game') return;
     const params = this.router.parseUrl(url).queryParams;
     if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId'] && !params['caseId'] && !params['announcementId'] && !params['payments'] && !params['ratings'] && !params['serviceFeedback']) return;
     const accountId = this.groupWorkspaces.context.accountUserId();

@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'idea-editor') {
-  <app-popup [model]="ideaEditorPopupModel()">
+  <app-popup guideContext="admin.idea-editor" [model]="ideaEditorPopupModel()">
       <div class="idea-editor-body">
         @if (error) {
           <div class="idea-editor-error">
@@ -33,7 +33,7 @@
   </app-popup>
 
   @if (articlePanelLoading && articlePanelLoadingMode === 'viewer') {
-    <app-popup class="idea-editor-article-viewer-popup" [model]="articleViewerLoadingPopupModel()" [zIndex]="2500">
+    <app-popup guideContext="admin.article-view" class="idea-editor-article-viewer-popup" [model]="articleViewerLoadingPopupModel()" [zIndex]="2500">
       <div class="idea-editor-viewer-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
           <app-indicator
@@ -45,7 +45,7 @@
       </div>
     </app-popup>
   } @else if (selectedViewerPost(); as post) {
-    <app-popup class="idea-editor-article-viewer-popup" [model]="articleViewerPopupModel(post)" [zIndex]="2500">
+    <app-popup guideContext="admin.article-view" class="idea-editor-article-viewer-popup" [model]="articleViewerPopupModel(post)" [zIndex]="2500">
       <article class="idea-editor-viewer-panel">
         <div class="idea-editor-viewer-body">
           <div class="idea-editor-html-preview idea-editor-viewer-html">
@@ -57,7 +57,7 @@
   }
 
   @if (articlePanelLoading && articlePanelLoadingMode === 'editor' && !draft) {
-    <app-popup class="idea-editor-article-editor-popup" [model]="articleEditorLoadingPopupModel()" [zIndex]="2400">
+    <app-popup guideContext="admin.article-edit" class="idea-editor-article-editor-popup" [model]="articleEditorLoadingPopupModel()" [zIndex]="2400">
       <div class="idea-editor-form-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
           <app-indicator
@@ -71,7 +71,7 @@
   }
 
   @if (editing && draft; as editDraft) {
-    <app-popup class="idea-editor-article-editor-popup" [model]="articleEditorPopupModel(editDraft)" [zIndex]="2400">
+    <app-popup guideContext="admin.article-edit" class="idea-editor-article-editor-popup" [model]="articleEditorPopupModel(editDraft)" [zIndex]="2400">
       <form class="idea-editor-form-panel" (ngSubmit)="saveDraft($event)">
         @if (articlePanelLoading && articlePanelLoadingMode === 'editor') {
           <div class="idea-editor-form-loading-overlay" aria-busy="true">

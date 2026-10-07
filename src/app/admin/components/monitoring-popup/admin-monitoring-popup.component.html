@@ -1,5 +1,5 @@
 @if (admin.activePopup() === popupKey) {
-  <app-popup [model]="monitoringPopupModel()">
+  <app-popup guideContext="admin.monitoring" [model]="monitoringPopupModel()">
     <div class="monitoring-body">
       @if (loading()) {
         <div class="monitoring-state monitoring-loading-state" aria-busy="true">

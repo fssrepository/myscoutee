@@ -19,6 +19,7 @@ export interface HelpCenterSectionRecord {
 }
 
 export interface HelpCenterRevisionRecord {
+  isSystem?: boolean;
   id: string;
   documentKind?: string;
   contextKey?: string | null;

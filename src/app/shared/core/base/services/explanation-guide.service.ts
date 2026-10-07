@@ -113,6 +113,7 @@ export class ExplanationGuideService {
   }
 
   setEnabled(enabled: boolean): void {
+    if (enabled) this.launcherDismissedRef.set(false);
     if (this.enabledRef() === enabled) {
       return;
     }

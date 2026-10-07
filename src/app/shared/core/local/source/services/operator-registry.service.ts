@@ -1,3 +1,4 @@
+import { LocalRoleNotificationsService } from './role-notifications.service';
 import { Injectable, inject } from '@angular/core';
 
 import { OperatorConfigurationMapper } from '../../../base/mappers/operator-configuration.mapper';
@@ -94,6 +95,7 @@ const OPERATOR_COMMUNITY_ROUTE = '/operator/community';
 })
 export class LocalOperatorRegistryService extends LocalRouteDelayService implements OperatorRegistryServiceContract {
   readonly source = 'demo' as const;
+  private readonly roleNotifications = inject(LocalRoleNotificationsService);
   private readonly repository = inject(LocalOperatorRegistryRepository);
 
   async loadStatus(): Promise<OperatorRegistryStatusDto> {
@@ -742,7 +744,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_UPDATE_ROUTE);
-    return structuredClone((await this.readStored()).deploymentUpdate);
+    const update = structuredClone((await this.readStored()).deploymentUpdate);
+    if (update.updateAvailable) await this.roleNotifications.publish('release-available', update.availableVersion,
+      { releaseVersion: update.availableVersion });
+    return update;
   }
 
   async applyDeploymentUpdate(

@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'feedback') {
-  <app-popup [model]="feedbackPopupModel()">
+  <app-popup guideContext="admin.feedback" [model]="feedbackPopupModel()">
       <div class="admin-list-only-body">
         <app-smart-list
           #feedbackSmartList
@@ -26,7 +26,7 @@
 }
 
 @if (feedbackDetail; as item) {
-  <app-popup [model]="feedbackDetailPopupModel(item)" [zIndex]="2400">
+  <app-popup guideContext="admin.feedback-detail" [model]="feedbackDetailPopupModel(item)" [zIndex]="2400">
       <div class="admin-detail-popup-body">
         <article class="admin-chat-detail-message">
           <div class="admin-message-bubble admin-feedback-detail-bubble" [ngClass]="feedbackCategoryToneClass(item)">

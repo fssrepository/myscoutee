@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'item-preview') {
-  <app-popup [model]="itemPreviewPopupModel()">
+  <app-popup guideContext="admin.item-preview" [model]="itemPreviewPopupModel()">
       <div class="admin-item-preview-body">
         @if (admin.selectedReport(); as report) {
           <div class="admin-detail-pane">

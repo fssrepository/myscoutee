@@ -28,7 +28,7 @@
   </div>
 }
 
-@if (avatarVisible() && !isOperatorMode() && (notificationAttentionVisible() || explanationGuide.launcherVisible())) {
+@if (avatarVisible() && (notificationAttentionVisible() || explanationGuide.launcherVisible())) {
   <div
     class="floating-launcher-rail"
     [style.z-index]="floatingLauncherZIndex()"
@@ -61,7 +61,7 @@
     }
     <aside
       class="user-menu-panel"
-      [attr.data-guide-surface]="ui.open ? 'navigation.menu' : null"
+      [attr.data-guide-surface]="ui.open ? navigationGuideContext() : null"
       [class.open]="ui.open"
     >
       <div class="navigator-menu-header">

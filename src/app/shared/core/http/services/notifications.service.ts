@@ -123,6 +123,7 @@ export class HttpNotificationsService implements NotificationService {
         this.http.post<Partial<NotificationSyncResponseDto> | null>(
           `${this.apiBaseUrl}${HttpNotificationsService.ROUTE}/sync`,
           {
+            workspace: request.workspace ?? 'all',
             bucket: request.bucket === 'new' ? 'new' : 'all',
             limit: Math.max(1, Math.min(100, Math.trunc(Number(request.limit) || 20))),
             knownItems: request.knownItems.map(item => ({

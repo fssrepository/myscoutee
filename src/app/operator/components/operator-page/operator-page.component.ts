@@ -1,3 +1,5 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { DestroyRef } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -270,6 +272,8 @@ export class OperatorPageComponent implements OnInit {
   > = (query, context) => from(this.leaderboard.queryPage(query, context?.signal));
 
   constructor() {
+    const releaseGuide = inject(ExplanationGuideService).registerContext('operator.home');
+    inject(DestroyRef).onDestroy(releaseGuide);
     effect(() => {
       const popup = this.activePopup();
       if (popup === 'registration') {

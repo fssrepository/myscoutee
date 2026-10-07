@@ -16,6 +16,16 @@ const date = '2026-09-20T12:00:00.000Z';
 let stale = false;
 function write(file, value) { staged.set(file, structuredClone(value)); }
 function flush() {
+  // Validate every catalog before writing any file: Mongo's unique revision key must survive import.
+  for (const [file, rows] of staged) if (file.endsWith('/helpCenterRevisions.json')) {
+    const identities = new Set();
+    for (const row of rows) {
+      const context = JSON.stringify([row.baseGroupId ?? null, row.documentType, row.lang, row.contextKey ?? null]);
+      const identity = `${context}:${row.version}`;
+      if (identities.has(identity)) throw new Error(`Duplicate guide revision in ${file}: ${identity}`);
+      identities.add(identity);
+    }
+  }
   for (const [file, value] of staged) {
     if (file.endsWith('/helpCenterRevisions.json') && fs.existsSync(file)) {
       const order = new Map(JSON.parse(fs.readFileSync(file, 'utf8')).map((row,index) => [row._id,index]));
@@ -363,6 +373,29 @@ for(const database of ['demo_db','e2e_db']) {
  const source=read(path.join(data,'payment-fixtures.json'));
  const fixtures=resolve(database==='demo_db'?source:{methods:source.methods});
  for(const [key,collection] of (database==='demo_db'?[['methods','savedPaymentMethods'],['payments','payments']]:[['methods','savedPaymentMethods']])){const file=path.join(dir,`${collection}.json`),ids=new Set(fixtures[key].map(row=>row._id));write(file,[...read(file).filter(row=>!ids.has(id(row._id))),...fixtures[key]]);}
+}
+// Privileged demo inboxes use the same definitions as the local seed builder.
+for (const database of ['demo_db', 'e2e_db']) {
+  const dir = path.join(mongo, database);
+  const users = read(path.join(dir, 'users.json'));
+  const settings = read(path.join(dir, 'appSettings.json')).find(row => row._id === 'app-settings-global');
+  const admins = new Set(settings?.adminAccessEnabled ? settings.adminEmails ?? [] : []);
+  const definitions = read(path.join(data, 'role-notifications.json'));
+  const file = path.join(dir, 'userNotifications.json');
+  const rows = read(file).filter(row => !row._id.includes(':notification-role-v1:'));
+  for (const user of users.filter(row => !row.workspaceGroupId && (row.operator || admins.has(row.email)))) {
+    const role = user.operator ? 'operator' : 'admin';
+    for (const [index, definition] of definitions.filter(item => item.role === role).entries()) {
+      const { role: _role, ...item } = definition;
+      const id = `${user.userId}:notification-role-v1:${item.kind}`;
+      const at = new Date(Date.parse('2026-07-27T18:30:00.000Z') - index * 60_000).toISOString();
+      rows.push({ ...item, _id: id, syncKey: id, recipientUserId: user.userId, readAtIso: null,
+        createdDate: at, updatedDate: at, createdUser: 'system', updatedUser: 'system' });
+    }
+    user.activities = { ...user.activities, notifications: rows.filter(row => row.recipientUserId === user.userId && !row.readAtIso).length };
+  }
+  write(file, rows);
+  write(path.join(dir, 'users.json'), users);
 }
 flush();
 if (stale) process.exitCode = 1;

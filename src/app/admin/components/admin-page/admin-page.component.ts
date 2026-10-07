@@ -1,3 +1,5 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { DestroyRef } from '@angular/core';
 import { UserProfileStore } from "../../../shared/ui/context/stores/user-profile.store";
 import {
   CommonModule,
@@ -99,6 +101,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
 
   constructor() {
+    const releaseGuide = inject(ExplanationGuideService).registerContext('admin.home');
+    inject(DestroyRef).onDestroy(releaseGuide);
     this.document.documentElement.classList.add('admin-document-no-scroll');
     this.document.body.classList.add('admin-document-no-scroll');
 

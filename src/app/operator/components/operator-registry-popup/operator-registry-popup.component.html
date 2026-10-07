@@ -1,5 +1,5 @@
 @if (operatorMenu.activePopup() === 'registration') {
-  <app-popup [model]="popupModel()">
+  <app-popup guideContext="operator.registration" [model]="popupModel()">
     <section class="operator-registration" [attr.aria-busy]="busy()">
       @if (loading()) {
         <div class="operator-registration__loading" role="status">
