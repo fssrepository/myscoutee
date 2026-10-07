@@ -252,3 +252,11 @@
   dd { margin: 0; font-weight: 700; text-align: right; }
   .affiliate-revenue-net { color: #16815c; }
 }
+.integration-credential-row {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  min-width: 0;
+
+  app-copy-link { flex: 1; min-width: 0; }
+}

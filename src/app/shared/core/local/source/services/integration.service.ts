@@ -12,6 +12,7 @@ import { UserProfileStore } from '../../../../ui/context/stores/user-profile.sto
 import { SessionService } from '../../../base/services/session.service';
 import type {
   IntegrationSettingsDto,
+  IntegrationSettingsUpdateDto,
   IntegrationTokenCreatedDto
 } from '../../../contracts/integration.interface';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
@@ -134,14 +135,31 @@ export class LocalIntegrationService extends LocalRouteDelayService {
   mcpConsent(_input: McpAuthorizationRequest, _approve: boolean, profileId?: string): Promise<{url: string}> { return Promise.reject(new Error('mcp.local.only')); }
 
   async loadSettings(admin = false): Promise<IntegrationSettingsDto> {
+    const owner = this.requireUserId(admin);
     await this.repository.whenReady();
     await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
-    const settings = this.repository.settings(this.requireUserId(admin), admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
+    const settings = await this.settingsSnapshot(owner, admin);
+    await this.repository.flushToIndexedDb();
+    return settings;
+  }
+
+  private async settingsSnapshot(owner: string, admin = false): Promise<IntegrationSettingsDto> {
+    const settings = this.repository.settings(owner, admin ? '/api/admin-client/v1' : await this.publicBaseUrl(), admin);
+    if (!admin) settings.mcp = this.repository.mcpSettings(owner, new URL('/mcp/private', settings.baseUrl).toString());
     if (settings.affiliate?.revenue) {
       const revenue = settings.affiliate.revenue;
-      revenue.euroSummary = LocalPaymentSummaryMapper.build(this.requireUserId(admin),
+      revenue.euroSummary = LocalPaymentSummaryMapper.build(owner,
         Object.entries(revenue.currencies).map(([currency, row]) => ({ currency, gross: row.gross, refunded: row.refunded })));
     }
+    return settings;
+  }
+
+  async saveSettings(request: IntegrationSettingsUpdateDto): Promise<IntegrationSettingsDto> {
+    const owner = this.requireUserId();
+    await this.repository.whenReady();
+    await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
+    this.repository.saveAccess(owner, request);
+    const settings = await this.settingsSnapshot(owner);
     await this.repository.flushToIndexedDb();
     return settings;
   }

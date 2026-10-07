@@ -7,6 +7,26 @@ import { LocalUsersMapper } from '../mappers/user.mapper';
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
 
 describe('Local affiliate summary', () => {
+  it('persists one access revision and rejects a foreign client without changing the draft owner', () => {
+    let state: any = {[USERS_TABLE_NAME]: {ids:['owner','other'], byId:{
+      owner:{id:'owner',languages:[],images:[]}, other:{id:'other',languages:[],images:[]}
+    }}};
+    const db={read:()=>state,write:(change:any)=>{state=change(state);}};
+    const injector=createEnvironmentInjector([{provide:LocalMemoryDb,useValue:db}],null as any);
+    const repo=runInInjectionContext(injector,()=>new LocalIntegrationRepository());
+    const api=repo.createToken('owner','API',30),mcp=repo.createMcpClient('owner',{name:'MCP'});
+    const foreign=repo.createToken('other','Other',30);
+    const request={accessRevision:0,mcpAccess:'full' as const,clients:[{id:api.token.id,accessMode:'blocked' as const},{id:mcp.client.token.id,accessMode:'full' as const}]};
+    expect(()=>repo.saveAccess('owner',{...request,clients:[...request.clients,{id:foreign.token.id,accessMode:'full'}]})).toThrow();
+    expect(state[USERS_TABLE_NAME].byId.owner.integrationAccess).toBeUndefined();
+    repo.saveAccess('owner',request);
+    expect(repo.settings('owner','/api/integrations/v1').tokens[0].accessMode).toBe('blocked');
+    expect(repo.mcpSettings('owner','/mcp/private').accessMode).toBe('full');
+    expect(state[USERS_TABLE_NAME].byId.owner.integrationAccess.revision).toBe(1);
+    expect(()=>repo.saveAccess('owner',request)).toThrow('integration.access.conflict');
+    expect(state[USERS_TABLE_NAME].byId.other.integrationAccess).toBeUndefined();
+    injector.destroy();
+  });
   it('persists a stable link and counts each new referral once without exposing attribution in the profile DTO', () => {
     let state: any = { [USERS_TABLE_NAME]: { ids: ['owner', 'member'], byId: {
       owner: {id:'owner',languages:[],images:[]}, member:{id:'member',languages:[],images:[]}
