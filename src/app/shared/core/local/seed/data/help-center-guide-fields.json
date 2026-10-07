@@ -6119,6 +6119,13 @@
       "group": "overview",
       "i18nKey": "guide.navigation.menu.services",
       "order": 32
+    },
+    {
+      "id": "notification-launcher",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.navigation.menu.notification-launcher",
+      "order": 33
     }
   ],
   "members": [
@@ -8501,6 +8508,1032 @@
       "group": "main",
       "i18nKey": "guide.landing.consent.entry-privacy-accept",
       "order": 1
+    }
+  ],
+  "operator.home": [
+    {
+      "id": "updates",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.operator.home.updates",
+      "order": 0
+    },
+    {
+      "id": "configuration",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.operator.home.configuration",
+      "order": 1
+    },
+    {
+      "id": "registration",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.operator.home.registration",
+      "order": 2
+    },
+    {
+      "id": "claim",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.operator.home.claim",
+      "order": 3
+    },
+    {
+      "id": "revenue",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.operator.home.revenue",
+      "order": 4
+    },
+    {
+      "id": "leaderboard",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.operator.home.leaderboard",
+      "order": 5
+    }
+  ],
+  "operator.updates": [
+    {
+      "id": "overview",
+      "screenKey": "operator.updates",
+      "group": "menus",
+      "i18nKey": "guide.operator.updates.overview",
+      "order": 0
+    },
+    {
+      "id": "operator-refresh-update",
+      "screenKey": "operator.updates",
+      "group": "menus",
+      "i18nKey": "guide.operator.updates.operator-refresh-update",
+      "order": 1
+    },
+    {
+      "id": "operator-apply-update",
+      "screenKey": "operator.updates",
+      "group": "menus",
+      "i18nKey": "guide.operator.updates.operator-apply-update",
+      "order": 2
+    },
+    {
+      "id": "operator-rollback-update",
+      "screenKey": "operator.updates",
+      "group": "menus",
+      "i18nKey": "guide.operator.updates.operator-rollback-update",
+      "order": 3
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.updates",
+      "group": "popup",
+      "i18nKey": "guide.operator.updates.close",
+      "order": 4
+    }
+  ],
+  "operator.registration": [
+    {
+      "id": "overview",
+      "screenKey": "operator.registration",
+      "group": "menus",
+      "i18nKey": "guide.operator.registration.overview",
+      "order": 0
+    },
+    {
+      "id": "register",
+      "screenKey": "operator.registration",
+      "group": "menus",
+      "i18nKey": "guide.operator.registration.register",
+      "order": 1
+    },
+    {
+      "id": "disconnect",
+      "screenKey": "operator.registration",
+      "group": "menus",
+      "i18nKey": "guide.operator.registration.disconnect",
+      "order": 2
+    },
+    {
+      "id": "synchronize-measurements",
+      "screenKey": "operator.registration",
+      "group": "menus",
+      "i18nKey": "guide.operator.registration.synchronize-measurements",
+      "order": 3
+    },
+    {
+      "id": "refresh",
+      "screenKey": "operator.registration",
+      "group": "menus",
+      "i18nKey": "guide.operator.registration.refresh",
+      "order": 4
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.registration",
+      "group": "popup",
+      "i18nKey": "guide.operator.registration.close",
+      "order": 5
+    }
+  ],
+  "operator.claim": [
+    {
+      "id": "overview",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.operator.claim.overview",
+      "order": 0
+    },
+    {
+      "id": "operator-claim-path-company",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.operator.claim.operator-claim-path-company",
+      "order": 1
+    },
+    {
+      "id": "operator-claim-path-client-code",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.operator.claim.operator-claim-path-client-code",
+      "order": 2
+    },
+    {
+      "id": "operator-claim-legal-name",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.operator.claim.operator-claim-legal-name",
+      "order": 3
+    },
+    {
+      "id": "operator-claim-attestation",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.operator.claim.operator-claim-attestation",
+      "order": 4
+    },
+    {
+      "id": "operator-redeem-token",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.operator.claim.operator-redeem-token",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.claim",
+      "group": "popup",
+      "i18nKey": "guide.operator.claim.close",
+      "order": 6
+    }
+  ],
+  "operator.configuration": [
+    {
+      "id": "overview",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.operator.configuration.overview",
+      "order": 0
+    },
+    {
+      "id": "operator-save-branding",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.operator.configuration.operator-save-branding",
+      "order": 1
+    },
+    {
+      "id": "operator-save-admin-emails",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.operator.configuration.operator-save-admin-emails",
+      "order": 2
+    },
+    {
+      "id": "operator-save-privacy-contact",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.operator.configuration.operator-save-privacy-contact",
+      "order": 3
+    },
+    {
+      "id": "operator-save-firebase",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.operator.configuration.operator-save-firebase",
+      "order": 4
+    },
+    {
+      "id": "operator-save-tls",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.operator.configuration.operator-save-tls",
+      "order": 5
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.configuration",
+      "group": "popup",
+      "i18nKey": "guide.operator.configuration.close",
+      "order": 6
+    }
+  ],
+  "operator.revenue": [
+    {
+      "id": "overview",
+      "screenKey": "operator.revenue",
+      "group": "menus",
+      "i18nKey": "guide.operator.revenue.overview",
+      "order": 0
+    },
+    {
+      "id": "operator-synchronize-revenue",
+      "screenKey": "operator.revenue",
+      "group": "menus",
+      "i18nKey": "guide.operator.revenue.operator-synchronize-revenue",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.revenue",
+      "group": "popup",
+      "i18nKey": "guide.operator.revenue.close",
+      "order": 2
+    }
+  ],
+  "operator.community": [
+    {
+      "id": "overview",
+      "screenKey": "operator.community",
+      "group": "menus",
+      "i18nKey": "guide.operator.community.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.community",
+      "group": "popup",
+      "i18nKey": "guide.operator.community.close",
+      "order": 1
+    }
+  ],
+  "operator.deployments": [
+    {
+      "id": "overview",
+      "screenKey": "operator.deployments",
+      "group": "menus",
+      "i18nKey": "guide.operator.deployments.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "operator.deployments",
+      "group": "popup",
+      "i18nKey": "guide.operator.deployments.close",
+      "order": 1
+    }
+  ],
+  "admin.home": [
+    {
+      "id": "overview",
+      "screenKey": "admin.home",
+      "group": "menus",
+      "i18nKey": "guide.admin.home.overview",
+      "order": 0
+    }
+  ],
+  "admin.content-moderation": [
+    {
+      "id": "overview",
+      "screenKey": "admin.content-moderation",
+      "group": "menus",
+      "i18nKey": "guide.admin.content-moderation.overview",
+      "order": 0
+    },
+    {
+      "id": "status",
+      "screenKey": "admin.content-moderation",
+      "group": "menus",
+      "i18nKey": "guide.admin.content-moderation.status",
+      "order": 1
+    },
+    {
+      "id": "category",
+      "screenKey": "admin.content-moderation",
+      "group": "menus",
+      "i18nKey": "guide.admin.content-moderation.category",
+      "order": 2
+    },
+    {
+      "id": "settings",
+      "screenKey": "admin.content-moderation",
+      "group": "menus",
+      "i18nKey": "guide.admin.content-moderation.settings",
+      "order": 3
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.content-moderation",
+      "group": "popup",
+      "i18nKey": "guide.admin.content-moderation.close",
+      "order": 4
+    }
+  ],
+  "admin.moderation-settings": [
+    {
+      "id": "overview",
+      "screenKey": "admin.moderation-settings",
+      "group": "menus",
+      "i18nKey": "guide.admin.moderation-settings.overview",
+      "order": 0
+    },
+    {
+      "id": "save",
+      "screenKey": "admin.moderation-settings",
+      "group": "menus",
+      "i18nKey": "guide.admin.moderation-settings.save",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.moderation-settings",
+      "group": "popup",
+      "i18nKey": "guide.admin.moderation-settings.close",
+      "order": 2
+    }
+  ],
+  "admin.reports": [
+    {
+      "id": "overview",
+      "screenKey": "admin.reports",
+      "group": "menus",
+      "i18nKey": "guide.admin.reports.overview",
+      "order": 0
+    },
+    {
+      "id": "reports-review-status-filter",
+      "screenKey": "admin.reports",
+      "group": "menus",
+      "i18nKey": "guide.admin.reports.reports-review-status-filter",
+      "order": 1
+    },
+    {
+      "id": "blocked-users",
+      "screenKey": "admin.reports",
+      "group": "menus",
+      "i18nKey": "guide.admin.reports.blocked-users",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.reports",
+      "group": "popup",
+      "i18nKey": "guide.admin.reports.close",
+      "order": 3
+    }
+  ],
+  "admin.report-detail": [
+    {
+      "id": "overview",
+      "screenKey": "admin.report-detail",
+      "group": "menus",
+      "i18nKey": "guide.admin.report-detail.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.report-detail",
+      "group": "popup",
+      "i18nKey": "guide.admin.report-detail.close",
+      "order": 1
+    }
+  ],
+  "admin.blocked-users": [
+    {
+      "id": "overview",
+      "screenKey": "admin.blocked-users",
+      "group": "menus",
+      "i18nKey": "guide.admin.blocked-users.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.blocked-users",
+      "group": "popup",
+      "i18nKey": "guide.admin.blocked-users.close",
+      "order": 1
+    }
+  ],
+  "admin.feedback": [
+    {
+      "id": "overview",
+      "screenKey": "admin.feedback",
+      "group": "menus",
+      "i18nKey": "guide.admin.feedback.overview",
+      "order": 0
+    },
+    {
+      "id": "feedback-review-status-filter",
+      "screenKey": "admin.feedback",
+      "group": "menus",
+      "i18nKey": "guide.admin.feedback.feedback-review-status-filter",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.feedback",
+      "group": "popup",
+      "i18nKey": "guide.admin.feedback.close",
+      "order": 2
+    }
+  ],
+  "admin.feedback-detail": [
+    {
+      "id": "overview",
+      "screenKey": "admin.feedback-detail",
+      "group": "menus",
+      "i18nKey": "guide.admin.feedback-detail.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.feedback-detail",
+      "group": "popup",
+      "i18nKey": "guide.admin.feedback-detail.close",
+      "order": 1
+    }
+  ],
+  "admin.chat-review": [
+    {
+      "id": "overview",
+      "screenKey": "admin.chat-review",
+      "group": "menus",
+      "i18nKey": "guide.admin.chat-review.overview",
+      "order": 0
+    },
+    {
+      "id": "message",
+      "screenKey": "admin.chat-review",
+      "group": "menus",
+      "i18nKey": "guide.admin.chat-review.message",
+      "order": 1
+    },
+    {
+      "id": "send-warning",
+      "screenKey": "admin.chat-review",
+      "group": "menus",
+      "i18nKey": "guide.admin.chat-review.send-warning",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.chat-review",
+      "group": "popup",
+      "i18nKey": "guide.admin.chat-review.close",
+      "order": 3
+    }
+  ],
+  "admin.item-preview": [
+    {
+      "id": "overview",
+      "screenKey": "admin.item-preview",
+      "group": "menus",
+      "i18nKey": "guide.admin.item-preview.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.item-preview",
+      "group": "popup",
+      "i18nKey": "guide.admin.item-preview.close",
+      "order": 1
+    }
+  ],
+  "admin.help-editor": [
+    {
+      "id": "overview",
+      "screenKey": "admin.help-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.help-editor.overview",
+      "order": 0
+    },
+    {
+      "id": "help-document",
+      "screenKey": "admin.help-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.help-editor.help-document",
+      "order": 1
+    },
+    {
+      "id": "help-language",
+      "screenKey": "admin.help-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.help-editor.help-language",
+      "order": 2
+    },
+    {
+      "id": "help-new-revision",
+      "screenKey": "admin.help-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.help-editor.help-new-revision",
+      "order": 3
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.help-editor",
+      "group": "popup",
+      "i18nKey": "guide.admin.help-editor.close",
+      "order": 4
+    }
+  ],
+  "admin.idea-editor": [
+    {
+      "id": "overview",
+      "screenKey": "admin.idea-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.idea-editor.overview",
+      "order": 0
+    },
+    {
+      "id": "idea-filter",
+      "screenKey": "admin.idea-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.idea-editor.idea-filter",
+      "order": 1
+    },
+    {
+      "id": "idea-language",
+      "screenKey": "admin.idea-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.idea-editor.idea-language",
+      "order": 2
+    },
+    {
+      "id": "idea-new",
+      "screenKey": "admin.idea-editor",
+      "group": "menus",
+      "i18nKey": "guide.admin.idea-editor.idea-new",
+      "order": 3
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.idea-editor",
+      "group": "popup",
+      "i18nKey": "guide.admin.idea-editor.close",
+      "order": 4
+    }
+  ],
+  "admin.article-view": [
+    {
+      "id": "overview",
+      "screenKey": "admin.article-view",
+      "group": "menus",
+      "i18nKey": "guide.admin.article-view.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.article-view",
+      "group": "popup",
+      "i18nKey": "guide.admin.article-view.close",
+      "order": 1
+    }
+  ],
+  "admin.article-edit": [
+    {
+      "id": "overview",
+      "screenKey": "admin.article-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.article-edit.overview",
+      "order": 0
+    },
+    {
+      "id": "article-save",
+      "screenKey": "admin.article-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.article-edit.article-save",
+      "order": 1
+    },
+    {
+      "id": "article-preview",
+      "screenKey": "admin.article-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.article-edit.article-preview",
+      "order": 2
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.article-edit",
+      "group": "popup",
+      "i18nKey": "guide.admin.article-edit.close",
+      "order": 3
+    }
+  ],
+  "admin.notifications": [
+    {
+      "id": "overview",
+      "screenKey": "admin.notifications",
+      "group": "menus",
+      "i18nKey": "guide.admin.notifications.overview",
+      "order": 0
+    },
+    {
+      "id": "process-filter",
+      "screenKey": "admin.notifications",
+      "group": "menus",
+      "i18nKey": "guide.admin.notifications.process-filter",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.notifications",
+      "group": "popup",
+      "i18nKey": "guide.admin.notifications.close",
+      "order": 2
+    }
+  ],
+  "admin.process-detail": [
+    {
+      "id": "overview",
+      "screenKey": "admin.process-detail",
+      "group": "menus",
+      "i18nKey": "guide.admin.process-detail.overview",
+      "order": 0
+    },
+    {
+      "id": "process-detail-save",
+      "screenKey": "admin.process-detail",
+      "group": "menus",
+      "i18nKey": "guide.admin.process-detail.process-detail-save",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.process-detail",
+      "group": "popup",
+      "i18nKey": "guide.admin.process-detail.close",
+      "order": 2
+    }
+  ],
+  "admin.schedule-edit": [
+    {
+      "id": "overview",
+      "screenKey": "admin.schedule-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.schedule-edit.overview",
+      "order": 0
+    },
+    {
+      "id": "schedule-save",
+      "screenKey": "admin.schedule-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.schedule-edit.schedule-save",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.schedule-edit",
+      "group": "popup",
+      "i18nKey": "guide.admin.schedule-edit.close",
+      "order": 2
+    }
+  ],
+  "admin.job-parameter": [
+    {
+      "id": "overview",
+      "screenKey": "admin.job-parameter",
+      "group": "menus",
+      "i18nKey": "guide.admin.job-parameter.overview",
+      "order": 0
+    },
+    {
+      "id": "parameter-save",
+      "screenKey": "admin.job-parameter",
+      "group": "menus",
+      "i18nKey": "guide.admin.job-parameter.parameter-save",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.job-parameter",
+      "group": "popup",
+      "i18nKey": "guide.admin.job-parameter.close",
+      "order": 2
+    }
+  ],
+  "admin.params": [
+    {
+      "id": "overview",
+      "screenKey": "admin.params",
+      "group": "menus",
+      "i18nKey": "guide.admin.params.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.params",
+      "group": "popup",
+      "i18nKey": "guide.admin.params.close",
+      "order": 1
+    }
+  ],
+  "admin.parameter-edit": [
+    {
+      "id": "overview",
+      "screenKey": "admin.parameter-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.parameter-edit.overview",
+      "order": 0
+    },
+    {
+      "id": "save-edit",
+      "screenKey": "admin.parameter-edit",
+      "group": "menus",
+      "i18nKey": "guide.admin.parameter-edit.save-edit",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.parameter-edit",
+      "group": "popup",
+      "i18nKey": "guide.admin.parameter-edit.close",
+      "order": 2
+    }
+  ],
+  "admin.parameter-history": [
+    {
+      "id": "overview",
+      "screenKey": "admin.parameter-history",
+      "group": "menus",
+      "i18nKey": "guide.admin.parameter-history.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.parameter-history",
+      "group": "popup",
+      "i18nKey": "guide.admin.parameter-history.close",
+      "order": 1
+    }
+  ],
+  "admin.stats": [
+    {
+      "id": "overview",
+      "screenKey": "admin.stats",
+      "group": "menus",
+      "i18nKey": "guide.admin.stats.overview",
+      "order": 0
+    },
+    {
+      "id": "stats-refresh",
+      "screenKey": "admin.stats",
+      "group": "menus",
+      "i18nKey": "guide.admin.stats.stats-refresh",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.stats",
+      "group": "popup",
+      "i18nKey": "guide.admin.stats.close",
+      "order": 2
+    }
+  ],
+  "admin.graph-help": [
+    {
+      "id": "overview",
+      "screenKey": "admin.graph-help",
+      "group": "menus",
+      "i18nKey": "guide.admin.graph-help.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.graph-help",
+      "group": "popup",
+      "i18nKey": "guide.admin.graph-help.close",
+      "order": 1
+    }
+  ],
+  "admin.affinity-graph": [
+    {
+      "id": "overview",
+      "screenKey": "admin.affinity-graph",
+      "group": "menus",
+      "i18nKey": "guide.admin.affinity-graph.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.affinity-graph",
+      "group": "popup",
+      "i18nKey": "guide.admin.affinity-graph.close",
+      "order": 1
+    }
+  ],
+  "admin.monitoring": [
+    {
+      "id": "overview",
+      "screenKey": "admin.monitoring",
+      "group": "menus",
+      "i18nKey": "guide.admin.monitoring.overview",
+      "order": 0
+    },
+    {
+      "id": "monitoring-filter",
+      "screenKey": "admin.monitoring",
+      "group": "menus",
+      "i18nKey": "guide.admin.monitoring.monitoring-filter",
+      "order": 1
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.monitoring",
+      "group": "popup",
+      "i18nKey": "guide.admin.monitoring.close",
+      "order": 2
+    }
+  ],
+  "admin.payment-simulator": [
+    {
+      "id": "overview",
+      "screenKey": "admin.payment-simulator",
+      "group": "menus",
+      "i18nKey": "guide.admin.payment-simulator.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.payment-simulator",
+      "group": "popup",
+      "i18nKey": "guide.admin.payment-simulator.close",
+      "order": 1
+    }
+  ],
+  "admin.payment-authorizations": [
+    {
+      "id": "overview",
+      "screenKey": "admin.payment-authorizations",
+      "group": "menus",
+      "i18nKey": "guide.admin.payment-authorizations.overview",
+      "order": 0
+    },
+    {
+      "id": "close",
+      "screenKey": "admin.payment-authorizations",
+      "group": "popup",
+      "i18nKey": "guide.admin.payment-authorizations.close",
+      "order": 1
+    }
+  ],
+  "admin.navigation": [
+    {
+      "id": "notifications",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.notifications",
+      "order": 0
+    },
+    {
+      "id": "notification-launcher",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.notification-launcher",
+      "order": 1
+    },
+    {
+      "id": "explanations",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.explanations",
+      "order": 2
+    },
+    {
+      "id": "settings",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.settings",
+      "order": 3
+    },
+    {
+      "id": "adminModeration",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminModeration",
+      "order": 4
+    },
+    {
+      "id": "adminReports",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminReports",
+      "order": 5
+    },
+    {
+      "id": "adminFeedback",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminFeedback",
+      "order": 6
+    },
+    {
+      "id": "adminChat",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminChat",
+      "order": 7
+    },
+    {
+      "id": "adminJobs",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminJobs",
+      "order": 8
+    },
+    {
+      "id": "adminParams",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminParams",
+      "order": 9
+    },
+    {
+      "id": "adminContent",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminContent",
+      "order": 10
+    },
+    {
+      "id": "adminArticle",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminArticle",
+      "order": 11
+    },
+    {
+      "id": "adminStats",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminStats",
+      "order": 12
+    },
+    {
+      "id": "adminMetrics",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminMetrics",
+      "order": 13
+    },
+    {
+      "id": "adminGraph",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminGraph",
+      "order": 14
+    },
+    {
+      "id": "adminPaymentSimulator",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminPaymentSimulator",
+      "order": 15
+    },
+    {
+      "id": "adminPaymentAuthorizations",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.admin.navigation.adminPaymentAuthorizations",
+      "order": 16
+    }
+  ],
+  "operator.navigation": [
+    {
+      "id": "notifications",
+      "screenKey": "operator.navigation",
+      "group": "menus",
+      "i18nKey": "guide.operator.navigation.notifications",
+      "order": 0
+    },
+    {
+      "id": "notification-launcher",
+      "screenKey": "operator.navigation",
+      "group": "menus",
+      "i18nKey": "guide.operator.navigation.notification-launcher",
+      "order": 1
+    },
+    {
+      "id": "explanations",
+      "screenKey": "operator.navigation",
+      "group": "menus",
+      "i18nKey": "guide.operator.navigation.explanations",
+      "order": 2
+    },
+    {
+      "id": "settings",
+      "screenKey": "operator.navigation",
+      "group": "menus",
+      "i18nKey": "guide.operator.navigation.settings",
+      "order": 3
     }
   ]
 }

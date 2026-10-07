@@ -118,6 +118,7 @@ export interface ContentLanguage {
 }
 
 export interface ExplainableSurface {
+  isSystem?: boolean;
   key: string;
   label: string;
   icon: string;
@@ -127,6 +128,7 @@ export interface ExplainableSurface {
 }
 
 export interface HelpCenterRevisionDto {
+  isSystem?: boolean;
   id: string;
   documentKind?: HelpCenterDocumentKind;
   contextKey?: string | null;

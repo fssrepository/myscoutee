@@ -1,3 +1,5 @@
+import { Router } from '@angular/router';
+import { UserProfileStore } from '../../context/stores/user-profile.store';
 import {PaymentMethodsPopupStore} from '../../context/stores/payment-methods-popup.store';
 import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
 import { ChatsService } from '../../../core/base/services/chats.service';
@@ -86,6 +88,8 @@ type NotificationHeaderMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationCenterPopupComponent implements OnDestroy {
+  private readonly router = inject(Router);
+  private readonly profiles = inject(UserProfileStore);
   private readonly paymentHistory=inject(PaymentMethodsPopupStore);
   private readonly contactProfile = inject(ProfileStore);
   private readonly chats = inject(ChatsService);
@@ -342,6 +346,16 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     notification: NotificationDto,
     actionId: string
   ): Promise<void> {
+    if (actionId === 'openNotificationRoleTarget') {
+      const path = NotificationSingleRowConverter.roleTargetPath(notification);
+      const profile = this.profiles.activeUserProfile();
+      if (!path || (path.startsWith('/operator') ? !profile?.operator : !profile?.admin)) return;
+      if (await this.router.navigateByUrl(path)) {
+        this.store.close();
+        await this.markRead(notification);
+      }
+      return;
+    }
     if (actionId === 'openNotificationChat') {
       if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
       const chat = await this.chats.queryChatById(notification.payload!['chatId']);

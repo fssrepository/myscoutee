@@ -39,6 +39,7 @@ export class SeedHelpCenterContentBuilder {
     const version = (GUIDE_VERSIONS as Record<string, number>)[context] ?? 4;
     return {
       ...original,
+      isSystem: APP_STATIC_DATA.explainableSurfaces.some(surface => surface.key === context && surface.isSystem),
       id: original.id.replace(/v\d+$/, `v${version}`),
       version,
       presentation: 'tour',

@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'stats') {
-  <app-popup [model]="statsPopupModel()">
+  <app-popup guideContext="admin.stats" [model]="statsPopupModel()">
       <div class="stats-body">
         @if (loading() && stats()) {
           <div class="stats-loading-overlay" aria-busy="true">
@@ -456,7 +456,7 @@
       </div>
 
       @if (graphHelpOpen()) {
-        <app-popup [model]="graphHelpPopupModel()" [zIndex]="2400">
+        <app-popup guideContext="admin.graph-help" [model]="graphHelpPopupModel()" [zIndex]="2400">
           <div class="stats-graph-help-content">
             <div class="stats-graph-help-grid">
               <article>

@@ -1,5 +1,5 @@
 <div class="operator-page-scroll">
-  <main class="operator-home" [attr.aria-busy]="loading()">
+  <main data-guide-surface="operator.home" class="operator-home" [attr.aria-busy]="loading()">
     <header class="operator-home-header">
       <a class="operator-brand" [attr.aria-label]="deploymentBranding().productName">
         <app-deployment-brand
@@ -31,7 +31,7 @@
       </section>
 
       <section class="operator-leaderboard" aria-labelledby="operator-leaderboard-title">
-        <header class="operator-leaderboard__header">
+        <header class="operator-leaderboard__header" data-guide-field="leaderboard">
           <span>
             <small>{{ 'operator.leaderboard.network' | i18n }}</small>
             <h1 id="operator-leaderboard-title">{{ 'operator.leaderboard' | i18n }}</h1>

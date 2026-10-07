@@ -1,5 +1,5 @@
 @if (admin.activePopup() === popupKey) {
-  <app-popup class="affinity-graph-popup" [model]="affinityGraphPopupModel()">
+  <app-popup guideContext="admin.affinity-graph" class="affinity-graph-popup" [model]="affinityGraphPopupModel()">
     @if (graphUrl(); as sourceUrl) {
       <iframe
         class="affinity-graph-frame"

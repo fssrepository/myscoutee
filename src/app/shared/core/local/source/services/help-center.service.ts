@@ -64,7 +64,8 @@ export class LocalHelpCenterService {
     const groupId = this.helpCenterRepository.groupForUser(adminUserId);
     const table = this.table(documentKind === 'privacy' ? null : groupId);
     this.assertBootstrappedState(table, documentKind, language, context);
-    return this.stateFromTable(table, documentKind, language, context);
+    this.ensureEditable(table, documentKind, context);
+    return this.stateFromTable(table, documentKind, language, context, true);
   }
 
   async loadPrivacyConsent(
@@ -142,6 +143,7 @@ export class LocalHelpCenterService {
     const language = this.normalizeLang(request?.lang);
     const contextKey = this.normalizeContextKey(documentKind, request?.contextKey, true);
     const table = this.table(groupId);
+    this.ensureEditable(table, documentKind, contextKey, request.baseRevisionId);
     const nowIso = new Date().toISOString();
     const actorUserId = this.normalizeActor(request.actorUserId);
     const version = this.nextVersion(table, documentKind, language, contextKey);
@@ -196,7 +198,7 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions`)
     ]);
-    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey);
+    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey, true);
   }
 
   async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
@@ -212,6 +214,7 @@ export class LocalHelpCenterService {
       throw new Error(`${this.documentLabel(documentKind)} revision not found.`);
     }
     const contextKey = this.revisionContextKey(revisionDto);
+    this.ensureEditable(table, documentKind, contextKey, normalizedRevisionId);
     const audit = this.auditEntry({
       action: 'activate',
       actorUserId: this.normalizeActor(actorUserId),
@@ -258,7 +261,7 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/activate`)
     ]);
-    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey);
+    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey, true);
   }
 
   async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
@@ -285,6 +288,7 @@ export class LocalHelpCenterService {
     const nextActiveRevisionId = currentActiveRevisionId === normalizedRevisionId
       ? (remainingRevisions[0]?.id ?? null)
       : currentActiveRevisionId;
+    this.ensureEditable(table, documentKind, contextKey, normalizedRevisionId);
     const audit = this.auditEntry({
       action: 'delete',
       actorUserId: this.normalizeActor(actorUserId),
@@ -335,7 +339,7 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`)
     ]);
-    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey);
+    return this.stateFromTable(this.table(groupId), documentKind, language, contextKey, true);
   }
 
   private assertBootstrappedState(
@@ -395,13 +399,28 @@ export class LocalHelpCenterService {
     )).sort();
   }
 
-  private stateFromTable(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterStateDto {
+  private ensureEditable(table: HelpCenterTable, kind: HelpCenterDocumentKind, context?: string | null, revisionId?: string | null): void {
+    const systemContext = kind === 'explanation' && (
+      APP_STATIC_DATA.explainableSurfaces.some(surface => surface.key === context && surface.isSystem)
+      || Object.values(table.revisionsById).some(revision => revision.documentKind === kind && revision.contextKey === context && revision.isSystem)
+    );
+    if (systemContext || table.revisionsById[revisionId?.trim() ?? '']?.isSystem) {
+      throw new Error('System content is not editable.');
+    }
+  }
+
+  private stateFromTable(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null, admin = false): HelpCenterStateDto {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey, false);
-    const revisions = this.revisionsForState(table, kind, language, context)
+    const activeRevisionId = this.activeRevisionId(table, kind, language, context);
+    const activeRecord = activeRevisionId ? table.revisionsById[activeRevisionId] : undefined;
+    const source = !admin && kind === 'explanation'
+      ? (activeRecord ? [LocalHelpCenterMapper.toDto(activeRecord)] : [])
+      : this.revisionsForState(table, kind, language, context);
+    const revisions = source
+      .filter(revision => !admin || !revision.isSystem)
       .map(revision => this.cloneRevision(revision, kind))
       .sort((left, right) => right.version - left.version);
-    const activeRevisionId = this.activeRevisionId(table, kind, language, context);
     const activeRevision = activeRevisionId
       ? revisions.find(revision => revision.id === activeRevisionId) ?? null
       : null;
@@ -410,6 +429,7 @@ export class LocalHelpCenterService {
       .filter((entry): entry is HelpCenterAuditRecord => Boolean(entry))
       .map(entry => LocalHelpCenterMapper.toDto(entry))
       .filter(entry => this.auditKind(entry) === kind)
+      .filter(entry => !admin || !table.revisionsById[entry.revisionId ?? '']?.isSystem)
       .map(entry => {
         const entryLang = this.normalizeLang(entry.lang);
         return { ...entry, documentKind: kind, lang: entryLang, languageLabel: this.languageLabel(entryLang) };

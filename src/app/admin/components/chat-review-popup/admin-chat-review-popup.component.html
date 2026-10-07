@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'chat-review' || admin.activePopup() === 'warn-chat') {
-  <app-popup [model]="chatReviewPopupModel()" [zIndex]="20000">
+  <app-popup guideContext="admin.chat-review" [model]="chatReviewPopupModel()" [zIndex]="20000">
       <div class="admin-chat-body">
         @if (admin.activePopup() === 'warn-chat') {
           <div class="admin-form admin-warning-form">

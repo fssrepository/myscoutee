@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'params') {
-  <app-popup [model]="paramsPopupModel()">
+  <app-popup guideContext="admin.params" [model]="paramsPopupModel()">
       <div class="admin-params-body">
         @if (loading()) {
           <div class="admin-params-loading-state" aria-busy="true">
@@ -68,7 +68,7 @@
 }
 
 @if (editDraft(); as draft) {
-  <app-popup [model]="editPopupModel(draft)" [zIndex]="2400">
+  <app-popup guideContext="admin.parameter-edit" [model]="editPopupModel(draft)" [zIndex]="2400">
       <div class="admin-params-edit-body">
         @for (group of fieldsByGroup(draft.fields); track group.group) {
           <section class="admin-params-edit-group">
@@ -110,7 +110,7 @@
 }
 
 @if (history(); as historyState) {
-  <app-popup [model]="historyPopupModel(historyState)" [zIndex]="2400">
+  <app-popup guideContext="admin.parameter-history" [model]="historyPopupModel(historyState)" [zIndex]="2400">
       <div class="admin-params-history-body">
         @if (historyLoading()) {
           <div class="admin-params-loading-state admin-params-history-loading-state" aria-busy="true">

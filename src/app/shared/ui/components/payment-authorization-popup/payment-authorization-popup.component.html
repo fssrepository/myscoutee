@@ -1,5 +1,5 @@
 @if (authorization.waitingSurface() && sourceUrl(); as url) {
-  <app-popup class="payment-authorization-popup" [model]="popupModel()" [zIndex]="25200">
+  <app-popup guideContext="admin.payment-authorizations" class="payment-authorization-popup" [model]="popupModel()" [zIndex]="25200">
     <iframe
       #providerFrame
       class="payment-authorization-popup__frame"

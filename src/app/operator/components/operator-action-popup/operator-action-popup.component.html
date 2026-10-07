@@ -1,6 +1,6 @@
 @if (kind(); as activeKind) {
   @if (activeKind !== 'registration') {
-    <app-popup [model]="popupModel()">
+    <app-popup [model]="popupModel()" [guideContext]="'operator.' + activeKind">
       <section
         class="operator-action-popup"
         [class.operator-action-popup--loading]="loading()"

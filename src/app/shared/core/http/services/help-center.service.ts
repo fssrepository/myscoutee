@@ -177,6 +177,7 @@ export class HttpHelpCenterService {
       id,
       documentKind: kind,
       contextKey: this.normalizeContextKey(kind, value?.contextKey),
+      isSystem: value?.isSystem === true,
       lang: this.normalizeLang(value?.lang),
       languageLabel: this.languageLabel(value?.lang, value?.languageLabel),
       version,

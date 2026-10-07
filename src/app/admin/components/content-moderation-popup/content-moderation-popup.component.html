@@ -1,5 +1,5 @@
 @if (isOpen()) {
-  <app-popup [model]="model()" [zIndex]="2470">
+  <app-popup guideContext="admin.content-moderation" [model]="model()" [zIndex]="2470">
     @if (error()) { <p class="moderation-error" role="alert">{{ 'moderation.failed' | i18n }}</p> }
     <app-smart-list [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="rowTemplate" (menuItemSelect)="decide($event)"></app-smart-list>
     <ng-template #rowTemplate let-item let-openMenu="openMenu">
@@ -14,7 +14,7 @@
   }
 }
 @if (settingsDraft(); as draft) {
-  <app-popup [model]="settingsModel()" [zIndex]="2480">
+  <app-popup guideContext="admin.moderation-settings" [model]="settingsModel()" [zIndex]="2480">
     @if (settingsError()) { <p class="moderation-error" role="alert">{{ 'moderation.failed' | i18n }}</p> }
     <div class="moderation-settings">
       <app-menu kind="inline" [items]="enabledItems()" (itemSelect)="toggleEnabled()"></app-menu>

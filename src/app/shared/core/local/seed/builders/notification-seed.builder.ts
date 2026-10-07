@@ -1,3 +1,4 @@
+import roleNotifications from '../data/role-notifications.json';
 import type { NotificationCategory } from '../../../contracts/notification.interface';
 import type { NotificationRecord } from '../../source/entity/notification.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
@@ -318,6 +319,16 @@ export class SeedNotificationsBuilder {
     const normalizedRecipientUserId = recipientUserId.trim();
     if (!normalizedRecipientUserId) {
       return [];
+    }
+    const recipient = users.find(user => user.id === normalizedRecipientUserId);
+    if (recipient?.operator || recipient?.admin) {
+      const role = recipient.operator ? 'operator' : 'admin';
+      return roleNotifications.filter(item => item.role === role).map(({ role: _role, ...item }, index) => ({
+        ...item, id: `${normalizedRecipientUserId}:notification-role-v1:${item.kind}`,
+        category: item.category as NotificationCategory, recipientUserId: normalizedRecipientUserId,
+        createdAtIso: new Date(SEED_REFERENCE_TIME_MS - index * 60_000).toISOString(), readAtIso: null,
+        payload: Object.fromEntries(Object.entries(item.payload).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+      }));
     }
     const senders = users.filter(user =>
       user.id.trim()
