@@ -1,5 +1,5 @@
 @if (restoringWorkspace()) {
-  <section class="admin-workspace admin-workspace-restoring" aria-busy="true">
+  <section data-guide-surface="admin.home" class="admin-workspace admin-workspace-restoring" aria-busy="true">
     <div class="admin-home-panel">
       <header class="admin-home-header">
         <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin'">
@@ -7,7 +7,7 @@
         </a>
       </header>
 
-      <section class="admin-entry-hero admin-home-hero">
+      <section data-guide-field="overview" class="admin-entry-hero admin-home-hero">
         <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
@@ -15,7 +15,7 @@
     </div>
   </section>
 } @else if (workspace.dashboard(); as dashboard) {
-  <section class="admin-workspace">
+  <section data-guide-surface="admin.home" class="admin-workspace">
     <div class="admin-home-panel">
       <header class="admin-home-header">
         <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin'">
@@ -23,7 +23,7 @@
         </a>
       </header>
 
-      <section class="admin-entry-hero admin-home-hero">
+      <section data-guide-field="overview" class="admin-entry-hero admin-home-hero">
         <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
@@ -66,7 +66,7 @@
 
   </section>
 } @else {
-  <section class="admin-entry-shell">
+  <section data-guide-surface="admin.home" class="admin-entry-shell">
     <div class="admin-entry-panel">
       <header class="admin-entry-header">
         <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin landing'">
@@ -83,7 +83,7 @@
           <span>Admin login</span>
         </button>
       </header>
-      <section class="admin-entry-hero">
+      <section data-guide-field="overview" class="admin-entry-hero">
         <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>

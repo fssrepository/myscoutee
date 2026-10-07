@@ -1,3 +1,4 @@
+import { LocalRoleNotificationsService } from './role-notifications.service';
 import { LocalCommunityAccessService } from './community-access.service';
 import { LocalCommunityCasesRepository } from '../repositories/community-cases.repository';
 import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
@@ -63,6 +64,7 @@ import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
   providedIn: 'root'
 })
 export class LocalUsersService extends LocalRouteDelayService implements UserService {
+  private readonly roleNotifications = inject(LocalRoleNotificationsService);
   private readonly communityCases = inject(LocalCommunityCasesRepository);
   private readonly communityAccess = inject(LocalCommunityAccessService);
   private readonly communityGroups = inject(LocalCommunityGroupsRepository);
@@ -444,7 +446,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       return null;
     }
     await this.validateLocationForSave(user.locationCoordinates);
+    const previous = this.usersRepository.queryUserById(user.id);
     const savedUser = this.upsertUser(user);
+    await this.roleNotifications.memberJoined(previous, savedUser);
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
@@ -500,6 +504,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const existing = this.usersRepository.queryUserById(profile.id);
     await this.validateLocationForSave(profile.locationCoordinates);
     const savedUser = this.upsertUser(profile);
+    await this.roleNotifications.memberJoined(existing, savedUser);
     if (!existing) this.integrationRepository.recordRegistration(savedUser.id, request.affiliateCode);
     this.profileExperiencesRepository.replaceUserExperienceRecords(
       savedUser.id,
@@ -512,11 +517,21 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async submitUserFeedback(
-    _request: UserFeedbackSubmitRequestDto,
+    request: UserFeedbackSubmitRequestDto,
     signal?: AbortSignal,
     _requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
     await this.waitForRouteDelay(LocalUsersService.USER_FEEDBACK_ROUTE, signal);
+    const author = this.usersRepository.queryUserById(request.userId ?? '');
+    if (!author) return { submitted: false, message: 'Unable to send feedback.' };
+    const id = `local-feedback:${crypto.randomUUID()}`;
+    const created = await this.adminModerationRepository.insertFeedbackIfAbsent({
+      id, userId: author.id, userName: author.name, userImageUrl: author.images?.[0] ?? null,
+      category: request.category, subject: request.subject, details: request.details,
+      createdDate: new Date().toISOString(), resolvedAtIso: null, resolvedByAdminUserId: null
+    });
+    if (!created) return { submitted: false, message: 'Unable to send feedback.' };
+    await this.roleNotifications.publish('feedback-submitted', id);
     return {
       submitted: true,
       message: 'Feedback sent successfully. Thank you for helping improve MyScoutee.'
@@ -607,6 +622,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       resolvedAtIso: null,
       resolvedByAdminUserId: null
     });
+    if (created) await this.roleNotifications.publish('report-submitted', `local-user-report:${reportIdentity}`);
     return {
       submitted: true,
       message: created

@@ -25,7 +25,9 @@ export class SeedNotificationsRepository {
     if (!snapshot[USERS_TABLE_NAME].byId[normalizedUserId]) {
       return false;
     }
-    const seedMarker = `${SeedNotificationsRepository.SEED_VERSION}:${normalizedUserId}`;
+    const recipient = snapshot[USERS_TABLE_NAME].byId[normalizedUserId];
+    const version = recipient.operator || recipient.admin ? 'notification-roles-v1' : SeedNotificationsRepository.SEED_VERSION;
+    const seedMarker = `${version}:${normalizedUserId}`;
     if (snapshot[NOTIFICATIONS_TABLE_NAME].seededUserIds.includes(seedMarker)) {
       return false;
     }

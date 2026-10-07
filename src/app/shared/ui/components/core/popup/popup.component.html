@@ -1,5 +1,6 @@
 <div
   #surface
+  [attr.data-guide-surface]="active ? guideContext : null"
   class="ui-popup"
   [class.ui-popup]="active"
   [class.ui-popup--hides-floating-controls]="active && popupModel.hideFloatingControls === true"
@@ -27,7 +28,7 @@
     (click)="onPanelClick($event)"
   >
     @if (hasHeader) {
-      <header class="ui-popup__header" [ngClass]="[headerToneClass(), headerLayoutClass(), headerPaletteClass(), headerTitleToneClass()]">
+      <header [attr.data-guide-field]="guideContext ? 'overview' : null" class="ui-popup__header" [ngClass]="[headerToneClass(), headerLayoutClass(), headerPaletteClass(), headerTitleToneClass()]">
         <div class="ui-popup__title">
           @if (popupModel.headerLabel) {
             <span class="ui-popup__label" [attr.data-i18n-ignore]="popupModel.translateHeaderLabel === false ? '' : null">

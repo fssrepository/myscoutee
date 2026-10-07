@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'payment-simulator' || admin.activePopup() === 'payment-authorizations') {
-  <app-popup class="payment-simulator-popup" [model]="popupModel()">
+  <app-popup guideContext="admin.payment-simulator" class="payment-simulator-popup" [model]="popupModel()">
     <div class="payment-simulator-body">
       @if (frameVisible() && sourceUrl(); as url) {
         <iframe

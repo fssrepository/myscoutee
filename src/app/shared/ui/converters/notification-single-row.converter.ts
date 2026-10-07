@@ -121,6 +121,7 @@ export class NotificationSingleRowConverter implements UiConverter<
   }
 
   static targetActionId(notification: NotificationDto): string | null {
+    if (NotificationSingleRowConverter.roleTargetPath(notification)) return 'openNotificationRoleTarget';
     if (notification.sourceType === 'payment') return 'openNotificationPayments';
     if (notification.sourceType === 'chat' && notification.payload?.['chatId']) return 'openNotificationChat';
     if (notification.sourceType === 'announcement' && notification.sourceId && !['announcement-unpublish', 'announcement-trash'].includes(notification.kind)) return 'openNotificationAnnouncement';
@@ -148,6 +149,15 @@ export class NotificationSingleRowConverter implements UiConverter<
     return notification.kind === 'event-invite'
       ? 'openNotificationInvitation'
       : 'openNotificationEvent';
+  }
+
+  static roleTargetPath(notification: NotificationDto): string | null {
+    const target = notification.payload?.['roleTarget'];
+    if (notification.sourceType === 'operator' && target === 'updates') return '/operator?notificationTarget=updates';
+    if (notification.sourceType === 'app-admin' && ['reports', 'feedback', 'stats'].includes(target ?? '')) {
+      return `/admin?notificationTarget=${target}`;
+    }
+    return null;
   }
 
   static eventId(notification: NotificationDto): string {

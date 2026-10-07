@@ -1,5 +1,5 @@
 @if (admin.activePopup() === 'help-editor') {
-  <app-popup [model]="helpEditorPopupModel()">
+  <app-popup guideContext="admin.help-editor" [model]="helpEditorPopupModel()">
       <div class="help-editor-body">
         @if (loading()) {
           <div class="help-editor-state-card help-editor-loading-state" aria-busy="true">
