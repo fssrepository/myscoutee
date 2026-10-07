@@ -128,8 +128,8 @@ export class CommunityCaseBoardComponent {
   protected taskAction(e: AppMenuItemSelectEvent): void {
     const c = this.store.board(), task = e.context as CaseBoardTask; if (!c) return;
     if(e.id==='task-progress' && c.canManage && ['open','in-progress'].includes(c.status)) {
-      void this.store.command(c,{action:'save-board-task',task:{...task,status:task.status==='todo'?'in-progress':task.status==='in-progress'?'done':'todo'}});
-    } else if (e.id === 'task-delete' && c.canManage) void this.store.command(c, { action: 'delete-board-task', taskId: task.id });
+      void this.store.command(c,{action:'save-board-task',task:{...task,status:task.status==='todo'?'in-progress':task.status==='in-progress'?'done':'todo'}},e.item);
+    } else if (e.id === 'task-delete' && c.canManage) void this.store.command(c, { action: 'delete-board-task', taskId: task.id },e.item);
     else if (e.id === 'task-members') {
       if (c.canManage && ['open','in-progress'].includes(c.status)) void this.store.chooseTaskMembers(c, task.assigneeAccountIds, ids => {
         const latest = this.store.board(); if (latest) void this.store.command(latest, { action: 'save-board-task', task: { ...task, assigneeAccountIds: ids } });

@@ -348,8 +348,18 @@ Object.assign(deployment,{repository:publicRepository,routeDelay:{waitForRouteDe
 const initialPublicConfig=await deployment.loadBranding();
 assert.deepEqual(initialPublicConfig.socialLinks.map(l=>l.provider),['instagram','youtube','facebook']);
 assert.equal(await publicRepository.read(),null,'Public catalog does not manufacture an operator record');
-const SeedOperatorRegistryBuilder=await compiledSymbol('SeedOperatorRegistryBuilder');
-const seededConfiguration=SeedOperatorRegistryBuilder.buildInitialRecord();
+// The seed builder is internal to the current AOT chunk; exercise its existing repository entry point.
+const SeedDemoBootstrapService=await compiledSymbol('SeedDemoBootstrapService');
+let SeedOperatorRegistryRepository;
+runInInjectionContext({get(token){
+ if(token.name.replace(/^_/,'')==='SeedOperatorRegistryRepository')SeedOperatorRegistryRepository=token;
+ return {};
+}},()=>new SeedDemoBootstrapService());
+assert.ok(SeedOperatorRegistryRepository,'Operator bootstrap uses its existing seed repository');
+const seedRepository=Object.assign(Object.create(SeedOperatorRegistryRepository.prototype),{
+ memoryDb:{read:()=>({users:{ids:[],byId:{}}})},registryRepository:{whenReady:async()=>{},read:async()=>null}
+});
+const seededConfiguration=(await seedRepository.prepareBootstrap()).result.registryRecord;
 publicRepository.cachedRecord=seededConfiguration;
 const publicConfig=await deployment.loadBranding();
 assert.deepEqual(publicConfig,initialPublicConfig,'Operator seed and public catalog share one configuration source');

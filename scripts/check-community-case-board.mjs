@@ -185,3 +185,106 @@ for(const [action,status] of [['cancel','cancelled'],['reopen','open'],['complet
  if(['cancelled','completed','trash'].includes(status))assert.ok((await menuFor('resident')).includes('reopen'));
 }
 console.log('PASS case-admin lifecycle menus, member restrictions, item-count badges after read/cancel/complete/trash/reopen and sidebar totals');
+
+// Exercise menu -> existing store -> actual shared dialog, without a browser or live data.
+const [CaseStore, CasePopup, OfferingStore, OfferingPopup, AnnouncementStore, AnnouncementPopup, DialogStore, confirmationSignal] = await Promise.all(
+ ['CommunityCasesStore','CommunityCasesPopupComponent','ServiceOfferingsStore','ServiceOfferingsPopupComponent',
+  'CommunityAnnouncementsStore','CommunityAnnouncementsComponent','DialogStore','signal'].map(compiled.symbol));
+const dependency = name => CasePopup.ɵcmp.dependencies.find(type => type.name.replace(/^_/, '') === name);
+const confirmationCase = {...await service.detail('resident',counterBase.id),canManage:true,canTakeOver:true,canChat:true,
+ offers:[{id:'offer',providerAccountId:'provider',amount:85,currency:'EUR',status:'pending'}],
+ members:[{accountId:'provider',name:'Provider'}],support:[{accountId:'provider',status:'accepted'}],chatAccountIds:[]};
+function caseConfirmationFixture() {
+ const calls=[],dialog=new DialogStore(),store=Object.create(CaseStore.prototype),actor=confirmationSignal('resident');
+ Object.assign(store,{generation:0,session:confirmationSignal({userId:'resident',list:true,tasks:false}),busy:confirmationSignal(false),error:confirmationSignal(''),
+  editor:confirmationSignal(null),board:confirmationSignal(confirmationCase),quotations:confirmationSignal(confirmationCase),dialogs:dialog,
+  profile:{activeUserId:actor},workspace:{accountId:id=>id,isCommunity:()=>true},publish(){},publishTask(){},
+  service:{action:async(...args)=>{calls.push(args);return confirmationCase;},taskAction:async(...args)=>{calls.push(args);return {};}}});
+ return {calls,dialog,store,actor};
+}
+const menuEvent = (item,context=item.context) => ({id:item.id,item,context,sourceEvent:new Event('click')});
+async function provesConfirmation(fixture, invoke, item) {
+ const {calls,dialog}=fixture;
+ await invoke(); await Promise.resolve();
+ assert.equal(calls.length,0,`${item.id}: no mutation before confirmation`);
+ assert.ok(dialog.dialog(),`${item.id}: shared confirmation opens`);
+ assert.equal(dialog.dialog().confirmPalette,item.palette,`${item.id}: exact originating menu palette`);
+ assert.ok(dialog.dialog().message,`${item.id}: target identified`);
+ dialog.cancel(); await Promise.resolve(); assert.equal(calls.length,0,`${item.id}: cancel preserves state`);
+ await invoke(); await dialog.confirm();
+ assert.equal(calls.length,1,`${item.id}: confirmation sends exactly one mutation`);
+ assert.equal(dialog.dialog(),null,`${item.id}: success closes the dialog`);
+}
+for(const action of ['take-over','join','decline','leave','start','complete','cancel','trash','reopen']) {
+ const f=caseConfirmationFixture(),value={...confirmationCase,status:action==='reopen'?'completed':'open',membershipStatus:action==='leave'?'accepted':'invited'};
+ const item=Converter.actions(value,'resident').find(item=>item.id===action);assert.ok(item,action);
+ const popup=Object.assign(Object.create(CasePopup.prototype),{store:f.store});
+ await provesConfirmation(f,()=>popup.action(menuEvent(item,value)),item);
+}
+for(const action of ['accept-offer','reject-offer','pending-offer','invite-chat']) {
+ const f=caseConfirmationFixture(),value={...confirmationCase,status:'open',offers:[{...confirmationCase.offers[0],status:action==='pending-offer'?'accepted':'pending'}]};
+ f.store.quotations.set(value);
+ const popup=Object.assign(Object.create(dependency('CommunityCaseQuotationsComponent').prototype),{store:f.store});
+ const item=popup.menu(value.offers[0]).find(item=>item.id===action);assert.ok(item,action);
+ await provesConfirmation(f,()=>popup.action(menuEvent(item)),item);
+}
+for(const [action,status] of [['task-progress','todo'],['task-progress','in-progress'],['task-progress','done'],['task-delete','todo']]) {
+ const f=caseConfirmationFixture(),value={...task('board-task'),status};f.store.board.set({...confirmationCase,boardTasks:[value]});
+ const popup=Object.assign(Object.create(dependency('CommunityCaseBoardComponent').prototype),{store:f.store});
+ // Deliberately distinct palette catches accidental hard-coded confirmation colors.
+ const item={id:action,label:'Task action',palette:'violet',context:value};
+ await provesConfirmation(f,()=>popup.taskAction(menuEvent(item)),item);
+}
+for(const [action,status] of [['pause','active'],['resume','paused'],['trash','active'],['restore','trash']]) {
+ const f=caseConfirmationFixture(),popup=Object.assign(Object.create(CasePopup.prototype),{store:f.store});
+ const value={id:'schedule',title:'Meter inspection',status,canManage:true,version:3};
+ const item=popup.taskMenu(value).find(item=>item.id===action);assert.ok(item,action);
+ await provesConfirmation(f,()=>popup.taskAction(menuEvent(item)),item);
+}
+console.log('PASS case, quotation, board and all schedule lifecycle menus require confirmation; cancel makes no mutation and palette matches');
+
+function offeringConfirmationFixture() {
+ const calls=[],dialog=new DialogStore(),store=Object.create(OfferingStore.prototype);
+ Object.assign(store,{generation:0,profileId:confirmationSignal('provider'),session:confirmationSignal({pick:null}),busy:confirmationSignal(false),error:confirmationSignal(''),
+  changed:confirmationSignal(null),calendarCancelled:confirmationSignal(null),workspace:{isCommunity:()=>true},dialogs:dialog,
+  service:{action:async(...args)=>{calls.push(args);return {}; }},appointments:{cancel:async(...args)=>{calls.push(args);}}});
+ return {calls,dialog,store};
+}
+for(const action of ['publish','unpublish','trash','restore']) {
+ const f=offeringConfirmationFixture(),popup=Object.assign(Object.create(OfferingPopup.prototype),{store:f.store});
+ const value={service:{id:'service',title:'Repairs',version:2}},item={id:action,label:action,palette:'teal',context:value};
+ await provesConfirmation(f,()=>popup.action(menuEvent(item)),item);
+}
+const appointmentFixture=offeringConfirmationFixture();
+const appointmentEntry={caseTitle:'Repair case',serviceTitle:'Electrical work',customerName:'Customer',appointment:{caseId:'case',id:'appointment',providerAccountId:'provider',startAtIso:'2026-10-08T10:00:00Z'}};
+const appointmentMenu={id:'cancel',label:'Cancel appointment',palette:'danger'};
+await provesConfirmation(appointmentFixture,()=>appointmentFixture.store.cancelAppointment(appointmentEntry,appointmentMenu),appointmentMenu);
+assert.deepEqual(appointmentFixture.calls[0],['provider','case','provider','appointment']);
+for(const action of ['publish','unpublish','trash','restore','close']) {
+ const calls=[],dialog=new DialogStore(),store=Object.create(AnnouncementStore.prototype);
+ Object.assign(store,{generation:0,userId:confirmationSignal('admin'),groupId:confirmationSignal('homes'),canManage:()=>true,busy:confirmationSignal(false),error:confirmationSignal(''),
+  changed:confirmationSignal(null),editor:confirmationSignal(null),dialogs:dialog,service:{action:async(...args)=>{calls.push(args);return value;}}});
+ const value={id:'notice',title:'Notice',status:action==='publish'?'draft':action==='restore'?'trash':'published',voting:true,closed:false,canManage:true,version:2};
+ const popup=Object.assign(Object.create(AnnouncementPopup.prototype),{store});
+ const item=popup.menu(value).find(item=>item.id===action);assert.ok(item,action);
+ await provesConfirmation({calls,dialog,store},()=>popup.action(menuEvent(item)),item);
+}
+console.log('PASS service lifecycle, appointment cancellation and every announcement state action require confirmation with the originating palette');
+
+const failedConfirmation=caseConfirmationFixture(),failureMenu={id:'complete',label:'Complete',palette:'green'};
+failedConfirmation.store.service.action=async()=>{throw {status:409};};
+await failedConfirmation.store.command(confirmationCase,{action:'complete'},failureMenu);
+await failedConfirmation.dialog.confirm();
+assert.equal(failedConfirmation.dialog.dialog().errorMessage,'case.changed','Failed mutation remains visibly retryable');
+failedConfirmation.store.service.action=async()=>{failedConfirmation.calls.push('saved');return confirmationCase;};
+await failedConfirmation.dialog.confirm();assert.equal(failedConfirmation.calls.length,1);assert.equal(failedConfirmation.dialog.dialog(),null);
+for(const stale of ['session','actor','generation']) {
+ const f=caseConfirmationFixture();await f.store.command(confirmationCase,{action:'complete'},failureMenu);
+ if(stale==='session')f.store.session.set(null);else if(stale==='actor')f.actor.set('other');else f.store.generation++;
+ await f.dialog.confirm();assert.equal(f.calls.length,0);assert.equal(f.dialog.dialog().errorMessage,'case.changed');
+}
+const staleOffering=offeringConfirmationFixture();
+await staleOffering.store.action({service:{id:'s',title:'Repair',version:2}},'trash',{id:'trash',label:'Delete',palette:'danger'});
+staleOffering.store.profileId.set('other');await staleOffering.dialog.confirm();
+assert.equal(staleOffering.calls.length,0);assert.equal(staleOffering.dialog.dialog().errorMessage,'service.changed');
+console.log('PASS failed confirmation stays open, retry is bounded, and stale session/profile/surface cannot submit a delayed mutation');

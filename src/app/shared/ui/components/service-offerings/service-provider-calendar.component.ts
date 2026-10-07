@@ -24,5 +24,5 @@ export class ServiceProviderCalendarComponent {
   return defer(()=>this.store.calendar(from,to)).pipe(map(rows=>({items:rows.map(entry=>({id:entry.task?`${entry.caseId}:${entry.task.id}`:entry.appointment!.id,title:entry.caseTitle,subtitle:[entry.serviceTitle,entry.customerName].filter(Boolean).join(' · '),detail:new Date(entry.task?.startAtIso ?? entry.appointment!.startAtIso).toLocaleString(),icon:'event_available',eagerDetail:entry})),total:rows.length})));};
  constructor(){effect(onCleanup=>onCleanup(untracked(() => this.guide.registerContext('community.service.calendar'))));effect(()=>{const id=this.store.calendarCancelled();if(id)untracked(() => this.list?.removeVisibleItemByIdentity(id));});}
  protected action(e:AppMenuItemSelectEvent):void{const entry=e.context as CaseAppointmentCalendarEntry,a=entry.appointment;
-  if(e.id==='cancel'&&a)void this.store.cancelAppointment(a.caseId,a.providerAccountId,a.id);else{this.store.close();void this.cases.openReference(entry.caseId);}}
+  if(e.id==='cancel'&&a)void this.store.cancelAppointment(entry,e.item);else{this.store.close();void this.cases.openReference(entry.caseId);}}
 }

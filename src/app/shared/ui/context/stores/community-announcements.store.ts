@@ -56,19 +56,17 @@ export class CommunityAnnouncementsStore {
   async command(item: CommunityAnnouncement, action: AnnouncementAction, choice?: VoteChoice, palette?: AppMenuPalette): Promise<void> {
     const identity = this.identity; let generation = this.generation;
     const apply = async () => {
-      if (identity !== this.identity || generation !== this.generation || this.busy()) return;
+      if (identity !== this.identity || generation !== this.generation || this.busy()) throw new Error('announcement.changed');
       generation++;
       await this.mutate(async () => {
         const result = await this.service.action(item.id, { userId: this.userId(), version: item.version, action, choice });
         return () => { this.changed.set(result); this.editor.update(editor => editor?.value?.id === item.id ? { ...editor, value: result } : editor); };
       }, true);
     };
-    if (['unpublish', 'trash', 'close', 'vote'].includes(action)) {
-      this.dialogs.open({ title: `announcement.confirm.${action}`, message: item.title,
+    this.dialogs.open({ title: `announcement.confirm.${action}`, message: item.title,
         warningMessage: action === 'vote' ? 'announcement.vote.final' : null,
         confirmLabel: action === 'vote' ? `announcement.choice.${choice}` : `announcement.action.${action}`,
         confirmPalette: palette, cancelLabel: 'Cancel', failureMessage: 'announcement.failed', onConfirm: apply });
-    } else await apply();
   }
   async feedback(item: CommunityAnnouncement): Promise<void> {
     const key = this.identity, generation = this.generation;
