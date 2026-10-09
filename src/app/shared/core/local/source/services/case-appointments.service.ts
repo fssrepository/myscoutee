@@ -21,7 +21,7 @@ export class LocalCaseAppointmentsService extends LocalRouteDelayService impleme
  private readonly repository=inject(LocalCaseAppointmentsRepository);private readonly offerings=inject(LocalServiceOfferingsRepository);
  private readonly cases=inject(LocalCommunityCasesService);private readonly access=inject(LocalCommunityAccessService);private readonly events=inject(LocalEventsService);
  private async context(userId:string,caseId:string,serviceId:string,provider:string){
-  await this.waitForRouteDelay('/community-cases');await this.repository.ready();const actor=this.access.actor(userId),c=this.cases.visible(actor,caseId),s=this.offerings.find(serviceId);
+  await this.repository.ready();const actor=this.access.actor(userId),c=this.cases.visible(actor,caseId),s=this.offerings.find(serviceId);
   if(!s||!c.participantAccountIds.includes(actor)||c.support.some(v=>v.accountId===actor&&v.status==='declined'&&!c.audienceAccountIds.includes(actor)&&c.ownerAccountId!==actor)
    ||!c.support.some(v=>v.accountId===provider&&v.serviceId===serviceId))throw new Error('Forbidden');
   return {actor,c,s,calendar:this.repository.find(provider)};
@@ -43,36 +43,50 @@ export class LocalCaseAppointmentsService extends LocalRouteDelayService impleme
  }
  private overlaps(a:CaseAppointment,o:Occurrence){return Date.parse(a.startAtIso)<o.end.getTime()&&Date.parse(a.endAtIso)>o.start.getTime();}
  private price(s:ServiceOffering,o:Occurrence,occupied:number){const quote=this.events.resolveCheckoutSlotPricing(s,{id:o.id,parentEventId:s.id,slotTemplateId:o.templateId,title:s.title,timeframe:'',startAtIso:o.start.toISOString(),endAtIso:o.end.toISOString(),capacityTotal:1,acceptedMembers:occupied,pendingMembers:0});return {...quote,amount:PricingBuilder.applyPricingRounding(quote.amount,s.pricing?.rounding??'none')};}
- async slots(caseId:string,serviceId:string,provider:string,q:EventCheckoutSlotsQuery){const x=await this.context(q.userId,caseId,serviceId,provider),{actor,c,s,calendar}=x;
-  const from=q.rangeStart??new Date().toISOString().slice(0,10),to=q.rangeEnd??new Date(Date.parse(`${from}T00:00:00Z`)+31*86400000).toISOString().slice(0,10),range=this.range(from,to);
-  const own=calendar.appointments.filter(a=>this.owns(a,actor,caseId,serviceId)&&a.status==='booked');
-  const rows:EventCheckoutSlot[]=q.view==='basket'||!this.bookable(c,s,provider)?own.filter(a=>Date.parse(a.startAtIso)>Date.now()).map(a=>({id:a.slotId,parentEventId:caseId,slotSourceId:a.slotId,slotTemplateId:a.slotTemplateId,title:s.title,timeframe:`${a.startAtIso} – ${a.endAtIso}`,startAtIso:a.startAtIso,endAtIso:a.endAtIso,capacityTotal:1,acceptedMembers:1,pendingMembers:0,availableSlots:0,bookedByViewer:true,amount:a.amount,currency:a.currency,pricingSummaryRows:a.pricingSummaryRows})):
-   this.occurrences(s,range.start,range.end).map(o=>{const overlaps=calendar.appointments.filter(a=>a.status==='booked'&&this.overlaps(a,o)),quote=this.price(s,o,overlaps.length?1:0);
-    return {id:o.id,parentEventId:caseId,slotSourceId:o.id,slotTemplateId:o.templateId,title:s.title,timeframe:`${o.start.toISOString()} – ${o.end.toISOString()}`,startAtIso:o.start.toISOString(),endAtIso:o.end.toISOString(),capacityTotal:1,acceptedMembers:overlaps.length?1:0,pendingMembers:0,availableSlots:!overlaps.length&&o.start.getTime()>Date.now()?1:0,bookedByViewer:overlaps.some(a=>this.owns(a,actor,caseId,serviceId)&&a.slotId===o.id),amount:quote.amount,currency:quote.currency,pricingSummaryRows:quote.rows};});
-  const days=new Map<string,EventCheckoutSlot[]>();rows.forEach(s=>days.set(s.startAtIso.slice(0,10),[...(days.get(s.startAtIso.slice(0,10))??[]),s]));
-  const offset=Number(q.cursor??0),limit=Math.max(1,Math.min(100,q.limit??20));if(!Number.isSafeInteger(offset)||offset<0)throw new Error('Invalid cursor');const end=offset+limit,currency=s.pricing?.currency??'USD';
-  return {service:structuredClone(s),version:calendar.version,appointments:own,result:{eventId:caseId,mode:'service',slots:rows.slice(offset,end),total:rows.length,nextCursor:end<rows.length?`${end}`:null,currency,optionalSubEvents:[],checkoutBasket:null,
-   days:[...days].map(([dateKey,slots])=>({dateKey,slotCount:slots.length,availableSlots:slots.filter(s=>s.availableSlots>0).length,bookedByViewer:slots.some(s=>s.bookedByViewer),lowestAmount:Math.min(...slots.map(s=>s.amount)),currency}))}};
- }
- async save(caseId:string,r:CaseAppointmentSelection){if(!r.operationId||r.operationId.length>100||r.slotIds.length>50)throw new Error('Invalid selection');
-  const {actor,c,s,calendar}=await this.context(r.userId,caseId,r.serviceId,r.providerAccountId);
-  if(!c.audienceAccountIds.includes(actor)&&c.ownerAccountId!==actor)throw new Error('Forbidden');
-  const ids=[...new Set(r.slotIds)].sort(),signature=`${actor}:${caseId}:${r.serviceId}:${ids.join('|')}`;
-  if(calendar.lastOperationId===r.operationId){if(calendar.lastOperationSignature!==signature)throw new Error('Conflict');this.cases.notify(c,actor,'appointments-updated',r.operationId);return this.saved(calendar,actor,caseId,r.serviceId);}
-  if(calendar.version!==r.version)throw new Error('case.appointments.changed');
-  const now=new Date().toISOString(),rows=new Map(calendar.appointments.map(a=>[a.id,a])),selected:CaseAppointment[]=[];
-  for(const id of ids){const previous=calendar.appointments.find(a=>this.owns(a,actor,caseId,r.serviceId)&&a.slotId===id&&a.status==='booked'&&Date.parse(a.startAtIso)>Date.now());if(previous){selected.push(previous);continue;}
-   if(!this.bookable(c,s,r.providerAccountId))throw new Error('Unavailable slot');const iso=id.match(/:(\d{4}-\d{2}-\d{2}T.*Z)$/)?.[1];if(!iso)throw new Error('Invalid slot');const date=new Date(iso),day=date.toISOString().slice(0,10),range=this.range(day,day);
-   const o=this.occurrences(s,range.start,range.end).find(o=>o.id===id);if(!o||o.start.getTime()<=Date.now())throw new Error('Unavailable slot');
-   if(calendar.appointments.some(a=>a.status==='booked'&&!this.owns(a,actor,caseId,r.serviceId)&&this.overlaps(a,o))||selected.some(a=>this.overlaps(a,o)))throw new Error('Unavailable slot');
-   const old=calendar.appointments.find(a=>this.owns(a,actor,caseId,r.serviceId)&&a.slotId===id&&a.status==='booked');if(old){selected.push(old);continue;}
-   const quote=this.price(s,o,0);selected.push({id:crypto.randomUUID(),caseId,serviceId:r.serviceId,providerAccountId:r.providerAccountId,customerAccountId:actor,slotId:id,slotTemplateId:o.templateId,startAtIso:o.start.toISOString(),endAtIso:o.end.toISOString(),status:'booked',amount:quote.amount,currency:quote.currency,pricingSummaryRows:quote.rows,createdAtIso:now,updatedAtIso:now});
+ async slots(caseId:string,serviceId:string,provider:string,q:EventCheckoutSlotsQuery){
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-cases'),
+      (async () => {
+        const x=await this.context(q.userId,caseId,serviceId,provider),{actor,c,s,calendar}=x;
+          const from=q.rangeStart??new Date().toISOString().slice(0,10),to=q.rangeEnd??new Date(Date.parse(`${from}T00:00:00Z`)+31*86400000).toISOString().slice(0,10),range=this.range(from,to);
+          const own=calendar.appointments.filter(a=>this.owns(a,actor,caseId,serviceId)&&a.status==='booked');
+          const rows:EventCheckoutSlot[]=q.view==='basket'||!this.bookable(c,s,provider)?own.filter(a=>Date.parse(a.startAtIso)>Date.now()).map(a=>({id:a.slotId,parentEventId:caseId,slotSourceId:a.slotId,slotTemplateId:a.slotTemplateId,title:s.title,timeframe:`${a.startAtIso} – ${a.endAtIso}`,startAtIso:a.startAtIso,endAtIso:a.endAtIso,capacityTotal:1,acceptedMembers:1,pendingMembers:0,availableSlots:0,bookedByViewer:true,amount:a.amount,currency:a.currency,pricingSummaryRows:a.pricingSummaryRows})):
+           this.occurrences(s,range.start,range.end).map(o=>{const overlaps=calendar.appointments.filter(a=>a.status==='booked'&&this.overlaps(a,o)),quote=this.price(s,o,overlaps.length?1:0);
+            return {id:o.id,parentEventId:caseId,slotSourceId:o.id,slotTemplateId:o.templateId,title:s.title,timeframe:`${o.start.toISOString()} – ${o.end.toISOString()}`,startAtIso:o.start.toISOString(),endAtIso:o.end.toISOString(),capacityTotal:1,acceptedMembers:overlaps.length?1:0,pendingMembers:0,availableSlots:!overlaps.length&&o.start.getTime()>Date.now()?1:0,bookedByViewer:overlaps.some(a=>this.owns(a,actor,caseId,serviceId)&&a.slotId===o.id),amount:quote.amount,currency:quote.currency,pricingSummaryRows:quote.rows};});
+          const days=new Map<string,EventCheckoutSlot[]>();rows.forEach(s=>days.set(s.startAtIso.slice(0,10),[...(days.get(s.startAtIso.slice(0,10))??[]),s]));
+          const offset=Number(q.cursor??0),limit=Math.max(1,Math.min(100,q.limit??20));if(!Number.isSafeInteger(offset)||offset<0)throw new Error('Invalid cursor');const end=offset+limit,currency=s.pricing?.currency??'USD';
+          return {service:structuredClone(s),version:calendar.version,appointments:own,result:{eventId:caseId,mode:'service',slots:rows.slice(offset,end),total:rows.length,nextCursor:end<rows.length?`${end}`:null,currency,optionalSubEvents:[],checkoutBasket:null,
+           days:[...days].map(([dateKey,slots])=>({dateKey,slotCount:slots.length,availableSlots:slots.filter(s=>s.availableSlots>0).length,bookedByViewer:slots.some(s=>s.bookedByViewer),lowestAmount:Math.min(...slots.map(s=>s.amount)),currency}))}};
+      })()
+    ]);
+    return response;
   }
-  for(let i=0;i<selected.length;i++)for(let j=i+1;j<selected.length;j++)if(Date.parse(selected[i].startAtIso)<Date.parse(selected[j].endAtIso)&&Date.parse(selected[i].endAtIso)>Date.parse(selected[j].startAtIso))throw new Error('Unavailable slot');
-  for(const old of calendar.appointments)if(this.owns(old,actor,caseId,r.serviceId)&&old.status==='booked'&&Date.parse(old.startAtIso)>Date.now()&&!ids.includes(old.slotId))rows.set(old.id,{...old,status:'cancelled',updatedAtIso:now});
-  selected.forEach(a=>rows.set(a.id,a));const saved=this.repository.save({...calendar,appointments:[...rows.values()],lastOperationId:r.operationId,lastOperationSignature:signature},r.version);
-  this.cases.notify(c,actor,'appointments-updated',r.operationId);await this.repository.flush();return this.saved(saved,actor,caseId,r.serviceId);
- }
+ async save(caseId:string,r:CaseAppointmentSelection){
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-cases'),
+      (async () => {
+        if(!r.operationId||r.operationId.length>100||r.slotIds.length>50)throw new Error('Invalid selection');
+          const {actor,c,s,calendar}=await this.context(r.userId,caseId,r.serviceId,r.providerAccountId);
+          if(!c.audienceAccountIds.includes(actor)&&c.ownerAccountId!==actor)throw new Error('Forbidden');
+          const ids=[...new Set(r.slotIds)].sort(),signature=`${actor}:${caseId}:${r.serviceId}:${ids.join('|')}`;
+          if(calendar.lastOperationId===r.operationId){if(calendar.lastOperationSignature!==signature)throw new Error('Conflict');this.cases.notify(c,actor,'appointments-updated',r.operationId);return this.saved(calendar,actor,caseId,r.serviceId);}
+          if(calendar.version!==r.version)throw new Error('case.appointments.changed');
+          const now=new Date().toISOString(),rows=new Map(calendar.appointments.map(a=>[a.id,a])),selected:CaseAppointment[]=[];
+          for(const id of ids){const previous=calendar.appointments.find(a=>this.owns(a,actor,caseId,r.serviceId)&&a.slotId===id&&a.status==='booked'&&Date.parse(a.startAtIso)>Date.now());if(previous){selected.push(previous);continue;}
+           if(!this.bookable(c,s,r.providerAccountId))throw new Error('Unavailable slot');const iso=id.match(/:(\d{4}-\d{2}-\d{2}T.*Z)$/)?.[1];if(!iso)throw new Error('Invalid slot');const date=new Date(iso),day=date.toISOString().slice(0,10),range=this.range(day,day);
+           const o=this.occurrences(s,range.start,range.end).find(o=>o.id===id);if(!o||o.start.getTime()<=Date.now())throw new Error('Unavailable slot');
+           if(calendar.appointments.some(a=>a.status==='booked'&&!this.owns(a,actor,caseId,r.serviceId)&&this.overlaps(a,o))||selected.some(a=>this.overlaps(a,o)))throw new Error('Unavailable slot');
+           const old=calendar.appointments.find(a=>this.owns(a,actor,caseId,r.serviceId)&&a.slotId===id&&a.status==='booked');if(old){selected.push(old);continue;}
+           const quote=this.price(s,o,0);selected.push({id:crypto.randomUUID(),caseId,serviceId:r.serviceId,providerAccountId:r.providerAccountId,customerAccountId:actor,slotId:id,slotTemplateId:o.templateId,startAtIso:o.start.toISOString(),endAtIso:o.end.toISOString(),status:'booked',amount:quote.amount,currency:quote.currency,pricingSummaryRows:quote.rows,createdAtIso:now,updatedAtIso:now});
+          }
+          for(let i=0;i<selected.length;i++)for(let j=i+1;j<selected.length;j++)if(Date.parse(selected[i].startAtIso)<Date.parse(selected[j].endAtIso)&&Date.parse(selected[i].endAtIso)>Date.parse(selected[j].startAtIso))throw new Error('Unavailable slot');
+          for(const old of calendar.appointments)if(this.owns(old,actor,caseId,r.serviceId)&&old.status==='booked'&&Date.parse(old.startAtIso)>Date.now()&&!ids.includes(old.slotId))rows.set(old.id,{...old,status:'cancelled',updatedAtIso:now});
+          selected.forEach(a=>rows.set(a.id,a));const saved=this.repository.save({...calendar,appointments:[...rows.values()],lastOperationId:r.operationId,lastOperationSignature:signature},r.version);
+          this.cases.notify(c,actor,'appointments-updated',r.operationId);await this.repository.flush();return this.saved(saved,actor,caseId,r.serviceId);
+      })()
+    ]);
+    return response;
+  }
  private saved(c:ServiceProviderCalendar,actor:string,caseId:string,serviceId:string){return {version:c.version,appointments:c.appointments.filter(a=>this.owns(a,actor,caseId,serviceId)&&a.status==='booked')};}
  async calendar(userId:string,rangeStart:string,rangeEnd:string):Promise<CaseAppointmentCalendarEntry[]> {
   await this.repository.ready();const actor=this.access.actor(userId),range=this.range(rangeStart,rangeEnd);

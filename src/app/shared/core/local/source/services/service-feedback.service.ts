@@ -45,41 +45,63 @@ export class LocalServiceFeedbackService extends LocalRouteDelayService implemen
       await this.repository.flush();
     } finally {this.running=false;}
   }
-  private async actor(id:string,signal?:AbortSignal) {await this.waitForRouteDelay('/community-cases',signal);await this.repository.ready();signal?.throwIfAborted();return this.access.actor(id);}
+  private async actor(id:string,signal?:AbortSignal) {await this.repository.ready();signal?.throwIfAborted();return this.access.actor(id);}
   private rows():ServiceFeedback[] {return this.repository.cases().filter(c=>c.baseGroupId===COMMUNITY_BASE_GROUP_ID).flatMap(c=>c.feedback??[]);}
   async page(userId:string,query:ListQuery<{bucket:ServiceFeedbackBucket}>,signal?:AbortSignal) {
-    const actor=await this.actor(userId,signal),bucket=query.filters?.bucket??'pending';
-    if(!['pending','feedbacked','removed','received'].includes(bucket))throw new Error('Invalid feedback bucket');
-    const all=this.rows(),matches=(r:ServiceFeedback,b:string)=>b==='received'?r.providerAccountId===actor&&r.status==='feedbacked':r.viewerAccountId===actor&&r.status===b;
-    const rows=all.filter(r=>matches(r,bucket)).sort((a,b)=>b.createdAtIso.localeCompare(a.createdAtIso)||a.id.localeCompare(b.id));
-    const page=Number(query.cursor??0),size=Math.max(1,Math.min(50,query.pageSize));if(!Number.isSafeInteger(page)||page<0)throw new Error('Invalid cursor');
-    const items=rows.slice(page*size,(page+1)*size).map(feedback=>{
-      const offering=feedback.serviceId?this.offerings.find(feedback.serviceId):null;
-      const visible=offering?.baseGroupId===COMMUNITY_BASE_GROUP_ID && (offering.status==='published'||offering.ownerAccountId===actor||offering.staffAccountIds.includes(actor));
-      return {feedback:structuredClone(feedback),providerName:this.users.queryUserById(feedback.providerAccountId)?.name??'',reviewerName:this.users.queryUserById(feedback.viewerAccountId)?.name??'',
-        serviceTitle:visible?offering.title:null,serviceImageUrl:visible?offering.imageUrls[0]??null:null};
-    });
-    return {items,total:rows.length,nextCursor:(page+1)*size<rows.length?String(page+1):null,context:Object.fromEntries(['pending','feedbacked','removed','received'].map(b=>[b,all.filter(r=>matches(r,b)).length]))};
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-cases', signal),
+      (async () => {
+        const actor=await this.actor(userId,signal),bucket=query.filters?.bucket??'pending';
+            if(!['pending','feedbacked','removed','received'].includes(bucket))throw new Error('Invalid feedback bucket');
+            const all=this.rows(),matches=(r:ServiceFeedback,b:string)=>b==='received'?r.providerAccountId===actor&&r.status==='feedbacked':r.viewerAccountId===actor&&r.status===b;
+            const rows=all.filter(r=>matches(r,bucket)).sort((a,b)=>b.createdAtIso.localeCompare(a.createdAtIso)||a.id.localeCompare(b.id));
+            const page=Number(query.cursor??0),size=Math.max(1,Math.min(50,query.pageSize));if(!Number.isSafeInteger(page)||page<0)throw new Error('Invalid cursor');
+            const items=rows.slice(page*size,(page+1)*size).map(feedback=>{
+              const offering=feedback.serviceId?this.offerings.find(feedback.serviceId):null;
+              const visible=offering?.baseGroupId===COMMUNITY_BASE_GROUP_ID && (offering.status==='published'||offering.ownerAccountId===actor||offering.staffAccountIds.includes(actor));
+              return {feedback:structuredClone(feedback),providerName:this.users.queryUserById(feedback.providerAccountId)?.name??'',reviewerName:this.users.queryUserById(feedback.viewerAccountId)?.name??'',
+                serviceTitle:visible?offering.title:null,serviceImageUrl:visible?offering.imageUrls[0]??null:null};
+            });
+            return {items,total:rows.length,nextCursor:(page+1)*size<rows.length?String(page+1):null,context:Object.fromEntries(['pending','feedbacked','removed','received'].map(b=>[b,all.filter(r=>matches(r,b)).length]))};
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
   async action(id:string,command:ServiceFeedbackCommand):Promise<void> {
-    const actor=await this.actor(command.userId),row=this.rows().find(r=>r.id===id&&r.viewerAccountId===actor);if(!row)throw new Error('Feedback not found');
-    let next:ServiceFeedback;
-    if(command.action==='submit'&&row.status==='pending') {
-      const criteria=command.criteria??{},keys=SERVICE_RATING_CRITERIA.criteria.map(c=>c.id),comment=command.comment??'';
-      if(Object.keys(criteria).length!==keys.length||keys.some(k=>!Number.isInteger(criteria[k])||criteria[k]<1||criteria[k]>10)||comment.length>160)throw new Error('Invalid feedback');
-      next={...row,status:'feedbacked',criteria:{...criteria},average:keys.reduce((n,k)=>n+criteria[k],0)/keys.length,comment:comment.trim(),submittedAtIso:new Date().toISOString()};
-    } else if(command.action==='remove'&&row.status==='pending')next={...row,status:'removed'};
-    else if(command.action==='restore'&&row.status==='removed')next={...row,status:'pending'};
-    else throw new Error('Feedback changed');
-    const c=this.repository.findCase(row.caseId)!;
-    this.repository.saveFeedback(c.id,(c.feedback??[]).map(r=>r.id===id?next:r),c.feedbackWork??null);
-    if(command.action==='submit')this.notify(id,'service-feedback-submitted',row.providerAccountId,row.caseTitle,row.caseId);
-    await this.repository.flush();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-cases'),
+      (async (): Promise<void> => {
+        const actor=await this.actor(command.userId),row=this.rows().find(r=>r.id===id&&r.viewerAccountId===actor);if(!row)throw new Error('Feedback not found');
+            let next:ServiceFeedback;
+            if(command.action==='submit'&&row.status==='pending') {
+              const criteria=command.criteria??{},keys=SERVICE_RATING_CRITERIA.criteria.map(c=>c.id),comment=command.comment??'';
+              if(Object.keys(criteria).length!==keys.length||keys.some(k=>!Number.isInteger(criteria[k])||criteria[k]<1||criteria[k]>10)||comment.length>160)throw new Error('Invalid feedback');
+              next={...row,status:'feedbacked',criteria:{...criteria},average:keys.reduce((n,k)=>n+criteria[k],0)/keys.length,comment:comment.trim(),submittedAtIso:new Date().toISOString()};
+            } else if(command.action==='remove'&&row.status==='pending')next={...row,status:'removed'};
+            else if(command.action==='restore'&&row.status==='removed')next={...row,status:'pending'};
+            else throw new Error('Feedback changed');
+            const c=this.repository.findCase(row.caseId)!;
+            this.repository.saveFeedback(c.id,(c.feedback??[]).map(r=>r.id===id?next:r),c.feedbackWork??null);
+            if(command.action==='submit')this.notify(id,'service-feedback-submitted',row.providerAccountId,row.caseTitle,row.caseId);
+            await this.repository.flush();
+      })()
+    ]);
+    return response;
   }
   async stats(userId:string,provider:string,signal?:AbortSignal) {
-    await this.actor(userId,signal);const rows=this.rows().filter(r=>r.providerAccountId===provider&&r.status==='feedbacked');
-    return {count:rows.length,average:rows.length?rows.reduce((n,r)=>n+(r.average??0),0)/rows.length:0,
-      criteria:Object.fromEntries(SERVICE_RATING_CRITERIA.criteria.map(c=>[c.id,rows.length?rows.reduce((n,r)=>n+r.criteria[c.id],0)/rows.length:0]))};
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-cases', signal),
+      (async () => {
+        await this.actor(userId,signal);const rows=this.rows().filter(r=>r.providerAccountId===provider&&r.status==='feedbacked');
+            return {count:rows.length,average:rows.length?rows.reduce((n,r)=>n+(r.average??0),0)/rows.length:0,
+              criteria:Object.fromEntries(SERVICE_RATING_CRITERIA.criteria.map(c=>[c.id,rows.length?rows.reduce((n,r)=>n+r.criteria[c.id],0)/rows.length:0]))};
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
   private notify(id:string,kind:string,actor:string,title:string,caseId:string):void {
     if(!this.users.queryUserById(`group:${COMMUNITY_BASE_GROUP_ID}:${actor}`))return;

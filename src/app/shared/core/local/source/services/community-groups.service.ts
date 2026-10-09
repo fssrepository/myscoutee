@@ -94,31 +94,41 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       + (user.impressions?.host?.unreadCount ? 1 : 0) + (user.impressions?.member?.unreadCount ? 1 : 0);
   }
   async page(userId: string, query: ListQuery<GroupFilters>, signal?: AbortSignal): Promise<PageResult<CommunityGroupSummary, GroupCounters>> {
-    await this.waitForRouteDelay('/groups'); await this.groups.ready(); signal?.throwIfAborted();
-    const bucket = query.filters?.bucket ?? 'explore';
-    const rows = this.groups.records().filter(g => g.lifecycleStatus !== 'deleted' || bucket === 'trash').filter(g => {
-      const trashed = this.restorableMembership(this.members.peekRecordsByOwner({ ownerType: 'community', ownerId: g.id }, true).find(m => m.userId === userId));
-      if (bucket === 'trash') return trashed;
-      const own = this.member(g.id, userId);
-      const admin = this.admin(own);
-      if (bucket === 'hosting') return admin;
-      if (bucket === 'invitations') return own?.status === 'pending' && own.requestKind === 'invite';
-      if (bucket === 'pending') return own?.status === 'pending' && own.requestKind !== 'invite';
-      if (bucket === 'participation') return !admin && own?.status === 'accepted';
-      return g.lifecycleStatus !== 'under-review' && !own && !trashed && g.visibility !== 'invitation'
-        && (!g.moderationStatus || g.moderationStatus === 'accepted');
-    }).filter(g => !query.filters?.category || query.filters.category === g.category)
-      .map(g => this.dto(userId, g)).sort((a, b) =>
-        Number(isBaseGroupId(b.id)) - Number(isBaseGroupId(a.id)) || (groupSort(bucket, query.sort) === 'distance'
-          ? (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
-          : b.updatedAtIso.localeCompare(a.updatedAtIso)) || a.id.localeCompare(b.id));
-    const offset = Number(query.cursor ?? 0); if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
-    const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
-    return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
-      context: (await this.workspaces(userId)).reduce((counts, w) => {
-        const membershipBucket = groupMembershipBucket(w);
-        if (membershipBucket !== 'explore' && membershipBucket !== 'trash') counts[membershipBucket] += w.activity; return counts;
-      }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }) };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/groups'),
+      (async (): Promise<PageResult<CommunityGroupSummary, GroupCounters>> => {
+        await this.groups.ready();
+        signal?.throwIfAborted();
+        const bucket = query.filters?.bucket ?? 'explore';
+        const rows = this.groups.records().filter(g => g.lifecycleStatus !== 'deleted' || bucket === 'trash').filter(g => {
+          const trashed = this.restorableMembership(this.members.peekRecordsByOwner({ ownerType: 'community', ownerId: g.id }, true).find(m => m.userId === userId));
+          if (bucket === 'trash') return trashed;
+          const own = this.member(g.id, userId);
+          const admin = this.admin(own);
+          if (bucket === 'hosting') return admin;
+          if (bucket === 'invitations') return own?.status === 'pending' && own.requestKind === 'invite';
+          if (bucket === 'pending') return own?.status === 'pending' && own.requestKind !== 'invite';
+          if (bucket === 'participation') return !admin && own?.status === 'accepted';
+          return g.lifecycleStatus !== 'under-review' && !own && !trashed && g.visibility !== 'invitation'
+            && (!g.moderationStatus || g.moderationStatus === 'accepted');
+        }).filter(g => !query.filters?.category || query.filters.category === g.category)
+          .map(g => this.dto(userId, g)).sort((a, b) =>
+            Number(isBaseGroupId(b.id)) - Number(isBaseGroupId(a.id)) || (groupSort(bucket, query.sort) === 'distance'
+              ? (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
+              : b.updatedAtIso.localeCompare(a.updatedAtIso)) || a.id.localeCompare(b.id));
+        const offset = Number(query.cursor ?? 0);
+        if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
+        const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
+        return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
+          context: (await this.workspaces(userId)).reduce((counts, w) => {
+            const membershipBucket = groupMembershipBucket(w);
+            if (membershipBucket !== 'explore' && membershipBucket !== 'trash') counts[membershipBucket] += w.activity; return counts;
+          }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }) };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
   async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
     const [, response] = await Promise.all([
@@ -171,7 +181,16 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     });
   }
   async join(userId: string, groupId: string): Promise<CommunityGroup> {
-    await this.waitForRouteDelay('/groups'); const group = this.visible(userId, groupId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/groups'),
+      this.joinWithinRequest(userId, groupId)
+    ]);
+    return response;
+  }
+
+  /** Undelayed owner operation for an aggregate local request. */
+  async joinWithinRequest(userId: string, groupId: string): Promise<CommunityGroup> {
+     const group = this.visible(userId, groupId);
     if (group.lifecycleStatus === 'under-review' || group.moderationStatus && group.moderationStatus !== 'accepted') throw new Error('Forbidden');
     const own = this.member(groupId, userId);
     if (isBaseGroupId(groupId)) {
@@ -199,7 +218,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     const workspace = this.visible(userId, groupId);
     if (this.member(groupId, userId)?.status !== 'accepted') throw new Error('Forbidden');
     const baseId = baseGroupId(groupType(workspace.groupType));
-    if (baseId && groupId !== baseId) await this.join(userId, baseId);
+    if (baseId && groupId !== baseId) await this.joinWithinRequest(userId, baseId);
   }
   roster(userId: string, id: string, pendingOnly = false): ActivityMemberDTO[] {
     const group = this.visible(userId, id); const admin = this.admin(this.member(id, userId));

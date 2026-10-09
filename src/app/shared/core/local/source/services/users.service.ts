@@ -96,17 +96,22 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly realtimeStateByUserId: Record<string, LocalUserRealtimeSnapshotState> = {};
 
   async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
-    await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
-    const users = LocalUsersMapper.toSelectorListItemList(
-      this.usersRepository.queryAvailableDemoUsers(selectorRole)
-    );
-    const baseGroups = this.usersRepository.queryDemoBaseGroupTypes(users.map(user => user.id));
-    return users.map(user => ({
-      ...user,
-      baseGroupTypes: baseGroups.get(user.id) ?? [],
-      locationRequired: selectorRole === 'member'
-        && !this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(user.locationCoordinates)
-    }));
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE),
+      (async (): Promise<UserSelectorListItemDto[]> => {
+        const users = LocalUsersMapper.toSelectorListItemList(
+          this.usersRepository.queryAvailableDemoUsers(selectorRole)
+        );
+        const baseGroups = this.usersRepository.queryDemoBaseGroupTypes(users.map(user => user.id));
+        return users.map(user => ({
+          ...user,
+          baseGroupTypes: baseGroups.get(user.id) ?? [],
+          locationRequired: selectorRole === 'member'
+            && !this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(user.locationCoordinates)
+        }));
+      })()
+    ]);
+    return response;
   }
 
   async prepareUserSession(
@@ -190,9 +195,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async queryUserById(userId?: string, _requestTimeoutMs?: number): Promise<UserByIdQueryResponse> {
-    await this.usersRepository.whenReady();
-    await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
-    return this.readUserById(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE),
+      (async (): Promise<UserByIdQueryResponse> => {
+        await this.usersRepository.whenReady();
+        return this.readUserById(userId);
+      })()
+    ]);
+    return response;
   }
 
   private async readUserById(userId?: string): Promise<UserByIdQueryResponse> {

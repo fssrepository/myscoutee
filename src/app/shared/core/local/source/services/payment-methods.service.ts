@@ -64,24 +64,31 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   }
 
   async queryPage(userId: string, query: ListQuery, signal?: AbortSignal): Promise<SavedPaymentMethodsPageDto> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const all = await Promise.all(this.seedMethods(userId)
-      .map(async method => ({
-      ...method,
-      artworkUrl: await this.artworkRepository.resolveUrl(method.artworkKey)
-      })));
-    const pageSize = Math.max(1, Math.min(6, Math.trunc(Number(query.pageSize) || 6)));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const from = Math.min(all.length, page * pageSize);
-    const items = all.slice(from, from + pageSize);
-    return {
-      items,
-      total: all.length,
-      nextCursor: from + items.length < all.length ? `${page + 1}` : null,
-      canAdd: false,
-      pendingRegistration: null,
-      currentProvider: null
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal),
+      (async (): Promise<SavedPaymentMethodsPageDto> => {
+        const all = await Promise.all(this.seedMethods(userId)
+          .map(async method => ({
+          ...method,
+          artworkUrl: await this.artworkRepository.resolveUrl(method.artworkKey)
+          })));
+        const pageSize = Math.max(1, Math.min(6, Math.trunc(Number(query.pageSize) || 6)));
+        const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+        const from = Math.min(all.length, page * pageSize);
+        const items = all.slice(from, from + pageSize);
+        return {
+          items,
+          total: all.length,
+          nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+          canAdd: false,
+          pendingRegistration: null,
+          currentProvider: null
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async beginRegistration(
@@ -117,48 +124,62 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
     query: ListQuery,
     signal?: AbortSignal
   ): Promise<PaymentHistoryPageDto> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const card = this.seedMethods(userId).find(item => item.id === paymentMethodId);
-    const recorded = this.affiliateRepository.paymentHistory(userId);
-    const all = card ? recorded.filter(item=>item.paymentMethodId===paymentMethodId).sort((a,b)=>b.createdAtIso.localeCompare(a.createdAtIso)) : [];
-    const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const from = Math.min(all.length, page * pageSize);
-    const items = all.slice(from, from + pageSize);
-    return {
-      items,
-      total: all.length,
-      nextCursor: from + items.length < all.length ? `${page + 1}` : null,
-      euroSummary: this.summary(userId, recorded),
-      spendingTotals: this.paymentTotals(recorded, 'expense'),
-      incomeTotals: this.paymentTotals(recorded, 'income'),
-      pendingRefundCount: this.pendingRefundCount(userId)
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal),
+      (async (): Promise<PaymentHistoryPageDto> => {
+        const card = this.seedMethods(userId).find(item => item.id === paymentMethodId);
+        const recorded = this.affiliateRepository.paymentHistory(userId);
+        const all = card ? recorded.filter(item=>item.paymentMethodId===paymentMethodId).sort((a,b)=>b.createdAtIso.localeCompare(a.createdAtIso)) : [];
+        const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
+        const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+        const from = Math.min(all.length, page * pageSize);
+        const items = all.slice(from, from + pageSize);
+        return {
+          items,
+          total: all.length,
+          nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+          euroSummary: this.summary(userId, recorded),
+          spendingTotals: this.paymentTotals(recorded, 'expense'),
+          incomeTotals: this.paymentTotals(recorded, 'income'),
+          pendingRefundCount: this.pendingRefundCount(userId)
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const recorded = this.affiliateRepository.paymentHistory(userId);
-    const expenses=recorded.filter(item=>item.direction==='expense');
-    const income=recorded.filter(item=>item.direction==='income');
-    const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? 'all'}`.trim();
-    const counterparty=(query.filters as {counterpartyUserId?:string}|undefined)?.counterpartyUserId?.trim();
-    const all = (direction === 'expenses' ? expenses : direction === 'income' ? income : [...expenses, ...income])
-      .filter(item=>!counterparty||item.counterpartyUserId===counterparty)
-      .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
-    const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const from = Math.min(all.length, page * pageSize);
-    const items = all.slice(from, from + pageSize);
-    return {
-      items,
-      total: all.length,
-      nextCursor: from + items.length < all.length ? `${page + 1}` : null,
-      euroSummary: this.summary(userId, [...expenses, ...income]),
-      spendingTotals: this.paymentTotals(expenses, 'expense'),
-      incomeTotals: this.paymentTotals(income, 'income'),
-      pendingRefundCount: this.pendingRefundCount(userId)
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal),
+      (async (): Promise<PaymentHistoryPageDto> => {
+        const recorded = this.affiliateRepository.paymentHistory(userId);
+        const expenses=recorded.filter(item=>item.direction==='expense');
+        const income=recorded.filter(item=>item.direction==='income');
+        const direction = `${(query.filters as { direction?: string } | undefined)?.direction ?? 'all'}`.trim();
+        const counterparty=(query.filters as {counterpartyUserId?:string}|undefined)?.counterpartyUserId?.trim();
+        const all = (direction === 'expenses' ? expenses : direction === 'income' ? income : [...expenses, ...income])
+          .filter(item=>!counterparty||item.counterpartyUserId===counterparty)
+          .sort((left, right) => right.createdAtIso.localeCompare(left.createdAtIso));
+        const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(query.pageSize) || 20)));
+        const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+        const from = Math.min(all.length, page * pageSize);
+        const items = all.slice(from, from + pageSize);
+        return {
+          items,
+          total: all.length,
+          nextCursor: from + items.length < all.length ? `${page + 1}` : null,
+          euroSummary: this.summary(userId, [...expenses, ...income]),
+          spendingTotals: this.paymentTotals(expenses, 'expense'),
+          incomeTotals: this.paymentTotals(income, 'income'),
+          pendingRefundCount: this.pendingRefundCount(userId)
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {

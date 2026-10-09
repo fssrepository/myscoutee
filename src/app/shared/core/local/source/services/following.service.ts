@@ -36,14 +36,19 @@ export class LocalFollowingService extends LocalRouteDelayService implements IFo
     return { ...following, eventCountDelta: following.eventCount - previousCount };
   }
   async members(userId: string): Promise<ActivityMemberDTO[]> {
-    await this.waitForRouteDelay('/activities/events');
-    await this.db.whenReady();
-    const users = this.db.read()[USERS_TABLE_NAME];
-    return (users.byId[userId]?.following?.organizerIds ?? []).flatMap(id => {
-      const user = users.byId[id];
-      return user ? [{ id, userId: id, name: user.name, initials: user.initials, gender: user.gender,
-        city: user.city, avatarUrl: user.images?.[0] ?? '', statusText: user.statusText, pendingSource: 'admin' as const,
-        requestKind: 'invite' as const, invitedByActiveUser: false, metAtIso: '', actionAtIso: '', metWhere: '', role: 'Member' as const, status: 'accepted' as const }] : [];
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/activities/events'),
+      (async (): Promise<ActivityMemberDTO[]> => {
+        await this.db.whenReady();
+        const users = this.db.read()[USERS_TABLE_NAME];
+        return (users.byId[userId]?.following?.organizerIds ?? []).flatMap(id => {
+          const user = users.byId[id];
+          return user ? [{ id, userId: id, name: user.name, initials: user.initials, gender: user.gender,
+            city: user.city, avatarUrl: user.images?.[0] ?? '', statusText: user.statusText, pendingSource: 'admin' as const,
+            requestKind: 'invite' as const, invitedByActiveUser: false, metAtIso: '', actionAtIso: '', metWhere: '', role: 'Member' as const, status: 'accepted' as const }] : [];
+        }).sort((a, b) => a.name.localeCompare(b.name));
+      })()
+    ]);
+    return response;
   }
 }

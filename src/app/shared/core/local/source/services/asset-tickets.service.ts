@@ -17,16 +17,28 @@ export class LocalAssetTicketsService extends LocalRouteDelayService {
   }
 
   async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
-    await this.waitForRouteDelay(LocalAssetTicketsService.ASSET_TICKETS_ROUTE);
-    return this.assetTicketsRepository.queryTicketPage(query);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetTicketsService.ASSET_TICKETS_ROUTE),
+      (async (): Promise<AssetContracts.AssetTicketPageResultDTO> => {
+        return this.assetTicketsRepository.queryTicketPage(query);
+      })()
+    ]);
+    return response;
   }
 
   async syncTickets(
     request: AssetContracts.AssetTicketSyncRequestDTO,
     signal?: AbortSignal
   ): Promise<AssetContracts.AssetTicketSyncResultDTO> {
-    await this.waitForRouteDelay(LocalAssetTicketsService.ASSET_TICKETS_ROUTE, signal);
-    return this.assetTicketsRepository.syncTickets(request);
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetTicketsService.ASSET_TICKETS_ROUTE, signal),
+      (async (): Promise<AssetContracts.AssetTicketSyncResultDTO> => {
+        return this.assetTicketsRepository.syncTickets(request);
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async validateTicket(

@@ -92,7 +92,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
       || event.acceptedMemberUserIds?.includes(invite.ownerUserId);
     if (!inviterCanInvite) {
       if (!this.events.queryExploreItems(user.id, true).some(item => item.id === event.id)) throw new Error('Forbidden');
-      const result = await this.eventActions.requestJoin(user.id, event.id);
+      const result = await this.eventActions.requestJoin(user.id, event.id, { skipLocalRouteDelay: true });
       if (!result || result.membershipStatus === 'unchanged') throw new Error('Event participation is unavailable');
       return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
     }
@@ -104,7 +104,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
         invitedByUserId: invite.ownerUserId, metAtIso: now, actionAtIso: now, metWhere: event.location, avatarUrl: user.images?.[0] ?? ''};
       const partition = partitionEventInvitesByCapacity(current, [candidate], event.capacityTotal);
       if (!partition.acceptedAdditions.length) throw new Error('Event invitation could not be created');
-      await this.members.replaceMembersByOwner(owner, [...current, candidate], event.capacityTotal, invite.ownerUserId);
+      await this.members.writeMembersByOwner(owner, [...current, candidate], event.capacityTotal, invite.ownerUserId);
     }
     await this.repository.flushToIndexedDb();
     return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
@@ -136,11 +136,16 @@ export class LocalIntegrationService extends LocalRouteDelayService {
 
   async loadSettings(admin = false): Promise<IntegrationSettingsDto> {
     const owner = this.requireUserId(admin);
-    await this.repository.whenReady();
-    await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`);
-    const settings = await this.settingsSnapshot(owner, admin);
-    await this.repository.flushToIndexedDb();
-    return settings;
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/settings`),
+      (async (): Promise<IntegrationSettingsDto> => {
+        await this.repository.whenReady();
+        const settings = await this.settingsSnapshot(owner, admin);
+        await this.repository.flushToIndexedDb();
+        return settings;
+      })()
+    ]);
+    return response;
   }
 
   private async settingsSnapshot(owner: string, admin = false): Promise<IntegrationSettingsDto> {
