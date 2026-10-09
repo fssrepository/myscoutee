@@ -31,6 +31,21 @@ describe('Local profile-load location flush', () => {
     expect(result.profileExt.profile.locationCoordinates).toEqual(location);
     expect(repository.selectWorkspace).not.toHaveBeenCalled();
   });
+  it('finishes profile persistence while the emulated response is still pending', async () => {
+    const { service, repository } = fixture();
+    let releaseDelay!: () => void;
+    service.waitForRouteDelay = vi.fn(() => new Promise<void>(resolve => { releaseDelay = resolve; }));
+    let completed = false;
+    const pending = service.loadProfileExtById('account', undefined, 'group-a', { latitude: 47, longitude: 19 })
+      .then(() => { completed = true; });
+    await vi.waitFor(() => expect(repository.selectWorkspace).toHaveBeenCalledWith('account', 'group-a'));
+    expect(repository.flushToIndexedDb).toHaveBeenCalledOnce();
+    expect(completed).toBe(false);
+    releaseDelay();
+    await pending;
+    expect(completed).toBe(true);
+  });
+
   it('does not rewrite location during a restored profile read', async () => {
     const { service, repository } = fixture();
     await service.loadProfileExtById('account');

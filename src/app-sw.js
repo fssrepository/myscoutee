@@ -184,10 +184,11 @@ function isImageRequest(request) {
   return request.destination === 'image';
 }
 
-async function networkFirst(request, cacheName) {
+async function networkFirst(request, cacheName, timeoutMs) {
   const cache = await caches.open(cacheName);
   try {
-    const response = await fetch(request, { cache: 'no-store' });
+    const response = await fetch(request, { cache: 'no-store',
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
     if (response && (response.ok || response.type === 'opaque')) {
       cache.put(request, response.clone());
     }
@@ -195,25 +196,34 @@ async function networkFirst(request, cacheName) {
   } catch {
     const cached = await cache.match(request, { ignoreSearch: request.mode === 'navigate' });
     if (cached) {
-      return cached;
+      return request.mode === 'navigate' ? offlineAppShell(cached) : cached;
     }
     if (request.mode === 'navigate') {
       const fallback = await cache.match('./index.html');
       if (fallback) {
-        return fallback;
+        return offlineAppShell(fallback);
       }
     }
     return unavailableResponse(request);
   }
 }
 
+async function offlineAppShell(cached) {
+  // A cached page is still usable, but its former green status is not current.
+  const html = (await cached.text()).replace(
+    /(<script\b[^>]*\bid=["']myscoutee-runtime-status["'][^>]*>)[\s\S]*?(<\/script>)/i,
+    '$1null$2'
+  );
+  const headers = new Headers(cached.headers);
+  headers.delete('Content-Length');
+  headers.delete('Content-Encoding');
+  return new Response(html, { status: cached.status, headers });
+}
+
 async function serveAppShell(request) {
-  const cache = await caches.open(APP_CACHE);
-  const cachedIndex = await cache.match('./index.html') || await cache.match('./');
-  if (cachedIndex) {
-    return cachedIndex;
-  }
-  return networkFirst(request, APP_CACHE);
+  // The HTML head carries current nginx readiness; an old cached green snapshot
+  // must not bypass it. Hashed bundles keep their existing cache-first behavior.
+  return networkFirst(request, APP_CACHE, 1000);
 }
 
 async function networkFirstStaticAsset(request) {

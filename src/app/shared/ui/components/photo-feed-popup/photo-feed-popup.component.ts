@@ -60,6 +60,7 @@ export class PhotoFeedPopupComponent implements OnDestroy {
     snapMode: 'mandatory', initialScrollAnchor: 'first-item', scrollPaddingTop: '2.6rem',
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     pollIntervalMs: 0,
+    headerProgress: { enabled: true },
     emptyLabel: () => this.i18n.translate('feed.empty')
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<PhotoFeedPost>, PhotoFeedFilters> = (query, context) =>

@@ -25,6 +25,8 @@
       <circle class="app-indicator__load-ring-track" cx="29" cy="29" r="25"></circle>
       <circle
         class="app-indicator__load-ring-progress"
+        [class.is-timed]="isTimedLoadRing"
+        [style.--app-indicator-progress-start]="resolvedPerimeter"
         cx="29"
         cy="29"
         r="25"

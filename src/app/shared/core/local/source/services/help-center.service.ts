@@ -36,13 +36,19 @@ export class LocalHelpCenterService {
   private readonly routeDelay = inject(RouteDelayService);
 
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null, groupId: string | null = null): Promise<HelpCenterStateDto> {
+    const [state] = await Promise.all([
+      this.readState(kind, lang, contextKey, groupId),
+      this.routeDelay.waitForRouteDelay(`/${this.normalizeKind(kind)}/active`)
+    ]);
+    return state;
+  }
+
+  // Aggregate responses reuse the same projection; their outer request owns the delay.
+  async readState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null, groupId: string | null = null): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
-    await Promise.all([
-      this.helpCenterRepository.whenReady(),
-      this.routeDelay.waitForRouteDelay(`/${documentKind}/active`)
-    ]);
+    await this.helpCenterRepository.whenReady();
     const table = this.table(documentKind === 'privacy' ? null : groupId);
     this.assertBootstrappedState(table, documentKind, language, context);
     return this.stateFromTable(table, documentKind, language, context);

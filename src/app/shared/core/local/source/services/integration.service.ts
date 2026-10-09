@@ -42,12 +42,12 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     const actor = request.ownerType === 'community' ? user.accountUserId ?? user.id : user.id;
     let landingType = 'dating';
     if (request.ownerType === 'community') {
-      const group = await this.groups.detail(actor, request.entityId);
+      const group = await this.groups.readDetail(actor, request.entityId);
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') throw new Error('Forbidden');
       landingType = group.groupType ?? 'dating';
     } else this.requireEventInvite(actor, request.entityId);
     if (request.ownerType === 'event' && user.workspaceGroupId) {
-      landingType = (await this.groups.detail(user.accountUserId ?? user.id, user.workspaceGroupId)).groupType ?? 'dating';
+      landingType = (await this.groups.readDetail(user.accountUserId ?? user.id, user.workspaceGroupId)).groupType ?? 'dating';
     }
     const result = this.repository.externalInvite(actor, request.ownerType, request.entityId);
     await this.repository.flushToIndexedDb();
@@ -64,7 +64,7 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     if (invite.ownerType === 'community') {
       const actor = user.accountUserId ?? user.id;
       await this.groups.invite(invite.ownerUserId, invite.entityId, [actor]);
-      const group = await this.groups.detail(actor, invite.entityId);
+      const group = await this.groups.readDetail(actor, invite.entityId);
       if (group.membershipStatus !== 'accepted') {
         await this.groups.action(group.requestKind === 'invite' ? actor : invite.ownerUserId, invite.entityId, actor, 'accept');
       }

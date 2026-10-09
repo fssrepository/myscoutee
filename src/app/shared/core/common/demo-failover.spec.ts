@@ -3,16 +3,29 @@ import { demoFailoverSeedWarmupNeeded, prepareDemoFailover } from './demo-failov
 
 describe('demo seed startup eligibility', () => {
   let previousDataSource: 'local' | 'http';
+  let previousEnvironment: typeof environment;
 
   beforeEach(async () => {
     previousDataSource = environment.activitiesDataSource;
+    previousEnvironment = { ...environment };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      ready: true, checkedAt: Math.floor(Date.now() / 1000)
+    }))));
     environment.activitiesDataSource = 'http';
     localStorage.clear();
+    const snapshot = document.createElement('script');
+    snapshot.id = 'myscoutee-runtime-status';
+    snapshot.type = 'application/json';
+    snapshot.textContent = JSON.stringify({ ready: true, checkedAt: Math.floor(Date.now() / 1000) });
+    document.head.append(snapshot);
     await prepareDemoFailover();
   });
 
   afterEach(() => {
     environment.activitiesDataSource = previousDataSource;
+    Object.assign(environment, previousEnvironment);
+    vi.unstubAllGlobals();
+    document.getElementById('myscoutee-runtime-status')?.remove();
     localStorage.clear();
   });
 

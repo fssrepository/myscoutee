@@ -5,7 +5,7 @@ export type IndicatorPlacement = 'edge' | 'inline';
 export type IndicatorShape = 'circle' | 'button' | 'surface';
 export type IndicatorSize = 'sm' | 'md';
 export type IndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'inactive';
-export type IndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success';
+export type IndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success' | 'bright';
 
 export interface IndicatorBarConfig {
   position?: number;
@@ -120,6 +120,11 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     return this.tone === 'chat';
   }
 
+  @HostBinding('class.app-indicator-host--tone-bright')
+  protected get hostBrightToneClass(): boolean {
+    return this.tone === 'bright';
+  }
+
   @HostBinding('style.--app-indicator-duration')
   protected get durationStyle(): string {
     return `${Math.max(0, Math.trunc(Number(this.durationMs) || 0))}ms`;
@@ -155,6 +160,10 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   protected get isLoadRingKind(): boolean {
     return this.kind === 'load-ring';
+  }
+
+  protected get isTimedLoadRing(): boolean {
+    return this.isLoadRingKind && this.usesTimedLoadProgress();
   }
 
   protected get isActionRingKind(): boolean {
@@ -303,7 +312,9 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private syncTimedLoadProgress(): void {
-    if (!this.usesTimedLoadProgress()) {
+    // Like action-ring, timed load rings use the browser's animation timeline.
+    // Data preparation must not be responsible for advancing each frame.
+    if (!this.usesTimedLoadProgress() || this.isTimedLoadRing) {
       this.clearTimedLoadProgress();
       return;
     }

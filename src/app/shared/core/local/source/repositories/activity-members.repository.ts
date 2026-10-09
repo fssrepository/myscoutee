@@ -151,7 +151,7 @@ export class LocalActivityMembersRepository {
     if (!normalizedUserId) {
       return [];
     }
-    this.ensureGameSocialCardsCache();
+    this.ensureGameSocialCardsCache(normalizedUserId);
     return (this.gameSocialCardsByUserId.get(normalizedUserId)?.[mode] ?? [])
       .map(card => ({ ...card }));
   }
@@ -230,137 +230,133 @@ export class LocalActivityMembersRepository {
       .sort((left, right) => left.eventId.localeCompare(right.eventId));
   }
 
-  private ensureGameSocialCardsCache(): void {
+  private ensureGameSocialCardsCache(activeUserId: string): void {
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     const token = this.gameSocialCardsCacheTokenForTable(table);
-    if (token === this.gameSocialCardsCacheToken) {
-      return;
+    if (token !== this.gameSocialCardsCacheToken) {
+      this.gameSocialCardsByUserId.clear();
+      this.gameSocialCardsCacheToken = token;
     }
-    this.refreshGameSocialCardsCache(table);
+    if (!this.gameSocialCardsByUserId.has(activeUserId)) {
+      this.refreshGameSocialCardsCache(activeUserId);
+    }
   }
 
-  private refreshGameSocialCardsCache(table: ActivityMembersRecordCollection): void {
-    const groups = this.acceptedEventMemberGroupsFromTable(table);
-    const graph = this.buildAcceptedMemberGraph(groups);
-    const graphToken = this.gameSocialCardsCacheTokenForTable(table);
-    this.acceptedMemberGraphCache = graph;
-    this.acceptedMemberGraphCacheToken = graphToken;
-    this.gameSocialCardsByUserId.clear();
+  private refreshGameSocialCardsCache(activeUserId: string): void {
+    const graph = this.queryAcceptedMemberGraph();
     const usersById = new Map(this.localActivityMemberUsers.map(user => [user.id, user] as const));
     const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
     const gameUserIds = [...usersById.keys()].sort();
-    for (const activeUserId of gameUserIds) {
-      if (!UserProfileState.isPublicGameProfile(usersById.get(activeUserId))) {
-        continue;
-      }
-      const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
-        .filter(userId => userId !== activeUserId)
-        .filter(userId => UserProfileState.isInsideNetworkGameProfile(usersById.get(userId)))
-        .sort();
-      const activeNeighborIds = new Set(activeNeighbors);
-      const cards: LocalGameSocialCardsByMode = {
-        'friends-in-common': [],
-        'separated-friends': [],
-        'outside-network': []
-      };
-      for (let leftIndex = 0; leftIndex < activeNeighbors.length; leftIndex += 1) {
-        const leftUserId = activeNeighbors[leftIndex];
-        for (let rightIndex = leftIndex + 1; rightIndex < activeNeighbors.length; rightIndex += 1) {
-          const rightUserId = activeNeighbors[rightIndex];
-          const key = this.sortedPairKey(leftUserId, rightUserId);
-          if (graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)) {
-            continue;
-          }
-          cards['separated-friends'].push({
-            id: `separated-friends:${activeUserId}:${key}`,
-            userId: leftUserId,
-            secondaryUserId: rightUserId,
-            socialContext: 'separated-friends',
-            bridgeCount: 2,
-            eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
-              ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
-              ?? 'Inside Network'
-          });
-        }
-      }
-      for (const candidateUserId of graphUserIds) {
-        if (
-          candidateUserId === activeUserId
-          || activeNeighborIds.has(candidateUserId)
-          || !UserProfileState.isPublicGameProfile(usersById.get(candidateUserId))
-        ) {
+    if (!UserProfileState.isPublicGameProfile(usersById.get(activeUserId))) {
+      this.gameSocialCardsByUserId.set(activeUserId, { 'friends-in-common': [], 'separated-friends': [], 'outside-network': [] });
+      return;
+    }
+    const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
+      .filter(userId => userId !== activeUserId)
+      .filter(userId => UserProfileState.isInsideNetworkGameProfile(usersById.get(userId)))
+      .sort();
+    const activeNeighborIds = new Set(activeNeighbors);
+    const cards: LocalGameSocialCardsByMode = {
+      'friends-in-common': [],
+      'separated-friends': [],
+      'outside-network': []
+    };
+    for (let leftIndex = 0; leftIndex < activeNeighbors.length; leftIndex += 1) {
+      const leftUserId = activeNeighbors[leftIndex];
+      for (let rightIndex = leftIndex + 1; rightIndex < activeNeighbors.length; rightIndex += 1) {
+        const rightUserId = activeNeighbors[rightIndex];
+        const key = this.sortedPairKey(leftUserId, rightUserId);
+        if (graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)) {
           continue;
         }
-        const candidateNeighbors = graph.neighborsByUserId.get(candidateUserId) ?? new Set<string>();
-        const bridgeUserIds = activeNeighbors
-          .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
-          .filter(bridgeUserId => UserProfileState.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
-          .sort();
-        if (bridgeUserIds.length === 0) {
-          continue;
-        }
-        const bridgeUserId = this.strongestBridgeUserId(bridgeUserIds, usersById);
-        cards['friends-in-common'].push({
-          id: `friends-in-common:${activeUserId}:${candidateUserId}`,
-          userId: candidateUserId,
-          socialContext: 'friends-in-common',
-          bridgeUserId,
-          bridgeCount: bridgeUserIds.length,
-          eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, bridgeUserId))
-            ?? graph.edgeEventNameByKey.get(this.sortedPairKey(candidateUserId, bridgeUserId))
-            ?? 'Friends in Common'
+        cards['separated-friends'].push({
+          id: `separated-friends:${activeUserId}:${key}`,
+          userId: leftUserId,
+          secondaryUserId: rightUserId,
+          socialContext: 'separated-friends',
+          bridgeCount: 2,
+          eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
+            ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
+            ?? 'Inside Network'
         });
       }
-      for (let leftIndex = 0; leftIndex < gameUserIds.length; leftIndex += 1) {
-        const leftUserId = gameUserIds[leftIndex];
+    }
+    for (const candidateUserId of graphUserIds) {
+      if (
+        candidateUserId === activeUserId
+        || activeNeighborIds.has(candidateUserId)
+        || !UserProfileState.isPublicGameProfile(usersById.get(candidateUserId))
+      ) {
+        continue;
+      }
+      const candidateNeighbors = graph.neighborsByUserId.get(candidateUserId) ?? new Set<string>();
+      const bridgeUserIds = activeNeighbors
+        .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
+        .filter(bridgeUserId => UserProfileState.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
+        .sort();
+      if (bridgeUserIds.length === 0) {
+        continue;
+      }
+      const bridgeUserId = this.strongestBridgeUserId(bridgeUserIds, usersById);
+      cards['friends-in-common'].push({
+        id: `friends-in-common:${activeUserId}:${candidateUserId}`,
+        userId: candidateUserId,
+        socialContext: 'friends-in-common',
+        bridgeUserId,
+        bridgeCount: bridgeUserIds.length,
+        eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, bridgeUserId))
+          ?? graph.edgeEventNameByKey.get(this.sortedPairKey(candidateUserId, bridgeUserId))
+          ?? 'Friends in Common'
+      });
+    }
+    for (let leftIndex = 0; leftIndex < gameUserIds.length; leftIndex += 1) {
+      const leftUserId = gameUserIds[leftIndex];
+      if (
+        leftUserId === activeUserId
+        || activeNeighborIds.has(leftUserId)
+        || !UserProfileState.isPublicGameProfile(usersById.get(leftUserId))
+      ) {
+        continue;
+      }
+      for (let rightIndex = leftIndex + 1; rightIndex < gameUserIds.length; rightIndex += 1) {
+        const rightUserId = gameUserIds[rightIndex];
         if (
-          leftUserId === activeUserId
-          || activeNeighborIds.has(leftUserId)
-          || !UserProfileState.isPublicGameProfile(usersById.get(leftUserId))
+          rightUserId === activeUserId
+          || activeNeighborIds.has(rightUserId)
+          || graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)
+          || !UserProfileState.isPublicGameProfile(usersById.get(rightUserId))
         ) {
           continue;
         }
-        for (let rightIndex = leftIndex + 1; rightIndex < gameUserIds.length; rightIndex += 1) {
-          const rightUserId = gameUserIds[rightIndex];
-          if (
-            rightUserId === activeUserId
-            || activeNeighborIds.has(rightUserId)
-            || graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)
-            || !UserProfileState.isPublicGameProfile(usersById.get(rightUserId))
-          ) {
-            continue;
-          }
-          const [primaryUserId, secondaryUserId] = this.orderedPairUserIds(leftUserId, rightUserId, usersById);
-          const key = this.sortedPairKey(primaryUserId, secondaryUserId);
-          cards['outside-network'].push({
-            id: `outside-network:${activeUserId}:${key}`,
-            userId: primaryUserId,
-            secondaryUserId
-          });
-        }
+        const [primaryUserId, secondaryUserId] = this.orderedPairUserIds(leftUserId, rightUserId, usersById);
+        const key = this.sortedPairKey(primaryUserId, secondaryUserId);
+        cards['outside-network'].push({
+          id: `outside-network:${activeUserId}:${key}`,
+          userId: primaryUserId,
+          secondaryUserId
+        });
       }
-      cards['friends-in-common'].sort((left, right) => {
-        const bridgeDelta = (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0);
-        if (bridgeDelta !== 0) {
-          return bridgeDelta;
-        }
-        const scoreDelta = this.singleDistanceScore(activeUserId, right, usersById)
-          - this.singleDistanceScore(activeUserId, left, usersById);
-        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
-      });
-      cards['separated-friends'].sort((left, right) => {
-        const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
-          - this.pairDistanceScore(activeUserId, left, usersById);
-        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
-      });
-      cards['outside-network'].sort((left, right) => {
-        const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
-          - this.pairDistanceScore(activeUserId, left, usersById);
-        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
-      });
-      this.gameSocialCardsByUserId.set(activeUserId, cards);
     }
-    this.gameSocialCardsCacheToken = graphToken;
+    cards['friends-in-common'].sort((left, right) => {
+      const bridgeDelta = (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0);
+      if (bridgeDelta !== 0) {
+        return bridgeDelta;
+      }
+      const scoreDelta = this.singleDistanceScore(activeUserId, right, usersById)
+        - this.singleDistanceScore(activeUserId, left, usersById);
+      return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+    });
+    cards['separated-friends'].sort((left, right) => {
+      const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
+        - this.pairDistanceScore(activeUserId, left, usersById);
+      return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+    });
+    cards['outside-network'].sort((left, right) => {
+      const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
+        - this.pairDistanceScore(activeUserId, left, usersById);
+      return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+    });
+    this.gameSocialCardsByUserId.set(activeUserId, cards);
   }
 
   private orderedPairUserIds(
