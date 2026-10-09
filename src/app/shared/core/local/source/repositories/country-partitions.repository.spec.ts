@@ -38,3 +38,22 @@ describe('Spain country eligibility', () => {
       expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBeNull();
     });
 });
+
+describe('United Kingdom country eligibility', () => {
+  const repository = new LocalCountryPartitionsRepository();
+  it('uses one GB country partition', () => {
+    expect(repository.querySupportedCountries()).toContainEqual({countryCode: 'GB', countryName: 'United Kingdom'});
+    expect(repository.resolvePartitionKeyByCountryCode('gb')).toBe('country:gb');
+  });
+  it.each([
+    ['London, England', 51.5074, -0.1278],
+    ['Edinburgh, Scotland', 55.9533, -3.1883],
+    ['Cardiff, Wales', 51.4816, -3.1791],
+    ['Belfast, Northern Ireland', 54.5973, -5.9301]
+  ])('includes %s in GB', (_name, latitude, longitude) => {
+    expect(repository.resolvePartitionKeyByCoordinates({latitude: Number(latitude), longitude: Number(longitude)})).toBe('country:gb');
+  });
+  it('does not include Dublin in GB', () => {
+    expect(repository.resolvePartitionKeyByCoordinates({latitude: 53.3498, longitude: -6.2603})).toBeNull();
+  });
+});
