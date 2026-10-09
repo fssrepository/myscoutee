@@ -22,8 +22,13 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
   }
 
   async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {
-    await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE);
-    return this.ratesRepository.queryRateItemsByUserId(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalRatesService.RATES_ROUTE),
+      (async (): Promise<ActivityRateDTO[]> => {
+        return this.ratesRepository.queryRateItemsByUserId(userId);
+      })()
+    ]);
+    return response;
   }
 
   async queryActivitiesRatePage(
@@ -31,34 +36,41 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
     query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityRatePageResultDTO> {
-    await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE, signal);
-    const ownerUserId = this.resolveDemoActivityUserId(userId);
-    const page = await this.ratesRepository.queryActivityRateItemsPage(
-      this.toActivityRateRecordQuery(ownerUserId, query)
-    );
-    const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, { ...user }]));
-    const userIds = new Set<string>();
-    for (const item of page.items) {
-      if (item.userId?.trim()) {
-        userIds.add(item.userId.trim());
-      }
-      if (item.secondaryUserId?.trim()) {
-        userIds.add(item.secondaryUserId.trim());
-      }
-      if (item.bridgeUserId?.trim()) {
-        userIds.add(item.bridgeUserId.trim());
-      }
-    }
-    return {
-      ...page,
-      gameCounter: Math.max(
-        0,
-        Math.trunc(Number(this.usersRepository.queryUserById(ownerUserId)?.activities?.game) || 0)
-      ),
-      users: [...userIds]
-        .map(userId => usersById.get(userId) ?? null)
-        .filter((user): user is NonNullable<typeof user> => Boolean(user))
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalRatesService.RATES_ROUTE, signal),
+      (async (): Promise<ActivityRatePageResultDTO> => {
+        const ownerUserId = this.resolveDemoActivityUserId(userId);
+        const page = await this.ratesRepository.queryActivityRateItemsPage(
+          this.toActivityRateRecordQuery(ownerUserId, query)
+        );
+        const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, { ...user }]));
+        const userIds = new Set<string>();
+        for (const item of page.items) {
+          if (item.userId?.trim()) {
+            userIds.add(item.userId.trim());
+          }
+          if (item.secondaryUserId?.trim()) {
+            userIds.add(item.secondaryUserId.trim());
+          }
+          if (item.bridgeUserId?.trim()) {
+            userIds.add(item.bridgeUserId.trim());
+          }
+        }
+        return {
+          ...page,
+          gameCounter: Math.max(
+            0,
+            Math.trunc(Number(this.usersRepository.queryUserById(ownerUserId)?.activities?.game) || 0)
+          ),
+          users: [...userIds]
+            .map(userId => usersById.get(userId) ?? null)
+            .filter((user): user is NonNullable<typeof user> => Boolean(user))
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
 

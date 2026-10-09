@@ -14,8 +14,13 @@ export class LocalUserExperiencesService extends LocalRouteDelayService implemen
   private readonly repository = inject(LocalProfileExperiencesRepository);
 
   async queryUserExperiences(userId: string): Promise<ExperienceEntry[]> {
-    await this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE);
-    return LocalProfileExperiencesMapper.cloneEntries(this.repository.queryUserExperienceRecords(userId));
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE),
+      (async (): Promise<ExperienceEntry[]> => {
+        return LocalProfileExperiencesMapper.cloneEntries(this.repository.queryUserExperienceRecords(userId));
+      })()
+    ]);
+    return response;
   }
 
   async saveUserExperiences(userId: string, entries: readonly ExperienceEntry[]): Promise<ExperienceEntry[]> {

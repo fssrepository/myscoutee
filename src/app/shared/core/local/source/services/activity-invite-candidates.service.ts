@@ -17,13 +17,18 @@ export class LocalActivityInviteCandidatesService extends LocalRouteDelayService
   private readonly activityInviteCandidatesRepository = inject(LocalActivityInviteCandidatesRepository);
 
   async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityInviteCandidatesPage> {
-    await this.waitForRouteDelay(LocalActivityInviteCandidatesService.ROUTE);
-    const result = await this.activityInviteCandidatesRepository.queryCandidateRecords(query);
-    return {
-      items: LocalActivityInviteCandidatesMapper.toEntries(query, result.items),
-      total: result.total,
-      page: result.page,
-      pageSize: result.pageSize
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityInviteCandidatesService.ROUTE),
+      (async (): Promise<ActivityInviteCandidatesPage> => {
+        const result = await this.activityInviteCandidatesRepository.queryCandidateRecords(query);
+        return {
+          items: LocalActivityInviteCandidatesMapper.toEntries(query, result.items),
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize
+        };
+      })()
+    ]);
+    return response;
   }
 }

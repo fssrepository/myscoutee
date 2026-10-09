@@ -39,20 +39,27 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
         context: { unreadCount: 0, muted: false }
       };
     }
-    await this.repository.whenReady();
-    await this.waitForRouteDelay(LocalNotificationsService.ROUTE, signal);
-    const page = LocalNotificationMapper.toDtoPage(
-      this.repository.queryPage(normalizedUserId, query)
-    );
-    return {
-      items: page.records,
-      total: page.total,
-      nextCursor: page.nextCursor,
-      context: {
-        unreadCount: page.unreadCount,
-        muted: page.muted
-      }
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalNotificationsService.ROUTE, signal),
+      (async (): Promise<NotificationPageResultDto> => {
+        await this.repository.whenReady();
+        const page = LocalNotificationMapper.toDtoPage(
+          this.repository.queryPage(normalizedUserId, query)
+        );
+        return {
+          items: page.records,
+          total: page.total,
+          nextCursor: page.nextCursor,
+          context: {
+            unreadCount: page.unreadCount,
+            muted: page.muted
+          }
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async markRead(
@@ -97,16 +104,23 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
         muted: false
       };
     }
-    await this.repository.whenReady();
-    await this.waitForRouteDelay(LocalNotificationsService.ROUTE, signal);
-    const result = this.repository.sync(normalizedUserId, request);
-    return {
-      upserts: LocalNotificationMapper.toDtoList(result.upserts),
-      removedIds: result.removedIds,
-      total: result.total,
-      unreadCount: result.unreadCount,
-      muted: result.muted
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalNotificationsService.ROUTE, signal),
+      (async (): Promise<NotificationSyncResponseDto> => {
+        await this.repository.whenReady();
+        const result = this.repository.sync(normalizedUserId, request);
+        return {
+          upserts: LocalNotificationMapper.toDtoList(result.upserts),
+          removedIds: result.removedIds,
+          total: result.total,
+          unreadCount: result.unreadCount,
+          muted: result.muted
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async updatePreferences(

@@ -145,17 +145,27 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly usersService = inject(LocalUsersService);
 
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryItemsByUser(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventRecord[]> => {
+        return this.eventsRepository.queryItemsByUser(userId);
+      })()
+    ]);
+    return response;
   }
 
   async exportCalendar(userId: string): Promise<string> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const records = this.eventsRepository.queryCalendarItemsByUser(userId).map(record => ({
-      ...LocalActivityEventsMapper.toDto(record),
-      currentUserMembershipStatus: record.currentUserMembershipStatus
-    }));
-    return renderCalendarExport(userId, records);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<string> => {
+        const records = this.eventsRepository.queryCalendarItemsByUser(userId).map(record => ({
+          ...LocalActivityEventsMapper.toDto(record),
+          currentUserMembershipStatus: record.currentUserMembershipStatus
+        }));
+        return renderCalendarExport(userId, records);
+      })()
+    ]);
+    return response;
   }
 
   peekItemsByUser(userId: string): ActivityEventRecord[] {
@@ -163,23 +173,43 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async queryInvitationItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryInvitationItemsByUser(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventRecord[]> => {
+        return this.eventsRepository.queryInvitationItemsByUser(userId);
+      })()
+    ]);
+    return response;
   }
 
   async queryEventItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryEventItemsByUser(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventRecord[]> => {
+        return this.eventsRepository.queryEventItemsByUser(userId);
+      })()
+    ]);
+    return response;
   }
 
   async queryHostingItemsByUser(userId: string): Promise<ActivityEventDTO[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return LocalActivityEventsMapper.toDtoList(this.eventsRepository.queryHostingItemsByUser(userId));
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventDTO[]> => {
+        return LocalActivityEventsMapper.toDtoList(this.eventsRepository.queryHostingItemsByUser(userId));
+      })()
+    ]);
+    return response;
   }
 
   async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryTrashedItemsByUser(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventRecord[]> => {
+        return this.eventsRepository.queryTrashedItemsByUser(userId);
+      })()
+    ]);
+    return response;
   }
 
   async queryActivitiesEventDTOPage(
@@ -187,21 +217,28 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE, signal);
-    const resolvedUserId = this.resolveDemoActivityUserId(userId);
-    const page = this.eventsRepository.queryActivitiesEventRecordPage(
-      resolvedUserId,
-      query
-    );
-    const result = await this.withCheckoutResultStates(
-      resolvedUserId,
-      this.withCreatorAvatarUrls(LocalActivityEventsMapper.toDtoPage(page))
-    );
-    const eventCounters = this.usersRepository.queryUserById(resolvedUserId)?.activities?.event;
-    return {
-      ...result,
-      ...(eventCounters ? { eventCounters: { ...eventCounters } } : {})
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE, signal),
+      (async (): Promise<ActivityEventPageResultDTO> => {
+        const resolvedUserId = this.resolveDemoActivityUserId(userId);
+        const page = this.eventsRepository.queryActivitiesEventRecordPage(
+          resolvedUserId,
+          query
+        );
+        const result = await this.withCheckoutResultStates(
+          resolvedUserId,
+          this.withCreatorAvatarUrls(LocalActivityEventsMapper.toDtoPage(page))
+        );
+        const eventCounters = this.usersRepository.queryUserById(resolvedUserId)?.activities?.event;
+        return {
+          ...result,
+          ...(eventCounters ? { eventCounters: { ...eventCounters } } : {})
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   private withCreatorAvatarUrls(page: ActivityEventPageResultDTO): ActivityEventPageResultDTO {
@@ -292,28 +329,33 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedEventId) {
       return null;
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const [record, members, checkoutBasketRecord] = await Promise.all([
-      Promise.resolve(this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId)),
-      this.activityMembersService.loadMembersByOwner({ ownerType: 'event', ownerId: normalizedEventId }),
-      this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedEventId)
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventInvitationContextDTO | null> => {
+        const [record, members, checkoutBasketRecord] = await Promise.all([
+          Promise.resolve(this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId)),
+          this.activityMembersService.loadMembersByOwner({ ownerType: 'event', ownerId: normalizedEventId }),
+          this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedEventId)
+        ]);
+        const membership = this.activityMembersRepository.peekRecordsByOwner({
+          ownerType: 'event', ownerId: normalizedEventId
+        }).find(member => member.userId === normalizedUserId);
+        const offered = membership?.eventVipOfferedPricing;
+        const vipEligible = membership?.eventVipInvitation === true
+          && (membership.status === 'pending' || membership.status === 'accepted')
+          && (Boolean(membership.eventVipAcceptedAtIso)
+            || (membership.status === 'pending' && membership.requestKind === 'invite'))
+          && offered?.enabled !== false && offered?.audience.enabled === true
+          && offered.audience.vipPrice !== null;
+        return {
+          record,
+          members,
+          vipPricingOffer: vipEligible ? structuredClone(offered ?? null) : null,
+          checkoutBasket: LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord)
+        };
+      })()
     ]);
-    const membership = this.activityMembersRepository.peekRecordsByOwner({
-      ownerType: 'event', ownerId: normalizedEventId
-    }).find(member => member.userId === normalizedUserId);
-    const offered = membership?.eventVipOfferedPricing;
-    const vipEligible = membership?.eventVipInvitation === true
-      && (membership.status === 'pending' || membership.status === 'accepted')
-      && (Boolean(membership.eventVipAcceptedAtIso)
-        || (membership.status === 'pending' && membership.requestKind === 'invite'))
-      && offered?.enabled !== false && offered?.audience.enabled === true
-      && offered.audience.vipPrice !== null;
-    return {
-      record,
-      members,
-      vipPricingOffer: vipEligible ? structuredClone(offered ?? null) : null,
-      checkoutBasket: LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord)
-    };
+    return response;
   }
 
   async loadSubEventsById(
@@ -326,52 +368,57 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedEventId) {
       return null;
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const result = this.eventsRepository.querySubEventsByEventId(normalizedUserId, normalizedEventId, query);
-    if (!result) {
-      return null;
-    }
-    const mode = result.parentRecord.mode;
-    if (mode !== 'Casual' && mode !== 'Tournament' && mode !== 'Mingle') {
-      return null;
-    }
-    const baseSlots = this.eventsRepository.filterSubEventsSlotsForParticipant(
-      normalizedUserId,
-      LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.parentRecord, query),
-      query?.participantOnly === true
-    );
-    const { resourceLookups, stageRuntimeLookups } = LocalActivityEventsMapper.subEventStateLookups(baseSlots, normalizedUserId);
-    const resourceStates = this.activityResourcesRepository.querySubEventResourceRecordsByRefs(resourceLookups)
-      .map(record => LocalActivityResourcesMapper.toState(record))
-      .filter((state): state is ActivitySubEventResourceStateDTO => Boolean(state));
-    const resourceStatesByKey = new Map(
-      resourceStates.map(state => [
-        LocalActivityEventsMapper.subEventResourceRecordKey(state),
-        state
-      ])
-    );
-    const stageRuntimeStates = this.activitySubEventStageRuntimeRepository.queryRecordsByRefs(stageRuntimeLookups)
-      .map((record): ActivitySubEventStageRuntimeStateDTO | null =>
-        LocalActivitySubEventStageRuntimeMapper.toState(record, normalizedUserId))
-      .filter((state): state is ActivitySubEventStageRuntimeStateDTO => Boolean(state));
-    const stageRuntimeByKey = new Map(
-      stageRuntimeStates.map(state => [
-        LocalActivityEventsMapper.subEventStageRuntimeRecordKey(state),
-        state
-      ])
-    );
-    return {
-      mode,
-      slots: LocalActivityEventsMapper.withSubEventStates(
-        baseSlots,
-        resourceStatesByKey,
-        stageRuntimeByKey,
-        normalizedUserId
-      ),
-      canAccessResources: this.eventsRepository.queryAcceptedEventOwnerIdsByUser(
-        [result.parentEventId], normalizedUserId
-      ).has(result.parentEventId)
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventSubEventsResultDTO | null> => {
+        const result = this.eventsRepository.querySubEventsByEventId(normalizedUserId, normalizedEventId, query);
+        if (!result) {
+          return null;
+        }
+        const mode = result.parentRecord.mode;
+        if (mode !== 'Casual' && mode !== 'Tournament' && mode !== 'Mingle') {
+          return null;
+        }
+        const baseSlots = this.eventsRepository.filterSubEventsSlotsForParticipant(
+          normalizedUserId,
+          LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.parentRecord, query),
+          query?.participantOnly === true
+        );
+        const { resourceLookups, stageRuntimeLookups } = LocalActivityEventsMapper.subEventStateLookups(baseSlots, normalizedUserId);
+        const resourceStates = this.activityResourcesRepository.querySubEventResourceRecordsByRefs(resourceLookups)
+          .map(record => LocalActivityResourcesMapper.toState(record))
+          .filter((state): state is ActivitySubEventResourceStateDTO => Boolean(state));
+        const resourceStatesByKey = new Map(
+          resourceStates.map(state => [
+            LocalActivityEventsMapper.subEventResourceRecordKey(state),
+            state
+          ])
+        );
+        const stageRuntimeStates = this.activitySubEventStageRuntimeRepository.queryRecordsByRefs(stageRuntimeLookups)
+          .map((record): ActivitySubEventStageRuntimeStateDTO | null =>
+            LocalActivitySubEventStageRuntimeMapper.toState(record, normalizedUserId))
+          .filter((state): state is ActivitySubEventStageRuntimeStateDTO => Boolean(state));
+        const stageRuntimeByKey = new Map(
+          stageRuntimeStates.map(state => [
+            LocalActivityEventsMapper.subEventStageRuntimeRecordKey(state),
+            state
+          ])
+        );
+        return {
+          mode,
+          slots: LocalActivityEventsMapper.withSubEventStates(
+            baseSlots,
+            resourceStatesByKey,
+            stageRuntimeByKey,
+            normalizedUserId
+          ),
+          canAccessResources: this.eventsRepository.queryAcceptedEventOwnerIdsByUser(
+            [result.parentEventId], normalizedUserId
+          ).has(result.parentEventId)
+        };
+      })()
+    ]);
+    return response;
   }
 
   async loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null> {
@@ -380,65 +427,70 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedEventId) {
       return null;
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    const selectedRecord = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
-    const parentEventId = selectedRecord?.parentEventId?.trim() || selectedRecord?.id || normalizedEventId;
-    const record = this.eventsRepository.queryEventRecordById(normalizedUserId, parentEventId) ?? selectedRecord;
-    if (!record) {
-      return null;
-    }
-    const checkoutBasketRecord = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, record.id);
-    const checkoutBasket = LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord);
-    const activeReservationItems = LocalEventCheckoutBasketsMapper.itemRecordsToDtos(
-      await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id)
-    );
-    const slotReservations = this.checkoutReservationCounts(activeReservationItems, 'slot');
-    const optionalReservations = this.checkoutReservationCounts(activeReservationItems, 'optional');
-    const direction = query.order === 'past' ? -1 : 1;
-    const basketView = query.view === 'basket';
-    const allSlots = (record.upcomingSlots ?? [])
-      .filter(slot => this.checkoutSlotMatchesOrder(slot, query))
-      .filter(slot => basketView || this.checkoutSlotOverlapsRange(slot, query))
-      .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
-    const bookedSlotIds = this.eventsRepository.queryAcceptedEventOwnerIdsByUser(
-      allSlots.map(slot => slot.id),
-      normalizedUserId
-    );
-    const allSlotDtos = allSlots
-      .map(slot => this.toCheckoutSlot(
-        record,
-        slot,
-        slotReservations.get(slot.id) ?? 0,
-        bookedSlotIds.has(slot.id)
-      ));
-    const days = this.checkoutSlotDays(allSlotDtos);
-    const allSlotsById = new Map(allSlotDtos.map(slot => [slot.id, slot]));
-    const basketSlots = (checkoutBasket?.items ?? [])
-      .filter(item => this.isActiveCheckoutItem(item) && item.kind === 'event' && !!item.slotSourceId?.trim())
-      .map(item => item.resultState === 'succeeded'
-        ? this.checkoutSlotFromBasketItem(record, item)
-        : allSlotsById.get(item.slotSourceId!.trim()) ?? this.checkoutSlotFromBasketItem(record, item))
-      .filter((slot): slot is EventCheckoutSlot => Boolean(slot))
-      .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
-    const pageSource = basketView ? basketSlots : allSlotDtos;
-    const offset = this.checkoutCursorOffset(query.cursor);
-    const limit = Math.max(1, Math.min(60, Math.trunc(Number(query.limit) || 15)));
-    const page = pageSource.slice(offset, offset + limit);
-    const currency = pageSource.find(slot => slot.currency)?.currency
-      ?? allSlotDtos.find(slot => slot.currency)?.currency
-      ?? record.pricing?.currency
-      ?? 'USD';
-    return {
-      eventId: record.id,
-      mode: record.mode,
-      days,
-      slots: page,
-      total: pageSource.length,
-      nextCursor: offset + limit < pageSource.length ? `${offset + limit}` : null,
-      currency,
-      optionalSubEvents: this.checkoutOptionalSubEvents(record, optionalReservations, currency),
-      checkoutBasket
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE),
+      (async (): Promise<EventCheckoutSlotsResult | null> => {
+        const selectedRecord = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
+        const parentEventId = selectedRecord?.parentEventId?.trim() || selectedRecord?.id || normalizedEventId;
+        const record = this.eventsRepository.queryEventRecordById(normalizedUserId, parentEventId) ?? selectedRecord;
+        if (!record) {
+          return null;
+        }
+        const checkoutBasketRecord = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, record.id);
+        const checkoutBasket = LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord);
+        const activeReservationItems = LocalEventCheckoutBasketsMapper.itemRecordsToDtos(
+          await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id)
+        );
+        const slotReservations = this.checkoutReservationCounts(activeReservationItems, 'slot');
+        const optionalReservations = this.checkoutReservationCounts(activeReservationItems, 'optional');
+        const direction = query.order === 'past' ? -1 : 1;
+        const basketView = query.view === 'basket';
+        const allSlots = (record.upcomingSlots ?? [])
+          .filter(slot => this.checkoutSlotMatchesOrder(slot, query))
+          .filter(slot => basketView || this.checkoutSlotOverlapsRange(slot, query))
+          .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
+        const bookedSlotIds = this.eventsRepository.queryAcceptedEventOwnerIdsByUser(
+          allSlots.map(slot => slot.id),
+          normalizedUserId
+        );
+        const allSlotDtos = allSlots
+          .map(slot => this.toCheckoutSlot(
+            record,
+            slot,
+            slotReservations.get(slot.id) ?? 0,
+            bookedSlotIds.has(slot.id)
+          ));
+        const days = this.checkoutSlotDays(allSlotDtos);
+        const allSlotsById = new Map(allSlotDtos.map(slot => [slot.id, slot]));
+        const basketSlots = (checkoutBasket?.items ?? [])
+          .filter(item => this.isActiveCheckoutItem(item) && item.kind === 'event' && !!item.slotSourceId?.trim())
+          .map(item => item.resultState === 'succeeded'
+            ? this.checkoutSlotFromBasketItem(record, item)
+            : allSlotsById.get(item.slotSourceId!.trim()) ?? this.checkoutSlotFromBasketItem(record, item))
+          .filter((slot): slot is EventCheckoutSlot => Boolean(slot))
+          .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
+        const pageSource = basketView ? basketSlots : allSlotDtos;
+        const offset = this.checkoutCursorOffset(query.cursor);
+        const limit = Math.max(1, Math.min(60, Math.trunc(Number(query.limit) || 15)));
+        const page = pageSource.slice(offset, offset + limit);
+        const currency = pageSource.find(slot => slot.currency)?.currency
+          ?? allSlotDtos.find(slot => slot.currency)?.currency
+          ?? record.pricing?.currency
+          ?? 'USD';
+        return {
+          eventId: record.id,
+          mode: record.mode,
+          days,
+          slots: page,
+          total: pageSource.length,
+          nextCursor: offset + limit < pageSource.length ? `${offset + limit}` : null,
+          currency,
+          optionalSubEvents: this.checkoutOptionalSubEvents(record, optionalReservations, currency),
+          checkoutBasket
+        };
+      })()
+    ]);
+    return response;
   }
 
   async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
@@ -447,10 +499,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    return LocalEventCheckoutBasketsMapper.toDto(
-      await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId)
-    );
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE),
+      (async (): Promise<EventCheckoutBasket | null> => {
+        return LocalEventCheckoutBasketsMapper.toDto(
+          await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId)
+        );
+      })()
+    ]);
+    return response;
   }
 
   async loadCheckoutPaymentAudit(
@@ -499,39 +556,43 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!sourceId) {
       return null;
     }
-    await this.waitForRouteDelay(LocalEventsService.PROMO_CODE_VALIDATION_ROUTE);
-
-    const selectedRecord = this.eventsRepository.queryEventRecordById('', sourceId);
-    const parentEventId = selectedRecord?.parentEventId?.trim();
-    const record = parentEventId
-      ? this.eventsRepository.queryEventRecordById('', parentEventId) ?? selectedRecord
-      : selectedRecord;
-    const pricing = record?.pricing;
-    const promoCodesEnabled = pricing != null
-      && pricing.enabled !== false
-      && pricing.audience?.enabled === true;
-    const promoCode = promoCodesEnabled
-      ? (pricing.audience.promoCodes ?? []).find(item => `${item?.code ?? ''}`.trim().toUpperCase() === code) ?? null
-      : null;
-    if (!code || !promoCode) {
-      return this.invalidPromoCodeValidationResult(code);
-    }
-    const canonicalPromoCode = {
-      id: `${promoCode.id ?? ''}`.trim(),
-      code,
-      action: {
-        kind: promoCode.action.kind,
-        value: Number(promoCode.action.value) || 0
-      }
-    };
-    return {
-      valid: true,
-      code,
-      promoCode: canonicalPromoCode,
-      effect: this.describePricingAction(canonicalPromoCode.action),
-      messageKey: null,
-      message: null
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.PROMO_CODE_VALIDATION_ROUTE),
+      (async (): Promise<EventCheckoutPromoCodeValidationResult | null> => {
+        const selectedRecord = this.eventsRepository.queryEventRecordById('', sourceId);
+        const parentEventId = selectedRecord?.parentEventId?.trim();
+        const record = parentEventId
+          ? this.eventsRepository.queryEventRecordById('', parentEventId) ?? selectedRecord
+          : selectedRecord;
+        const pricing = record?.pricing;
+        const promoCodesEnabled = pricing != null
+          && pricing.enabled !== false
+          && pricing.audience?.enabled === true;
+        const promoCode = promoCodesEnabled
+          ? (pricing.audience.promoCodes ?? []).find(item => `${item?.code ?? ''}`.trim().toUpperCase() === code) ?? null
+          : null;
+        if (!code || !promoCode) {
+          return this.invalidPromoCodeValidationResult(code);
+        }
+        const canonicalPromoCode = {
+          id: `${promoCode.id ?? ''}`.trim(),
+          code,
+          action: {
+            kind: promoCode.action.kind,
+            value: Number(promoCode.action.value) || 0
+          }
+        };
+        return {
+          valid: true,
+          code,
+          promoCode: canonicalPromoCode,
+          effect: this.describePricingAction(canonicalPromoCode.action),
+          messageKey: null,
+          message: null
+        };
+      })()
+    ]);
+    return response;
   }
 
   async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
@@ -774,8 +835,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_EXPLORE_ROUTE);
-    return this.eventsRepository.queryExploreItems(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_EXPLORE_ROUTE),
+      (async (): Promise<ActivityEventRecord[]> => {
+        return this.eventsRepository.queryExploreItems(userId);
+      })()
+    ]);
+    return response;
   }
 
   peekExploreItems(userId: string): ActivityEventRecord[] {
@@ -795,23 +861,28 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_EXPLORE_ROUTE);
-    const normalizedUserId = this.resolveDemoActivityUserId(query.userId);
-    const page = this.eventsRepository.queryEventExplorePage({
-      ...query,
-      userId: normalizedUserId
-    });
-    const basketsBySourceId = await this.eventCheckoutBasketsRepository.loadBasketsByEvents(
-      normalizedUserId,
-      page.records.map(record => record.id)
-    );
-    const records = page.records.map(record => ({
-      ...record,
-      checkoutResultState: this.checkoutBasketResultState(
-        LocalEventCheckoutBasketsMapper.toDto(basketsBySourceId.get(record.id) ?? null)
-      )
-    }));
-    return { ...page, records };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_EXPLORE_ROUTE),
+      (async (): Promise<ActivityEventExploreQueryResult> => {
+        const normalizedUserId = this.resolveDemoActivityUserId(query.userId);
+        const page = this.eventsRepository.queryEventExplorePage({
+          ...query,
+          userId: normalizedUserId
+        });
+        const basketsBySourceId = await this.eventCheckoutBasketsRepository.loadBasketsByEvents(
+          normalizedUserId,
+          page.records.map(record => record.id)
+        );
+        const records = page.records.map(record => ({
+          ...record,
+          checkoutResultState: this.checkoutBasketResultState(
+            LocalEventCheckoutBasketsMapper.toDto(basketsBySourceId.get(record.id) ?? null)
+          )
+        }));
+        return { ...page, records };
+      })()
+    ]);
+    return response;
   }
 
   peekEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
@@ -822,13 +893,23 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventFeedbackRepository.queryEventFeedbackStates(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventFeedbackStateDto[]> => {
+        return this.eventFeedbackRepository.queryEventFeedbackStates(userId);
+      })()
+    ]);
+    return response;
   }
 
   async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventFeedbackRepository.queryReceivedEventFeedback(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventFeedbackReceivedEventDto[]> => {
+        return this.eventFeedbackRepository.queryReceivedEventFeedback(userId);
+      })()
+    ]);
+    return response;
   }
 
   async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
@@ -836,29 +917,34 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId) {
       return new EventFeedbackPageResultDto();
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId)
-      .filter(event => !query.campaignId || event.campaignId === query.campaignId);
-    const organizerRecords = this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
-      .filter(event => !query.campaignId || event.campaignId === query.campaignId);
-    const events = LocalActivityEventsMapper.toDtoList(records);
-    const organizerEvents = LocalActivityEventsMapper.toDtoList(organizerRecords);
-    const users = this.usersRepository.queryAllUsers();
-    const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
-    const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
-    if (!activeUser) {
-      return new EventFeedbackPageResultDto();
-    }
-    return LocalEventFeedbackMapper.toPageResult({
-      query,
-      events,
-      organizerEvents,
-      users,
-      activeUser,
-      minglePeersByEventId: this.eventFeedbackRepository.queryMinglePeers(normalizedUserId, records),
-      states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
-      receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId)
-    });
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventFeedbackPageResultDto> => {
+        const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId)
+          .filter(event => !query.campaignId || event.campaignId === query.campaignId);
+        const organizerRecords = this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
+          .filter(event => !query.campaignId || event.campaignId === query.campaignId);
+        const events = LocalActivityEventsMapper.toDtoList(records);
+        const organizerEvents = LocalActivityEventsMapper.toDtoList(organizerRecords);
+        const users = this.usersRepository.queryAllUsers();
+        const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
+        const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
+        if (!activeUser) {
+          return new EventFeedbackPageResultDto();
+        }
+        return LocalEventFeedbackMapper.toPageResult({
+          query,
+          events,
+          organizerEvents,
+          users,
+          activeUser,
+          minglePeersByEventId: this.eventFeedbackRepository.queryMinglePeers(normalizedUserId, records),
+          states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
+          receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId)
+        });
+      })()
+    ]);
+    return response;
   }
 
   async loadEventFeedbackStatById(query: EventFeedbackStatQueryDto): Promise<EventFeedbackStatDto> {
@@ -871,17 +957,22 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         sections: []
       };
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return LocalEventFeedbackMapper.toStat({
-      query: {
-        userId: normalizedUserId,
-        eventId: normalizedEventId
-      },
-      records: this.eventFeedbackRepository.queryReceivedEventFeedbackStatRecords(
-        normalizedUserId,
-        normalizedEventId
-      )
-    });
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventFeedbackStatDto> => {
+        return LocalEventFeedbackMapper.toStat({
+          query: {
+            userId: normalizedUserId,
+            eventId: normalizedEventId
+          },
+          records: this.eventFeedbackRepository.queryReceivedEventFeedbackStatRecords(
+            normalizedUserId,
+            normalizedEventId
+          )
+        });
+      })()
+    ]);
+    return response;
   }
 
   async loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
@@ -967,26 +1058,31 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
-    const workspace = this.usersRepository.queryUserById(record.creatorUserId || record.userId)?.workspaceGroupId;
-    if (workspace && !groupPriorityEnabled(this.jobGroups.find(workspace))) record.autoInviter = false;
-    const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
-    if (payload.campaignId && existingRecord?.campaignId !== payload.campaignId) {
-      const campaign = await this.campaigns.detail(payload.userId, payload.campaignId);
-      if (campaign.ownerUserId !== payload.userId || campaign.status !== 'published') throw new Error('Forbidden');
-    }
-    const savedRecord = this.eventsRepository.saveEventSnapshot(record);
-    if (savedRecord) {
-      this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
-    }
-    const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
-    await this.eventsRepository.flushToIndexedDb();
-    if (runtimeChanged) {
-      await this.activityResourcesRepository.flushToIndexedDb();
-      await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
-    }
-    return savedRecord;
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<ActivityEventRecord | null> => {
+        const record = LocalActivityEventDetailsMapper.toRecord(payload.toPersistencePayload());
+        const workspace = this.usersRepository.queryUserById(record.creatorUserId || record.userId)?.workspaceGroupId;
+        if (workspace && !groupPriorityEnabled(this.jobGroups.find(workspace))) record.autoInviter = false;
+        const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
+        if (payload.campaignId && existingRecord?.campaignId !== payload.campaignId) {
+          const campaign = await this.campaigns.readDetail(payload.userId, payload.campaignId);
+          if (campaign.ownerUserId !== payload.userId || campaign.status !== 'published') throw new Error('Forbidden');
+        }
+        const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+        if (savedRecord) {
+          this.assetTicketsRepository.synchronizeForEvent(savedRecord.id);
+        }
+        const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
+        await this.eventsRepository.flushToIndexedDb();
+        if (runtimeChanged) {
+          await this.activityResourcesRepository.flushToIndexedDb();
+          await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
+        }
+        return savedRecord;
+      })()
+    ]);
+    return response;
   }
 
   private paidEventTermsSignature(record: ActivityEventRecord): string {
@@ -1122,7 +1218,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       if (!record.cancelled) this.appendEventLifecycleNotifications(userId, sourceId, record,
         'event-cancelled', record.title, 'Event cancelled.', 'warning', 'notification.kind.event-cancelled.message');
     }
-    else await this.leaveEvent(userId, sourceId, { removeMembershipOnly: true });
+    else await this.leaveWithinRequest(userId, sourceId, { removeMembershipOnly: true });
     await this.affiliateRepository.flushToIndexedDb();
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
@@ -1747,32 +1843,57 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.querySubEventLeaderboard(eventId, subEventId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<SubEventLeaderboardState | null> => {
+        return this.eventsRepository.querySubEventLeaderboard(eventId, subEventId);
+      })()
+    ]);
+    return response;
   }
 
   async queryTournamentGroups(query: EventTournamentGroupsQueryDTO): Promise<EventTournamentGroupsStateDTO | null> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryTournamentGroups(query);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventTournamentGroupsStateDTO | null> => {
+        return this.eventsRepository.queryTournamentGroups(query);
+      })()
+    ]);
+    return response;
   }
 
   async queryTournamentStageGroups(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentGroupDTO[]> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryTournamentStageGroups(query);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventTournamentGroupDTO[]> => {
+        return this.eventsRepository.queryTournamentStageGroups(query);
+      })()
+    ]);
+    return response;
   }
 
   async queryTournamentStageSnapshot(
     query: EventTournamentStageGroupsQueryDTO
   ): Promise<EventTournamentStageSnapshotDTO> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryTournamentStageSnapshot(query);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<EventTournamentStageSnapshotDTO> => {
+        return this.eventsRepository.queryTournamentStageSnapshot(query);
+      })()
+    ]);
+    return response;
   }
 
   async queryMingleState(userId: string, eventId?: string | null, roundNumber?: number | null): Promise<MingleStateDTO | null> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const state = this.mingleRepository.query(userId, eventId, roundNumber);
-    await this.mingleRepository.flushToIndexedDb();
-    return state;
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      (async (): Promise<MingleStateDTO | null> => {
+        const state = this.mingleRepository.query(userId, eventId, roundNumber);
+        await this.mingleRepository.flushToIndexedDb();
+        return state;
+      })()
+    ]);
+    return response;
   }
 
   async applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<MingleStateDTO | null> {
@@ -2061,6 +2182,25 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       checkoutSessionId?: string | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      this.leaveWithinRequest(userId, sourceId, options)
+    ]);
+    return response;
+  }
+
+  /** Undelayed owner operation for an aggregate local request. */
+  async leaveWithinRequest(
+    userId: string,
+    sourceId: string,
+    options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
+    } = {}
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
@@ -2100,7 +2240,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       beforeCounters
     );
     await this.eventsRepository.flushToIndexedDb();
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+
     return result;
   }
 

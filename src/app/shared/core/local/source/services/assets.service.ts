@@ -30,8 +30,13 @@ export class LocalAssetsService extends LocalRouteDelayService {
   }
 
   async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.queryOwnedAssetsByUser(userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE),
+      (async (): Promise<AppDTOs.AssetDTO[]> => {
+        return this.assetsRepository.queryOwnedAssetsByUser(userId);
+      })()
+    ]);
+    return response;
   }
 
   async loadOwnedAssetDetailById(
@@ -81,32 +86,42 @@ export class LocalAssetsService extends LocalRouteDelayService {
   }
 
   async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.queryVisibleAssets(query);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE),
+      (async (): Promise<AppDTOs.AssetDTO[]> => {
+        return this.assetsRepository.queryVisibleAssets(query);
+      })()
+    ]);
+    return response;
   }
 
   async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    const page = this.assetsRepository.queryVisibleAssetsPage(query);
-    const baskets = await this.eventCheckoutBasketsRepository.loadBasketsByEvents(
-      query.userId,
-      page.items.map(item => item.id)
-    );
-    const checkoutResultStates: Record<string, AppDTOs.EventCheckoutResultState> = {};
-    for (const [sourceId, basket] of baskets) {
-      const resultStates = (basket.items ?? []).map(item => item.resultState ?? 'pending');
-      checkoutResultStates[sourceId] = resultStates.some(resultState => resultState === 'failed')
-        ? 'failed'
-        : resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted')
-          ? 'deleted'
-          : resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')
-            ? 'succeeded'
-            : 'pending';
-    }
-    return {
-      ...page,
-      checkoutResultStates
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE),
+      (async (): Promise<AppDTOs.AssetExplorePageResultDTO> => {
+        const page = this.assetsRepository.queryVisibleAssetsPage(query);
+        const baskets = await this.eventCheckoutBasketsRepository.loadBasketsByEvents(
+          query.userId,
+          page.items.map(item => item.id)
+        );
+        const checkoutResultStates: Record<string, AppDTOs.EventCheckoutResultState> = {};
+        for (const [sourceId, basket] of baskets) {
+          const resultStates = (basket.items ?? []).map(item => item.resultState ?? 'pending');
+          checkoutResultStates[sourceId] = resultStates.some(resultState => resultState === 'failed')
+            ? 'failed'
+            : resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted')
+              ? 'deleted'
+              : resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')
+                ? 'succeeded'
+                : 'pending';
+        }
+        return {
+          ...page,
+          checkoutResultStates
+        };
+      })()
+    ]);
+    return response;
   }
 
   async loadOccupancyByAssetId(query: {
@@ -121,13 +136,20 @@ export class LocalAssetsService extends LocalRouteDelayService {
     pageSize: number;
     cursor?: string | null;
   }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
-    await this.waitForRouteDelay(
+    options.signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(
       LocalAssetsService.ASSET_AVAILABILITY_ROUTE,
       options.signal,
       'Asset availability request aborted.'
-    );
-    const page = this.assetRequestsRepository.queryAssetAvailabilityRecordPage(query);
-    return this.assetRequestsRepository.withWorkspaceLabels(LocalAssetsMapper.toAssetAvailabilityDtoPage(page));
+    ),
+      (async (): Promise<AppDTOs.AssetOccupancyPageResultDTO> => {
+        const page = this.assetRequestsRepository.queryAssetAvailabilityRecordPage(query);
+        return this.assetRequestsRepository.withWorkspaceLabels(LocalAssetsMapper.toAssetAvailabilityDtoPage(page));
+      })()
+    ]);
+    options.signal?.throwIfAborted();
+    return response;
   }
 
   async loadStatByAssetId(query: {
@@ -141,13 +163,20 @@ export class LocalAssetsService extends LocalRouteDelayService {
     pageSize: number;
     cursor?: string | null;
   }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
-    await this.waitForRouteDelay(
+    options.signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(
       LocalAssetsService.ASSET_AVAILABILITY_ROUTE,
       options.signal,
       'Asset availability stats request aborted.'
-    );
-    const page = this.assetRequestsRepository.queryAssetAvailabilityStatRecordPage(query);
-    return LocalAssetsMapper.toAssetAvailabilityStatDtoPage(page);
+    ),
+      (async (): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> => {
+        const page = this.assetRequestsRepository.queryAssetAvailabilityStatRecordPage(query);
+        return LocalAssetsMapper.toAssetAvailabilityStatDtoPage(page);
+      })()
+    ]);
+    options.signal?.throwIfAborted();
+    return response;
   }
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
@@ -167,55 +196,60 @@ export class LocalAssetsService extends LocalRouteDelayService {
   async applyMemberStatusChange(
     request: AppDTOs.AssetMemberStatusChangeRequestDTO
   ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    const asset = this.assetsRepository.peekAssetDetailForMembershipById(request.assetId);
-    const managerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(
-      request.eventId,
-      request.subEventId,
-      request.assetId
-    );
-    const result = await this.assetsRepository.applyMemberStatusChange(request);
-    let resourceAssignmentRemoved = false;
-    if (result && request.action === 'take-over' && result.status === 'accepted') {
-      const transferred = await this.activityResourcesService.transferAssignedAssetManager(
-        request.eventId,
-        request.subEventId,
-        request.assetId,
-        `${request.previousManagerUserId ?? ''}`.trim(),
-        request.actorUserId
-      );
-      return transferred ? result : null;
-    }
-    if (
-      result
-      && request.action === 'leave'
-      && result.previousStatus === 'accepted'
-      && managerUserId === request.actorUserId.trim()
-    ) {
-      const acceptedSuccessorRemains = (asset?.requests ?? []).some(candidate =>
-        candidate.requestKind === 'borrow'
-        && candidate.status === 'accepted'
-        && `${candidate.userId ?? ''}`.trim() !== request.actorUserId.trim()
-        && `${candidate.booking?.eventId ?? ''}`.trim() === request.eventId.trim()
-        && `${candidate.booking?.subEventId ?? ''}`.trim() === request.subEventId.trim()
-      );
-      if (!acceptedSuccessorRemains) {
-        resourceAssignmentRemoved = await this.activityResourcesService.removeAssignedAsset(
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE),
+      (async (): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> => {
+        const asset = this.assetsRepository.peekAssetDetailForMembershipById(request.assetId);
+        const managerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(
           request.eventId,
           request.subEventId,
-          request.assetId,
-          request.actorUserId
+          request.assetId
         );
-      } else {
-        this.assetsRepository.markScopedAssetTakeOverAmount(
-          request.assetId,
-          request.eventId,
-          request.subEventId,
-          request.actorUserId
-        );
-      }
-    }
-    return result ? { ...result, resourceAssignmentRemoved } : null;
+        const result = await this.assetsRepository.applyMemberStatusChange(request);
+        let resourceAssignmentRemoved = false;
+        if (result && request.action === 'take-over' && result.status === 'accepted') {
+          const transferred = await this.activityResourcesService.transferAssignedAssetManager(
+            request.eventId,
+            request.subEventId,
+            request.assetId,
+            `${request.previousManagerUserId ?? ''}`.trim(),
+            request.actorUserId
+          );
+          return transferred ? result : null;
+        }
+        if (
+          result
+          && request.action === 'leave'
+          && result.previousStatus === 'accepted'
+          && managerUserId === request.actorUserId.trim()
+        ) {
+          const acceptedSuccessorRemains = (asset?.requests ?? []).some(candidate =>
+            candidate.requestKind === 'borrow'
+            && candidate.status === 'accepted'
+            && `${candidate.userId ?? ''}`.trim() !== request.actorUserId.trim()
+            && `${candidate.booking?.eventId ?? ''}`.trim() === request.eventId.trim()
+            && `${candidate.booking?.subEventId ?? ''}`.trim() === request.subEventId.trim()
+          );
+          if (!acceptedSuccessorRemains) {
+            resourceAssignmentRemoved = await this.activityResourcesService.removeAssignedAsset(
+              request.eventId,
+              request.subEventId,
+              request.assetId,
+              request.actorUserId
+            );
+          } else {
+            this.assetsRepository.markScopedAssetTakeOverAmount(
+              request.assetId,
+              request.eventId,
+              request.subEventId,
+              request.actorUserId
+            );
+          }
+        }
+        return result ? { ...result, resourceAssignmentRemoved } : null;
+      })()
+    ]);
+    return response;
   }
 
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {

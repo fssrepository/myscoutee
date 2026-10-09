@@ -40,14 +40,21 @@ export class LocalIdeaPostsService {
     query: IdeaPostPublicPageQueryDto = {},
     signal?: AbortSignal
   ): Promise<IdeaPostPublicPageResultDto> {
-    await this.ideaPostsRepository.whenReady();
-    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.PUBLIC_IDEAS_ROUTE, signal);
-    const language = this.requestContentLang(lang);
-    let page = this.ideaPostsRepository.queryPublishedPostPage(language, query);
-    if (page.total === 0 && language !== 'en') {
-      page = this.ideaPostsRepository.queryPublishedPostPage('en', query);
-    }
-    return LocalIdeaPostsMapper.toDtoPage(page);
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.PUBLIC_IDEAS_ROUTE, signal),
+      (async (): Promise<IdeaPostPublicPageResultDto> => {
+        await this.ideaPostsRepository.whenReady();
+        const language = this.requestContentLang(lang);
+        let page = this.ideaPostsRepository.queryPublishedPostPage(language, query);
+        if (page.total === 0 && language !== 'en') {
+          page = this.ideaPostsRepository.queryPublishedPostPage('en', query);
+        }
+        return LocalIdeaPostsMapper.toDtoPage(page);
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async loadPublishedFeaturedPostPreview(
@@ -72,10 +79,15 @@ export class LocalIdeaPostsService {
   }
 
   async loadAdminPosts(adminUserId = '', lang = 'en'): Promise<IdeaPostDto[]> {
-    await this.ideaPostsRepository.whenReady();
-    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
-    const language = this.normalizeLang(lang);
-    return this.sortedPosts(this.table()).filter(post => post.lang === language && (post.workspaceGroupId ?? null) === this.groupId(adminUserId));
+    const [, response] = await Promise.all([
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE),
+      (async (): Promise<IdeaPostDto[]> => {
+        await this.ideaPostsRepository.whenReady();
+        const language = this.normalizeLang(lang);
+        return this.sortedPosts(this.table()).filter(post => post.lang === language && (post.workspaceGroupId ?? null) === this.groupId(adminUserId));
+      })()
+    ]);
+    return response;
   }
 
   async loadAdminPostsPage(
@@ -83,11 +95,16 @@ export class LocalIdeaPostsService {
     lang = 'en',
     query: IdeaPostAdminPageQueryDto = {}
   ): Promise<IdeaPostAdminPageResultDto> {
-    await this.ideaPostsRepository.whenReady();
-    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
-    return LocalIdeaPostsMapper.toAdminDtoPage(
-      this.ideaPostsRepository.queryAdminPostPage(this.normalizeLang(lang), query, this.groupId(adminUserId))
-    );
+    const [, response] = await Promise.all([
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE),
+      (async (): Promise<IdeaPostAdminPageResultDto> => {
+        await this.ideaPostsRepository.whenReady();
+        return LocalIdeaPostsMapper.toAdminDtoPage(
+          this.ideaPostsRepository.queryAdminPostPage(this.normalizeLang(lang), query, this.groupId(adminUserId))
+        );
+      })()
+    ]);
+    return response;
   }
 
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {

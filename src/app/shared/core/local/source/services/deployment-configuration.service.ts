@@ -18,7 +18,12 @@ export class LocalDeploymentConfigurationService
   private readonly routeDelay = inject(RouteDelayService);
 
   async loadBranding(): Promise<DeploymentConfigurationDto> {
-    await this.routeDelay.waitForRouteDelay(DEPLOYMENT_CONFIGURATION_ROUTE);
-    return this.repository.readPublicConfiguration();
+    const [, response] = await Promise.all([
+      this.routeDelay.waitForRouteDelay(DEPLOYMENT_CONFIGURATION_ROUTE),
+      (async (): Promise<DeploymentConfigurationDto> => {
+        return this.repository.readPublicConfiguration();
+      })()
+    ]);
+    return response;
   }
 }

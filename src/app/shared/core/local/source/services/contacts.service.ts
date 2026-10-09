@@ -44,42 +44,52 @@ export class LocalContactsService extends LocalRouteDelayService {
   }
 
   async loadContacts(userId: string): Promise<StoredContact[]> {
-    await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    return LocalContactsMapper.cloneContacts(this.contactsRepository.queryContactRecordsByUser(userId));
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE),
+      (async (): Promise<StoredContact[]> => {
+        return LocalContactsMapper.cloneContacts(this.contactsRepository.queryContactRecordsByUser(userId));
+      })()
+    ]);
+    return response;
   }
 
   async loadContactProfile(userId: string): Promise<ProfileViewData> {
-    await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return this.emptyProfileViewData();
-    }
-    const record = this.usersRepository.queryUserById(normalizedUserId);
-    const user = record ? LocalUsersMapper.toDto(record) : null;
-    const viewer = this.sessionService.activeUserId();
-    const owner = normalizedUserId === viewer;
-    const friend = !!viewer && !owner && UserProfileState.isFriendOfActiveUser(normalizedUserId, viewer);
-    const hidden = new Set<string>();
-    if (user) {
-      user.profileDetails = (user.profileDetails ?? []).map(group => ({
-        ...group,
-        rows: group.rows.filter(row => {
-          const selectable = row.labelKey.startsWith('profile.details.')
-            || ['profile.profession', 'profile.experience.workplace', 'profile.experience.school'].includes(row.labelKey);
-          const visible = !selectable || owner || row.privacy === 'Public' || (friend && row.privacy === 'Friends');
-          if (!visible) hidden.add(row.labelKey);
-          return visible;
-        })
-      }));
-    }
-    return {
-      user,
-      experiences: LocalProfileExperiencesMapper.cloneEntries(
-        this.profileExperiencesRepository.queryUserExperienceRecords(normalizedUserId)
-      ).filter(entry => !(entry.type === 'Workspace' && hidden.has('profile.experience.workplace')))
-        .filter(entry => !(entry.type === 'School' && hidden.has('profile.experience.school'))),
-      hiddenFields: [...hidden]
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE),
+      (async (): Promise<ProfileViewData> => {
+        const normalizedUserId = userId.trim();
+        if (!normalizedUserId) {
+          return this.emptyProfileViewData();
+        }
+        const record = this.usersRepository.queryUserById(normalizedUserId);
+        const user = record ? LocalUsersMapper.toDto(record) : null;
+        const viewer = this.sessionService.activeUserId();
+        const owner = normalizedUserId === viewer;
+        const friend = !!viewer && !owner && UserProfileState.isFriendOfActiveUser(normalizedUserId, viewer);
+        const hidden = new Set<string>();
+        if (user) {
+          user.profileDetails = (user.profileDetails ?? []).map(group => ({
+            ...group,
+            rows: group.rows.filter(row => {
+              const selectable = row.labelKey.startsWith('profile.details.')
+                || ['profile.profession', 'profile.experience.workplace', 'profile.experience.school'].includes(row.labelKey);
+              const visible = !selectable || owner || row.privacy === 'Public' || (friend && row.privacy === 'Friends');
+              if (!visible) hidden.add(row.labelKey);
+              return visible;
+            })
+          }));
+        }
+        return {
+          user,
+          experiences: LocalProfileExperiencesMapper.cloneEntries(
+            this.profileExperiencesRepository.queryUserExperienceRecords(normalizedUserId)
+          ).filter(entry => !(entry.type === 'Workspace' && hidden.has('profile.experience.workplace')))
+            .filter(entry => !(entry.type === 'School' && hidden.has('profile.experience.school'))),
+          hiddenFields: [...hidden]
+        };
+      })()
+    ]);
+    return response;
   }
 
   async saveContacts(

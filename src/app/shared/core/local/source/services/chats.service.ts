@@ -101,39 +101,56 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE, signal);
-    const ownerUserId = this.resolveDemoActivityUserId(userId);
-    const page = this.chatsRepository.queryActivitiesChatPage(ownerUserId, query);
-    const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
-    return {
-      ...LocalChatThreadMapper.toDtoPage(page),
-      items: this.chatDtosWithMetrics(page.items),
-      chats: this.countValue(activities?.chats),
-      chatCounters: this.normalizeChatCounters(activities?.chat)
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE, signal),
+      (async (): Promise<ActivitiesChatPageResultDTO> => {
+        const ownerUserId = this.resolveDemoActivityUserId(userId);
+        const page = this.chatsRepository.queryActivitiesChatPage(ownerUserId, query);
+        const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
+        return {
+          ...LocalChatThreadMapper.toDtoPage(page),
+          items: this.chatDtosWithMetrics(page.items),
+          chats: this.countValue(activities?.chats),
+          chatCounters: this.normalizeChatCounters(activities?.chat)
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async queryChatSharedMessages(chat: ChatDTO, kind: 'event' | 'asset'): Promise<ContractTypes.ChatMessageDto[]> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const record = this.localChatForActiveUser(chat.id);
-    if (!record) throw new Error('Chat unavailable');
-    return this.chatsRepository.queryChatSharedMessages(record, kind);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE),
+      (async (): Promise<ContractTypes.ChatMessageDto[]> => {
+        const record = this.localChatForActiveUser(chat.id);
+        if (!record) throw new Error('Chat unavailable');
+        return this.chatsRepository.queryChatSharedMessages(record, kind);
+      })()
+    ]);
+    return response;
   }
 
   async queryChatMessagesPage(
     chat: ChatDTO,
     query: ListQuery
   ): Promise<ChatMessagesPageResultDTO> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const page = this.chatsRepository.queryChatMessagesPage(chat, query);
-    const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
-    const readReceipt = await this.markLoadedChatMessagesRead(
-      chat, targetMessageId ? page.items.filter(message => message.id === targetMessageId) : page.items,
-      !targetMessageId && !query.cursor && query.page === 0);
-    return {
-      ...page,
-      readReceipt, notificationUnread: this.notifications.unreadCount(this.userProfileStore.activeUserId())
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE),
+      (async (): Promise<ChatMessagesPageResultDTO> => {
+        const page = this.chatsRepository.queryChatMessagesPage(chat, query);
+        const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
+        const readReceipt = await this.markLoadedChatMessagesRead(
+          chat, targetMessageId ? page.items.filter(message => message.id === targetMessageId) : page.items,
+          !targetMessageId && !query.cursor && query.page === 0);
+        return {
+          ...page,
+          readReceipt, notificationUnread: this.notifications.unreadCount(this.userProfileStore.activeUserId())
+        };
+      })()
+    ]);
+    return response;
   }
 
   async syncChatHeader(
@@ -144,28 +161,35 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     if (signal?.aborted) {
       throw this.abortError();
     }
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    if (signal?.aborted) {
-      throw this.abortError();
-    }
-    const chat = this.localChatForActiveUser(chatId);
-    const ownerUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
-    const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
-    const revision = Math.max(1, Math.trunc(Number(chat?.revision) || 1));
-    const changed = Boolean(chat) && revision !== Math.max(1, Math.trunc(Number(knownRevision) || 1));
-    return {
-      revision,
-      changed,
-      ownerStatus: chat?.ownerStatus ?? null,
-      unread: Math.max(0, Math.trunc(Number(chat?.unread) || 0)),
-      lastMessage: `${chat?.lastMessage ?? ''}`,
-      lastSenderId: `${chat?.lastSenderId ?? ''}`.trim() || null,
-      dateIso: `${chat?.dateIso ?? ''}`.trim() || null,
-      contextStartAtIso: `${chat?.contextStartAtIso ?? ''}`.trim() || null,
-      contextEndAtIso: `${chat?.contextEndAtIso ?? ''}`.trim() || null,
-      chats: this.countValue(activities?.chats),
-      chatCounters: this.normalizeChatCounters(activities?.chat)
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE),
+      (async (): Promise<ChatHeaderSyncResponseDTO> => {
+        if (signal?.aborted) {
+          throw this.abortError();
+        }
+        const chat = this.localChatForActiveUser(chatId);
+        const ownerUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+        const activities = this.usersRepository.queryUserById(ownerUserId)?.activities;
+        const revision = Math.max(1, Math.trunc(Number(chat?.revision) || 1));
+        const changed = Boolean(chat) && revision !== Math.max(1, Math.trunc(Number(knownRevision) || 1));
+        return {
+          revision,
+          changed,
+          ownerStatus: chat?.ownerStatus ?? null,
+          unread: Math.max(0, Math.trunc(Number(chat?.unread) || 0)),
+          lastMessage: `${chat?.lastMessage ?? ''}`,
+          lastSenderId: `${chat?.lastSenderId ?? ''}`.trim() || null,
+          dateIso: `${chat?.dateIso ?? ''}`.trim() || null,
+          contextStartAtIso: `${chat?.contextStartAtIso ?? ''}`.trim() || null,
+          contextEndAtIso: `${chat?.contextEndAtIso ?? ''}`.trim() || null,
+          chats: this.countValue(activities?.chats),
+          chatCounters: this.normalizeChatCounters(activities?.chat)
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   private normalizeChatCounters(
@@ -280,39 +304,49 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   }
 
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const chat = this.localChatForActiveUser(chatId);
-    const owner = chat ? this.chatMemberOwner(chat) : null;
-    return owner
-      ? this.activityMembersRepository.peekRecordsByOwner(owner).map(record => ({ ...record }))
-      : this.chatsRepository.queryChatMembers(chatId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE),
+      (async (): Promise<ActivityContracts.ActivityMemberDTO[]> => {
+        const chat = this.localChatForActiveUser(chatId);
+        const owner = chat ? this.chatMemberOwner(chat) : null;
+        return owner
+          ? this.activityMembersRepository.peekRecordsByOwner(owner).map(record => ({ ...record }))
+          : this.chatsRepository.queryChatMembers(chatId);
+      })()
+    ]);
+    return response;
   }
 
   async queryChatMembersPage(
     chatId: string,
     query: ListQuery
   ): Promise<ActivityContracts.ActivityMembersPageResultDTO> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const chat = this.localChatForActiveUser(chatId);
-    const owner = chat ? this.chatMemberOwner(chat) : null;
-    if (!owner) {
-      return this.chatsRepository.queryChatMembersPage(chatId, query);
-    }
-    const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
-    const records = this.activityMembersRepository.peekRecordsByOwner(owner)
-      .filter(record => pendingOnly ? record.status === 'pending' : record.status === 'accepted')
-      .sort((left, right) => left.userId.localeCompare(right.userId));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
-    const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);
-    const startIndex = Number.isFinite(cursorOffset)
-      ? Math.max(0, cursorOffset)
-      : Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
-    const endIndex = Math.min(records.length, startIndex + pageSize);
-    return {
-      items: records.slice(startIndex, endIndex).map(record => ({ ...record })),
-      total: records.length,
-      nextCursor: endIndex < records.length ? `${endIndex}` : null
-    };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE),
+      (async (): Promise<ActivityContracts.ActivityMembersPageResultDTO> => {
+        const chat = this.localChatForActiveUser(chatId);
+        const owner = chat ? this.chatMemberOwner(chat) : null;
+        if (!owner) {
+          return this.chatsRepository.queryChatMembersPage(chatId, query);
+        }
+        const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
+        const records = this.activityMembersRepository.peekRecordsByOwner(owner)
+          .filter(record => pendingOnly ? record.status === 'pending' : record.status === 'accepted')
+          .sort((left, right) => left.userId.localeCompare(right.userId));
+        const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
+        const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);
+        const startIndex = Number.isFinite(cursorOffset)
+          ? Math.max(0, cursorOffset)
+          : Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+        const endIndex = Math.min(records.length, startIndex + pageSize);
+        return {
+          items: records.slice(startIndex, endIndex).map(record => ({ ...record })),
+          total: records.length,
+          nextCursor: endIndex < records.length ? `${endIndex}` : null
+        };
+      })()
+    ]);
+    return response;
   }
 
   async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {

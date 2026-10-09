@@ -17,14 +17,21 @@ export class LocalPhotoFeedService extends LocalRouteDelayService implements IPh
     return point;
   }
   async page(userId: string, query: ListQuery<PhotoFeedFilters>, signal?: AbortSignal, seenPostIds?: string[]) {
-    await this.waitForRouteDelay('/activities/feed', signal);
-    await this.repository.whenReady();
-    if (seenPostIds?.length) {
-      if (query.filters?.status !== 'public' || seenPostIds.length > 5000
-        || seenPostIds.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) throw new Error('Invalid seen posts.');
-      await this.repository.markSeen(userId, seenPostIds);
-    }
-    return this.repository.page(userId, this.coordinates(userId), query, new Set(await this.repository.seenIds(userId)));
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/activities/feed', signal),
+      (async () => {
+        await this.repository.whenReady();
+        if (seenPostIds?.length) {
+          if (query.filters?.status !== 'public' || seenPostIds.length > 5000
+            || seenPostIds.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) throw new Error('Invalid seen posts.');
+          await this.repository.markSeen(userId, seenPostIds);
+        }
+        return this.repository.page(userId, this.coordinates(userId), query, new Set(await this.repository.seenIds(userId)));
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
   async create(request: CreatePhotoFeedPost) {
     await this.waitForRouteDelay('/activities/feed');
@@ -61,15 +68,20 @@ export class LocalPhotoFeedService extends LocalRouteDelayService implements IPh
     return this.repository.markSeen(userId, postIds);
   }
   async events(userId: string, query: ListQuery) {
-    await this.waitForRouteDelay('/activities/feed');
-    await this.repository.whenReady();
-    const options = this.eventRepository.queryFeedEventOptions(userId);
-    const index = query.cursor ? options.findIndex(option => option.event.id === query.cursor) : -1;
-    if (query.cursor && index < 0) throw new Error('Invalid event cursor.');
-    const start = index + 1;
-    const size = Math.max(1, Math.min(50, query.pageSize || 10));
-    const items = options.slice(start, start + size);
-    return { items, total: options.length,
-      nextCursor: start + items.length < options.length ? items.at(-1)!.event.id : null };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/activities/feed'),
+      (async () => {
+        await this.repository.whenReady();
+        const options = this.eventRepository.queryFeedEventOptions(userId);
+        const index = query.cursor ? options.findIndex(option => option.event.id === query.cursor) : -1;
+        if (query.cursor && index < 0) throw new Error('Invalid event cursor.');
+        const start = index + 1;
+        const size = Math.max(1, Math.min(50, query.pageSize || 10));
+        const items = options.slice(start, start + size);
+        return { items, total: options.length,
+          nextCursor: start + items.length < options.length ? items.at(-1)!.event.id : null };
+      })()
+    ]);
+    return response;
   }
 }

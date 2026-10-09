@@ -1,3 +1,4 @@
+import {LocalCommunityCasesRepository} from '../repositories/community-cases.repository';
 import {TestBed} from '@angular/core/testing';
 import {LocalMemoryDb} from '../../../common/app.db';
 import {RouteDelayService} from '../../../base/services/route-delay.service';
@@ -17,6 +18,13 @@ describe('Shared case appointment schedule and notifications',()=>{
   db=TestBed.inject(LocalMemoryDb);await db.resetStorage();const users=TestBed.inject(SeedUsersRepository).seedDefaults();TestBed.inject(SeedCommunityGroupsRepository).seedDefaults(users);
   TestBed.inject(SeedServiceOfferingsRepository).seedDefaults();TestBed.inject(SeedCommunityCasesRepository).seedDefaults();
   const id=(name:string)=>users.find(u=>u.name===name&&!u.workspaceGroupId)!.id;alex=id('Alex Turner');maya=id('Maya Stone');anna=id('Farkas Anna');
+  // Appointment acceptance needs an invited provider, not the accepted general demo seed.
+  const records=TestBed.inject(LocalCommunityCasesRepository),invited=structuredClone(records.findCase(caseId)!);
+  invited.support.find(member=>member.accountId===anna)!.status='invited';invited.memberStates={...invited.memberStates,[anna]:'invited'};
+  records.saveCase(invited,invited.version);
+  const offerings=TestBed.inject(LocalServiceOfferingsService),offering=(await offerings.detail(anna,serviceId)).service;
+  await offerings.save({...offering,userId:anna,slotsEnabled:true,startAtIso:'2026-10-12T09:00:00Z',endAtIso:'2026-10-31T18:00:00Z',frequency:'Weekly',durationMinutes:60,
+    slotTemplates:[{id:'morning',startAt:'2026-10-12T09:00:00Z'},{id:'afternoon',startAt:'2026-10-12T14:00:00Z'}]});
   service=TestBed.inject(LocalCaseAppointmentsService);cases=TestBed.inject(LocalCommunityCasesService);
  });
  afterEach(()=>{TestBed.resetTestingModule();vi.useRealTimers();});
@@ -46,7 +54,7 @@ describe('Shared case appointment schedule and notifications',()=>{
   await accept();const page=await slots();await service.save(caseId,{userId:alex,serviceId,providerAccountId:anna,slotIds:[page.result.slots[0].id],version:null,operationId:'first'});
   const offerings=TestBed.inject(LocalServiceOfferingsService),original=(await offerings.detail(anna,serviceId)).service;
   let other=await offerings.save({...original,userId:anna,id:undefined,version:undefined,title:'Another service'});other=await offerings.action(anna,other.service.id,'publish',other.service.version);
-  let c=await cases.detail(alex,'community-case-riverside-leak');c=await cases.action(c.id,{userId:alex,action:'invite-provider',providerAccountId:anna,serviceId:other.service.id,version:c.version});
+  let c=await cases.detail(maya,'community-case-riverside-leak');c=await cases.action(c.id,{userId:maya,action:'invite-provider',providerAccountId:anna,serviceId:other.service.id,version:c.version});
   c=await cases.action(c.id,{userId:anna,action:'accept-invite',version:c.version});
   const otherSlots=await service.slots(c.id,other.service.id,anna,{userId:alex,eventId:c.id,rangeStart:'2026-10-12',rangeEnd:'2026-10-12'});
   expect(otherSlots.result.slots[0].availableSlots).toBe(0);

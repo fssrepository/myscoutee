@@ -18,7 +18,7 @@ export class LocalCommunityAnnouncementsService extends LocalRouteDelayService i
   private readonly users = inject(LocalUsersRepository);
   private readonly notifications = inject(LocalNotificationsRepository);
   private async actor(profile: string, signal?: AbortSignal) {
-    await this.waitForRouteDelay('/community-announcements', signal); await this.repository.ready(); signal?.throwIfAborted();
+     await this.repository.ready(); signal?.throwIfAborted();
     return this.access.actor(profile);
   }
   private visible(actor: string, id: string) {
@@ -27,60 +27,90 @@ export class LocalCommunityAnnouncementsService extends LocalRouteDelayService i
     if (a.status !== 'published' && !this.access.admin(a.communityId, actor)) throw new Error('Announcement not found');
     return a;
   }
-  async detail(userId: string, id: string, signal?: AbortSignal) { const actor = await this.actor(userId, signal); return this.dto(actor, this.visible(actor, id)); }
+  async detail(userId: string, id: string, signal?: AbortSignal) {
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-announcements', signal),
+      (async () => {
+        const actor = await this.actor(userId, signal); return this.dto(actor, this.visible(actor, id));
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
+  }
   async page(userId: string, query: ListQuery<AnnouncementFilters>, signal?: AbortSignal) {
-    const actor = await this.actor(userId, signal), group = query.filters?.communityId ?? '', status = query.filters?.status ?? 'published';
-    this.access.requireMember(group, actor);
-    if (!['published', 'draft', 'trash'].includes(status) || status !== 'published' && !this.access.admin(group, actor)) throw new Error('Forbidden');
-    const rows = this.repository.records().filter(a => a.communityId === group && a.status === status && (query.filters?.voting == null || a.voting === query.filters.voting))
-      .sort((a,b) => (b.publishedAtIso ?? '').localeCompare(a.publishedAtIso ?? '') || b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id));
-    const page = Number(query.cursor ?? 0), size = Math.max(1, Math.min(50, query.pageSize));
-    if (!Number.isSafeInteger(page) || page < 0 || page > 1000000) throw new Error('Invalid cursor');
-    const start = page * size, end = start + size;
-    const voters = this.eligibleVoters(group);
-    return { items: rows.slice(start, end).map(a => this.dto(actor, a, voters)), total: rows.length, nextCursor: end < rows.length ? `${page+1}` : null };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-announcements', signal),
+      (async () => {
+        const actor = await this.actor(userId, signal), group = query.filters?.communityId ?? '', status = query.filters?.status ?? 'published';
+            this.access.requireMember(group, actor);
+            if (!['published', 'draft', 'trash'].includes(status) || status !== 'published' && !this.access.admin(group, actor)) throw new Error('Forbidden');
+            const rows = this.repository.records().filter(a => a.communityId === group && a.status === status && (query.filters?.voting == null || a.voting === query.filters.voting))
+              .sort((a,b) => (b.publishedAtIso ?? '').localeCompare(a.publishedAtIso ?? '') || b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id));
+            const page = Number(query.cursor ?? 0), size = Math.max(1, Math.min(50, query.pageSize));
+            if (!Number.isSafeInteger(page) || page < 0 || page > 1000000) throw new Error('Invalid cursor');
+            const start = page * size, end = start + size;
+            const voters = this.eligibleVoters(group);
+            return { items: rows.slice(start, end).map(a => this.dto(actor, a, voters)), total: rows.length, nextCursor: end < rows.length ? `${page+1}` : null };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
   async save(r: SaveAnnouncement) {
-    const actor = await this.actor(r.userId); this.access.requireAdmin(r.communityId, actor);
-    if (!r.title?.trim() || r.title.trim().length > 160 || r.body == null || r.body.length > 12000 || r.attachments.length > 10
-      || r.attachments.some(f => !f.name || f.name.length > 250 || !f.url || !f.mimeType || f.sizeBytes <= 0 || f.sizeBytes > 10485760
-        || !f.url.startsWith(`data:${f.mimeType};base64,`) && !f.url.startsWith('/assets/'))) throw new Error('Invalid announcement');
-    const old = r.id ? this.visible(actor, r.id) : null;
-    if (old && (old.communityId !== r.communityId || old.status === 'trash' || old.version !== r.version)) throw new Error('announcement.changed');
-    if (old?.ballots.length && !r.voting) throw new Error('announcement.changed');
-    const now = new Date().toISOString(), deadline = r.voting ? new Date(r.deadlineIso ?? '').toISOString() : null;
-    const reopened = old?.status === 'published' && !!deadline && deadline > now && deadline !== old.deadlineIso;
-    const a: CommunityAnnouncementRecord = { id: old?.id ?? crypto.randomUUID(), communityId: r.communityId, authorAccountId: old?.authorAccountId ?? actor,
-      title: r.title.trim(), body: r.body.trim(), attachments: structuredClone(r.attachments), status: old?.status ?? 'draft', voting: r.voting, deadlineIso: deadline,
-      closedAtIso: reopened ? null : old?.closedAtIso ?? null, closureNotifiedAtIso: reopened ? null : old?.closureNotifiedAtIso ?? null,
-      ballots: structuredClone(old?.ballots ?? []), publishedAtIso: old?.publishedAtIso ?? null, createdAtIso: old?.createdAtIso ?? now, updatedAtIso: now, version: (old?.version ?? -1) + 1 };
-    this.repository.save(a, old?.version);
-    if (a.status === 'published') this.notify(a, actor, reopened ? 'reopened' : 'updated', `${a.version}`);
-    await this.repository.flush(); return this.dto(actor, a);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-announcements'),
+      (async () => {
+        const actor = await this.actor(r.userId); this.access.requireAdmin(r.communityId, actor);
+            if (!r.title?.trim() || r.title.trim().length > 160 || r.body == null || r.body.length > 12000 || r.attachments.length > 10
+              || r.attachments.some(f => !f.name || f.name.length > 250 || !f.url || !f.mimeType || f.sizeBytes <= 0 || f.sizeBytes > 10485760
+                || !f.url.startsWith(`data:${f.mimeType};base64,`) && !f.url.startsWith('/assets/'))) throw new Error('Invalid announcement');
+            const old = r.id ? this.visible(actor, r.id) : null;
+            if (old && (old.communityId !== r.communityId || old.status === 'trash' || old.version !== r.version)) throw new Error('announcement.changed');
+            if (old?.ballots.length && !r.voting) throw new Error('announcement.changed');
+            const now = new Date().toISOString(), deadline = r.voting ? new Date(r.deadlineIso ?? '').toISOString() : null;
+            const reopened = old?.status === 'published' && !!deadline && deadline > now && deadline !== old.deadlineIso;
+            const a: CommunityAnnouncementRecord = { id: old?.id ?? crypto.randomUUID(), communityId: r.communityId, authorAccountId: old?.authorAccountId ?? actor,
+              title: r.title.trim(), body: r.body.trim(), attachments: structuredClone(r.attachments), status: old?.status ?? 'draft', voting: r.voting, deadlineIso: deadline,
+              closedAtIso: reopened ? null : old?.closedAtIso ?? null, closureNotifiedAtIso: reopened ? null : old?.closureNotifiedAtIso ?? null,
+              ballots: structuredClone(old?.ballots ?? []), publishedAtIso: old?.publishedAtIso ?? null, createdAtIso: old?.createdAtIso ?? now, updatedAtIso: now, version: (old?.version ?? -1) + 1 };
+            this.repository.save(a, old?.version);
+            if (a.status === 'published') this.notify(a, actor, reopened ? 'reopened' : 'updated', `${a.version}`);
+            await this.repository.flush(); return this.dto(actor, a);
+      })()
+    ]);
+    return response;
   }
   async action(id: string, r: AnnouncementCommand) {
-    if (!['publish', 'unpublish', 'trash', 'restore', 'close', 'vote'].includes(r.action)) throw new Error('Invalid action');
-    const actor = await this.actor(r.userId), old = this.visible(actor, id), a = structuredClone(old), now = new Date().toISOString();
-    if (old.version !== r.version) throw new Error('announcement.changed');
-    if (r.action === 'vote') {
-      if (!this.access.member(a.communityId, actor)?.votingEligible) throw new Error('Forbidden');
-      if (a.status !== 'published' || !a.voting || a.closedAtIso || !a.deadlineIso || a.deadlineIso <= now || !r.choice || !VOTE_CHOICES.includes(r.choice)
-        || a.ballots.some(b => b.voterAccountId === actor)) throw new Error('announcement.changed');
-      a.ballots.push({ voterAccountId: actor, choice: r.choice, castAtIso: now });
-    } else {
-      this.access.requireAdmin(a.communityId, actor);
-      if (r.action === 'close') {
-        if (!a.voting || a.status !== 'published') throw new Error('Invalid vote'); a.closedAtIso ??= now;
-      } else {
-        a.status = r.action === 'publish' ? 'published' : r.action === 'trash' ? 'trash' : 'draft';
-        if (a.status === 'published') a.publishedAtIso ??= now;
-      }
-    }
-    a.updatedAtIso = now; a.version++; this.repository.save(a, old.version);
-    if (r.action === 'close') this.notifyClosure(a, actor);
-    else if (r.action === 'vote') this.notify(a, actor, 'voted', actor, true);
-    else if (a.status === 'published' || old.status === 'published') this.notify(a, actor, r.action, `${a.version}`);
-    await this.repository.flush(); return this.dto(actor, a);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/community-announcements'),
+      (async () => {
+        if (!['publish', 'unpublish', 'trash', 'restore', 'close', 'vote'].includes(r.action)) throw new Error('Invalid action');
+            const actor = await this.actor(r.userId), old = this.visible(actor, id), a = structuredClone(old), now = new Date().toISOString();
+            if (old.version !== r.version) throw new Error('announcement.changed');
+            if (r.action === 'vote') {
+              if (!this.access.member(a.communityId, actor)?.votingEligible) throw new Error('Forbidden');
+              if (a.status !== 'published' || !a.voting || a.closedAtIso || !a.deadlineIso || a.deadlineIso <= now || !r.choice || !VOTE_CHOICES.includes(r.choice)
+                || a.ballots.some(b => b.voterAccountId === actor)) throw new Error('announcement.changed');
+              a.ballots.push({ voterAccountId: actor, choice: r.choice, castAtIso: now });
+            } else {
+              this.access.requireAdmin(a.communityId, actor);
+              if (r.action === 'close') {
+                if (!a.voting || a.status !== 'published') throw new Error('Invalid vote'); a.closedAtIso ??= now;
+              } else {
+                a.status = r.action === 'publish' ? 'published' : r.action === 'trash' ? 'trash' : 'draft';
+                if (a.status === 'published') a.publishedAtIso ??= now;
+              }
+            }
+            a.updatedAtIso = now; a.version++; this.repository.save(a, old.version);
+            if (r.action === 'close') this.notifyClosure(a, actor);
+            else if (r.action === 'vote') this.notify(a, actor, 'voted', actor, true);
+            else if (a.status === 'published' || old.status === 'published') this.notify(a, actor, r.action, `${a.version}`);
+            await this.repository.flush(); return this.dto(actor, a);
+      })()
+    ]);
+    return response;
   }
   async closeDue(groupId: string | null, now = new Date()): Promise<number> {
     if (groupId !== COMMUNITY_BASE_GROUP_ID) return 0;

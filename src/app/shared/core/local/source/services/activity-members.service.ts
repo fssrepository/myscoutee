@@ -58,8 +58,13 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
-    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    return this.loadMembersByOwner(owner, options);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE),
+      (async (): Promise<ActivityMemberDTO[]> => {
+        return this.loadMembersByOwner(owner, options);
+      })()
+    ]);
+    return response;
   }
 
   async syncMembersByOwner(
@@ -69,23 +74,30 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     signal?: AbortSignal
   ): Promise<ActivityMembersSyncResultDTO> {
     this.throwIfAborted(signal);
-    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    this.throwIfAborted(signal);
-    const current = await this.loadMembersByOwner(owner, options);
-    const currentById = new Map(current.map(member => [member.id, member] as const));
-    const knownRevisionsById = new Map(knownItems
-      .map(item => [`${item.id ?? ''}`.trim(), `${item.revision ?? ''}`] as const)
-      .filter(([id]) => id.length > 0));
-    const upserts = current.filter(member => {
-      const knownRevision = knownRevisionsById.get(member.id);
-      return knownRevision === undefined || knownRevision !== this.memberRevision(member);
-    });
-    const removedIds = [...knownRevisionsById.keys()].filter(id => !currentById.has(id));
-    return {
-      upserts,
-      removedIds,
-      total: current.length
-    };
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE),
+      (async (): Promise<ActivityMembersSyncResultDTO> => {
+        this.throwIfAborted(signal);
+        const current = await this.loadMembersByOwner(owner, options);
+        const currentById = new Map(current.map(member => [member.id, member] as const));
+        const knownRevisionsById = new Map(knownItems
+          .map(item => [`${item.id ?? ''}`.trim(), `${item.revision ?? ''}`] as const)
+          .filter(([id]) => id.length > 0));
+        const upserts = current.filter(member => {
+          const knownRevision = knownRevisionsById.get(member.id);
+          return knownRevision === undefined || knownRevision !== this.memberRevision(member);
+        });
+        const removedIds = [...knownRevisionsById.keys()].filter(id => !currentById.has(id));
+        return {
+          upserts,
+          removedIds,
+          total: current.length
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async loadMembersByOwner(
@@ -104,13 +116,33 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   }
 
   async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummaryDto[]> {
-    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    return this.activityMembersRepository.normalizeOwners(owners)
-      .map(owner => this.summaryFromOwner(owner))
-      .filter((summary): summary is ActivityMembersSummaryDto => Boolean(summary));
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE),
+      (async (): Promise<ActivityMembersSummaryDto[]> => {
+        return this.activityMembersRepository.normalizeOwners(owners)
+          .map(owner => this.summaryFromOwner(owner))
+          .filter((summary): summary is ActivityMembersSummaryDto => Boolean(summary));
+      })()
+    ]);
+    return response;
   }
 
   async replaceMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    members: readonly ActivityMemberDTO[],
+    capacityTotal?: number | null,
+    actorUserId = '',
+    options?: ActivityMembersQueryOptions
+  ): Promise<void> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE),
+      this.writeMembersByOwner(owner, members, capacityTotal, actorUserId, options)
+    ]);
+    return response;
+  }
+
+  /** Undelayed owner operation for an aggregate local request. */
+  async writeMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityMemberDTO[],
     capacityTotal?: number | null,
@@ -121,7 +153,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     if (!normalizedOwner) {
       return;
     }
-    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
+
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
     const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
     const existingRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
@@ -214,375 +246,376 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     reason?: string | null,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
-    await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    void reason;
-    const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
-    const normalizedTargetUserId = targetUserId.trim();
-    if (!normalizedOwner || !normalizedTargetUserId) {
-      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
-    }
-
-    const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
-    const scopedAssetMembers = this.scopedAssetMembers(normalizedOwner, options);
-    const previousMembers = scopedAssetMembers
-      ? LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers)
-      : this.entriesFromRecords(previousRecords, normalizedOwner);
-    const normalizedActorUserId = actorUserId.trim();
-    const normalizedTargetMemberId = `${options?.targetMemberId ?? ''}`.trim();
-    const targetMember = previousMembers.find(member =>
-      member.userId === normalizedTargetUserId
-      && (!normalizedTargetMemberId || member.id === normalizedTargetMemberId)
-    ) ?? null;
-    const actorCanManage = this.canManageOwnerMembers(
-      normalizedOwner,
-      previousMembers,
-      normalizedActorUserId,
-      options
-    );
-    const targetIsInvitation = targetMember?.status === 'pending'
-      && this.isInvitation(targetMember);
-    const actorOwnsInvitation = targetIsInvitation
-      && targetMember?.invitedByUserId?.trim() === normalizedActorUserId;
-    const actorIsInvitee = targetIsInvitation
-      && normalizedActorUserId === normalizedTargetUserId;
-    const targetIsApprovalRequest = targetMember?.status === 'pending'
-      && targetMember.requestKind !== 'payment'
-      && !targetIsInvitation;
-    const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
-    if (organizerParticipationAction
-        && (normalizedOwner.ownerType === 'group' || normalizedOwner.ownerType === 'subEvent')) {
-      const event = this.eventsRepository.peekKnownItemById(normalizedActorUserId, `${options?.eventId ?? ''}`.trim());
-      const stage = event?.subEvents?.find(item => item.id === options?.subEventId);
-      if (!stage || tournamentParticipationLocked(stage)) {
-        return previousMembers;
-      }
-    }
-    const organizerParticipationAllowed = organizerParticipationAction
-      && normalizedActorUserId === normalizedTargetUserId
-      && (actorCanManage || scopedAssetMembers != null)
-      && (targetMember?.status === 'accepted' || targetMember?.status === 'pending');
-    const removingOwnAcceptedMembership = action === 'remove'
-      && targetMember?.status === 'accepted'
-      && normalizedActorUserId === normalizedTargetUserId
-      && targetMember.role !== 'Admin'
-      && targetMember.role !== 'Manager';
-    const withdrawingOwnApprovalRequest = action === 'remove'
-      && targetIsApprovalRequest
-      && normalizedActorUserId === normalizedTargetUserId;
-    const actionAllowed = organizerParticipationAction
-      ? organizerParticipationAllowed
-      : action === 'accept'
-      ? (
-        (actorIsInvitee && targetIsInvitation)
-        || (actorCanManage && targetIsApprovalRequest)
-      )
-      : action === 'remove'
-        ? (
-          actorIsInvitee
-          || actorOwnsInvitation
-          || (actorCanManage && !targetIsInvitation)
-          || removingOwnAcceptedMembership
-          || withdrawingOwnApprovalRequest
-        )
-        : actorCanManage;
-    if (!targetMember || !actionAllowed) {
-      return previousMembers;
-    }
-    if (normalizedOwner.ownerType === 'event'
-        && action === 'accept'
-        && targetIsApprovalRequest
-        && this.eventsRepository.isTournamentAdmissionLocked(normalizedOwner.ownerId)) {
-      throw new Error('event.tournament.registration.closed.message');
-    }
-
-    const nowIso = AppUtils.toIsoDateTime(new Date());
-    const approvalBasket = normalizedOwner.ownerType === 'event' && action === 'accept' && targetIsApprovalRequest
-      ? await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedTargetUserId, normalizedOwner.ownerId)
-      : null;
-    const awaitingPayment = Boolean(approvalBasket && approvalBasket.totalAmount > 0 && !approvalBasket.checkoutSessionId);
-    const nextMembers = previousMembers.map(member => {
-      const targetExactMember = member.id === targetMember?.id;
-      const targetOrganizerScope = organizerParticipationAction
-        && member.userId === normalizedTargetUserId;
-      if (!targetExactMember && !targetOrganizerScope) {
-        return member;
-      }
-      const acceptingOwnManagedInvitation = action === 'accept'
-        && normalizedOwner.ownerType !== 'event'
-        && normalizedActorUserId === normalizedTargetUserId
-        && this.isInvitation(member);
-      if (acceptingOwnManagedInvitation
-          && !this.canManageOwnerMembers(
-            normalizedOwner,
-            previousMembers,
-            member.invitedByUserId?.trim() ?? '',
-            options
-          )) {
-        return {
-          ...member,
-          status: 'pending' as const,
-          pendingSource: 'member' as const,
-          requestKind: 'approval' as const,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'accept' && member.status === 'pending'
-          && (
-            member.requestKind === 'join'
-            || member.requestKind === 'approval'
-            || acceptingOwnManagedInvitation
-          )) {
-        return {
-          ...member,
-          status: awaitingPayment ? 'pending' as const : 'accepted' as const,
-          pendingSource: awaitingPayment ? 'member' as const : null,
-          requestKind: awaitingPayment ? 'payment' as const : null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'remove') {
-        return null;
-      }
-      if (action === 'disqualify' && member.status === 'accepted') {
-        return {
-          ...member,
-          status: 'disqualified' as const,
-          pendingSource: null,
-          requestKind: null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'reinstate' && member.status === 'disqualified') {
-        return {
-          ...member,
-          status: 'accepted' as const,
-          pendingSource: null,
-          requestKind: null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'promote-admin' && member.status === 'accepted' && member.role !== 'Admin') {
-        return {
-          ...member,
-          role: 'Admin' as const,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'step-down-admin'
-          && member.status === 'accepted'
-          && (member.role === 'Admin' || member.role === 'Manager')) {
-        return {
-          ...member,
-          role: 'Member' as const,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'set-organizer-only' || action === 'set-participant') {
-        return {
-          ...member,
-          organizerOnly: action === 'set-organizer-only',
-          actionAtIso: nowIso
-        };
-      }
-      return member;
-    }).filter((member): member is ActivityMemberDTO => member !== null);
-    const changed = nextMembers.length !== previousMembers.length
-      || nextMembers.some((member, index) =>
-        member.status !== previousMembers[index]?.status
-        || member.role !== previousMembers[index]?.role
-        || member.pendingSource !== previousMembers[index]?.pendingSource
-        || member.requestKind !== previousMembers[index]?.requestKind
-        || member.invitedByUserId !== previousMembers[index]?.invitedByUserId
-        || member.organizerOnly !== previousMembers[index]?.organizerOnly);
-    if (!changed) {
-      return previousMembers;
-    }
-
-    if (scopedAssetMembers) {
-      if (organizerParticipationAction) {
-        const nextMember = nextMembers.find(member => member.userId === normalizedTargetUserId);
-        if (!nextMember) {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE),
+      (async (): Promise<ActivityMemberDTO[]> => {
+        void reason;
+        const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
+        const normalizedTargetUserId = targetUserId.trim();
+        if (!normalizedOwner || !normalizedTargetUserId) {
+          return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+        }
+        const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
+        const scopedAssetMembers = this.scopedAssetMembers(normalizedOwner, options);
+        const previousMembers = scopedAssetMembers
+          ? LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers)
+          : this.entriesFromRecords(previousRecords, normalizedOwner);
+        const normalizedActorUserId = actorUserId.trim();
+        const normalizedTargetMemberId = `${options?.targetMemberId ?? ''}`.trim();
+        const targetMember = previousMembers.find(member =>
+          member.userId === normalizedTargetUserId
+          && (!normalizedTargetMemberId || member.id === normalizedTargetMemberId)
+        ) ?? null;
+        const actorCanManage = this.canManageOwnerMembers(
+          normalizedOwner,
+          previousMembers,
+          normalizedActorUserId,
+          options
+        );
+        const targetIsInvitation = targetMember?.status === 'pending'
+          && this.isInvitation(targetMember);
+        const actorOwnsInvitation = targetIsInvitation
+          && targetMember?.invitedByUserId?.trim() === normalizedActorUserId;
+        const actorIsInvitee = targetIsInvitation
+          && normalizedActorUserId === normalizedTargetUserId;
+        const targetIsApprovalRequest = targetMember?.status === 'pending'
+          && targetMember.requestKind !== 'payment'
+          && !targetIsInvitation;
+        const organizerParticipationAction = action === 'set-organizer-only' || action === 'set-participant';
+        if (organizerParticipationAction
+            && (normalizedOwner.ownerType === 'group' || normalizedOwner.ownerType === 'subEvent')) {
+          const event = this.eventsRepository.peekKnownItemById(normalizedActorUserId, `${options?.eventId ?? ''}`.trim());
+          const stage = event?.subEvents?.find(item => item.id === options?.subEventId);
+          if (!stage || tournamentParticipationLocked(stage)) {
+            return previousMembers;
+          }
+        }
+        const organizerParticipationAllowed = organizerParticipationAction
+          && normalizedActorUserId === normalizedTargetUserId
+          && (actorCanManage || scopedAssetMembers != null)
+          && (targetMember?.status === 'accepted' || targetMember?.status === 'pending');
+        const removingOwnAcceptedMembership = action === 'remove'
+          && targetMember?.status === 'accepted'
+          && normalizedActorUserId === normalizedTargetUserId
+          && targetMember.role !== 'Admin'
+          && targetMember.role !== 'Manager';
+        const withdrawingOwnApprovalRequest = action === 'remove'
+          && targetIsApprovalRequest
+          && normalizedActorUserId === normalizedTargetUserId;
+        const actionAllowed = organizerParticipationAction
+          ? organizerParticipationAllowed
+          : action === 'accept'
+          ? (
+            (actorIsInvitee && targetIsInvitation)
+            || (actorCanManage && targetIsApprovalRequest)
+          )
+          : action === 'remove'
+            ? (
+              actorIsInvitee
+              || actorOwnsInvitation
+              || (actorCanManage && !targetIsInvitation)
+              || removingOwnAcceptedMembership
+              || withdrawingOwnApprovalRequest
+            )
+            : actorCanManage;
+        if (!targetMember || !actionAllowed) {
           return previousMembers;
         }
-        const existingTargetRecord = previousRecords.find(record => record.userId === normalizedTargetUserId) ?? null;
-        const nextTargetRecord = LocalActivityMembersBuilder.toRecord(
+        if (normalizedOwner.ownerType === 'event'
+            && action === 'accept'
+            && targetIsApprovalRequest
+            && this.eventsRepository.isTournamentAdmissionLocked(normalizedOwner.ownerId)) {
+          throw new Error('event.tournament.registration.closed.message');
+        }
+        const nowIso = AppUtils.toIsoDateTime(new Date());
+        const approvalBasket = normalizedOwner.ownerType === 'event' && action === 'accept' && targetIsApprovalRequest
+          ? await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedTargetUserId, normalizedOwner.ownerId)
+          : null;
+        const awaitingPayment = Boolean(approvalBasket && approvalBasket.totalAmount > 0 && !approvalBasket.checkoutSessionId);
+        const nextMembers = previousMembers.map(member => {
+          const targetExactMember = member.id === targetMember?.id;
+          const targetOrganizerScope = organizerParticipationAction
+            && member.userId === normalizedTargetUserId;
+          if (!targetExactMember && !targetOrganizerScope) {
+            return member;
+          }
+          const acceptingOwnManagedInvitation = action === 'accept'
+            && normalizedOwner.ownerType !== 'event'
+            && normalizedActorUserId === normalizedTargetUserId
+            && this.isInvitation(member);
+          if (acceptingOwnManagedInvitation
+              && !this.canManageOwnerMembers(
+                normalizedOwner,
+                previousMembers,
+                member.invitedByUserId?.trim() ?? '',
+                options
+              )) {
+            return {
+              ...member,
+              status: 'pending' as const,
+              pendingSource: 'member' as const,
+              requestKind: 'approval' as const,
+              invitedByActiveUser: false,
+              actionAtIso: nowIso
+            };
+          }
+          if (action === 'accept' && member.status === 'pending'
+              && (
+                member.requestKind === 'join'
+                || member.requestKind === 'approval'
+                || acceptingOwnManagedInvitation
+              )) {
+            return {
+              ...member,
+              status: awaitingPayment ? 'pending' as const : 'accepted' as const,
+              pendingSource: awaitingPayment ? 'member' as const : null,
+              requestKind: awaitingPayment ? 'payment' as const : null,
+              invitedByUserId: null,
+              invitedByActiveUser: false,
+              actionAtIso: nowIso
+            };
+          }
+          if (action === 'remove') {
+            return null;
+          }
+          if (action === 'disqualify' && member.status === 'accepted') {
+            return {
+              ...member,
+              status: 'disqualified' as const,
+              pendingSource: null,
+              requestKind: null,
+              invitedByUserId: null,
+              invitedByActiveUser: false,
+              actionAtIso: nowIso
+            };
+          }
+          if (action === 'reinstate' && member.status === 'disqualified') {
+            return {
+              ...member,
+              status: 'accepted' as const,
+              pendingSource: null,
+              requestKind: null,
+              invitedByUserId: null,
+              invitedByActiveUser: false,
+              actionAtIso: nowIso
+            };
+          }
+          if (action === 'promote-admin' && member.status === 'accepted' && member.role !== 'Admin') {
+            return {
+              ...member,
+              role: 'Admin' as const,
+              actionAtIso: nowIso
+            };
+          }
+          if (action === 'step-down-admin'
+              && member.status === 'accepted'
+              && (member.role === 'Admin' || member.role === 'Manager')) {
+            return {
+              ...member,
+              role: 'Member' as const,
+              actionAtIso: nowIso
+            };
+          }
+          if (action === 'set-organizer-only' || action === 'set-participant') {
+            return {
+              ...member,
+              organizerOnly: action === 'set-organizer-only',
+              actionAtIso: nowIso
+            };
+          }
+          return member;
+        }).filter((member): member is ActivityMemberDTO => member !== null);
+        const changed = nextMembers.length !== previousMembers.length
+          || nextMembers.some((member, index) =>
+            member.status !== previousMembers[index]?.status
+            || member.role !== previousMembers[index]?.role
+            || member.pendingSource !== previousMembers[index]?.pendingSource
+            || member.requestKind !== previousMembers[index]?.requestKind
+            || member.invitedByUserId !== previousMembers[index]?.invitedByUserId
+            || member.organizerOnly !== previousMembers[index]?.organizerOnly);
+        if (!changed) {
+          return previousMembers;
+        }
+        if (scopedAssetMembers) {
+          if (organizerParticipationAction) {
+            const nextMember = nextMembers.find(member => member.userId === normalizedTargetUserId);
+            if (!nextMember) {
+              return previousMembers;
+            }
+            const existingTargetRecord = previousRecords.find(record => record.userId === normalizedTargetUserId) ?? null;
+            const nextTargetRecord = LocalActivityMembersBuilder.toRecord(
+              normalizedOwner,
+              nextMember,
+              existingTargetRecord
+            );
+            this.activityMembersRepository.replaceRecordsByOwner(
+              normalizedOwner,
+              [
+                ...previousRecords.filter(record => record.userId !== normalizedTargetUserId),
+                nextTargetRecord
+              ],
+              this.ownerSnapshotFromOwner(normalizedOwner)?.capacityTotal ?? null
+            );
+            return LocalActivityMembersBuilder.sortEntriesForManagement(
+              this.scopedAssetMembers(normalizedOwner, options) ?? []
+            );
+          }
+          if (action !== 'accept' && action !== 'remove') {
+            return previousMembers;
+          }
+          const eventId = `${options?.eventId ?? ''}`.trim();
+          const subEventId = `${options?.subEventId ?? ''}`.trim();
+          const authorizationEventId = ActivityResourceBuilder.authorizationEventId(eventId, subEventId);
+          const persisted = this.assetsRepository.applyScopedAssetMemberAction(
+            normalizedOwner.ownerId,
+            [eventId, authorizationEventId],
+            subEventId,
+            normalizedTargetUserId,
+            targetMember.id,
+            action
+          );
+          if (!persisted) {
+            return previousMembers;
+          }
+          return LocalActivityMembersBuilder.sortEntriesForManagement(
+            this.scopedAssetMembers(normalizedOwner, options) ?? []
+          );
+        }
+        if (awaitingPayment) {
+          await this.eventCheckoutBasketsRepository.updateBasketState({
+            userId: normalizedTargetUserId, sourceId: normalizedOwner.ownerId,
+            checkoutState: 'approved', resultState: 'pending'
+          });
+        }
+        if (normalizedOwner.ownerType === 'event' && action === 'remove'
+            && normalizedActorUserId !== normalizedTargetUserId) {
+          this.affiliateRepository.cancelEventPayments(normalizedOwner.ownerId, normalizedTargetUserId, true);
+          await this.affiliateRepository.flushToIndexedDb();
+        }
+        const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
+        const nextRecords = nextMembers.map(member => LocalActivityMembersBuilder.toRecord(
           normalizedOwner,
-          nextMember,
-          existingTargetRecord
-        );
+          member,
+          previousRecordsById.get(member.id) ?? null
+        ));
+        const ownerSnapshot = this.ownerSnapshotFromOwner(normalizedOwner);
         this.activityMembersRepository.replaceRecordsByOwner(
           normalizedOwner,
-          [
-            ...previousRecords.filter(record => record.userId !== normalizedTargetUserId),
-            nextTargetRecord
-          ],
-          this.ownerSnapshotFromOwner(normalizedOwner)?.capacityTotal ?? null
+          nextRecords,
+          ownerSnapshot?.capacityTotal ?? null
         );
-        return LocalActivityMembersBuilder.sortEntriesForManagement(
-          this.scopedAssetMembers(normalizedOwner, options) ?? []
-        );
-      }
-      if (action !== 'accept' && action !== 'remove') {
-        return previousMembers;
-      }
-      const eventId = `${options?.eventId ?? ''}`.trim();
-      const subEventId = `${options?.subEventId ?? ''}`.trim();
-      const authorizationEventId = ActivityResourceBuilder.authorizationEventId(eventId, subEventId);
-      const persisted = this.assetsRepository.applyScopedAssetMemberAction(
-        normalizedOwner.ownerId,
-        [eventId, authorizationEventId],
-        subEventId,
-        normalizedTargetUserId,
-        targetMember.id,
-        action
-      );
-      if (!persisted) {
-        return previousMembers;
-      }
-      return LocalActivityMembersBuilder.sortEntriesForManagement(
-        this.scopedAssetMembers(normalizedOwner, options) ?? []
-      );
-    }
-
-    if (awaitingPayment) {
-      await this.eventCheckoutBasketsRepository.updateBasketState({
-        userId: normalizedTargetUserId, sourceId: normalizedOwner.ownerId,
-        checkoutState: 'approved', resultState: 'pending'
-      });
-    }
-    if (normalizedOwner.ownerType === 'event' && action === 'remove'
-        && normalizedActorUserId !== normalizedTargetUserId) {
-      this.affiliateRepository.cancelEventPayments(normalizedOwner.ownerId, normalizedTargetUserId, true);
-      await this.affiliateRepository.flushToIndexedDb();
-    }
-    const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
-    const nextRecords = nextMembers.map(member => LocalActivityMembersBuilder.toRecord(
-      normalizedOwner,
-      member,
-      previousRecordsById.get(member.id) ?? null
-    ));
-    const ownerSnapshot = this.ownerSnapshotFromOwner(normalizedOwner);
-    this.activityMembersRepository.replaceRecordsByOwner(
-      normalizedOwner,
-      nextRecords,
-      ownerSnapshot?.capacityTotal ?? null
-    );
-    if (normalizedOwner.ownerType === 'event') {
-      if (action === 'remove' && targetMember.status === 'accepted') {
-        this.removeGeneratedTournamentRoomParticipation(
-          normalizedOwner.ownerId,
-          targetMember,
-          nowIso
-        );
-        await this.activityResourcesService.removeManagedResourcesForRemovedEventMember(
-          normalizedOwner.ownerId,
-          targetMember.userId,
-          normalizedActorUserId
-        );
-      } else if (
-        (action === 'disqualify' && targetMember.status === 'accepted')
-        || (action === 'reinstate' && targetMember.status === 'disqualified')
-      ) {
-        this.updateGeneratedTournamentRoomParticipationStatus(
-          normalizedOwner.ownerId,
-          targetMember,
-          action,
-          nowIso
-        );
-      }
-      const refreshedEvent = this.eventsRepository.synchronizeEventMemberProjection(normalizedOwner.ownerId);
-      this.synchronizeEventCountersForUsers([
-        ...previousMembers.map(member => member.userId),
-        ...nextMembers.map(member => member.userId),
-        normalizedActorUserId
-      ]);
-      await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, nextMembers);
-      this.assetTicketsRepository.synchronizeForMemberChange(
-        normalizedOwner.ownerId,
-        normalizedTargetUserId
-      );
-      if (action === 'accept' && targetIsApprovalRequest && actorCanManage) {
-        this.appendMemberApprovedNotification(
-          normalizedOwner.ownerId,
-          normalizedTargetUserId,
-          normalizedActorUserId,
-          nowIso
-        );
-      }
-      const systemMessage = this.eventMembershipSystemMessage(
-        action,
-        targetMember,
-        nextMembers.find(member => member.userId === normalizedTargetUserId) ?? null,
-        normalizedActorUserId
-      );
-      if (refreshedEvent && systemMessage) {
-        this.chatsRepository.syncPublishedMainEventChat(refreshedEvent);
-        this.chatsRepository.appendEventSystemMessage(
-          normalizedOwner.ownerId,
-          systemMessage.text,
-          systemMessage.kind,
-          nowIso
-        );
-      }
-      if (refreshedEvent && action === 'accept' && !awaitingPayment) {
-        this.appendEventMemberJoinedNotifications(
-          refreshedEvent,
-          nextMembers.find(member => member.userId === normalizedTargetUserId) ?? targetMember,
-          nextMembers.filter(member => member.status === 'accepted'),
-          nowIso
-        );
-      }
-      if (refreshedEvent && action === 'remove' && targetMember.status === 'accepted') {
-        this.appendEventMemberRemovedNotifications(
-          refreshedEvent,
-          targetMember,
-          normalizedActorUserId,
-          nextMembers.filter(member => member.status === 'accepted'),
-          nowIso
-        );
-      } else if (
-        refreshedEvent
-        && (
-          (action === 'disqualify' && targetMember.status === 'accepted')
-          || (action === 'reinstate' && targetMember.status === 'disqualified')
-        )
-      ) {
-        this.appendEventMemberStatusChangedNotifications(
-          refreshedEvent,
-          targetMember,
-          action,
-          normalizedActorUserId,
-          nextMembers.filter(member => member.status === 'accepted'),
-          nowIso
-        );
-      }
-    }
-    if (
-      normalizedOwner.ownerType === 'event'
-      && action === 'remove'
-      && targetIsInvitation
-    ) {
-      this.notificationsRepository.markUnreadBySource(
-        normalizedTargetUserId,
-        'event-invite',
-        'event',
-        normalizedOwner.ownerId
-      );
-    }
-    if (normalizedOwner.ownerType === 'group') {
-      this.eventsRepository.syncTournamentStagePending(
-        `${options?.eventId ?? ''}`.trim(),
-        `${options?.subEventId ?? ''}`.trim()
-      );
-    }
-    return this.entriesFromRecords(nextRecords, normalizedOwner);
+        if (normalizedOwner.ownerType === 'event') {
+          if (action === 'remove' && targetMember.status === 'accepted') {
+            this.removeGeneratedTournamentRoomParticipation(
+              normalizedOwner.ownerId,
+              targetMember,
+              nowIso
+            );
+            await this.activityResourcesService.removeManagedResourcesForRemovedEventMember(
+              normalizedOwner.ownerId,
+              targetMember.userId,
+              normalizedActorUserId
+            );
+          } else if (
+            (action === 'disqualify' && targetMember.status === 'accepted')
+            || (action === 'reinstate' && targetMember.status === 'disqualified')
+          ) {
+            this.updateGeneratedTournamentRoomParticipationStatus(
+              normalizedOwner.ownerId,
+              targetMember,
+              action,
+              nowIso
+            );
+          }
+          const refreshedEvent = this.eventsRepository.synchronizeEventMemberProjection(normalizedOwner.ownerId);
+          this.synchronizeEventCountersForUsers([
+            ...previousMembers.map(member => member.userId),
+            ...nextMembers.map(member => member.userId),
+            normalizedActorUserId
+          ]);
+          await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, nextMembers);
+          this.assetTicketsRepository.synchronizeForMemberChange(
+            normalizedOwner.ownerId,
+            normalizedTargetUserId
+          );
+          if (action === 'accept' && targetIsApprovalRequest && actorCanManage) {
+            this.appendMemberApprovedNotification(
+              normalizedOwner.ownerId,
+              normalizedTargetUserId,
+              normalizedActorUserId,
+              nowIso
+            );
+          }
+          const systemMessage = this.eventMembershipSystemMessage(
+            action,
+            targetMember,
+            nextMembers.find(member => member.userId === normalizedTargetUserId) ?? null,
+            normalizedActorUserId
+          );
+          if (refreshedEvent && systemMessage) {
+            this.chatsRepository.syncPublishedMainEventChat(refreshedEvent);
+            this.chatsRepository.appendEventSystemMessage(
+              normalizedOwner.ownerId,
+              systemMessage.text,
+              systemMessage.kind,
+              nowIso
+            );
+          }
+          if (refreshedEvent && action === 'accept' && !awaitingPayment) {
+            this.appendEventMemberJoinedNotifications(
+              refreshedEvent,
+              nextMembers.find(member => member.userId === normalizedTargetUserId) ?? targetMember,
+              nextMembers.filter(member => member.status === 'accepted'),
+              nowIso
+            );
+          }
+          if (refreshedEvent && action === 'remove' && targetMember.status === 'accepted') {
+            this.appendEventMemberRemovedNotifications(
+              refreshedEvent,
+              targetMember,
+              normalizedActorUserId,
+              nextMembers.filter(member => member.status === 'accepted'),
+              nowIso
+            );
+          } else if (
+            refreshedEvent
+            && (
+              (action === 'disqualify' && targetMember.status === 'accepted')
+              || (action === 'reinstate' && targetMember.status === 'disqualified')
+            )
+          ) {
+            this.appendEventMemberStatusChangedNotifications(
+              refreshedEvent,
+              targetMember,
+              action,
+              normalizedActorUserId,
+              nextMembers.filter(member => member.status === 'accepted'),
+              nowIso
+            );
+          }
+        }
+        if (
+          normalizedOwner.ownerType === 'event'
+          && action === 'remove'
+          && targetIsInvitation
+        ) {
+          this.notificationsRepository.markUnreadBySource(
+            normalizedTargetUserId,
+            'event-invite',
+            'event',
+            normalizedOwner.ownerId
+          );
+        }
+        if (normalizedOwner.ownerType === 'group') {
+          this.eventsRepository.syncTournamentStagePending(
+            `${options?.eventId ?? ''}`.trim(),
+            `${options?.subEventId ?? ''}`.trim()
+          );
+        }
+        return this.entriesFromRecords(nextRecords, normalizedOwner);
+      })()
+    ]);
+    return response;
   }
 
   private removeGeneratedTournamentRoomParticipation(

@@ -54,16 +54,26 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
   async querySubEventResourceState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
-    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
-    const record = await this.repository.querySubEventResourceRecord(ref);
-    return record ? this.toState(record) : null;
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE),
+      (async (): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> => {
+        const record = await this.repository.querySubEventResourceRecord(ref);
+        return record ? this.toState(record) : null;
+      })()
+    ]);
+    return response;
   }
 
   async querySubEventResourceScope(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
   ): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> {
-    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
-    return this.peekSubEventResourceScope(ref);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE),
+      (async (): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> => {
+        return this.peekSubEventResourceScope(ref);
+      })()
+    ]);
+    return response;
   }
 
   peekSubEventResourceScope(
@@ -149,7 +159,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     if (!changed) {
       return false;
     }
-    return Boolean(await this.replaceSubEventResourceState({
+    return Boolean(await this.writeSubEventResourceState({
       ...state,
       assetSettingsByType: nextSettingsByType
     }, undefined, normalizedSuccessorUserId));
@@ -182,7 +192,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     }
     const nextSupplyEntries = { ...state.supplyContributionEntriesByAssetId };
     delete nextSupplyEntries[normalizedAssetId];
-    return Boolean(await this.replaceSubEventResourceState({
+    return Boolean(await this.writeSubEventResourceState({
       ...state,
       assetAssignmentIds: nextAssignmentIds,
       assetSettingsByType: nextSettingsByType,
@@ -244,22 +254,27 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     page: number,
     pageSize: number
   ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
-    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
-    const result = await this.repository.querySupplyContributionPage(ref, assetId, page, pageSize);
-    return {
-      ...result,
-      items: result.items.map(entry => {
-        const contributor = this.usersRepository.queryUserById(entry.userId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE),
+      (async (): Promise<AppDTOs.SubEventSupplyContributionPageDTO> => {
+        const result = await this.repository.querySupplyContributionPage(ref, assetId, page, pageSize);
         return {
-          ...entry,
-          name: contributor?.name,
-          initials: contributor?.initials,
-          gender: contributor?.gender,
-          age: contributor?.age,
-          city: contributor?.city
+          ...result,
+          items: result.items.map(entry => {
+            const contributor = this.usersRepository.queryUserById(entry.userId);
+            return {
+              ...entry,
+              name: contributor?.name,
+              initials: contributor?.initials,
+              gender: contributor?.gender,
+              age: contributor?.age,
+              city: contributor?.city
+            };
+          })
         };
-      })
-    };
+      })()
+    ]);
+    return response;
   }
 
   async replaceSubEventResourceState(
@@ -267,7 +282,21 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     signal?: AbortSignal,
     actorUserId?: string | null
   ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
-    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE, signal, 'Activity resources request aborted.');
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE, signal, 'Activity resources request aborted.'),
+      this.writeSubEventResourceState(state, signal, actorUserId)
+    ]);
+    return response;
+  }
+
+  /** Undelayed owner operation for an aggregate local request. */
+  async writeSubEventResourceState(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    signal?: AbortSignal,
+    actorUserId?: string | null
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+
+    signal?.throwIfAborted();
     const normalizedState = LocalActivityResourcesMapper.normalizeState(state, state);
     if (!normalizedState) {
       return null;
@@ -410,7 +439,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
         state.assetSettingsByType[type] = settingsByAssetId;
       }
       if (changed) {
-        await this.replaceSubEventResourceState(state, undefined, actorUserId);
+        await this.writeSubEventResourceState(state, undefined, actorUserId);
       }
     }
   }

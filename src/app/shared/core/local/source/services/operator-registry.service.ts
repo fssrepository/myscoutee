@@ -99,8 +99,13 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   private readonly repository = inject(LocalOperatorRegistryRepository);
 
   async loadStatus(): Promise<OperatorRegistryStatusDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_ROUTE);
-    return LocalOperatorRegistryMapper.toStatusDto(await this.readStored());
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_ROUTE),
+      (async (): Promise<OperatorRegistryStatusDto> => {
+        return LocalOperatorRegistryMapper.toStatusDto(await this.readStored());
+      })()
+    ]);
+    return response;
   }
 
   async inspect(request: OperatorRegistryInspectRequestDto): Promise<OperatorRegistryInspectionDto> {
@@ -453,8 +458,15 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     query: ListQuery,
     signal?: AbortSignal
   ): Promise<OperatorLeaderboardPageDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_LEADERBOARD_ROUTE, signal);
-    return LocalOperatorRegistryMapper.toLeaderboardPage(await this.readStored(), query);
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_LEADERBOARD_ROUTE, signal),
+      (async (): Promise<OperatorLeaderboardPageDto> => {
+        return LocalOperatorRegistryMapper.toLeaderboardPage(await this.readStored(), query);
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async leaderboardDeploymentPage(
@@ -462,30 +474,42 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     query: ListQuery,
     signal?: AbortSignal
   ): Promise<OperatorLeaderboardDeploymentPageDto> {
-    await this.waitForOperatorRouteDelay(
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(
       OPERATOR_LEADERBOARD_DEPLOYMENTS_ROUTE,
       signal
-    );
-    const normalizedGroupId = groupId.trim();
-    if (!normalizedGroupId) {
-      throw new Error(
-        'operator.leaderboard.deployments.error.group.invalid'
-      );
-    }
-    return LocalOperatorRegistryMapper.toLeaderboardDeploymentPage(
-      await this.readStored(),
-      normalizedGroupId,
-      query
-    );
+    ),
+      (async (): Promise<OperatorLeaderboardDeploymentPageDto> => {
+        const normalizedGroupId = groupId.trim();
+        if (!normalizedGroupId) {
+          throw new Error(
+            'operator.leaderboard.deployments.error.group.invalid'
+          );
+        }
+        return LocalOperatorRegistryMapper.toLeaderboardDeploymentPage(
+          await this.readStored(),
+          normalizedGroupId,
+          query
+        );
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_ROUTE);
-    const record = await this.readStored();
-    return structuredClone({
-      status: record.claimStatus,
-      submission: record.claimVerificationRequest
-    });
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_CLAIM_ROUTE),
+      (async (): Promise<OperatorClaimOverviewDto> => {
+        const record = await this.readStored();
+        return structuredClone({
+          status: record.claimStatus,
+          submission: record.claimVerificationRequest
+        });
+      })()
+    ]);
+    return response;
   }
 
   async claimShare(
@@ -743,11 +767,16 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_UPDATE_ROUTE);
-    const update = structuredClone((await this.readStored()).deploymentUpdate);
-    if (update.updateAvailable) await this.roleNotifications.publish('release-available', update.availableVersion,
-      { releaseVersion: update.availableVersion });
-    return update;
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_UPDATE_ROUTE),
+      (async (): Promise<OperatorDeploymentUpdateDto> => {
+        const update = structuredClone((await this.readStored()).deploymentUpdate);
+        if (update.updateAvailable) await this.roleNotifications.publish('release-available', update.availableVersion,
+          { releaseVersion: update.availableVersion });
+        return update;
+      })()
+    ]);
+    return response;
   }
 
   async applyDeploymentUpdate(
@@ -838,14 +867,24 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   async loadConfiguration(): Promise<OperatorConfigurationDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
-    return structuredClone((await this.readStored()).configuration);
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE),
+      (async (): Promise<OperatorConfigurationDto> => {
+        return structuredClone((await this.readStored()).configuration);
+      })()
+    ]);
+    return response;
   }
 
   async loadTlsConfiguration(): Promise<OperatorTlsConfigurationDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
-    const current = await this.readStored();
-    return LocalOperatorTlsMapper.configuration(current.tlsConfiguration);
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE),
+      (async (): Promise<OperatorTlsConfigurationDto> => {
+        const current = await this.readStored();
+        return LocalOperatorTlsMapper.configuration(current.tlsConfiguration);
+      })()
+    ]);
+    return response;
   }
 
   async saveTlsConfiguration(
@@ -1201,8 +1240,13 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   async loadRevenue(): Promise<OperatorRevenueDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_ROUTE);
-    return structuredClone((await this.readStored()).revenue);
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_REVENUE_ROUTE),
+      (async (): Promise<OperatorRevenueDto> => {
+        return structuredClone((await this.readStored()).revenue);
+      })()
+    ]);
+    return response;
   }
 
   async synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
@@ -1244,86 +1288,98 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     query: ListQuery<OperatorSettlementFilters>,
     signal?: AbortSignal
   ): Promise<OperatorSettlementPageDto> {
-    await this.waitForOperatorRouteDelay(
+    signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(
       OPERATOR_REVENUE_SETTLEMENTS_ROUTE,
       signal
-    );
-    const pageSize = Math.max(
-      1,
-      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
-    );
-    const currencyCode =
-      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
-    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
-    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
-    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
-      throw new Error('operator.revenue.settlement.currency.invalid');
-    }
-    if (
-      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
-      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
-      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
-    ) {
-      throw new Error('operator.revenue.settlement.period.invalid');
-    }
-    const cursor = this.decodeSettlementCursor(query.cursor);
-    const stored = await this.readStored();
-    const settlements = stored.settlements ?? [];
-    const generatedAtIso = settlements.reduce(
-      (latest, item) =>
-        item.acceptedAtIso > latest ? item.acceptedAtIso : latest,
-      ''
-    );
-    const superseded = new Set(
-      settlements
-        .map(item => item.supersedesSettlementId?.trim() ?? '')
-        .filter(Boolean)
-    );
-    const filtered = settlements
-      .filter(item =>
-        (!currencyCode || item.currencyCode === currencyCode)
-        && (!fromPeriod || item.period >= fromPeriod)
-        && (!throughPeriod || item.period <= throughPeriod)
-        && (
-          query.filters?.includeSuperseded === true
-          || !superseded.has(item.settlementId)
-        )
-        && (
-          !cursor
-          || item.period < cursor.afterPeriod
-          || (
-            item.period === cursor.afterPeriod
-            && item.settlementId > cursor.afterSettlementId
+    ),
+      (async (): Promise<OperatorSettlementPageDto> => {
+        const pageSize = Math.max(
+          1,
+          Math.min(100, Math.trunc(Number(query.pageSize) || 10))
+        );
+        const currencyCode =
+          `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
+        const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
+        const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
+        if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+          throw new Error('operator.revenue.settlement.currency.invalid');
+        }
+        if (
+          (fromPeriod && !this.validSettlementPeriod(fromPeriod))
+          || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
+          || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
+        ) {
+          throw new Error('operator.revenue.settlement.period.invalid');
+        }
+        const cursor = this.decodeSettlementCursor(query.cursor);
+        const stored = await this.readStored();
+        const settlements = stored.settlements ?? [];
+        const generatedAtIso = settlements.reduce(
+          (latest, item) =>
+            item.acceptedAtIso > latest ? item.acceptedAtIso : latest,
+          ''
+        );
+        const superseded = new Set(
+          settlements
+            .map(item => item.supersedesSettlementId?.trim() ?? '')
+            .filter(Boolean)
+        );
+        const filtered = settlements
+          .filter(item =>
+            (!currencyCode || item.currencyCode === currencyCode)
+            && (!fromPeriod || item.period >= fromPeriod)
+            && (!throughPeriod || item.period <= throughPeriod)
+            && (
+              query.filters?.includeSuperseded === true
+              || !superseded.has(item.settlementId)
+            )
+            && (
+              !cursor
+              || item.period < cursor.afterPeriod
+              || (
+                item.period === cursor.afterPeriod
+                && item.settlementId > cursor.afterSettlementId
+              )
+            )
           )
-        )
-      )
-      .sort((left, right) =>
-        right.period.localeCompare(left.period)
-        || left.settlementId.localeCompare(right.settlementId)
-      );
-    const items = filtered.slice(0, pageSize);
-    const last = items.at(-1) ?? null;
-    const nextCursor = filtered.length > items.length && last
-      ? this.encodeSettlementCursor(
-          last.period,
-          last.settlementId
-        )
-      : null;
-    const pageOffset =
-      Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
-    return {
-      items: structuredClone(items),
-      total: pageOffset + items.length + (nextCursor ? 1 : 0),
-      nextCursor,
-      context: {
-        generatedAtIso: generatedAtIso || new Date(0).toISOString()
-      }
-    };
+          .sort((left, right) =>
+            right.period.localeCompare(left.period)
+            || left.settlementId.localeCompare(right.settlementId)
+          );
+        const items = filtered.slice(0, pageSize);
+        const last = items.at(-1) ?? null;
+        const nextCursor = filtered.length > items.length && last
+          ? this.encodeSettlementCursor(
+              last.period,
+              last.settlementId
+            )
+          : null;
+        const pageOffset =
+          Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+        return {
+          items: structuredClone(items),
+          total: pageOffset + items.length + (nextCursor ? 1 : 0),
+          nextCursor,
+          context: {
+            generatedAtIso: generatedAtIso || new Date(0).toISOString()
+          }
+        };
+      })()
+    ]);
+    signal?.throwIfAborted();
+    return response;
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
-    await this.waitForOperatorRouteDelay(OPERATOR_COMMUNITY_ROUTE);
-    return structuredClone((await this.readStored()).community);
+    const [, response] = await Promise.all([
+      this.waitForOperatorRouteDelay(OPERATOR_COMMUNITY_ROUTE),
+      (async (): Promise<OperatorCommunityStatusDto> => {
+        return structuredClone((await this.readStored()).community);
+      })()
+    ]);
+    return response;
   }
 
   async setCommunityAvailability(
