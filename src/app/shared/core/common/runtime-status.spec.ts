@@ -122,4 +122,49 @@ describe('landing runtime status', () => {
     await failover.checkDemoFailover();
     expect(fetchStatus).toHaveBeenCalledOnce();
   });
+  it('uses status events without repeated HTTP reads and fails closed on a silent stream', async () => {
+    vi.useFakeTimers();
+    class FakeEventSource extends EventTarget {
+      static instances: FakeEventSource[] = [];
+      onerror: (() => void) | null = null;
+      close = vi.fn();
+      constructor(public url: string) { super(); FakeEventSource.instances.push(this); }
+      status(ready: boolean, known = true) {
+        this.dispatchEvent(new MessageEvent('status', { data: JSON.stringify({ ready, known }) }));
+      }
+    }
+    vi.stubGlobal('EventSource', FakeEventSource);
+    try {
+      await failover.prepareDemoFailover();
+      failover.startDemoFailover();
+      const events = FakeEventSource.instances[0]!;
+      expect(events.url).toBe(new URL('/api/runtime-status/events', base).href);
+      events.status(true);
+      await vi.advanceTimersByTimeAsync(11000);
+      expect(fetchStatus).not.toHaveBeenCalled();
+      expect(location.reload).not.toHaveBeenCalled();
+      const popup = document.createElement('div');
+      popup.className = 'ui-popup'; popup.dataset['testPopup'] = ''; document.body.append(popup);
+      events.status(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(connectivity.backendUnavailable()).toBe(true);
+      expect(location.reload).not.toHaveBeenCalled();
+      events.status(true);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(connectivity.backendUnavailable()).toBe(false);
+      events.onerror?.();
+      expect(connectivity.backendUnavailable()).toBe(true);
+      events.status(true);
+      await vi.advanceTimersByTimeAsync(45001);
+      expect(events.close).toHaveBeenCalledOnce();
+      expect(FakeEventSource.instances).toHaveLength(2);
+      expect(connectivity.backendUnavailable()).toBe(true);
+      expect(fetchStatus).not.toHaveBeenCalled();
+    } finally {
+      window.dispatchEvent(new Event('pagehide'));
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
 });

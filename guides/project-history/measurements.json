@@ -3289,6 +3289,609 @@
       "start_utc": "2026-10-01T01:27:06.471Z",
       "cutoff_utc": "2026-10-01T02:49:50.004Z",
       "note": "Supplemental measured task usage after the historical daily control cutoff; account_control remains the frozen calibration."
+    },
+    {
+      "task_id": "MSC-120",
+      "tokens": 193714624,
+      "cutoff_utc": "2026-10-07T17:19:32.904Z",
+      "unique_response_ids": 1291,
+      "token_components": {
+        "input_tokens": 192752450,
+        "cached_input_tokens": 188280960,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 962174,
+        "reasoning_output_tokens": 274361,
+        "total_tokens": 193714624
+      },
+      "models": {
+        "gpt-6.1-sol|xhigh": {
+          "input_tokens": 19923931,
+          "cached_input_tokens": 19358848,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 163225,
+          "reasoning_output_tokens": 74366,
+          "total_tokens": 20087156
+        },
+        "gpt-6-astra|xhigh": {
+          "input_tokens": 172828519,
+          "cached_input_tokens": 168922112,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 798949,
+          "reasoning_output_tokens": 199995,
+          "total_tokens": 173627468
+        }
+      },
+      "started": "2026-10-07",
+      "finished": "2026-10-09",
+      "active_hours": 10.63442888889048,
+      "allocated_hours": 10.588420138922002,
+      "active_intervals_utc": [
+        [
+          "2026-10-07T04:55:30.789000+00:00",
+          "2026-10-07T05:04:06.667000+00:00"
+        ],
+        [
+          "2026-10-07T05:04:26.065000+00:00",
+          "2026-10-07T06:19:26.998000+00:00"
+        ],
+        [
+          "2026-10-07T06:19:35.104000+00:00",
+          "2026-10-07T06:34:10.565000+00:00"
+        ],
+        [
+          "2026-10-07T06:34:17.469000+00:00",
+          "2026-10-07T06:40:04.090000+00:00"
+        ],
+        [
+          "2026-10-07T06:40:13.670000+00:00",
+          "2026-10-07T06:40:25.413000+00:00"
+        ],
+        [
+          "2026-10-07T06:41:25.249000+00:00",
+          "2026-10-07T07:45:39.228000+00:00"
+        ],
+        [
+          "2026-10-07T07:46:02.100000+00:00",
+          "2026-10-07T07:47:31.270000+00:00"
+        ],
+        [
+          "2026-10-07T07:49:45.666000+00:00",
+          "2026-10-07T08:05:54.941000+00:00"
+        ],
+        [
+          "2026-10-07T08:11:26.092000+00:00",
+          "2026-10-07T09:12:55.272000+00:00"
+        ],
+        [
+          "2026-10-07T09:13:15.210000+00:00",
+          "2026-10-07T13:58:18.282000+00:00"
+        ],
+        [
+          "2026-10-07T13:58:28.697000+00:00",
+          "2026-10-07T14:01:14.667000+00:00"
+        ],
+        [
+          "2026-10-07T15:32:31.037000+00:00",
+          "2026-10-07T16:14:09.437000+00:00"
+        ],
+        [
+          "2026-10-07T16:14:46.903000+00:00",
+          "2026-10-07T16:16:34.071000+00:00"
+        ],
+        [
+          "2026-10-07T16:19:49.149000+00:00",
+          "2026-10-07T17:18:21.026000+00:00"
+        ],
+        [
+          "2026-10-07T17:18:47.687000+00:00",
+          "2026-10-07T17:19:32.904000+00:00"
+        ]
+      ],
+      "api_standard_usd_estimate": 252.63,
+      "valuation_date": "2026-10-09",
+      "rates_per_million": {
+        "gpt-6-astra": [
+          10,
+          1,
+          50,
+          12.5
+        ],
+        "gpt-6.1-sol": [
+          2,
+          0.1,
+          10,
+          2.5
+        ]
+      },
+      "pricing_source": "https://developers.openai.com/api/docs/pricing",
+      "rate_basis": "Standard short-context API equivalent, matching the existing task calibration; excludes Fast/Ultrafast, long-context and regional uplifts, subscription billing and non-token tool/media charges.",
+      "note": "Unique response_id records matching thread_id. Primary-task conversation attribution; mixed MSC-121 work is assigned once, not also added to MSC-120. Cached input is within input; reasoning within output. Recorded root task interval union includes tool/network waits, excludes idle gaps between turns; unfinished turn clipped at final usage timestamp. Task attribution is estimated. Primary conversation ownership; measured usage, estimated mixed-task attribution. Active interval overlap is divided equally between these two tasks; no claim of complete portfolio-wide overlap reconciliation. Historical project_totals and account_control remain unchanged."
+    },
+    {
+      "task_id": "MSC-121",
+      "tokens": 634373124,
+      "cutoff_utc": "2026-10-09T15:12:03.126Z",
+      "unique_response_ids": 4272,
+      "token_components": {
+        "input_tokens": 631426124,
+        "cached_input_tokens": 618657664,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2947000,
+        "reasoning_output_tokens": 895229,
+        "total_tokens": 634373124
+      },
+      "models": {
+        "gpt-6.1-sol|high": {
+          "input_tokens": 2068064,
+          "cached_input_tokens": 1805440,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 13372,
+          "reasoning_output_tokens": 3354,
+          "total_tokens": 2081436
+        },
+        "gpt-6-astra|xhigh": {
+          "input_tokens": 59310105,
+          "cached_input_tokens": 57724160,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 394933,
+          "reasoning_output_tokens": 137541,
+          "total_tokens": 59705038
+        },
+        "gpt-6-astra|high": {
+          "input_tokens": 570047955,
+          "cached_input_tokens": 559128064,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2538695,
+          "reasoning_output_tokens": 754334,
+          "total_tokens": 572586650
+        }
+      },
+      "started": "2026-10-07",
+      "finished": "2026-10-09",
+      "active_hours": 30.466665277777782,
+      "allocated_hours": 30.420656527777783,
+      "active_intervals_utc": [
+        [
+          "2026-10-07T11:05:10.006000+00:00",
+          "2026-10-07T11:07:22.069000+00:00"
+        ],
+        [
+          "2026-10-07T11:09:56.197000+00:00",
+          "2026-10-07T11:10:25.075000+00:00"
+        ],
+        [
+          "2026-10-07T11:11:43.782000+00:00",
+          "2026-10-07T11:12:00.944000+00:00"
+        ],
+        [
+          "2026-10-07T11:13:32.078000+00:00",
+          "2026-10-07T11:16:05.238000+00:00"
+        ],
+        [
+          "2026-10-08T00:12:07.748000+00:00",
+          "2026-10-08T00:14:09.030000+00:00"
+        ],
+        [
+          "2026-10-08T00:14:23.953000+00:00",
+          "2026-10-08T00:18:13.092000+00:00"
+        ],
+        [
+          "2026-10-08T00:20:47.137000+00:00",
+          "2026-10-08T00:57:44.344000+00:00"
+        ],
+        [
+          "2026-10-08T00:58:06.274000+00:00",
+          "2026-10-08T01:37:32.935000+00:00"
+        ],
+        [
+          "2026-10-08T01:40:39.710000+00:00",
+          "2026-10-08T02:50:09.904000+00:00"
+        ],
+        [
+          "2026-10-08T02:50:45.787000+00:00",
+          "2026-10-08T02:53:42.037000+00:00"
+        ],
+        [
+          "2026-10-08T02:56:36.279000+00:00",
+          "2026-10-08T03:14:59.909000+00:00"
+        ],
+        [
+          "2026-10-08T03:15:50.405000+00:00",
+          "2026-10-08T03:25:05.141000+00:00"
+        ],
+        [
+          "2026-10-08T03:25:55.513000+00:00",
+          "2026-10-08T03:31:29.365000+00:00"
+        ],
+        [
+          "2026-10-08T03:31:52.200000+00:00",
+          "2026-10-08T03:59:31.108000+00:00"
+        ],
+        [
+          "2026-10-08T03:59:52.171000+00:00",
+          "2026-10-08T04:00:01.436000+00:00"
+        ],
+        [
+          "2026-10-08T04:02:41.731000+00:00",
+          "2026-10-08T04:10:08.930000+00:00"
+        ],
+        [
+          "2026-10-08T04:11:53.350000+00:00",
+          "2026-10-08T04:12:15.260000+00:00"
+        ],
+        [
+          "2026-10-08T04:13:29.788000+00:00",
+          "2026-10-08T04:15:35.148000+00:00"
+        ],
+        [
+          "2026-10-08T04:15:35.968000+00:00",
+          "2026-10-08T04:19:01.405000+00:00"
+        ],
+        [
+          "2026-10-08T04:20:07.292000+00:00",
+          "2026-10-08T04:22:42.582000+00:00"
+        ],
+        [
+          "2026-10-08T04:23:13.394000+00:00",
+          "2026-10-08T04:26:35.074000+00:00"
+        ],
+        [
+          "2026-10-08T04:26:44.236000+00:00",
+          "2026-10-08T04:41:36.814000+00:00"
+        ],
+        [
+          "2026-10-08T04:42:12.757000+00:00",
+          "2026-10-08T04:44:30.465000+00:00"
+        ],
+        [
+          "2026-10-08T04:45:07.763000+00:00",
+          "2026-10-08T04:45:41.315000+00:00"
+        ],
+        [
+          "2026-10-08T04:47:38.186000+00:00",
+          "2026-10-08T04:53:18.024000+00:00"
+        ],
+        [
+          "2026-10-08T04:54:08.369000+00:00",
+          "2026-10-08T05:08:37.592000+00:00"
+        ],
+        [
+          "2026-10-08T05:08:47.794000+00:00",
+          "2026-10-08T06:50:12.832000+00:00"
+        ],
+        [
+          "2026-10-08T06:52:15.027000+00:00",
+          "2026-10-08T08:45:14.787000+00:00"
+        ],
+        [
+          "2026-10-08T08:48:16.691000+00:00",
+          "2026-10-08T09:41:12.497000+00:00"
+        ],
+        [
+          "2026-10-08T09:41:45.898000+00:00",
+          "2026-10-08T13:16:35.014000+00:00"
+        ],
+        [
+          "2026-10-08T13:32:33.418000+00:00",
+          "2026-10-08T20:24:20.962000+00:00"
+        ],
+        [
+          "2026-10-08T21:51:29.752000+00:00",
+          "2026-10-08T23:51:49.899000+00:00"
+        ],
+        [
+          "2026-10-09T00:32:30.774000+00:00",
+          "2026-10-09T00:33:01.824000+00:00"
+        ],
+        [
+          "2026-10-09T00:33:38.557000+00:00",
+          "2026-10-09T00:42:51.272000+00:00"
+        ],
+        [
+          "2026-10-09T00:43:01.707000+00:00",
+          "2026-10-09T00:45:11.025000+00:00"
+        ],
+        [
+          "2026-10-09T00:45:41.577000+00:00",
+          "2026-10-09T00:46:08.414000+00:00"
+        ],
+        [
+          "2026-10-09T00:48:08.639000+00:00",
+          "2026-10-09T00:48:43.057000+00:00"
+        ],
+        [
+          "2026-10-09T00:48:51.895000+00:00",
+          "2026-10-09T01:01:21.993000+00:00"
+        ],
+        [
+          "2026-10-09T01:01:32.318000+00:00",
+          "2026-10-09T02:44:32.777000+00:00"
+        ],
+        [
+          "2026-10-09T02:44:54.115000+00:00",
+          "2026-10-09T03:58:08.711000+00:00"
+        ],
+        [
+          "2026-10-09T03:58:08.720000+00:00",
+          "2026-10-09T03:58:19.778000+00:00"
+        ],
+        [
+          "2026-10-09T03:59:10.564000+00:00",
+          "2026-10-09T04:04:59.144000+00:00"
+        ],
+        [
+          "2026-10-09T05:50:07.020000+00:00",
+          "2026-10-09T05:52:44.686000+00:00"
+        ],
+        [
+          "2026-10-09T05:53:17.957000+00:00",
+          "2026-10-09T05:54:40.382000+00:00"
+        ],
+        [
+          "2026-10-09T05:55:00.958000+00:00",
+          "2026-10-09T06:37:03.771000+00:00"
+        ],
+        [
+          "2026-10-09T06:37:15.733000+00:00",
+          "2026-10-09T08:55:59.177000+00:00"
+        ],
+        [
+          "2026-10-09T08:56:14.846000+00:00",
+          "2026-10-09T09:09:00.905000+00:00"
+        ],
+        [
+          "2026-10-09T09:10:12.620000+00:00",
+          "2026-10-09T09:18:48.255000+00:00"
+        ],
+        [
+          "2026-10-09T11:09:31.306000+00:00",
+          "2026-10-09T11:09:46.011000+00:00"
+        ],
+        [
+          "2026-10-09T11:10:11.243000+00:00",
+          "2026-10-09T11:30:20.014000+00:00"
+        ],
+        [
+          "2026-10-09T11:49:24.499000+00:00",
+          "2026-10-09T11:49:32.673000+00:00"
+        ],
+        [
+          "2026-10-09T12:42:12.546000+00:00",
+          "2026-10-09T12:52:05.205000+00:00"
+        ],
+        [
+          "2026-10-09T12:53:41.606000+00:00",
+          "2026-10-09T12:54:01.536000+00:00"
+        ],
+        [
+          "2026-10-09T12:57:52.106000+00:00",
+          "2026-10-09T13:01:06.903000+00:00"
+        ],
+        [
+          "2026-10-09T13:24:43.410000+00:00",
+          "2026-10-09T13:25:13.953000+00:00"
+        ],
+        [
+          "2026-10-09T13:27:49.147000+00:00",
+          "2026-10-09T13:46:21.048000+00:00"
+        ],
+        [
+          "2026-10-09T13:46:44.557000+00:00",
+          "2026-10-09T13:50:36.847000+00:00"
+        ],
+        [
+          "2026-10-09T13:51:08.901000+00:00",
+          "2026-10-09T13:52:55.456000+00:00"
+        ],
+        [
+          "2026-10-09T13:54:05.423000+00:00",
+          "2026-10-09T13:54:32.984000+00:00"
+        ],
+        [
+          "2026-10-09T13:55:27.932000+00:00",
+          "2026-10-09T13:55:35.036000+00:00"
+        ],
+        [
+          "2026-10-09T13:55:56.136000+00:00",
+          "2026-10-09T13:56:04.934000+00:00"
+        ],
+        [
+          "2026-10-09T13:57:22.183000+00:00",
+          "2026-10-09T13:58:24.184000+00:00"
+        ],
+        [
+          "2026-10-09T13:58:51.008000+00:00",
+          "2026-10-09T13:59:09.449000+00:00"
+        ],
+        [
+          "2026-10-09T13:59:50.983000+00:00",
+          "2026-10-09T14:13:07.563000+00:00"
+        ],
+        [
+          "2026-10-09T14:13:08.980000+00:00",
+          "2026-10-09T14:42:35.269000+00:00"
+        ],
+        [
+          "2026-10-09T14:53:18.077000+00:00",
+          "2026-10-09T14:55:16.592000+00:00"
+        ],
+        [
+          "2026-10-09T14:55:32.672000+00:00",
+          "2026-10-09T14:55:42.744000+00:00"
+        ],
+        [
+          "2026-10-09T14:56:05.577000+00:00",
+          "2026-10-09T15:12:03.142000+00:00"
+        ]
+      ],
+      "api_standard_usd_estimate": 889.43,
+      "valuation_date": "2026-10-10",
+      "rates_per_million": {
+        "gpt-6-astra": [
+          10,
+          1,
+          50,
+          12.5
+        ],
+        "gpt-6.1-sol": [
+          2,
+          0.1,
+          10,
+          2.5
+        ]
+      },
+      "pricing_source": "https://developers.openai.com/api/docs/pricing",
+      "rate_basis": "Standard short-context API equivalent, matching the existing task calibration; excludes Fast/Ultrafast, long-context and regional uplifts, subscription billing and non-token tool/media charges.",
+      "note": "Unique response_id records matching thread_id. Primary-task conversation attribution; mixed MSC-121 work is assigned once, not also added to MSC-120. Cached input is within input; reasoning within output. Recorded root task interval union includes tool/network waits, excludes idle gaps between turns; unfinished turn clipped at final usage timestamp. Task attribution is estimated. Primary conversation ownership; measured usage, estimated mixed-task attribution. Active interval overlap is divided equally between these two tasks; no claim of complete portfolio-wide overlap reconciliation. Historical project_totals and account_control remain unchanged.",
+      "closeout_scope": {
+        "original_checkpoint_verified": "2026-10-09T04:01:59.138Z",
+        "continuation_start_utc": "2026-10-09T05:50:07.126Z",
+        "excluded_preceding_template_licensing_and_components_tokens": 6886194,
+        "continuation_tokens": 126732945,
+        "original_conversation_final_tokens": 507640179,
+        "note": "Original checkpoint reproduced exactly; remaining original-task records and the subsequent CPU/runtime follow-up are included once. Earlier template/licensing/components turns and this October-10 accounting/publication turn are excluded. No child threads found for these two conversations. No private text or identifiers published."
+      }
     }
-  ]
+  ],
+  "current_project_totals": {
+    "updated_at_utc": "2026-10-10T00:52:02.506119+00:00",
+    "tracked_tasks": 120,
+    "measured_tasks": 113,
+    "tracked_task_ids": [
+      "MSC-1",
+      "MSC-2",
+      "MSC-3",
+      "MSC-4",
+      "MSC-5",
+      "MSC-6",
+      "MSC-7",
+      "MSC-9",
+      "MSC-10",
+      "MSC-11",
+      "MSC-12",
+      "MSC-13",
+      "MSC-14",
+      "MSC-15",
+      "MSC-16",
+      "MSC-17",
+      "MSC-18",
+      "MSC-19",
+      "MSC-20",
+      "MSC-21",
+      "MSC-22",
+      "MSC-23",
+      "MSC-24",
+      "MSC-25",
+      "MSC-26",
+      "MSC-27",
+      "MSC-28",
+      "MSC-29",
+      "MSC-30",
+      "MSC-31",
+      "MSC-32",
+      "MSC-33",
+      "MSC-34",
+      "MSC-35",
+      "MSC-36",
+      "MSC-37",
+      "MSC-38",
+      "MSC-39",
+      "MSC-40",
+      "MSC-41",
+      "MSC-42",
+      "MSC-43",
+      "MSC-44",
+      "MSC-45",
+      "MSC-46",
+      "MSC-47",
+      "MSC-48",
+      "MSC-49",
+      "MSC-50",
+      "MSC-51",
+      "MSC-52",
+      "MSC-53",
+      "MSC-55",
+      "MSC-56",
+      "MSC-57",
+      "MSC-58",
+      "MSC-59",
+      "MSC-60",
+      "MSC-61",
+      "MSC-62",
+      "MSC-63",
+      "MSC-64",
+      "MSC-65",
+      "MSC-66",
+      "MSC-67",
+      "MSC-68",
+      "MSC-69",
+      "MSC-70",
+      "MSC-71",
+      "MSC-72",
+      "MSC-73",
+      "MSC-74",
+      "MSC-75",
+      "MSC-76",
+      "MSC-77",
+      "MSC-78",
+      "MSC-79",
+      "MSC-80",
+      "MSC-81",
+      "MSC-82",
+      "MSC-83",
+      "MSC-84",
+      "MSC-85",
+      "MSC-86",
+      "MSC-87",
+      "MSC-88",
+      "MSC-89",
+      "MSC-90",
+      "MSC-91",
+      "MSC-92",
+      "MSC-93",
+      "MSC-94",
+      "MSC-95",
+      "MSC-96",
+      "MSC-97",
+      "MSC-98",
+      "MSC-99",
+      "MSC-100",
+      "MSC-101",
+      "MSC-102",
+      "MSC-103",
+      "MSC-104",
+      "MSC-105",
+      "MSC-106",
+      "MSC-107",
+      "MSC-108",
+      "MSC-109",
+      "MSC-110",
+      "MSC-111",
+      "MSC-112",
+      "MSC-113",
+      "MSC-114",
+      "MSC-115",
+      "MSC-116",
+      "MSC-117",
+      "MSC-118",
+      "MSC-119",
+      "MSC-120",
+      "MSC-121",
+      "MSC-122"
+    ],
+    "unmeasured_task_ids": [
+      "MSC-114",
+      "MSC-115",
+      "MSC-116",
+      "MSC-117",
+      "MSC-118",
+      "MSC-119",
+      "MSC-122"
+    ],
+    "tokens_estimate": 37113074506,
+    "api_standard_usd_estimate": 28005.06,
+    "allocated_hours_estimate": 931.9210409370971,
+    "method": "Historical tasks merged with post_control_task_usage by task_id, never appended twice. MSC-113 is already in the historical total. MSC-120/121 replace their previous checkpoint. Missing task measurements are excluded, not zero. Time allocation retains each measurement boundary; not a new portfolio-wide overlap audit."
+  },
+  "current_project_totals_scope": "Complete MyScoutee Project; source subset task allocations overlap and must not be summed across repositories."
 }

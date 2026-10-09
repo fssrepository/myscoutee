@@ -35,6 +35,13 @@ MSC-120 frontend-local timing and landing-page corrections. Its exact build
 identity is recorded in `docs/app-version.json`. The hosted site changes only
 after this bundle is published through the existing GitHub Pages workflow.
 
+MSC-121 is [Closed / Project Done](https://github.com/fssrepository/myscoutee-roadmap/issues/159).
+The runtime-status source uses shared SSE with disconnect/silent-stream recovery;
+Kubernetes discovery lives in the backend microservices shell. The existing Pages
+bundle remains the earlier prototype build; this closeout updates source history,
+documentation and the [restorable Project snapshot](guides/project-history/README.md).
+Broad feature QA and MSC-122 extraction remain separate.
+
 > **Demo images:** The GitHub Pages prototype uses placeholders from
 > [Lorem Picsum](https://picsum.photos/) and [Random User](https://randomuser.me/documentation).
 > Local and server demos use generated WebP images served from MinIO.

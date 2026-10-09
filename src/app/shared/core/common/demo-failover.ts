@@ -14,6 +14,9 @@ let enabled = false;
 let local = false;
 let checking = false;
 let started = false;
+let statusEvents: EventSource | null = null;
+let streamReady = false;
+let streamDeadline: ReturnType<typeof setTimeout> | undefined;
 let writes = 0;
 let idsPromise: Promise<Map<string, string>> | null = null;
 
@@ -45,6 +48,7 @@ function eligibleSession(): DemoSession | null {
 }
 
 async function backendReachable(): Promise<boolean> {
+  if (statusEvents) return streamReady;
   try {
     const url = new URL(`${API_BASE.replace(/\/$/, '')}/runtime-status`, document.baseURI);
     const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(1000) });
@@ -192,10 +196,47 @@ export async function checkDemoFailover(): Promise<void> {
 export function startDemoFailover(): void {
   if (!enabled || started) return;
   started = true;
+  streamReady = initialBackendReady();
+  const url = new URL(`${API_BASE.replace(/\/$/, '')}/runtime-status/events`, document.baseURI);
+  const connect = (): void => {
+    const events = new EventSource(url.href);
+    statusEvents = events;
+    const setReady = (ready: boolean): void => {
+      const changed = streamReady !== ready;
+      streamReady = ready;
+      reportBackendReadiness(ready);
+      if (changed) void checkDemoFailover();
+    };
+    const armDeadline = (): void => {
+      clearTimeout(streamDeadline);
+      streamDeadline = setTimeout(() => {
+        events.close();
+        setReady(false);
+        connect();
+      }, 45000);
+    };
+    const receive = (event: MessageEvent): void => {
+      try {
+        const value = JSON.parse(event.data);
+        if (typeof value.ready !== 'boolean' || typeof value.known !== 'boolean') throw new Error('Invalid runtime status');
+        armDeadline();
+        setReady(value.known && value.ready);
+      } catch { setReady(false); }
+    };
+    events.addEventListener('status', receive as EventListener);
+    events.addEventListener('ping', receive as EventListener);
+    events.onerror = () => setReady(false);
+    armDeadline();
+  };
+  connect();
+  window.addEventListener('pagehide', () => { statusEvents?.close(); clearTimeout(streamDeadline); });
+  window.addEventListener('pageshow', event => { if (event.persisted) connect(); });
   window.addEventListener('online', () => void checkDemoFailover());
   window.addEventListener('offline', () => void checkDemoFailover());
   window.addEventListener('focus', () => void checkDemoFailover());
   document.addEventListener('visibilitychange', () => void checkDemoFailover());
+  // This timer retries only local safe-to-switch decisions (e.g. a closed popup);
+  // status comes from SSE, with no periodic HTTP status fetch.
   // The landing recovers in both directions. Active demo sessions keep the
   // existing recovery-on-natural-reload rule, so edits are never discarded.
   const schedule = (): void => {
