@@ -30,9 +30,10 @@ only in the core total, not in the Angular figure.
 
 👉 [UI Prototype](https://fssrepository.github.io/myscoutee/)
 
-The committed GitHub Pages bundle is **1.3.2**. The latest tagged application
-source is **1.3.3**; the development branch above contains later work. Updating
-this documentation does not update the hosted application bundle.
+The committed GitHub Pages bundle is **1.3.3**, rebuilt for MSC-121 with the
+MSC-120 frontend-local timing and landing-page corrections. Its exact build
+identity is recorded in `docs/app-version.json`. The hosted site changes only
+after this bundle is published through the existing GitHub Pages workflow.
 
 > **Demo images:** The GitHub Pages prototype uses placeholders from
 > [Lorem Picsum](https://picsum.photos/) and [Random User](https://randomuser.me/documentation).
@@ -60,6 +61,7 @@ for their installation scope.
 | User Manual | 1.0.0 | MyScoutee 1.0.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_User_Manual_v1.0.0_EN.pdf) |
 | Integration API Guide | 1.0.1 | 1.0.1 + MSC-119 source extensions | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Integration_API_Guide_v1.0.1_EN.pdf) |
 | MCP User Guide | 1.0.0 | MCP / client 1.6.0 · MSC-119 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_MCP_User_Guide_v1.0.0_EN.pdf) |
+| Microservices Guide | 0.1.0 | MSC-121 implementation preview | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_v0.1.0_EN.pdf) |
 
 Document versions are independent of software versions. The MCP guide covers
 MSC-119 source behavior and identifies its pending live-host QA.

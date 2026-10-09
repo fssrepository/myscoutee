@@ -1,0 +1,1 @@
+import{a,b,c,d,e,f,g,h,i,j}from"./chunk-PDDCMT3P.js";import"./chunk-YF5SMAQB.js";export{j as default,g as firebaseMessagingConfigured,b as homeLabel,d as logoCharacterIndex,c as logoUrl,f as paymentProviderId,h as privacyContact,a as productName,e as revision,i as socialLinks};
