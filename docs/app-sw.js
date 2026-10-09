@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-d4414ae8158c-20260930201018";
-const BUILD_ID = "d4414ae8158c-20260930201018";
+const CACHE_VERSION = "build-0bad56e43993-20261009025901";
+const BUILD_ID = "0bad56e43993-20261009025901";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -29,216 +29,253 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-24REZC4J.js",
-  "./chunk-25CE4GV4.js",
-  "./chunk-2E3UJKGU.js",
-  "./chunk-2EWYB73S.js",
-  "./chunk-2L3SQHNA.js",
-  "./chunk-2QEMD55F.js",
-  "./chunk-2SFPX622.js",
-  "./chunk-375WLRTC.js",
-  "./chunk-3BWY4NNW.js",
-  "./chunk-3UAOCE27.js",
-  "./chunk-3WOEGMVY.js",
-  "./chunk-3YREPDVL.js",
-  "./chunk-4DVJ4FF3.js",
-  "./chunk-4G5RQFNS.js",
-  "./chunk-4M6RDNYX.js",
-  "./chunk-4OMZM6EP.js",
+  "./chunk-2AC2G7KH.js",
+  "./chunk-2BJDOCDB.js",
+  "./chunk-2VLZFV5L.js",
+  "./chunk-2WU4ZEUY.js",
+  "./chunk-32RRUW2B.js",
+  "./chunk-3AEMBKL6.js",
+  "./chunk-3DQ4UUGR.js",
+  "./chunk-3DXCK3VD.js",
+  "./chunk-3IIM4SQ4.js",
+  "./chunk-3MB4KHHS.js",
+  "./chunk-3PYPUNY4.js",
+  "./chunk-3YWNWQ46.js",
+  "./chunk-42MER5EK.js",
+  "./chunk-44KDZOGQ.js",
+  "./chunk-47X2T52C.js",
+  "./chunk-4FVTIKBN.js",
   "./chunk-4QEQMBBR.js",
-  "./chunk-57HH3XWJ.js",
-  "./chunk-5KDMV34E.js",
+  "./chunk-4WV5EWNS.js",
+  "./chunk-52RYEKUF.js",
+  "./chunk-52VO776T.js",
+  "./chunk-537R5B6M.js",
+  "./chunk-555WDEMD.js",
+  "./chunk-5BM35WN7.js",
+  "./chunk-5GDER6WZ.js",
+  "./chunk-5ITE3FEZ.js",
   "./chunk-5LRPZT3H.js",
-  "./chunk-5OZAHHMM.js",
-  "./chunk-5QYRCT3I.js",
-  "./chunk-5SQ3K53Q.js",
-  "./chunk-5VHAZXDW.js",
-  "./chunk-5WEQJWFZ.js",
-  "./chunk-6C5NVZNQ.js",
-  "./chunk-6CHICEN3.js",
-  "./chunk-6FX6VGVE.js",
-  "./chunk-6MKZTYPF.js",
-  "./chunk-6UN3L4IJ.js",
-  "./chunk-6WORC5OS.js",
-  "./chunk-6YJYSZM6.js",
-  "./chunk-735LHCLH.js",
-  "./chunk-7D3ZN4G6.js",
-  "./chunk-7J73YI4Z.js",
-  "./chunk-7K4CRZWJ.js",
-  "./chunk-7QPKNKXB.js",
-  "./chunk-7SJRP6AP.js",
-  "./chunk-7Z6AUSOS.js",
-  "./chunk-A534ONH7.js",
-  "./chunk-AA4QIF3P.js",
-  "./chunk-AEGOEEZG.js",
+  "./chunk-5OKSAZYZ.js",
+  "./chunk-67VEXNN7.js",
+  "./chunk-6AXN5CDR.js",
+  "./chunk-6EDBXEIH.js",
+  "./chunk-6PDC3YQA.js",
+  "./chunk-6UWS3LLN.js",
+  "./chunk-72PGSBVL.js",
+  "./chunk-76TYLXS6.js",
+  "./chunk-7BTQTTVS.js",
+  "./chunk-7FPECJDP.js",
+  "./chunk-7IGRUVUA.js",
+  "./chunk-7XO6H22D.js",
   "./chunk-AEIXXNOU.js",
+  "./chunk-AELW2D62.js",
   "./chunk-AIKUVFKR.js",
-  "./chunk-AJCRKQCM.js",
+  "./chunk-AJFMU27A.js",
+  "./chunk-ALI5VE7N.js",
+  "./chunk-ALM7TSIZ.js",
+  "./chunk-AMRUDHNF.js",
+  "./chunk-ANOSC5N4.js",
+  "./chunk-AXYZIURG.js",
+  "./chunk-B5Q4WLSW.js",
   "./chunk-BA3DHQPG.js",
-  "./chunk-BD3CLVWN.js",
-  "./chunk-BDDTDYKA.js",
-  "./chunk-BFJ5BG3G.js",
-  "./chunk-BHL56ZM4.js",
-  "./chunk-BK42564O.js",
-  "./chunk-C4IJU3CA.js",
-  "./chunk-C6A5LP2E.js",
-  "./chunk-CPDOF5WH.js",
-  "./chunk-D5EUR4UG.js",
-  "./chunk-D5MTH7X3.js",
-  "./chunk-D6YFZ6KG.js",
-  "./chunk-DH2JZ5UI.js",
-  "./chunk-DLLAEF7S.js",
-  "./chunk-DWJGY4TK.js",
-  "./chunk-E64NSQSI.js",
-  "./chunk-EEWPFQXJ.js",
-  "./chunk-EIXZ4KTL.js",
-  "./chunk-EOXBOBRJ.js",
-  "./chunk-EPLB4QPC.js",
-  "./chunk-EWIMVU7R.js",
-  "./chunk-EZCMNZGD.js",
-  "./chunk-F6TE4HYX.js",
-  "./chunk-FA2STMVX.js",
-  "./chunk-FAP5Z4CL.js",
-  "./chunk-FB23CPDK.js",
-  "./chunk-FQNQFIVG.js",
-  "./chunk-FV7DNP5I.js",
-  "./chunk-FWCMBYEU.js",
-  "./chunk-FYXNF3MD.js",
-  "./chunk-G4P2WKKT.js",
-  "./chunk-G6TDY6J5.js",
-  "./chunk-GCF6ILUI.js",
-  "./chunk-GKSVK635.js",
-  "./chunk-GRY5CU2N.js",
-  "./chunk-GTQCVALZ.js",
-  "./chunk-GW2PHI3G.js",
-  "./chunk-HDGKA4KW.js",
-  "./chunk-HP3QLIU7.js",
-  "./chunk-HPWNKHQY.js",
-  "./chunk-HXMP6MW4.js",
-  "./chunk-HZ6UTAGN.js",
-  "./chunk-I6O2NQBN.js",
-  "./chunk-IFSJOU4P.js",
-  "./chunk-IJ6LKAKJ.js",
+  "./chunk-BD4XCMBK.js",
+  "./chunk-BKH62SGS.js",
+  "./chunk-BMYHHB4W.js",
+  "./chunk-BWD3XYP6.js",
+  "./chunk-C34SUBG6.js",
+  "./chunk-CESIK64J.js",
+  "./chunk-CFW4YKZG.js",
+  "./chunk-CHESMOKX.js",
+  "./chunk-CMGNVJRD.js",
+  "./chunk-CV35JFC6.js",
+  "./chunk-CZ6CSLZJ.js",
+  "./chunk-DBGBZT2C.js",
+  "./chunk-DDZCKWCR.js",
+  "./chunk-DGLISXWP.js",
+  "./chunk-DIFQ2PYF.js",
+  "./chunk-DQLW33CS.js",
+  "./chunk-DV4SE2YG.js",
+  "./chunk-E4IAX5NQ.js",
+  "./chunk-ED7AHH25.js",
+  "./chunk-EJKFXCWZ.js",
+  "./chunk-EMV3HFKW.js",
+  "./chunk-F5WZWBTC.js",
+  "./chunk-F6J6NTRU.js",
+  "./chunk-F7SQQLJP.js",
+  "./chunk-FGE4Q3HS.js",
+  "./chunk-FIGX5NZK.js",
+  "./chunk-FIREHWX5.js",
+  "./chunk-FLDMR3WW.js",
+  "./chunk-FUBOONHD.js",
+  "./chunk-GCD2BOUU.js",
+  "./chunk-GKWWJRKG.js",
+  "./chunk-GLXTER4X.js",
+  "./chunk-GNYYSXFS.js",
+  "./chunk-GTWNOCBJ.js",
+  "./chunk-GWQV5X2J.js",
+  "./chunk-HIVAOSX5.js",
+  "./chunk-HNHLPPV5.js",
+  "./chunk-HOP4WUH5.js",
+  "./chunk-HQVYDTPU.js",
+  "./chunk-HTFREOAH.js",
+  "./chunk-HUNEBYJ7.js",
+  "./chunk-HYBWIQKT.js",
+  "./chunk-HYLWPDHI.js",
+  "./chunk-HZQP7H4T.js",
+  "./chunk-I3IQBSIU.js",
+  "./chunk-IAJIBXWT.js",
+  "./chunk-IESVZVPA.js",
   "./chunk-IKI7WSBU.js",
-  "./chunk-IKNBGTCW.js",
-  "./chunk-ILETJRS4.js",
-  "./chunk-ILIVVQWQ.js",
   "./chunk-ILYEL5SY.js",
-  "./chunk-ISOBSVI5.js",
-  "./chunk-IWN5HOMR.js",
-  "./chunk-IWUS6LHB.js",
-  "./chunk-IXE2C7WL.js",
-  "./chunk-J3NJD2LY.js",
-  "./chunk-J6Z2NMZC.js",
-  "./chunk-JIXRR4BG.js",
+  "./chunk-INJCK3SS.js",
+  "./chunk-INOTJ2ST.js",
+  "./chunk-IO4GQAZO.js",
+  "./chunk-IRRPN4FW.js",
+  "./chunk-ITKSAAL3.js",
+  "./chunk-IUBB6EXD.js",
+  "./chunk-IWGHAF6K.js",
+  "./chunk-J5U7MPHA.js",
+  "./chunk-JACFMFHQ.js",
+  "./chunk-JEFJQF4Q.js",
+  "./chunk-JQEDCNJL.js",
   "./chunk-JQLBQC3W.js",
-  "./chunk-JSGLXBZM.js",
-  "./chunk-JTCFC7SV.js",
-  "./chunk-K3CKGJNV.js",
-  "./chunk-KB4NNMXJ.js",
-  "./chunk-KBGXNCL4.js",
-  "./chunk-KD3PU7K5.js",
-  "./chunk-KHVUNZEX.js",
-  "./chunk-KK2LX2R6.js",
-  "./chunk-KZU2SLZW.js",
-  "./chunk-L5XWGHB4.js",
-  "./chunk-LEOOXJAH.js",
-  "./chunk-LFKJ7XN4.js",
-  "./chunk-LHFV4KP4.js",
-  "./chunk-LIA5L3EJ.js",
-  "./chunk-LK5RBH2Y.js",
-  "./chunk-LM6KRTR4.js",
-  "./chunk-LS63HLTS.js",
-  "./chunk-LVLUBH2T.js",
+  "./chunk-JSYCW6TN.js",
+  "./chunk-JZQ64PKL.js",
+  "./chunk-K2XBFXCP.js",
+  "./chunk-K4AI5JDV.js",
+  "./chunk-K5KERG4M.js",
+  "./chunk-KFH3RROP.js",
+  "./chunk-KP45MNS2.js",
+  "./chunk-KQK6HPL5.js",
+  "./chunk-L3FQLHTL.js",
+  "./chunk-L4KHYHYT.js",
+  "./chunk-L4WHVLA4.js",
+  "./chunk-L5RFY23N.js",
+  "./chunk-LDNWHJEC.js",
+  "./chunk-LJKQAPHI.js",
+  "./chunk-LKKNL6PW.js",
+  "./chunk-LMHPB5TU.js",
+  "./chunk-LT3CG3WO.js",
   "./chunk-M362O6WO.js",
-  "./chunk-M3XNTJHE.js",
-  "./chunk-M7A4BQ4A.js",
-  "./chunk-MHRA2ABW.js",
-  "./chunk-MIF3NSNH.js",
-  "./chunk-MOQ4WCBF.js",
-  "./chunk-MSDUVPR5.js",
-  "./chunk-MZYW52KG.js",
-  "./chunk-NB26SUBA.js",
-  "./chunk-NBUUTFIO.js",
-  "./chunk-NLPC6KFS.js",
-  "./chunk-NOU7D2UZ.js",
-  "./chunk-O37KUCTS.js",
-  "./chunk-O3SIWNN2.js",
-  "./chunk-O7JVR54Y.js",
-  "./chunk-O7OICYGT.js",
-  "./chunk-OANFJ4YN.js",
+  "./chunk-MASR5SXG.js",
+  "./chunk-MDNQ5QAJ.js",
+  "./chunk-MHDFKFKC.js",
+  "./chunk-MIST464T.js",
+  "./chunk-MJZMWILS.js",
+  "./chunk-MMPT5GAH.js",
+  "./chunk-N2BL3X7O.js",
+  "./chunk-NCO67HT3.js",
+  "./chunk-NESOFGRM.js",
+  "./chunk-NF6Z7D5B.js",
+  "./chunk-NLEHAA5N.js",
+  "./chunk-NRND3AGZ.js",
+  "./chunk-NSBN2TBF.js",
+  "./chunk-NSRZNSBD.js",
+  "./chunk-NWJYXIUI.js",
+  "./chunk-O2NLTOWS.js",
+  "./chunk-OAD5X2AG.js",
   "./chunk-OAOTIHKC.js",
-  "./chunk-OGKWRMZB.js",
-  "./chunk-OJZAHRGA.js",
+  "./chunk-OB6DOI7R.js",
+  "./chunk-OJCYBGML.js",
+  "./chunk-OMOLGUMV.js",
   "./chunk-OMR35YGW.js",
-  "./chunk-OV256C2C.js",
-  "./chunk-OV73ETWE.js",
-  "./chunk-OVU7VPHL.js",
-  "./chunk-P6WGPBUJ.js",
-  "./chunk-PMZKN4YO.js",
-  "./chunk-PPHDHDGI.js",
-  "./chunk-PQTTI2ON.js",
-  "./chunk-PZQ7CPP6.js",
-  "./chunk-Q5QD65A4.js",
-  "./chunk-QCHWAAUP.js",
-  "./chunk-QLYFWFJV.js",
-  "./chunk-QQAPKIF5.js",
-  "./chunk-QWDVT7MX.js",
-  "./chunk-QXTAIIBJ.js",
-  "./chunk-R25S43R7.js",
-  "./chunk-R5QBJWK5.js",
-  "./chunk-ROOAH3HN.js",
-  "./chunk-RPNOUS4C.js",
-  "./chunk-RWZRPUT6.js",
-  "./chunk-RYDE4NQL.js",
+  "./chunk-OV4ZZQUC.js",
+  "./chunk-OVKPMEBZ.js",
+  "./chunk-OYJNBV6P.js",
+  "./chunk-OYUGG2AD.js",
+  "./chunk-PAU26ZUY.js",
+  "./chunk-PBDPSTNN.js",
+  "./chunk-PBZA6IEK.js",
+  "./chunk-PCLFVDFC.js",
+  "./chunk-PDDCMT3P.js",
+  "./chunk-PDONFZCG.js",
+  "./chunk-PGP2BSLD.js",
+  "./chunk-PLB7ILNY.js",
+  "./chunk-PM36XNHD.js",
+  "./chunk-PN4HUYWR.js",
+  "./chunk-PO5MCGZ4.js",
+  "./chunk-Q3VO7YTP.js",
+  "./chunk-QAK3XX52.js",
+  "./chunk-QEPP6Q3X.js",
+  "./chunk-QHM3B6AC.js",
+  "./chunk-QKSG5MY5.js",
+  "./chunk-QQVTUYXC.js",
+  "./chunk-QSSBTGXL.js",
+  "./chunk-QZBNZMLG.js",
+  "./chunk-QZKS5HRR.js",
+  "./chunk-RA4ZP2CW.js",
+  "./chunk-RBCUG4YQ.js",
+  "./chunk-RBJAEC3R.js",
+  "./chunk-RCLLBC3O.js",
+  "./chunk-RNSCRVIO.js",
+  "./chunk-ROM6SVJI.js",
+  "./chunk-RTPKJVY6.js",
+  "./chunk-RUNSFMNX.js",
+  "./chunk-RVA3J4LB.js",
+  "./chunk-RZUW4KGC.js",
   "./chunk-S24YZLS5.js",
-  "./chunk-SDCHPCY4.js",
-  "./chunk-SEE5SCY5.js",
-  "./chunk-SOYR5XLC.js",
-  "./chunk-SR25AODA.js",
-  "./chunk-T5ZZY6IQ.js",
-  "./chunk-TATYAPOY.js",
-  "./chunk-TCXKNAME.js",
-  "./chunk-TIG3NR6Y.js",
-  "./chunk-TNOBGBFM.js",
+  "./chunk-S54QZA72.js",
+  "./chunk-SANHMUDO.js",
+  "./chunk-SAVP47XY.js",
+  "./chunk-SDUXB54B.js",
+  "./chunk-SGPY7UZI.js",
+  "./chunk-SHYJI7ET.js",
+  "./chunk-SJW5YSJX.js",
+  "./chunk-SJZI447C.js",
+  "./chunk-SMBARNUT.js",
+  "./chunk-SRDGWJA6.js",
+  "./chunk-ST5WBYHY.js",
+  "./chunk-SXE4FGID.js",
+  "./chunk-TO2RE4KB.js",
+  "./chunk-TP2J4PHL.js",
   "./chunk-TPXY4SQJ.js",
-  "./chunk-TR7IQKY5.js",
-  "./chunk-UAMMQ32M.js",
-  "./chunk-UFB5WLHA.js",
-  "./chunk-UIDCJQHU.js",
-  "./chunk-UIJ4I7WF.js",
-  "./chunk-UJ6RMHBP.js",
-  "./chunk-UKRKRYAK.js",
-  "./chunk-UOLGKGZW.js",
-  "./chunk-UV2LMH5B.js",
-  "./chunk-VFCGOCUS.js",
-  "./chunk-VQQVRDRN.js",
-  "./chunk-VRV5AOV3.js",
-  "./chunk-VTCFRWCQ.js",
-  "./chunk-VZHTKDX5.js",
-  "./chunk-W3WU6Z2B.js",
-  "./chunk-W4V6CM32.js",
-  "./chunk-WHAMMUN5.js",
-  "./chunk-WKHFALI7.js",
-  "./chunk-WRP3DKII.js",
-  "./chunk-WRWMCNSP.js",
-  "./chunk-X6BQ3O7W.js",
-  "./chunk-Y5G3DJPG.js",
-  "./chunk-Y5UBHAC5.js",
-  "./chunk-YPFE4KJ6.js",
-  "./chunk-YU3BK6EI.js",
-  "./chunk-Z223M3FN.js",
-  "./chunk-Z25VB63B.js",
-  "./chunk-Z7HCRWA4.js",
+  "./chunk-TV73LWR7.js",
+  "./chunk-TWQA42NE.js",
+  "./chunk-UAGON5B5.js",
+  "./chunk-UKEGQT6O.js",
+  "./chunk-ULCKWT24.js",
+  "./chunk-UPKDF4VN.js",
+  "./chunk-UV57F7BQ.js",
+  "./chunk-V7IMFPX2.js",
+  "./chunk-VDQLBR3D.js",
+  "./chunk-VEFJZBR6.js",
+  "./chunk-VIUYV5I6.js",
+  "./chunk-VLP52G5Y.js",
+  "./chunk-VM7OLACY.js",
+  "./chunk-VTPRE7G5.js",
+  "./chunk-VWFSM443.js",
+  "./chunk-VXZ2E5UV.js",
+  "./chunk-WBKHBYFA.js",
+  "./chunk-WE5GY3GM.js",
+  "./chunk-WE7BQOKD.js",
+  "./chunk-WED2SPQL.js",
+  "./chunk-WVZQ5H7C.js",
+  "./chunk-XDG6EN32.js",
+  "./chunk-XE3LNLV6.js",
+  "./chunk-XFCPJ7VI.js",
+  "./chunk-XJR67B3G.js",
+  "./chunk-XNRBXTVX.js",
+  "./chunk-XO7YV3CJ.js",
+  "./chunk-XSU6LGCI.js",
+  "./chunk-XV6A4PAS.js",
+  "./chunk-XY5SCCHK.js",
+  "./chunk-Y76IIR4U.js",
+  "./chunk-YEFGAPYG.js",
+  "./chunk-YF5SMAQB.js",
+  "./chunk-YFQCQKOS.js",
+  "./chunk-YFWQLRDP.js",
+  "./chunk-YM3767A2.js",
+  "./chunk-YPJNHZB4.js",
+  "./chunk-YQ2RXCJ3.js",
+  "./chunk-YQ4HOQUF.js",
+  "./chunk-YSJBCP6H.js",
+  "./chunk-YVFJLHHH.js",
+  "./chunk-ZCKUZOVQ.js",
   "./chunk-ZEQNRGAA.js",
-  "./chunk-ZG7AVQ4S.js",
-  "./chunk-ZLAPP774.js",
-  "./chunk-ZP4XHPBG.js",
-  "./chunk-ZUFRRYXV.js",
-  "./chunk-ZVJ2OCMQ.js",
-  "./chunk-ZWSQXHR5.js",
-  "./chunk-ZY7AB6LJ.js",
-  "./main-FO6MAEJH.js",
+  "./chunk-ZFXVIM3S.js",
+  "./chunk-ZMQZJ3UP.js",
+  "./chunk-ZRMNR7MV.js",
+  "./main-SLGOXVCM.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -303,7 +340,7 @@ const PRECACHE_BUILD_URLS = [
   "./media/roboto-vietnamese-400-normal-R3IJFZXV.woff",
   "./media/roboto-vietnamese-500-normal-SNWSONII.woff",
   "./media/roboto-vietnamese-500-normal-VJX2WMYG.woff2",
-  "./styles-XPZOUS5X.css"
+  "./styles-BOT27C4F.css"
 ];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
@@ -391,7 +428,7 @@ self.addEventListener('fetch', event => {
 
   if (url.origin === self.location.origin) {
     if (isLandingContentRequest(url)) {
-      event.respondWith(staleWhileRevalidate(request, API_CACHE, matchAnyLandingContent, event));
+      event.respondWith(staleWhileRevalidate(request, API_CACHE, event));
       return;
     }
     if (isStaticAsset(url, request)) {
@@ -461,10 +498,11 @@ function isImageRequest(request) {
   return request.destination === 'image';
 }
 
-async function networkFirst(request, cacheName) {
+async function networkFirst(request, cacheName, timeoutMs) {
   const cache = await caches.open(cacheName);
   try {
-    const response = await fetch(request, { cache: 'no-store' });
+    const response = await fetch(request, { cache: 'no-store',
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
     if (response && (response.ok || response.type === 'opaque')) {
       cache.put(request, response.clone());
     }
@@ -472,25 +510,34 @@ async function networkFirst(request, cacheName) {
   } catch {
     const cached = await cache.match(request, { ignoreSearch: request.mode === 'navigate' });
     if (cached) {
-      return cached;
+      return request.mode === 'navigate' ? offlineAppShell(cached) : cached;
     }
     if (request.mode === 'navigate') {
       const fallback = await cache.match('./index.html');
       if (fallback) {
-        return fallback;
+        return offlineAppShell(fallback);
       }
     }
     return unavailableResponse(request);
   }
 }
 
+async function offlineAppShell(cached) {
+  // A cached page is still usable, but its former green status is not current.
+  const html = (await cached.text()).replace(
+    /(<script\b[^>]*\bid=["']myscoutee-runtime-status["'][^>]*>)[\s\S]*?(<\/script>)/i,
+    '$1null$2'
+  );
+  const headers = new Headers(cached.headers);
+  headers.delete('Content-Length');
+  headers.delete('Content-Encoding');
+  return new Response(html, { status: cached.status, headers });
+}
+
 async function serveAppShell(request) {
-  const cache = await caches.open(APP_CACHE);
-  const cachedIndex = await cache.match('./index.html') || await cache.match('./');
-  if (cachedIndex) {
-    return cachedIndex;
-  }
-  return networkFirst(request, APP_CACHE);
+  // The HTML head carries current nginx readiness; an old cached green snapshot
+  // must not bypass it. Hashed bundles keep their existing cache-first behavior.
+  return networkFirst(request, APP_CACHE, 1000);
 }
 
 async function networkFirstStaticAsset(request) {
@@ -534,7 +581,7 @@ async function matchAppBundleCache(request) {
   return null;
 }
 
-async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) {
+async function staleWhileRevalidate(request, cacheName, event) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
   const refresh = fetchAndCache(request, cache).catch(() => null);
@@ -542,10 +589,8 @@ async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) 
   if (cached) {
     return cached;
   }
-  const fallback = fallbackMatcher ? await fallbackMatcher(cache, request) : null;
-  if (fallback) {
-    return fallback;
-  }
+  // The query identifies the landing group and language, including its policy.
+  // A cache miss must wait for that response, never substitute another group.
   return await refresh || unavailableResponse(request);
 }
 
@@ -555,20 +600,6 @@ async function fetchAndCache(request, cache) {
     cache.put(request, response.clone());
   }
   return response;
-}
-
-async function matchAnyLandingContent(cache, request) {
-  const exact = await cache.match(request);
-  if (exact) {
-    return exact;
-  }
-  const keys = await cache.keys();
-  for (const key of keys) {
-    if (isLandingContentRequest(new URL(key.url))) {
-      return cache.match(key);
-    }
-  }
-  return null;
 }
 
 async function cacheFirst(request, cacheName) {
