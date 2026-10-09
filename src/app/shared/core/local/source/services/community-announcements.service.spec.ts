@@ -47,8 +47,10 @@ describe('Community announcements, member voting and notifications', () => {
     await TestBed.inject(LocalCommunityGroupsService).action(alex,group,maya,'revoke-vote');
     expect((await service.detail(maya,vote)).canVote).toBe(false);
     expect(await service.closeDue('myscoutee-work',new Date('2026-11-02'))).toBe(0);
-    expect(await service.closeDue(COMMUNITY_BASE_GROUP_ID,new Date('2026-11-02'))).toBe(1);
-    expect(notices().filter(n=>n.kind==='announcement-closed')).toHaveLength(4);
+    expect(await service.closeDue(COMMUNITY_BASE_GROUP_ID,new Date('2026-11-02'))).toBe(2);
+    expect([...new Set(notices().filter(n=>n.kind==='announcement-closed').map(n=>n.sourceId))].sort())
+      .toEqual(['park-meter-vote', vote].sort());
+    expect(notices().filter(n=>n.kind==='announcement-closed'&&n.sourceId===vote)).toHaveLength(4);
     expect(notices().filter(n=>n.kind==='announcement-closed').some(n=>n.recipientUserId===alex)).toBe(true);
     expect(await service.closeDue(COMMUNITY_BASE_GROUP_ID,new Date('2026-11-02'))).toBe(0);
     const closed=await service.detail(alex,vote);

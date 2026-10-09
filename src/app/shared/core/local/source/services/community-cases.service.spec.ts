@@ -1,3 +1,4 @@
+import { LocalCommunityCasesRepository } from '../repositories/community-cases.repository';
 import { LocalChatsService } from './chats.service';
 import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
 import { TestBed } from '@angular/core/testing';
@@ -60,26 +61,36 @@ describe('Community shared cases and scheduled reminders', () => {
     expect((await service.page(alex, query)).context?.total).toBe(before + 1);
     await expect(service.save({ ...form, audienceAll: true })).rejects.toThrow('Forbidden');
   });
-  it('shares a case conversation with an invited external provider and revokes it when the invitation is declined', async () => {
+  it('requires acceptance and an explicit chat invitation, then revokes the external provider conversation on leave', async () => {
+    // This scenario exercises a pending invitation; the general demo seed is already accepted.
+    const records = TestBed.inject(LocalCommunityCasesRepository);
+    const invited = structuredClone(records.findCase('community-case-park-meters')!);
+    invited.support.find(member => member.accountId === provider)!.status = 'invited';
+    invited.memberStates = {...invited.memberStates, [provider]: 'invited'};
+    records.saveCase(invited, invited.version);
     const profile = TestBed.inject(UserProfileStore), chats = TestBed.inject(LocalChatsService);
     const providerProfile = `group:${COMMUNITY_BASE_GROUP_ID}:${provider}`;
     profile.setActiveUserId(providerProfile);
-    const c = await service.detail(provider, 'community-case-park-meters');
+    let c = await service.detail(provider, 'community-case-park-meters');
+    const chatRequest = { serviceContext: 'case' as const, caseId: c.id, targetUserId: '', title: '', lastMessage: '' };
+    await expect(chats.ensureServiceChat(chatRequest)).rejects.toThrow('Case unavailable');
+    c = await service.action(c.id, {userId: provider, version: c.version, action: 'accept-invite'});
+    c = await service.action(c.id, {userId: alex, version: c.version, action: 'invite-chat', memberAccountIds: [provider]});
     const chat = (await chats.ensureServiceChat({ serviceContext: 'case', caseId: c.id, targetUserId: '', title: '', lastMessage: '' }))!;
     expect(chat.memberIds).toContain(`group:${COMMUNITY_BASE_GROUP_ID}:${alex}`);
     expect(chat.memberIds).toContain(providerProfile);
     await chats.sendChatMessage(chat, 'Which meters are involved?', 'case-question');
     const notices = notifications(db).filter(n => n.kind === 'chat-message');
     expect(notices).toHaveLength(3); expect(notices.some(n => n.recipientUserId === provider)).toBe(false);
-    await service.action(c.id, { userId: provider, version: c.version, action: 'decline-invite' });
+    await service.action(c.id, { userId: provider, version: c.version, action: 'leave' });
     expect(await chats.queryChatById(chat.id)).toBeNull();
-    await expect(chats.sendChatMessage(chat, 'Another message', 'after-decline')).rejects.toThrow('Chat unavailable');
+    await expect(chats.sendChatMessage(chat, 'Another message', 'after-leave')).rejects.toThrow('Chat unavailable');
     expect(Object.values(db.read().activityMembers.byId).some(m => m.userId === provider && m.ownerId === 'community-park-court')).toBe(false);
   });
 
   it('uses unique selected members for the scheduled count and rejects unauthorized or stale edits', async () => {
     const form = { userId: alex, communityId: 'community-riverside', title: 'A shared repair', description: '', caseType: 'maintenance' as const,
-      audienceAll: false, audienceAccountIds: [maya, maya], nextDueAtIso: '2026-12-01T09:00:00Z', frequency: 'once' as const, enabled: true };
+      audienceAll: false, audienceAccountIds: [maya, maya], startAtIso: '2026-12-01T09:00:00Z', nextDueAtIso: '2026-12-01T09:00:00Z', frequency: 'once' as const, enabled: true };
     const task = await service.saveTask(form);
     expect(task.affectedCount).toBe(1);
     expect(task.nextDueAtIso).toBe('2026-12-01T09:00:00.000Z');

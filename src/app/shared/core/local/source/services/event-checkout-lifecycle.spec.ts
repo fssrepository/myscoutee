@@ -23,6 +23,7 @@ describe('Local checkout deadline and purge contract', () => {
     baskets = TestBed.inject(LocalEventCheckoutBasketsRepository);
     service = Object.assign(Object.create(LocalEventsService.prototype), {
       eventCheckoutBasketsRepository: baskets,
+      usersRepository: { queryUserById: (id: string) => ({id, workspaceGroupId: null}) },
       eventsRepository: {
         queryEventRecordById: () => parent,
         leaveEvent: vi.fn((userId: string) => { members.get(userId).status = 'deleted'; }),
