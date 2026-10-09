@@ -1146,5 +1146,47 @@
     "models": "gpt-6-astra",
     "reasoning": "xhigh / high",
     "evidence": "Measured implementation, QA, migration, commits and v1.3.3 Netcup release; timestamped final accounting cutoff"
+  },
+  {
+    "task_id": "MSC-120",
+    "title": "Segregate backend domains without changing external contracts",
+    "workstream": "Product",
+    "started": "2026-10-07",
+    "finished": "2026-10-09",
+    "tokens_million": 193.714624,
+    "api_equivalent_usd_estimate": 252.63,
+    "active_hours": 10.634429,
+    "allocated_hours": 10.58842,
+    "models": "gpt-6-astra; gpt-6.1-sol",
+    "reasoning": "xhigh",
+    "evidence": "Measured response IDs and root intervals through 2026-10-07T17:19:32.904Z; mixed-task allocation estimate. Standard API equivalent, not billing. Source/tests: issue qualification; ledger: guides/project-history/myscoutee/measurements.json."
+  },
+  {
+    "task_id": "MSC-121",
+    "title": "Package and qualify the microservices deployment playground",
+    "workstream": null,
+    "started": "2026-10-07",
+    "finished": "2026-10-09",
+    "tokens_million": 634.373124,
+    "api_equivalent_usd_estimate": 889.43,
+    "active_hours": 30.466665,
+    "allocated_hours": 30.420657,
+    "models": "gpt-6-astra; gpt-6.1-sol",
+    "reasoning": "high; xhigh",
+    "evidence": "Response-ID accounting through 2026-10-09T15:12:03.126Z; initial template/components turns excluded. Helm 123; 28 focused reader tests; live durable cursors verified. Mixed-task allocation estimate; Standard API equivalent, not billing. Ledger: guides/project-history/myscoutee/measurements.json."
+  },
+  {
+    "task_id": "MSC-122",
+    "title": "Extract reusable UI components and a generic MyScoutee template",
+    "workstream": null,
+    "started": null,
+    "finished": null,
+    "tokens_million": null,
+    "api_equivalent_usd_estimate": null,
+    "active_hours": null,
+    "allocated_hours": null,
+    "models": null,
+    "reasoning": null,
+    "evidence": "No isolated usage measurement; excluded from totals, not zero."
   }
 ]
