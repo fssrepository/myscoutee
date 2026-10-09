@@ -35,6 +35,40 @@ describe('Profile loads within a Firebase session', () => {
     return { session, adapter, service };
   }
 
+  it('passes the landing workspace to avatar hydration once, without starting a load at selection', async () => {
+    const { adapter, service } = fixture();
+    adapter.loadProfileExtById.mockResolvedValue({ profileExt: { profile, experienceEntries: [] } });
+    service.stageInitialWorkspace('base-work');
+    expect(adapter.loadProfileExtById).not.toHaveBeenCalled();
+    await service.loadProfileExtById('member');
+    expect(adapter.loadProfileExtById).toHaveBeenLastCalledWith('member', undefined, 'base-work', undefined);
+    await service.loadProfileExtById('member');
+    expect(adapter.loadProfileExtById).toHaveBeenLastCalledWith('member', undefined, undefined, undefined);
+  });
+
+  it('retains initial workspace selection after a failed hydration', async () => {
+    const { adapter, service } = fixture();
+    service.isTimeoutError = () => false;
+    adapter.loadProfileExtById.mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ profileExt: { profile, experienceEntries: [] } });
+    service.stageInitialWorkspace(null);
+    expect(await service.loadProfileExtById('member')).toBeNull();
+    await service.loadProfileExtById('member');
+    expect(adapter.loadProfileExtById).toHaveBeenLastCalledWith('member', undefined, null, undefined);
+  });
+
+  it('does not carry an initial workspace into a different session or override an explicit selection', async () => {
+    const { session, adapter, service } = fixture();
+    adapter.loadProfileExtById.mockResolvedValue({ profileExt: { profile, experienceEntries: [] } });
+    service.stageInitialWorkspace('base-work');
+    (session as any).sessionRef.set({ ...account, sessionId: 'login-b' });
+    await service.loadProfileExtById('member');
+    expect(adapter.loadProfileExtById).toHaveBeenLastCalledWith('member', undefined, undefined, undefined);
+    service.stageInitialWorkspace('base-work');
+    await service.loadProfileExtById('member', undefined, 'explicit-group');
+    expect(adapter.loadProfileExtById).toHaveBeenLastCalledWith('member', undefined, 'explicit-group', undefined);
+  });
+
   it('accepts the very first user response when its adapter refreshes the avatar', async () => {
     const { session, adapter, service } = fixture();
     const old = session.currentSession();

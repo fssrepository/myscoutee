@@ -313,6 +313,12 @@
   pointer-events: none;
 }
 
+.smart-list__header-progress-shell--centered {
+  bottom: 0;
+  display: grid;
+  place-items: center;
+}
+
 .smart-list__pagination-arrows {
   --smart-list-arrow-motion-duration: 0.16s;
   --smart-list-arrow-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);

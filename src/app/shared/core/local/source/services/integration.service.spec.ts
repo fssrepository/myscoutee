@@ -6,11 +6,11 @@ describe('Local external event invitation', () => {
     Object.assign(service, {
       repository: {whenReady: vi.fn(), externalInvite: () => ({url: '/game?partnerInvite=token'}), flushToIndexedDb: vi.fn()},
       waitForRouteDelay: vi.fn(), users: {queryUserById: () => ({id: 'profile', accountUserId: 'owner', workspaceGroupId: 'another-group'})},
-      groups: {detail: vi.fn(async () => ({role: 'Admin', membershipStatus: 'accepted', groupType: 'work'}))}
+      groups: {readDetail: vi.fn(async () => ({role: 'Admin', membershipStatus: 'accepted', groupType: 'work'}))}
     });
     expect(await service.externalInviteLink({userId: 'profile', ownerType: 'community', entityId: 'work-team'}))
       .toEqual({url: '/game?partnerInvite=token&mode=work'});
-    expect(service.groups.detail).toHaveBeenCalledWith('owner', 'work-team');
+    expect(service.groups.readDetail).toHaveBeenCalledWith('owner', 'work-team');
   });
   it('uses the account profile for a Main event when the recipient is viewing a group, and keeps retries unique', async () => {
     const users: Record<string, any> = {

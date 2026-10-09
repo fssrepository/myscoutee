@@ -409,9 +409,12 @@ describe('EntryPageComponent demo session routing', () => {
     Object.assign(component, {
       usersService: {
         ...component.usersService,
+        stageInitialWorkspace: vi.fn(),
+        loadProfileExtById: vi.fn(() => new Promise(() => {})),
         checkLocationEligibility: vi.fn().mockResolvedValue({ eligible: true })
       },
-      appLocationService: { pendingLoginCoordinates: () => null }
+      appLocationService: { pendingLoginCoordinates: () => null },
+      landingContent: { mode: () => 'dating' }
     });
 
     await component.onDemoUserSelected({
@@ -425,6 +428,8 @@ describe('EntryPageComponent demo session routing', () => {
     expect(startDemoSession).toHaveBeenCalledWith('demo-user');
     expect(startTrackedDemoSession).not.toHaveBeenCalled();
     expect(navigateByUrl).toHaveBeenCalledWith('/game');
+    expect((component.usersService as any).loadProfileExtById).not.toHaveBeenCalled();
+    expect((component.usersService as any).stageInitialWorkspace).toHaveBeenCalledWith(null);
     expect(complete).toHaveBeenCalledOnce();
     expect(fail).not.toHaveBeenCalled();
   });
@@ -488,6 +493,7 @@ describe('Demo location admission before session creation', () => {
         localModeEnabled,
         peekCachedUserById: () => user,
         checkLocationEligibility: vi.fn(async point => ({ eligible: point === accepted })),
+        stageInitialWorkspace: vi.fn(),
         loadUserById: vi.fn().mockResolvedValue(user)
       },
       sessionService: {
@@ -500,6 +506,7 @@ describe('Demo location admission before session creation', () => {
         stageLoginCoordinates: vi.fn()
       },
       requiresProfileOnboarding: () => false,
+      landingContent: { mode: () => 'dating' },
       requestLocationAccessFromDialog: vi.fn().mockResolvedValue(false),
       runPostSessionGate: vi.fn(),
       memberRedirectUrl: () => '/game',

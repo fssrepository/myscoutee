@@ -227,16 +227,21 @@
 }
 
 .app-indicator__load-ring-track {
-  stroke: rgba(42, 81, 129, 0.16);
+  stroke: var(--app-indicator-load-ring-track, rgba(42, 81, 129, 0.16));
 }
 
 .app-indicator__load-ring-progress {
-  stroke: #2f75bc;
+  stroke: var(--app-indicator-load-ring-color, #2f75bc);
   stroke-linecap: round;
   stroke-linejoin: round;
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
   transition: stroke-dashoffset 120ms linear;
+}
+
+:host(.app-indicator-host--tone-bright) {
+  --app-indicator-load-ring-track: rgba(255, 255, 255, 0.25);
+  --app-indicator-load-ring-color: #ffe66d;
 }
 
 .app-indicator--load-ring.is-state-success .app-indicator__load-ring-progress {
@@ -325,6 +330,11 @@
   animation: app-indicator-action-progress var(--app-indicator-duration) linear forwards;
 }
 
+.app-indicator__load-ring-progress.is-timed {
+  transition: none;
+  animation: app-indicator-action-progress var(--app-indicator-duration) linear forwards;
+}
+
 :host(.app-indicator-host--shape-surface) .app-indicator__action-ring-progress.is-loading {
   stroke-dasharray: 0 100;
   stroke-dashoffset: 0;
@@ -334,7 +344,7 @@
 
 @keyframes app-indicator-action-progress {
   from {
-    stroke-dashoffset: 100;
+    stroke-dashoffset: var(--app-indicator-progress-start, 100);
   }
 
   to {

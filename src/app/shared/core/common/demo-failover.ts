@@ -1,4 +1,4 @@
-import { reportBackendStatus } from './backend-connectivity';
+import { reportBackendReadiness } from './backend-connectivity';
 import { environment } from '../../../../environments/environment';
 
 // Resolve before importing App: storage keys and adapters
@@ -13,6 +13,7 @@ const API_BASE = environment.apiBaseUrl ?? '/api';
 let enabled = false;
 let local = false;
 let checking = false;
+let started = false;
 let writes = 0;
 let idsPromise: Promise<Map<string, string>> | null = null;
 
@@ -45,17 +46,54 @@ function eligibleSession(): DemoSession | null {
 
 async function backendReachable(): Promise<boolean> {
   try {
-    const url = new URL(`${API_BASE.replace(/\/$/, '')}/deployment/configuration`, document.baseURI);
-    const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(2500) });
-    const reachable = ![502, 503, 504].includes(response.status);
-    reportBackendStatus(response.status);
+    const url = new URL(`${API_BASE.replace(/\/$/, '')}/runtime-status`, document.baseURI);
+    const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(1000) });
+    const status = response.ok ? await response.json() : null;
+    const serverTime = Date.parse(response.headers.get('Date') ?? '');
+    const reachable = readyStatus(status, Number.isFinite(serverTime) ? serverTime : Date.now());
+    reportBackendReadiness(reachable);
     return reachable;
-  } catch { reportBackendStatus(0); return false; }
+  } catch { reportBackendReadiness(false); return false; }
+}
+
+function readyStatus(status: { ready?: unknown; checkedAt?: unknown } | null, now: number): boolean {
+  const age = now / 1000 - Number(status?.checkedAt);
+  return status?.ready === true && Number.isFinite(age) && age >= -5 && age <= 10;
+}
+
+function initialBackendReady(): boolean {
+  // Nginx embeds the same snapshot served by the poll endpoint in the HTML head.
+  // No startup fetch/timer: absent, stale or unprocessed static HTML is not green.
+  let ready = false;
+  try {
+    ready = navigator.onLine !== false
+      && readyStatus(JSON.parse(document.getElementById('myscoutee-runtime-status')?.textContent ?? ''), Date.now());
+  } catch { /* Native GitHub builds skip this entire HTTP startup path. */ }
+  reportBackendReadiness(ready);
+  return ready;
+}
+
+function isLandingPage(): boolean {
+  const base = new URL(document.baseURI).pathname.replace(/\/$/, '');
+  const path = location.pathname.replace(/\/$/, '');
+  return path === base || path === `${base}/entry`;
+}
+
+function anonymousLanding(): boolean {
+  // A retained real/operator/support session must never become a synthetic actor.
+  return isLandingPage() && localStorage.getItem(HTTP_SESSION) === null;
+}
+
+function useLocalAdapters(): void {
+  local = true;
+  Object.assign(environment, { activitiesDataSource: 'local', operatorRegistryDataSource: 'local',
+    firebaseLoginEnabled: false,
+    firebaseMessagingEnabled: false, paymentIntegrationEnabled: false, paymentSimulatorConfigUrl: null });
 }
 
 function safeToSwitch(): boolean {
   const path = location.pathname.replace(/\/$/, '');
-  return (path === '/game' || path === '/entry' || path === '')
+  return (path === '/game' || isLandingPage())
     && document.visibilityState === 'visible' && writes === 0
     && !document.querySelector('.ui-popup')
     && !document.activeElement?.matches('input,textarea,[contenteditable="true"]');
@@ -76,10 +114,16 @@ function restoreLocalSession(): void {
 export async function prepareDemoFailover(): Promise<void> {
   if (environment.activitiesDataSource !== 'http') return;
   enabled = true;
+  local = false;
+  if (anonymousLanding()) {
+    restoreLocalSession();
+    if (!initialBackendReady()) useLocalAdapters();
+    return;
+  }
   const session = eligibleSession();
   const localId = session && (await demoSeedUserIds()).get(session.userId);
   if (!session || !localId) { restoreLocalSession(); return; }
-  if (await backendReachable()) { restoreLocalSession(); return; }
+  if (initialBackendReady()) { restoreLocalSession(); return; }
 
   let previousPair = localStorage.getItem(PAIR_KEY);
   if (previousPair && JSON.parse(previousPair).http !== session.userId) {
@@ -105,10 +149,7 @@ export async function prepareDemoFailover(): Promise<void> {
       sessionId: `session:${crypto.randomUUID()}` }));
     localStorage.setItem(LOCAL_ACTOR, localId);
   }
-  local = true;
-  Object.assign(environment, { activitiesDataSource: 'local', operatorRegistryDataSource: 'local',
-    firebaseLoginEnabled: false,
-    firebaseMessagingEnabled: false, paymentIntegrationEnabled: false, paymentSimulatorConfigUrl: null });
+  useLocalAdapters();
 }
 
 export function demoFailoverEnabled(): boolean { return enabled; }
@@ -117,7 +158,7 @@ export function demoFailoverSeedWarmupNeeded(): boolean {
 }
 
 export function demoFailoverLocalUser(): string | null {
-  return enabled && local ? readSession(LOCAL_SESSION)?.userId ?? null : null;
+  return enabled && local && eligibleSession() ? readSession(LOCAL_SESSION)?.userId ?? null : null;
 }
 
 export function trackDemoWrite(start: boolean): void {
@@ -128,6 +169,13 @@ export async function checkDemoFailover(): Promise<void> {
   if (!enabled || checking || document.visibilityState !== 'visible') return;
   checking = true;
   try {
+    if (anonymousLanding()) {
+      const reachable = await backendReachable();
+      // Change adapters only at a fresh bootstrap, preserving their storage scopes.
+      // An open form/popup defers the reload; the next poll retries after it closes.
+      if (reachable === local && safeToSwitch()) location.reload();
+      return;
+    }
     const session = eligibleSession();
     if (!session || !(await demoSeedUserIds()).has(session.userId)) return;
     if (local) {
@@ -142,11 +190,16 @@ export async function checkDemoFailover(): Promise<void> {
 }
 
 export function startDemoFailover(): void {
-  if (!enabled) return;
+  if (!enabled || started) return;
+  started = true;
   window.addEventListener('online', () => void checkDemoFailover());
   window.addEventListener('offline', () => void checkDemoFailover());
   window.addEventListener('focus', () => void checkDemoFailover());
   document.addEventListener('visibilitychange', () => void checkDemoFailover());
-  // Stay in a local session on reconnect; the next natural page load prefers HTTP.
-  window.setInterval(() => void checkDemoFailover(), 10000);
+  // The landing recovers in both directions. Active demo sessions keep the
+  // existing recovery-on-natural-reload rule, so edits are never discarded.
+  const schedule = (): void => {
+    window.setTimeout(() => void checkDemoFailover().finally(schedule), 10000);
+  };
+  schedule();
 }

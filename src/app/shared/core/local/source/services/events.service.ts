@@ -267,12 +267,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      this.readEventDetailById(userId, eventId)
+    ]);
+    return response;
+  }
+
+  // Aggregate service calls reuse this projection without a second route delay.
+  async readEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedEventId = eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
       return null;
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+
     const record = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
     return record ? LocalActivityEventDetailsMapper.toDto(record) : null;
   }
@@ -876,12 +885,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
+      this.readEventFeedback(query)
+    ]);
+    return response;
+  }
+
+  // Aggregate service calls reuse this projection without a second route delay.
+  async readEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
       return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+
     const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId);
     const events = LocalActivityEventsMapper.toDtoList(records);
     const users = this.usersRepository.queryAllUsers();
@@ -910,7 +928,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const event = this.eventsRepository.queryEventRecordById(userId, request.eventId);
     if (event?.mode === 'Mingle') {
-      const allowed = await this.loadEventFeedback({ userId, eventId: request.eventId });
+      const allowed = await this.readEventFeedback({ userId, eventId: request.eventId });
       const cards = new Map(allowed.cards.map(card => [card.id, card]));
       if (request.cards.some(card => {
         const target = cards.get(card.id);

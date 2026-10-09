@@ -81,7 +81,16 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   }
 
   async queryChatById(chatId: string): Promise<ChatDTO | null> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE),
+      this.readChatById(chatId)
+    ]);
+    return response;
+  }
+
+  // Aggregate service calls reuse this projection without a second route delay.
+  async readChatById(chatId: string): Promise<ChatDTO | null> {
+
     const userId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
     const record = this.chatsRepository.queryChatItemById(userId, chatId);
     return record ? this.chatDtosWithMetrics([record])[0] : null;
@@ -207,7 +216,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
           || !(input.caseOfferId ? caseOfferChatParticipantIds(c, input.caseOfferId) : caseChatParticipantIds(c)).includes(profile.accountUserId ?? profile.id)) throw new Error('Case unavailable');
         this.chatsRepository.syncCaseChat(c);
         await this.chatsRepository.flushToIndexedDb();
-        return this.queryChatById(input.caseOfferId ? `c-case-offer-${c.id}-${input.caseOfferId}` : `c-case-${c.id}`);
+        return this.readChatById(input.caseOfferId ? `c-case-offer-${c.id}-${input.caseOfferId}` : `c-case-${c.id}`);
       }
       const record = this.chatsRepository.ensureServiceChat(chat);
       await this.chatsRepository.flushToIndexedDb();

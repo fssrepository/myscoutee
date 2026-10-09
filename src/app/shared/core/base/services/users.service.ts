@@ -70,6 +70,7 @@ export class UsersService extends BaseRouteModeService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly offlineCache = inject(OfflineCacheService);
   private readonly profileExtLoadSession = signal<string | null>(null);
+  private initialWorkspace: { session: string | null; groupId: string | null } | null = null;
   readonly profileExtLoadState = computed(() => {
     const session = this.session.identity();
     return session && session === this.profileExtLoadSession()
@@ -226,11 +227,19 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
+  stageInitialWorkspace(groupId: string | null): void {
+    this.initialWorkspace = { session: this.session.identity(), groupId };
+  }
+
   async loadProfileExtById(userId?: string, requestTimeoutMs?: number, groupId?: string | null): Promise<ProfileExtDto | null> {
     const revision = this.workspace.revision() + 1;
     this.workspace.revision.set(revision);
     this.workspace.switching.set(true);
     const session = this.session.identity();
+    const initialWorkspace = this.initialWorkspace;
+    if (groupId === undefined && initialWorkspace?.session === session) {
+      groupId = initialWorkspace.groupId;
+    }
     this.profileExtLoadSession.set(session);
     const current = () => revision === this.workspace.revision() && this.session.identity() === session;
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
@@ -257,6 +266,8 @@ export class UsersService extends BaseRouteModeService {
         this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'error', 'User profile not found.');
         return null;
       }
+
+      if (this.initialWorkspace === initialWorkspace) this.initialWorkspace = null;
 
       const resolvedUserId = user.id.trim() || normalizedUserId;
       if (user.profileStatus === 'deleted') {

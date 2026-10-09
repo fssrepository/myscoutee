@@ -110,8 +110,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Output() readonly consentRequested = new EventEmitter<void>();
   @Output() readonly termsRequested = new EventEmitter<void>();
 
-  @Input() howSlides: readonly HowStepSlide[] = [];
-
   protected readonly partnerRoles: readonly PartnerRoleOverview[] = [
     {
       id: 'operator',
@@ -176,6 +174,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   ];
 
   protected readonly entryHowSmartListConfig: SmartListConfig<HowStepSlide> = {
+    showEmptyState: false,
     pageSize: 4,
     initialPageSize: 4,
     initialPageCount: 1,
@@ -191,7 +190,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     snapMode: 'none',
     mobileStepper: true,
     headerProgress: {
-      enabled: false
+      enabled: true,
+      kind: 'load-ring',
+      tone: 'bright'
     },
     pagination: {
       mode: 'arrows',
@@ -205,15 +206,18 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected readonly entryHowSmartListLoadPage: SmartListLoadPage<HowStepSlide> = (
     query: ListQuery
   ): Observable<PageResult<HowStepSlide>> => {
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryHowSmartListConfig.pageSize) || this.howSlides.length));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const start = page * pageSize;
-    const items = this.howSlides.slice(start, start + pageSize);
-    return of({
-      items,
-      total: this.howSlides.length,
-      nextCursor: start + items.length < this.howSlides.length ? `${start + items.length}` : null
-    });
+    return from(this.landingContent.loadOnce(baseGroupId(this.landingMode()))).pipe(map(state => {
+      const slides = state.slides ?? [];
+      const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryHowSmartListConfig.pageSize) || slides.length));
+      const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+      const start = page * pageSize;
+      const items = slides.slice(start, start + pageSize);
+      return {
+        items,
+        total: slides.length,
+        nextCursor: start + items.length < slides.length ? `${start + items.length}` : null
+      };
+    }));
   };
 
   protected countriesPopupOpen = false;
@@ -224,7 +228,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
   protected readonly appVersionLabel = inject(PwaService).appVersionLabel;
-  protected howSmartListFilters = { signature: '' };
+  protected readonly howSmartListFilters = computed(() => ({ groupId: baseGroupId(this.landingMode()) }));
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
   private readonly articlesReadySignal = new BehaviorSubject<number>(0);
   private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;
@@ -333,6 +337,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     effect(onCleanup => {
       const root = this.documentRef.documentElement;
       const mode = this.landingMode();
+      this.ideasPopupLoadGeneration++;
       root.dataset['landingMode'] = mode;
       onCleanup(() => { if (root.dataset['landingMode'] === mode) delete root.dataset['landingMode']; });
     });
@@ -345,10 +350,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['networkUnavailable'] && !this.networkUnavailable) void this.deploymentConfiguration.initialize();
-    if (changes['howSlides']) {
-      this.howSmartListFilters = { signature: JSON.stringify(this.howSlides) };
-      this.ideasPopupLoadGeneration++;
-    }
     if (changes['ideaCards'] || changes['articlesLoading']) {
       this.updateFeaturedIdeaSmartListFilters();
       this.articlesReadySignal.next(Date.now());

@@ -187,9 +187,6 @@ export class GameService extends BaseRouteModeService {
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
-    if (this.isLocalRouteEnabled('/game-cards/query')) {
-      await this.localGameService.whenReady();
-    }
     const normalizedUserId = request.userId.trim();
 
     if (!normalizedUserId) {

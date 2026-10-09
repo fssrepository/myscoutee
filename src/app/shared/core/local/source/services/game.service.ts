@@ -51,7 +51,15 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     request: UserGameCardsQueryRequest,
     _requestTimeoutMs?: number
   ): Promise<UserGameCardsQueryResponse> {
-    await this.waitForRouteDelay(LocalGameService.USER_GAME_CARDS_ROUTE);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalGameService.USER_GAME_CARDS_ROUTE),
+      this.readUserGameCardsByFilter(request)
+    ]);
+    return response;
+  }
+
+  private async readUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
+    await this.usersRepository.whenReady();
     const normalizedUserId = request.userId.trim();
     if (!normalizedUserId) {
       return { cards: null };

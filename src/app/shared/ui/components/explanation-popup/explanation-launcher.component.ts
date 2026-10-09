@@ -2,12 +2,20 @@ import { Component, DestroyRef, ElementRef, Input, afterEveryRender, computed, i
 import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 import { ExplanationPopupComponent } from './explanation-popup.component';
 import { FloatingLauncherComponent } from '../core/floating-launcher/floating-launcher.component';
+import { IndicatorComponent, type IndicatorTone } from '../core/indicator';
+import { I18nPipe } from '../../pipes';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import type { AppMenuDragPosition, AppMenuTrigger } from '../core/menu';
 
 @Component({ selector: 'app-explanation-launcher', standalone: true,
-  imports: [FloatingLauncherComponent, ExplanationPopupComponent],
+  imports: [FloatingLauncherComponent, ExplanationPopupComponent, IndicatorComponent, I18nPipe],
   template: `
+    @if (guide.popupOpen() && (guide.loading() || !guide.hasVisiblePopup())) {
+      <div class="explanation-guide-loading" role="status" aria-busy="true"
+        [style.z-index]="layer() - 1" [attr.aria-label]="'loading.explanation.content' | i18n">
+        <app-indicator kind="load-ring" state="loading" [tone]="loadingTone"></app-indicator>
+      </div>
+    }
     @if (guide.launcherVisible()) {
       <div class="floating-launcher-rail" data-guide-surface="landing.guide" [class.is-embedded]="embedded" [style.z-index]="layer()">
         <app-floating-launcher class="explanation-guide-menu" data-guide-field="guide-launcher" [trigger]="trigger()" [position]="position()" [layer]="layer()"
@@ -15,8 +23,12 @@ import type { AppMenuDragPosition, AppMenuTrigger } from '../core/menu';
           (itemSelect)="$event.sourceEvent.stopPropagation(); guide.openCurrent()"></app-floating-launcher>
       </div>
     }
-    @defer (when guide.popupOpen()) { <app-explanation-popup></app-explanation-popup> }`,
-  styles: [`.floating-launcher-rail { position: fixed; right: 1.4rem;
+    @defer (when guide.popupOpen()) {
+      @if (!guide.loading()) { <app-explanation-popup></app-explanation-popup> }
+    }`,
+  styles: [`.explanation-guide-loading { position: fixed; inset: 0; display: grid; place-items: center;
+    background: rgba(10, 18, 37, 0.73); }
+    .floating-launcher-rail { position: fixed; right: 1.4rem;
     bottom: calc(2.75rem + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
     .floating-launcher-rail.is-embedded { position: relative; right: auto; bottom: auto; }
     @media (max-width: 720px) { .floating-launcher-rail { right: .8rem; } }`]
@@ -24,6 +36,7 @@ import type { AppMenuDragPosition, AppMenuTrigger } from '../core/menu';
 export class ExplanationLauncherComponent {
   @Input() embedded = false;
   @Input() introduce = false;
+  @Input() loadingTone: IndicatorTone = 'bright';
   protected readonly guide = inject(ExplanationGuideService);
   private readonly popups = inject(PopupPresenceStore);
   protected readonly position = signal<AppMenuDragPosition>({ x: 0, y: 0 });

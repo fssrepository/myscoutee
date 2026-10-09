@@ -32,13 +32,12 @@ export class LocalContentModerationService extends LocalRouteDelayService {
       moderator = { id: profile.id, name: profile.name, initials: profile.initials, email: '', images: [...(profile.images ?? [])] };
     } else if (groupId) {
       const accountId = this.users.queryUserById(adminUserId)?.accountUserId ?? adminUserId;
-      const group = await this.groups.detail(accountId, groupId);
+      const group = await this.groups.readDetail(accountId, groupId);
       if (group.role !== 'Admin' || group.membershipStatus !== 'accepted') throw new Error('groups.forbidden');
       const { profile } = await this.groups.resolveWorkspace(accountId, groupId);
       moderator = { id: profile.id, name: profile.name, initials: profile.initials, email: '', headline: '', about: '', images: [...(profile.images ?? [])] };
     }
     await this.deliverMessages();
-    await this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation');
     return moderator;
   }
   private scopedItem(id: string, groupId?: string | null) {
@@ -46,24 +45,50 @@ export class LocalContentModerationService extends LocalRouteDelayService {
     if (!item || item.deleted || (item.workspaceGroupId ?? null) !== (groupId ?? null)) throw new Error('moderation.changed');
     return item;
   }
-  async snapshot(adminUserId: string, groupId?: string | null) { await this.prepare(adminUserId, groupId); return this.repository.snapshot(groupId); }
+  async snapshot(adminUserId: string, groupId?: string | null) {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation'),
+      (async () => {
+        await this.prepare(adminUserId, groupId); return this.repository.snapshot(groupId);
+      })()
+    ]);
+    return response;
+  }
   async page(adminUserId: string, category: ModerationCategoryFilter, status: ModerationStatus, query: ListQuery, groupId?: string | null) {
-    await this.prepare(adminUserId, groupId);
-    if (groupId && !isBaseGroupId(groupId) && category === 'group') throw new Error('moderation.changed');
-    return this.repository.page(category, status, query, groupId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation'),
+      (async () => {
+        await this.prepare(adminUserId, groupId);
+        if (groupId && !isBaseGroupId(groupId) && category === 'group') throw new Error('moderation.changed');
+        return this.repository.page(category, status, query, groupId);
+      })()
+    ]);
+    return response;
   }
   async settings(adminUserId: string, revision: number, settings: ContentModerationSettings, groupId?: string | null) {
-    await this.prepare(adminUserId, groupId);
-    if (groupId && !isBaseGroupId(groupId) && settings.categories.some(category => !GROUP_MODERATION_CATEGORIES.includes(category))) throw new Error('moderation.invalidSettings');
-    if (!Number.isInteger(settings.delayMinutes) || settings.delayMinutes < 0 || settings.delayMinutes > 43200) throw new Error('moderation.invalidSettings');
-    return this.repository.saveSettings(settings, revision, groupId);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation'),
+      (async () => {
+        await this.prepare(adminUserId, groupId);
+        if (groupId && !isBaseGroupId(groupId) && settings.categories.some(category => !GROUP_MODERATION_CATEGORIES.includes(category))) throw new Error('moderation.invalidSettings');
+        if (!Number.isInteger(settings.delayMinutes) || settings.delayMinutes < 0 || settings.delayMinutes > 43200) throw new Error('moderation.invalidSettings');
+        return this.repository.saveSettings(settings, revision, groupId);
+      })()
+    ]);
+    return response;
   }
   async decide(id: string, request: ContentModerationDecision, admin?: AdminUserDto, groupId?: string | null) {
-    const moderator = await this.prepare(request.adminUserId, groupId);
-    this.scopedItem(id, groupId);
-    await this.repository.decide(id, moderator ? { ...request, adminUserId: moderator.id } : request, moderator ?? admin);
-    await this.deliverMessages();
-    return { snapshot: this.repository.snapshot(groupId), item: this.repository.item(id)! };
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation'),
+      (async () => {
+        const moderator = await this.prepare(request.adminUserId, groupId);
+        this.scopedItem(id, groupId);
+        await this.repository.decide(id, moderator ? { ...request, adminUserId: moderator.id } : request, moderator ?? admin);
+        await this.deliverMessages();
+        return { snapshot: this.repository.snapshot(groupId), item: this.repository.item(id)! };
+      })()
+    ]);
+    return response;
   }
   private async deliverMessages() {
     for (const pending of this.repository.state().pendingMessages ?? []) {
@@ -72,18 +97,25 @@ export class LocalContentModerationService extends LocalRouteDelayService {
     }
   }
   async detail<T>(adminUserId: string, id: string, groupId?: string | null): Promise<T> {
-    await this.prepare(adminUserId, groupId);
-    if (!groupId && id.startsWith('group:')) { const group = this.groupRecords.find(id.slice(6));
-      if (!group) throw new Error('moderation.changed');
-      return await this.groups.detail(group.ownerUserId, group.id) as T;
-    }
-    const item = this.scopedItem(id, groupId);
-    if (!item) throw new Error('moderation.changed');
-    let detail: unknown;
-    if (item.category === 'asset') detail = await this.assets.loadOwnedAssetDetailById(item.ownerUserId, item.sourceId);
-    else if (item.category === 'group') detail = await this.groups.detail(item.ownerUserId, item.sourceId);
-    else if (item.category === 'event') detail = await this.events.loadEventDetailById(item.ownerUserId, item.sourceId);
-    else { const record = this.feed.find(item.sourceId); detail = record ? LocalPhotoFeedMapper.toDto(record, record.locationCoordinates) : null; }
-    if (!detail) throw new Error('moderation.changed'); return detail as T;
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(groupId ? '/groups' : '/admin/content-moderation'),
+      (async (): Promise<T> => {
+        await this.prepare(adminUserId, groupId);
+        if (!groupId && id.startsWith('group:')) {
+          const group = this.groupRecords.find(id.slice(6));
+          if (!group) throw new Error('moderation.changed');
+          return await this.groups.readDetail(group.ownerUserId, group.id) as T;
+        }
+        const item = this.scopedItem(id, groupId);
+        if (!item) throw new Error('moderation.changed');
+        let detail: unknown;
+        if (item.category === 'asset') detail = await this.assets.readOwnedAssetDetailById(item.ownerUserId, item.sourceId);
+        else if (item.category === 'group') detail = await this.groups.readDetail(item.ownerUserId, item.sourceId);
+        else if (item.category === 'event') detail = await this.events.readEventDetailById(item.ownerUserId, item.sourceId);
+        else { const record = this.feed.find(item.sourceId); detail = record ? LocalPhotoFeedMapper.toDto(record, record.locationCoordinates) : null; }
+        if (!detail) throw new Error('moderation.changed'); return detail as T;
+      })()
+    ]);
+    return response;
   }
 }

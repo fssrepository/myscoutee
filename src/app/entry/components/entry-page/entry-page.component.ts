@@ -1,5 +1,7 @@
 import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/group-type';
-import type { LandingSlideDto } from '../../../shared/core/contracts/content.interface';
+import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
+import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
+import { environment } from '../../../../environments/environment';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
 import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
@@ -178,13 +180,17 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryPrivacySaveMessage = '';
   protected entryPrivacySaveError = '';
   protected landingArticlesLoading = true;
-  protected landingSlides: LandingSlideDto[] = [];
   protected landingIdeaCards: InfoCardData[] = [];
   protected landingIdeaCount = 0;
   protected landingSupportedCountries: SupportedCountryDto[] = [];
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable here';
-  protected entryNetworkUnavailable = false;
+  private entryTransportUnavailable = false;
+  protected get entryNetworkUnavailable(): boolean {
+    return this.entryTransportUnavailable
+      || (environment.activitiesDataSource === 'http' && backendUnavailable());
+  }
+  protected set entryNetworkUnavailable(value: boolean) { this.entryTransportUnavailable = value; }
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
@@ -199,6 +205,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private pendingDemoSessionUserId = '';
   private autoOnboardingRequested = false;
   private entryConsentAccepted = false;
+  private resumeExploreAfterConsent = false;
   private postSessionGateToken = 0;
   private queryParamSubscription: Subscription | null = null;
   private landingContentRequestToken = 0;
@@ -315,8 +322,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (!this.ensureEntryConsent()) {
+      this.resumeExploreAfterConsent = true;
       return;
     }
+    this.resumeExploreAfterConsent = false;
     this.openDemoUserSelectorPopup();
   }
 
@@ -330,7 +339,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       bypassConsumerEligibility?: boolean;
     } = {}
   ): Promise<void> {
-    if (this.entryNetworkUnavailable) {
+    if (this.entryNetworkUnavailable || this.entryAuthUnavailable) {
       return;
     }
     await this.synchronizeDeploymentAuthMode();
@@ -410,6 +419,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (this.entryPrivacyLoading) {
       return;
     }
+    this.resumeExploreAfterConsent = false;
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
     this.entryPrivacySaveMessage = '';
@@ -516,9 +526,15 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.entryConsentViewOnly = false;
     this.entryPrivacySaving = false;
     this.onEntryConsentStateChanged(true);
+    const resumeExplore = this.resumeExploreAfterConsent;
+    this.resumeExploreAfterConsent = false;
+    if (resumeExplore) {
+      await this.openEntryDemo();
+    }
   }
 
   protected rejectEntryConsent(): void {
+    this.resumeExploreAfterConsent = false;
     const nowIso = new Date().toISOString();
     localStorage.removeItem(EntryPageComponent.ENTRY_CONSENT_KEY);
     this.appendEntryConsentAudit('rejected', nowIso);
@@ -694,12 +710,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         selection.complete();
         return;
       }
-      {
-        if (!await this.usersService.loadProfileExtById(normalizedUserId, undefined, baseGroupId(this.landingContent.mode()))) {
-            selection.fail();
-            return;
-          }
-      }
+      // The destination's existing avatar hydration owns profile loading.
+      this.usersService.stageInitialWorkspace(baseGroupId(this.landingContent.mode()));
       const navigated = await this.router.navigateByUrl(this.memberRedirectUrl());
       if (!navigated) {
         selection.fail();
@@ -1270,7 +1282,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.entryContentLoadPromise = null;
     this.landingIdeaCards = [];
     this.landingIdeaCount = 0;
-    this.landingSlides = [];
     void this.loadEntryContent({ promptConsent: false });
   }
 
@@ -1290,7 +1301,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             return;
           }
           this.entryNetworkUnavailable = typeof navigator !== 'undefined' && navigator.onLine === false;
-          this.landingSlides = displayState.state.slides ?? [];
           this.landingIdeaCards = displayState.ideaCards;
           this.landingIdeaCount = displayState.state.ideasTotal;
           this.landingSupportedCountries = displayState.state.supportedCountries ?? [];
@@ -1542,8 +1552,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private syncEntryAuthGateState(): void {
     // A previous rejected browser sample must not turn Login into a permanent block.
     // The selected profile and the retryable Setup flow decide admission on click.
-    this.entryAuthUnavailable = false;
-    this.entryAuthUnavailableLabel = 'Unavailable here';
+    this.entryAuthUnavailable = demoFailoverEnabled() && environment.activitiesDataSource === 'local';
+    this.entryAuthUnavailableLabel = this.entryAuthUnavailable ? 'No network' : 'Unavailable here';
     // Firebase entry resolves location through Setup before opening provider login.
     this.changeDetectorRef.markForCheck();
   }

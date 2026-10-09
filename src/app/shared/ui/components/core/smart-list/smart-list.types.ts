@@ -388,6 +388,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   sortable?: boolean | SmartListSortableConfig<T, TFilters>;
   converter?: SmartListConverterResolver<T, TFilters>;
   groupBy?: ((item: T, query: ListQuery<TFilters>) => string) | null;
+  /** Defaults to true; borderless decorative lists can omit the empty message. */
+  showEmptyState?: boolean;
   emptyLabel?: string | ((query: ListQuery<TFilters>) => string);
   emptyDescription?: string | ((query: ListQuery<TFilters>) => string);
   emptyStickyLabel?: string | ((query: ListQuery<TFilters>) => string);
@@ -423,6 +425,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;
   headerProgress?: {
     enabled?: SmartListConfigValue<boolean, TFilters>;
+    /** The centered load ring is initial-load-only; the default bar also shows scroll progress. */
+    kind?: SmartListConfigValue<'bar' | 'load-ring', TFilters>;
     tone?: SmartListConfigValue<IndicatorTone, TFilters>;
     placement?: SmartListConfigValue<IndicatorPlacement, TFilters>;
     state?: SmartListConfigValue<SmartListHeaderProgressState, TFilters>;

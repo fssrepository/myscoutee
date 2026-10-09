@@ -33,14 +33,21 @@ export class LocalLandingContentService {
   }
 
   async loadContent(groupId: string | null = null): Promise<LandingContentStateDto> {
+    const [state] = await Promise.all([
+      this.readContent(groupId),
+      this.routeDelay.waitForRouteDelay(LocalLandingContentService.LANDING_CONTENT_ROUTE)
+    ]);
+    return state;
+  }
+
+  private async readContent(groupId: string | null): Promise<LandingContentStateDto> {
     const { SeedStaticContentService } = await import('../../seed/services/static-content.service');
     await this.injector.get(SeedStaticContentService).ensureReady();
     const [privacy, terms, ideaPreview, slides] = await Promise.all([
-      this.helpCenter.loadState('privacy', undefined, undefined, groupId),
-      this.helpCenter.loadState('terms', undefined, undefined, groupId),
+      this.helpCenter.readState('privacy', undefined, undefined, groupId),
+      this.helpCenter.readState('terms', undefined, undefined, groupId),
       this.ideaPosts.loadPublishedFeaturedPostPreview(undefined, groupId),
-      this.content.querySlides(groupId),
-      this.routeDelay.waitForRouteDelay(LocalLandingContentService.LANDING_CONTENT_ROUTE)
+      this.content.querySlides(groupId)
     ]);
     return {
       groupId,

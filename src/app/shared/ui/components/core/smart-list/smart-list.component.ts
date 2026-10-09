@@ -606,10 +606,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected shouldRenderHostedIndicator(): boolean {
-    if (this.config.headerProgress && this.config.headerProgress.enabled !== undefined) {
-      return this.resolveConfigValue(this.config.headerProgress.enabled, false);
-    }
-    return this.resolvedLoadingDelayMs() > 0;
+    const enabled = this.config.headerProgress?.enabled !== undefined
+      ? this.resolveConfigValue(this.config.headerProgress.enabled, false)
+      : this.resolvedLoadingDelayMs() > 0;
+    return enabled && (this.hostedIndicatorKind() === 'bar' || (this.initialLoading && this.items.length === 0));
+  }
+
+  protected hostedIndicatorKind(): 'bar' | 'load-ring' {
+    return this.resolveConfigValue(this.config.headerProgress?.kind, 'bar');
   }
 
   protected hostedIndicatorConfig(): IndicatorBarConfig {
@@ -3732,12 +3736,16 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     return SmartListComponent.DEFAULT_LOADING_DELAY_MS;
   }
 
+  protected resolvedLoadingWindowMs(): number {
+    return Math.max(600, this.config.loadingWindowMs ?? SmartListComponent.DEFAULT_LOADING_WINDOW_MS);
+  }
+
   private updateLoadingWindow(): void {
     if (!this.loading) {
       return;
     }
     const elapsed = Math.max(0, performance.now() - this.loadingStartedAtMs);
-    const windowMs = Math.max(600, this.config.loadingWindowMs ?? SmartListComponent.DEFAULT_LOADING_WINDOW_MS);
+    const windowMs = this.resolvedLoadingWindowMs();
     const nextProgress = Math.min(1, Math.max(0, elapsed / windowMs));
     this.loadingProgress = Math.max(this.loadingProgress, nextProgress);
     this.loadingOverdue = elapsed >= windowMs && this.loadingCounter > 0;

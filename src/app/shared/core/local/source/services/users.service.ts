@@ -239,8 +239,15 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async loadProfileExtById(userId?: string, _requestTimeoutMs?: number, groupId?: string | null, location?: LocationCoordinates): Promise<ProfileExtByIdQueryResponse> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalUsersService.USER_PROFILE_EXT_ROUTE),
+      this.readProfileExtById(userId, groupId, location)
+    ]);
+    return response;
+  }
+
+  private async readProfileExtById(userId?: string, groupId?: string | null, location?: LocationCoordinates): Promise<ProfileExtByIdQueryResponse> {
     await this.usersRepository.whenReady();
-    await this.waitForRouteDelay(LocalUsersService.USER_PROFILE_EXT_ROUTE);
     const requested = this.usersRepository.queryUserById(userId ?? '');
     const accountId = requested?.accountUserId ?? userId ?? '';
     const account = this.usersRepository.queryUserById(accountId);

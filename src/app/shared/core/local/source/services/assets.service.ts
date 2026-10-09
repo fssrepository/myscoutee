@@ -39,7 +39,20 @@ export class LocalAssetsService extends LocalRouteDelayService {
     assetId: string,
     scope?: AppDTOs.AssetDetailLoadScopeDTO
   ): Promise<AppDTOs.AssetDetailDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE),
+      this.readOwnedAssetDetailById(userId, assetId, scope)
+    ]);
+    return response;
+  }
+
+  // Aggregate service calls reuse this projection without a second route delay.
+  async readOwnedAssetDetailById(
+    userId: string,
+    assetId: string,
+    scope?: AppDTOs.AssetDetailLoadScopeDTO
+  ): Promise<AppDTOs.AssetDetailDTO | null> {
+
     const detail = await this.assetsRepository.loadOwnedAssetDetailById(userId, assetId);
     if (!detail || !scope) {
       return detail;

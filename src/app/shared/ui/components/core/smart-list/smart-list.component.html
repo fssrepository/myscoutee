@@ -313,15 +313,23 @@
   </div>
 
   @if (shouldRenderHostedIndicator()) {
-    <div class="smart-list__header-progress-shell">
+    @let indicatorKind = hostedIndicatorKind();
+    <div class="smart-list__header-progress-shell" [class.smart-list__header-progress-shell--centered]="indicatorKind === 'load-ring'">
       @let headerProgressConfig = hostedIndicatorConfig();
-      <app-indicator
-        kind="bar"
-        [placement]="headerProgressConfig.placement ?? 'inline'"
-        [tone]="headerProgressConfig.tone ?? 'default'"
-        [state]="headerProgressConfig.state ?? 'scrolling'"
-        [position]="headerProgressConfig.position ?? 0"
-      ></app-indicator>
+      @if (indicatorKind === 'load-ring') {
+        <app-indicator kind="load-ring" state="loading"
+          [tone]="headerProgressConfig.tone ?? 'default'"
+          [durationMs]="resolvedLoadingWindowMs()"
+        ></app-indicator>
+      } @else {
+        <app-indicator
+          [kind]="indicatorKind"
+          [placement]="headerProgressConfig.placement ?? 'inline'"
+          [tone]="headerProgressConfig.tone ?? 'default'"
+          [state]="headerProgressConfig.state ?? 'scrolling'"
+          [position]="headerProgressConfig.position ?? 0"
+        ></app-indicator>
+      }
     </div>
   }
 
@@ -371,7 +379,7 @@
 </div>
 
 <ng-template #fullscreenEmptyState>
-  @if (!initialLoading) {
+  @if (!initialLoading && config.showEmptyState !== false) {
     <div class="smart-list__fullscreen-empty">
       <h4>{{ hostedFullscreenEmptyLabel() | i18n }}</h4>
       @if (hostedFullscreenEmptyDescription()) {
@@ -382,7 +390,7 @@
 </ng-template>
 
 <ng-template #emptyState>
-  @if (!initialLoading) {
+  @if (!initialLoading && config.showEmptyState !== false) {
     <div class="smart-list__empty">
       <h4>{{ emptyLabel() | i18n }}</h4>
       @if (emptyDescription()) {

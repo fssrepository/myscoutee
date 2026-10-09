@@ -121,7 +121,16 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
       }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }) };
   }
   async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
-    await this.waitForRouteDelay('/groups', signal); await this.groups.ready(); signal?.throwIfAborted();
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay('/groups', signal),
+      this.readDetail(userId, id, signal)
+    ]);
+    return response;
+  }
+
+  // Aggregate service calls reuse this projection without a second route delay.
+  async readDetail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityGroup> {
+    await this.groups.ready(); signal?.throwIfAborted();
     return this.dto(userId, this.visible(userId, id));
   }
   async save(request: SaveCommunityGroup): Promise<CommunityGroup> {
