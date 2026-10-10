@@ -1,4 +1,5 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { normalizeScheduleFrequency, UiDateUtils } from '@myscoutee/components';
+
 import { ActivityEventDetailDTO, type SubEventsSlotDTO } from '../../core/contracts/activity.interface';
 import type { EventSlotTemplateDTO, SubEventDTO } from '../../core/contracts/event.interface';
 
@@ -116,7 +117,7 @@ export class EventSubeventsSlotConverter {
   ): string {
     const template = this.slotTemplate(slot, event);
     const templateStart = UiDateUtils.parseDate(template?.startAt) ?? UiDateUtils.parseDate(slot.startAt ?? firstItem?.startAt);
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(event?.frequency ?? '');
+    const frequency = normalizeScheduleFrequency(event?.frequency ?? '');
     if (templateStart && frequency !== 'One-time' && frequency !== 'Custom') {
       return this.formatRecurringSlotLabel(frequency, templateStart);
     }
@@ -138,7 +139,7 @@ export class EventSubeventsSlotConverter {
   private static slotTone(
     event: EventSubeventsSlotConverterEvent | null | undefined
   ): EventSubeventsSlotTone {
-    switch (ActivityEventDetailDTO.normalizeFrequency(event?.frequency ?? '')) {
+    switch (normalizeScheduleFrequency(event?.frequency ?? '')) {
       case 'Daily':
         return 'green';
       case 'Weekly':
@@ -159,7 +160,7 @@ export class EventSubeventsSlotConverter {
       hour: 'numeric',
       minute: '2-digit'
     });
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+    switch (normalizeScheduleFrequency(frequency)) {
       case 'Daily':
         return `Every day at ${time}`;
       case 'Weekly':

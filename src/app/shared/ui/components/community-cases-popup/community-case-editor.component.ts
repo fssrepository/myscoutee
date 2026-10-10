@@ -1,5 +1,7 @@
-import { AppUtils } from '../../../app-utils';
+import { SLOTS_INPUT_LABELS } from '../../slots-input-labels';
 import {
+  SlotsInputComponent,
+  type SlotsInputConfig,
   ExplanationGuideService,
   PopupComponent,
   type PopupModel,
@@ -7,13 +9,15 @@ import {
   type FormFlowModel,
   type FormFlowActionEvent
 } from '@myscoutee/components';
+import { AppUtils } from '../../../app-utils';
+
 import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { CommunityCasesStore, type CaseEditorState } from '../../context/stores/community-cases.store';
 import { CommunityCaseConverter } from '../../converters/community-case.converter';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { SlotsInputComponent, type SlotsInputConfig } from '../core/form/inputs/slots-input/slots-input.component';
+
 import { CASE_TYPES, type SaveCommunityScheduledTask, type CommunityCase, type TaskFrequency } from '../../../core/contracts/community-case.interface';
 
 @Component({ selector: 'app-community-case-editor', standalone: true,
@@ -48,6 +52,9 @@ export class CommunityCaseEditorComponent implements OnChanges, OnDestroy {
   }
   @ViewChild('scheduleInput') private scheduleInput?: SlotsInputComponent;
   protected readonly scheduleConfig: SlotsInputConfig = {
+    labels: SLOTS_INPUT_LABELS,
+    frequencyLabel: frequency => 'case.frequency.' + (frequency === 'One-time' ? 'once' : frequency.toLowerCase()),
+
     scheduleOnly:true,title:'case.schedule',startAtIso:()=>this.form().startAtIso,frequency:()=>this.form().frequency,
     frequencyOptions:['One-time','Monthly','Quarterly','Yearly'],
     scheduleChange:value=>this.form.update(form=>({...form,startAtIso:value.startAtIso,frequency:(value.frequency==='One-time'?'once':value.frequency.toLowerCase()) as TaskFrequency}))

@@ -1,4 +1,11 @@
-import { type RatingSnapshot, type DateRangeDto, type ListQuery } from '@myscoutee/components';
+import {
+  normalizeScheduleFrequency,
+  normalizeSlotTemplates,
+  type RatingSnapshot,
+  type DateRangeDto,
+  type ListQuery
+} from '@myscoutee/components';
+
 import type { RatingDomain } from './rating-snapshot';
 import { ImageDetailsMap, normalizeImageDetails } from './image-gallery.interface';
 import * as AppConstants from '../common/constants';
@@ -1043,26 +1050,10 @@ export class ActivityEventDetailDTO {
   }
 
   static normalizeSlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): EventContracts.EventSlotTemplateDTO[] {
-    return items.map((item, index) => {
-      if (item.closed === true) {
-        return {
-          id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-          startAt: '',
-          overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
-          closed: true,
-          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
-        };
-      }
-      const normalizedStart = `${item.startAt ?? ''}`.trim();
-      const parsedStart = ActivityEventDetailDTO.parseDate(normalizedStart) ?? new Date();
-      return {
-        id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: ActivityEventDetailDTO.parseDate(normalizedStart) ? normalizedStart : ActivityEventDetailDTO.toIsoDateTimeLocal(parsedStart),
-        overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
-        closed: false,
-        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
-      };
-    });
+    return normalizeSlotTemplates(items).map(({id, startAt, overrideDate, closed, subEventDefinitions}) => ({
+      id, startAt, overrideDate, closed,
+      subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(subEventDefinitions ?? [])
+    }));
   }
 
   static normalizeSubEventDefinitions(items: readonly SubEventDefinitionDTO[]): SubEventDefinitionDTO[] {
@@ -1170,11 +1161,6 @@ export class ActivityEventDetailDTO {
     return ActivityEventDetailDTO.sortSubEventsByStartAsc(items)[0] ?? null;
   }
 
-  static normalizeSlotOverrideDate(value: unknown): string | null {
-    const parsed = ActivityEventDetailDTO.parseDateOnly(value);
-    return parsed ? ActivityEventDetailDTO.toIsoDate(parsed) : null;
-  }
-
   static normalizeVisibility(value: unknown): AppConstants.EventVisibility {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'private' || normalized.includes('friend')) {
@@ -1184,29 +1170,6 @@ export class ActivityEventDetailDTO {
       return 'Invitation only';
     }
     return 'Public';
-  }
-
-  static normalizeFrequency(value: unknown): string {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'custom') {
-      return 'Custom';
-    }
-    if (normalized === 'daily') {
-      return 'Daily';
-    }
-    if (normalized === 'weekly') {
-      return 'Weekly';
-    }
-    if (normalized.includes('bi-week') || normalized.includes('bi week')) {
-      return 'Bi-weekly';
-    }
-    if (normalized === 'monthly') {
-      return 'Monthly';
-    }
-    if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') {
-      return 'Yearly';
-    }
-    return 'One-time';
   }
 
   static normalizeBlindMode(value: unknown): EventContracts.EventBlindMode {
@@ -1266,7 +1229,7 @@ export class ActivityEventDetailDTO {
     const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const normalizedFrequency = ActivityEventDetailDTO.normalizeFrequency(frequency);
+    const normalizedFrequency = normalizeScheduleFrequency(frequency);
 
     if (normalizedFrequency === 'One-time') {
       return `${dateLabel} · ${startTime} - ${endTime}`;

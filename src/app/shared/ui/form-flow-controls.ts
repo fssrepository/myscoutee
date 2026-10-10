@@ -12,10 +12,6 @@ export const MYSCOUTEE_FORM_FLOW_CONTROLS: FormFlowControls = {
       load: () => import('./components/core/form/inputs/pricing-editor').then(m => m.PricingEditorInputComponent),
       inputs
     },
-    route: {
-      load: () => import('./components/core/form/inputs/route-input').then(m => m.RouteInputComponent),
-      inputs, value: context => context.stringArrayValue
-    },
     policies: {
       load: () => import('./components/core/form/inputs/policies-input').then(m => m.PoliciesInputComponent),
       inputs: context => ({...inputs(context), enabled: context.enabled}),

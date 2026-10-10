@@ -1,4 +1,4 @@
-import { clampNumber, UiDateUtils } from '@myscoutee/components';
+import { normalizeScheduleFrequency, clampNumber, UiDateUtils } from '@myscoutee/components';
 
 import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type { DtoListMapper, DtoMapper } from './mapper.types';
@@ -468,7 +468,7 @@ export class LocalActivityEventsMapper {
     if (!parentStart || !parentEnd || parentEnd.getTime() <= parentStart.getTime()) {
       return 0;
     }
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(parentRecord.frequency ?? 'One-time');
+    const frequency = normalizeScheduleFrequency(parentRecord.frequency ?? 'One-time');
     if (frequency === 'One-time' || frequency === 'Custom') {
       return Math.max(0, Math.trunc((parentEnd.getTime() - slotStart.getTime()) / (60 * 1000)));
     }
@@ -1045,8 +1045,8 @@ export class LocalActivityEventDetailsMapper {
     const type = this.normalizeRepositoryItemType(payload.type);
     const visibility = this.normalizeVisibility(payload.visibility);
     const blindMode = this.normalizeBlindMode(payload.blindMode);
-    const requestedFrequency = this.normalizeFrequency(payload.frequency);
-    const normalizedSlotTemplates = this.normalizeSlotTemplates(payload.slotTemplates);
+    const requestedFrequency = normalizeScheduleFrequency(payload.frequency);
+    const normalizedSlotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(payload.slotTemplates);
     const hasSlots = payload.slotsEnabled === true && normalizedSlotTemplates.length > 0;
     const frequency = hasSlots ? requestedFrequency : 'One-time';
     const topics = this.normalizeTopics(payload.topics);
@@ -1364,29 +1364,6 @@ export class LocalActivityEventDetailsMapper {
     return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
   }
 
-  private static normalizeFrequency(value: unknown): string {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'custom') {
-      return 'Custom';
-    }
-    if (normalized === 'daily') {
-      return 'Daily';
-    }
-    if (normalized === 'weekly') {
-      return 'Weekly';
-    }
-    if (normalized.includes('bi-week') || normalized.includes('bi week')) {
-      return 'Bi-weekly';
-    }
-    if (normalized === 'monthly') {
-      return 'Monthly';
-    }
-    if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') {
-      return 'Yearly';
-    }
-    return 'One-time';
-  }
-
   private static buildTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
     const start = this.parseDate(startAt);
     const end = this.parseDate(endAt);
@@ -1397,7 +1374,7 @@ export class LocalActivityEventDetailsMapper {
     const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const normalizedFrequency = this.normalizeFrequency(frequency);
+    const normalizedFrequency = normalizeScheduleFrequency(frequency);
     if (normalizedFrequency === 'One-time') {
       return `${dateLabel} · ${startTime} - ${endTime}`;
     }
@@ -1411,29 +1388,6 @@ export class LocalActivityEventDetailsMapper {
       description: `${item.description ?? ''}`.trim(),
       required: item.required !== false
     })).filter(item => item.id || item.title || item.description);
-  }
-
-  private static normalizeSlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): EventContracts.EventSlotTemplateDTO[] {
-    return items.map((item, index) => {
-      if (item.closed === true) {
-        return {
-          id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-          startAt: '',
-          overrideDate: this.normalizeSlotOverrideDate(item.overrideDate),
-          closed: true,
-          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
-        };
-      }
-      const normalizedStart = `${item.startAt ?? ''}`.trim();
-      const parsedStart = this.parseDate(normalizedStart) ?? new Date();
-      return {
-        id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
-        startAt: this.parseDate(normalizedStart) ? normalizedStart : this.toIsoDateTimeLocal(parsedStart),
-        overrideDate: this.normalizeSlotOverrideDate(item.overrideDate),
-        closed: false,
-        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
-      };
-    });
   }
 
   private static normalizeSubEvents(items: readonly EventContracts.SubEventDTO[]): EventContracts.SubEventDTO[] {
@@ -1506,11 +1460,6 @@ export class LocalActivityEventDetailsMapper {
 
   private static normalizeLocation(value: unknown): string {
     return `${value ?? ''}`.trim();
-  }
-
-  private static normalizeSlotOverrideDate(value: unknown): string | null {
-    const parsed = this.parseDateOnly(value);
-    return parsed ? this.toIsoDate(parsed) : null;
   }
 
   private static normalizeCount(value: unknown): number | null {

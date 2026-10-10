@@ -1,3 +1,4 @@
+import type { SlotTemplate } from '@myscoutee/components';
 import type * as PricingContracts from './pricing.interface';
 import type { SubEventDefinitionDTO } from './activity.interface';
 
@@ -24,11 +25,7 @@ export interface TournamentCurrentStageDTO {
   status: TournamentStageStatus | string;
 }
 
-export interface EventSlotTemplateDTO {
-  id: string;
-  startAt: string;
-  overrideDate?: string | null;
-  closed?: boolean;
+export interface EventSlotTemplateDTO extends SlotTemplate {
   subEventDefinitions?: SubEventDefinitionDTO[];
 }
 

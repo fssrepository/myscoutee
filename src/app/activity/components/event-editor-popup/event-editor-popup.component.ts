@@ -1,4 +1,10 @@
+import { SLOTS_INPUT_LABELS } from '../../../shared/ui/slots-input-labels';
 import {
+  normalizeScheduleFrequency,
+  normalizeSlotOverrideDate,
+  SlotsInputComponent,
+  type SlotsInputConfig,
+  type SlotOverrideRequest,
   UiDateUtils,
   DialogStore,
   ExplanationGuideService,
@@ -23,6 +29,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel
 } from '@myscoutee/components';
+
 import { groupPriorityEnabled } from '../../../shared/core/contracts/group-type';
 import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
@@ -88,7 +95,7 @@ import {
   ActivityEventDetailDTO
 } from '../../../shared/core/contracts/activity.interface';
 
-import { SlotsInputComponent, type SlotsInputConfig, type SlotOverrideRequest, PricingEditorInputComponent, PoliciesInputComponent, type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
+import { PricingEditorInputComponent, PoliciesInputComponent, type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
 import {
   EventBasketInputComponent,
   type EventBasketInputConfig,
@@ -347,6 +354,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   };
 
   protected readonly slotsInputConfig: SlotsInputConfig = {
+    labels: SLOTS_INPUT_LABELS,
+    normalizeTemplates: items => ActivityEventDetailDTO.normalizeSlotTemplates(items),
+    frequencyLabel: frequency => 'schedule.frequency.' + ({ 'Bi-weekly': 'bi.weekly', 'One-time': 'custom' }[frequency] ?? frequency.toLowerCase()),
+
     startAtIso: () => this.eventDetailDTO.dateRange.startAt,
     endAtIso: () => this.eventDetailDTO.dateRange.endAt,
     frequency: () => this.eventDetailDTO.frequency,
@@ -1576,7 +1587,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventDetailDTO.frequency = ActivityEventDetailDTO.normalizeFrequency(value);
+    this.eventDetailDTO.frequency = normalizeScheduleFrequency(value);
     this.eventDetailDTO.slotsEnabled = true;
     this.normalizeEventSlotTemplates();
   }
@@ -1591,7 +1602,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventDetailDTO.slotTemplates = [];
       return;
     }
-    if (ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency) === 'One-time') {
+    if (normalizeScheduleFrequency(this.eventDetailDTO.frequency) === 'One-time') {
       this.eventDetailDTO.frequency = 'Custom';
     }
     this.normalizeEventSlotTemplates();
@@ -1854,7 +1865,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       day: 'numeric',
       year: 'numeric'
     });
-    switch (ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency)) {
+    switch (normalizeScheduleFrequency(this.eventDetailDTO.frequency)) {
       case 'Daily':
         return `Every day at ${time} from ${fromDate}`;
       case 'Weekly':
@@ -1891,7 +1902,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!parentStart || !parentEnd || !templateStart) {
       return [];
     }
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency);
+    const frequency = normalizeScheduleFrequency(this.eventDetailDTO.frequency);
     if (frequency === 'One-time' || frequency === 'Custom') {
       return templateStart.getTime() >= parentStart.getTime() && templateStart.getTime() <= parentEnd.getTime()
         ? [templateStart]
@@ -1959,7 +1970,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     const expectedId = this.slotOverrideTemplateId(slot, selectedDateKey);
     return this.eventDetailDTO.slotTemplates.find(item =>
-      ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) === selectedDateKey
+      normalizeSlotOverrideDate(item.overrideDate) === selectedDateKey
       && (`${item.id ?? ''}`.trim() === expectedId || `${item.id ?? ''}`.trim() === `${slot.id ?? ''}`.trim())
     ) ?? null;
   }
@@ -1988,7 +1999,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const slotId = `${editor.slot.id ?? ''}`.trim();
     this.eventDetailDTO.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates([
       ...this.eventDetailDTO.slotTemplates.filter(item => {
-        const itemDateKey = ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate);
+        const itemDateKey = normalizeSlotOverrideDate(item.overrideDate);
         const itemId = `${item.id ?? ''}`.trim();
         return !(itemDateKey === selectedDateKey && (itemId === overrideId || itemId === slotId));
       }),

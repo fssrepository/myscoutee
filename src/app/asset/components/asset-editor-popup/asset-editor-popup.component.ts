@@ -1,4 +1,5 @@
 import {
+  type RouteInputConfig,
   UiDateUtils,
   ExplanationGuideService,
   AppMenuComponent,
@@ -16,6 +17,7 @@ import {
   type PopupModel,
   type DateInputRangeValue
 } from '@myscoutee/components';
+
 import { PaymentRefundPolicyComponent } from '../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import {
   CommonModule
@@ -48,7 +50,7 @@ import {
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
 
-import { type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview, type RouteInputConfig } from '../../../shared/ui';
+import { type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
 
 import {
   EventBasketInputComponent,
@@ -511,6 +513,8 @@ export class AssetEditorPopupComponent implements OnDestroy {
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
     return {
       title: runtimeRoute?.title ?? 'Route',
+      mapAriaLabel: 'asset.assignment.route.map.aria',
+      stopCountLabel: count => this.i18n.translateParams(count === 1 ? 'asset.assignment.route.stop.one' : 'asset.assignment.route.stop.many', { count }),
       subtitle: runtimeRoute?.subtitle ?? 'Runtime route for this event asset.',
       openLabel: runtimeRoute?.openLabel ?? 'Open Route Setup',
       emptyLabel: runtimeRoute?.emptyLabel ?? 'No route is set for this event asset.',
