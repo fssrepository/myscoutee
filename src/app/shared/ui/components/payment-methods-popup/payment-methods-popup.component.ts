@@ -35,18 +35,18 @@ import type {
   PaymentProvider,
   SavedPaymentMethodDto
 } from '../../../core/contracts/payment-method.interface';
-import { UserProfileStore } from '../../context/stores/user-profile.store';
-import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
+import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
+import { PaymentMethodsPopupStore } from '../../context/stores/payment/payment-methods-popup.store';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../context/stores/activities-popup.store';
-import { EventCheckoutDialogStore } from '../../context/stores/event-checkout-dialog.store';
-import { AssetStore } from '../../context/stores/asset.store';
-import { AssetPopupStore } from '../../context/stores/asset-popup.store';
+} from '../../context/stores/activity/activities-popup.store';
+import { EventCheckoutDialogStore } from '../../context/stores/event/event-checkout-dialog.store';
+import { AssetStore } from '../../context/stores/asset/asset.store';
+import { AssetPopupStore } from '../../context/stores/asset/asset-popup.store';
 
-import { ChatPopupHeaderContextConverter } from '../../converters/chat-popup-header-context.converter';
+import { ChatPopupHeaderContextConverter } from '../../converters/chat/chat-popup-header-context.converter';
 
 interface PaymentListFilters { counterpartyUserId?:string; revision: number; direction?: PaymentHistoryDirection; }
 interface PaymentPopupMenuContext {

@@ -17,7 +17,7 @@ import {
 import { Component, Input, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { defer, map } from 'rxjs';
-import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
+import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
 
 import { HomeHeaderComponent } from '../../../../home/components/home-header/home-header.component';
 import { I18nService } from '../../../core/base/services/i18n.service';

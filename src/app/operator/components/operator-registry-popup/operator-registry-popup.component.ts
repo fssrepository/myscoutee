@@ -34,9 +34,9 @@ import {
 } from '@myscoutee/components';
 import type { OperatorMeasurementReportDto, OperatorMeasurementReportFilters, OperatorMeasurementSyncState } from '../../../shared/core/contracts';
 
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 
 @Component({
   selector: 'app-operator-registry-popup',

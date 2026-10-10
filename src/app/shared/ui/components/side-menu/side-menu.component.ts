@@ -1,9 +1,9 @@
-import { ServiceFeedbackStore } from '../../context/stores/service-feedback.store';
-import { EventCheckoutSlotPickerStore } from '../../context/stores/event-checkout-slot-picker.store';
-import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
-import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
-import { CampaignsStore } from '../../context/stores/campaigns.store';
+import { ServiceFeedbackStore } from '../../context/stores/services/service-feedback.store';
+import { EventCheckoutSlotPickerStore } from '../../context/stores/event/event-checkout-slot-picker.store';
+import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
+import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
+import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
 import { ExplanationLauncherComponent } from '../explanation-popup/explanation-launcher.component';
 import {
   FloatingLauncherComponent,
@@ -33,19 +33,19 @@ import {
 } from '@myscoutee/components';
 
 import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
-import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
+import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
 
-import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
+import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
 import { CommunityGroupsPopupComponent } from '../community-groups-popup/community-groups-popup.component';
-import { ContentModerationStore } from '../../context/stores/content-moderation.store';
+import { ContentModerationStore } from '../../context/stores/content/content-moderation.store';
 import { AdminNotificationsService } from '../../../core/base/services/admin-notifications.service';
 import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
-import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
+import { PhotoFeedStore } from '../../context/stores/content/photo-feed.store';
 import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
 
-import { FollowingStore } from '../../context/stores/following.store';
+import { FollowingStore } from '../../context/stores/activity/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
-import { AppSetupStore } from '../../context/stores/app-setup.store';
+import { AppSetupStore } from '../../context/stores/app/app-setup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -71,31 +71,31 @@ import type { Subscription } from 'rxjs';
 
 import type { ActivityCounters, ActivityCounterKey, UserImpressionChangeFlags } from '../..';
 
-import { ProfileHeaderCardConverter } from '../../converters/profile-header-card.converter';
+import { ProfileHeaderCardConverter } from '../../converters/profile/profile-header-card.converter';
 import {
   cloneEventCounters,
   cloneSupportCaseCounters
-} from '../../context/stores/app-context-store.utils';
+} from '../../context/stores/app/app-context-store.utils';
 import {
   AppUtils
 } from '../../../app-utils';
 import {
   AssetPopupStore
-} from '../../context/stores/asset-popup.store';
+} from '../../context/stores/asset/asset-popup.store';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../context/stores/activities-popup.store';
+} from '../../context/stores/activity/activities-popup.store';
 import {
   EventEditorPopupStore
-} from '../../context/stores/event-editor-popup.store';
+} from '../../context/stores/event/event-editor-popup.store';
 import {
   AssetStore
-} from '../../context/stores/asset.store';
+} from '../../context/stores/asset/asset.store';
 import {
   SubEventResourcePopupStore
-} from '../../context/stores/sub-event-resource-popup.store';
+} from '../../context/stores/event/sub-event-resource-popup.store';
 
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { HelpCenterService } from '../../../core/base/services/help-center.service';
@@ -121,7 +121,7 @@ import {
 import {
   ProfileStore,
   type ProfileBindings
-} from '../../context/stores/profile.store';
+} from '../../context/stores/profile/profile.store';
 import {
   resolveSideMenuPresentation,
   navigatorContentMenuModel,
@@ -131,26 +131,26 @@ import {
 import {
   APP_STORAGE_KEYS
 } from '../../../core/common/storage-scope';
-import { UserProfileStore } from '../../context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
-import { ActivityStore } from '../../context/stores/activity.store';
-import { MemberMenuStore } from '../../context/stores/member-menu.store';
-import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
-import { AdminMenuStore } from '../../context/stores/admin-menu.store';
-import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
+import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../context/stores/app/member-menu.store';
+import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
+import { AdminMenuStore } from '../../context/stores/admin/admin-menu.store';
+import { AdminWorkspaceStore } from '../../context/stores/admin/admin-workspace.store';
 import {
   OperatorMenuStore
-} from '../../context/stores/operator-menu.store';
+} from '../../context/stores/operator/operator-menu.store';
 import { isNavigatorHydrationRoute } from './navigator-hydration-route';
 import { hasOperatorRole } from '../../../core/common/user-role';
 import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
-import { NotificationCenterStore } from '../../context/stores/notification-center.store';
+import { NotificationCenterStore } from '../../context/stores/notification/notification-center.store';
 
-import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
+import { PaymentMethodsPopupStore } from '../../context/stores/payment/payment-methods-popup.store';
 import { PwaService } from '../../../core/base/services/pwa.service';
 
 import { installSessionActiveUserSync } from './session-active-user-sync';
-import { MingleStore } from '../../context/stores/mingle.store';
+import { MingleStore } from '../../context/stores/activity/mingle.store';
 import { environment } from '../../../../../environments/environment';
 import {
   NotificationCenterPopupComponent
@@ -1974,7 +1974,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private async preloadOperatorUpdate(requestVersion: number): Promise<void> {
-    const { OperatorWorkspaceStore } = await import('../../context/stores/operator-workspace.store');
+    const { OperatorWorkspaceStore } = await import('../../context/stores/operator/operator-workspace.store');
     if (requestVersion !== this.hydrationRequestVersion) return;
     await this.injector.get(OperatorWorkspaceStore).preloadDeploymentUpdate();
   }

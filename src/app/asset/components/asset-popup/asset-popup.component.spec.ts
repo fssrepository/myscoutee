@@ -8,14 +8,14 @@ import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { AssetAvailabilityPopupStore } from '../../../shared/ui/context/stores/asset-availability-popup.store';
-import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { AssetStore } from '../../../shared/ui/context/stores/asset.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { AssetAvailabilityPopupStore } from '../../../shared/ui/context/stores/asset/asset-availability-popup.store';
+import { AssetPopupStore } from '../../../shared/ui/context/stores/asset/asset-popup.store';
+import { AssetStore } from '../../../shared/ui/context/stores/asset/asset.store';
 
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import { AssetPopupComponent } from './asset-popup.component';
 
 describe('AssetPopupComponent ticket cache reactivity', () => {

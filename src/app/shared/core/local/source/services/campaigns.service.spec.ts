@@ -1,5 +1,5 @@
 import { LocalChatsService } from './chats.service';
-import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
 import { RateOutboxRepository } from '../../../base/repositories/rate-outbox.repository';
 import { LocalEventsService } from './events.service';
 import { LocalActivityEventDetailsMapper } from '../mappers/event.mapper';

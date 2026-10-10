@@ -1,0 +1,291 @@
+import { describe, expect, it } from 'vitest';
+
+import type { ChatDTO } from '../../../core/contracts/chat.interface';
+import type { SubEventDTO } from '../../../core/contracts/event.interface';
+import type { UserDto } from '../../../core/contracts/user.interface';
+import { ActivityChatSingleRowConverter } from './activity-chat-single-row.converter';
+
+describe('ActivityChatSingleRowConverter group context', () => {
+  it('uses the group name without the channel suffix and keeps its parent context on a separate row', () => {
+    const row = ActivityChatSingleRowConverter.convert(groupChat(), {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'female'
+      } as unknown as UserDto
+    });
+
+    expect(row.subtitle).toBe('Group B');
+    expect(row.detail).toContain('Seattle Wildflower Meetup');
+    expect(row.detail).toContain('Kickoff');
+    expect(row.metaRows).toEqual(['Perfect, locking this in.']);
+  });
+});
+
+describe('ActivityChatSingleRowConverter identity', () => {
+  it('keeps the unread badge on an admin support row', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'appSupport',
+      unread: 3,
+      supportCase: {
+        status: 'blocked',
+        assignee: { userId: 'admin-1', name: 'Ava Moderation', initials: 'AM' }
+      }
+    }, {
+      activeUser: {
+        id: 'admin-1',
+        name: 'Ava Moderation',
+        initials: 'AM',
+        gender: 'woman'
+      } as unknown as UserDto,
+      adminServiceMode: true
+    });
+
+    expect(row.unread).toBe(3);
+    expect(row.badgeCount).toBe(3);
+  });
+
+  it('shows the draft lifecycle as a compact inline Under review badge on a sub-event chat', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'optionalSubEvent',
+      ownerId: 'event-1:stage-1',
+      ownerStatus: 'DR'
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.badges).toEqual([expect.objectContaining({
+      label: 'Under review',
+      tone: 'warning',
+      position: 'inline'
+    })]);
+  });
+
+  it('keeps service chats distinct when they belong to the same event', () => {
+    const ownerId = 'event-1';
+    const assetChatKey = ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'serviceEvent',
+      ownerId,
+      'c-service-asset-car-1-stage-1-viewer'
+    );
+    const eventChatKey = ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'serviceEvent',
+      ownerId,
+      'c-service-event-event-1-viewer'
+    );
+
+    expect(assetChatKey).toBe('chats:serviceEvent:c-service-asset-car-1-stage-1-viewer');
+    expect(eventChatKey).toBe('chats:serviceEvent:c-service-event-event-1-viewer');
+    expect(assetChatKey).not.toBe(eventChatKey);
+  });
+
+  it('retains owner-scoped identities for event, sub-event, and group channels', () => {
+    expect(ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'mainEvent',
+      'event-1',
+      'viewer-specific-chat-id'
+    )).toBe('chats:mainEvent:event-1');
+    expect(ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'optionalSubEvent',
+      'event-1:stage-1',
+      'viewer-specific-chat-id'
+    )).toBe('chats:optionalSubEvent:event-1:stage-1');
+    expect(ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'groupSubEvent',
+      'event-1:stage-1:group:2',
+      'viewer-specific-chat-id'
+    )).toBe('chats:groupSubEvent:event-1:stage-1:group:2');
+  });
+});
+
+describe('ActivityChatSingleRowConverter member summaries', () => {
+  it('renders the initial random-room message with the system identity instead of the first member', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'mainEvent',
+      ownerId: 'random-room:source-event:stage:group:2',
+      eventId: 'random-room:source-event:stage:group:2',
+      title: 'Random Room R2',
+      lastMessage: 'Welcome! MyScoutee created this room.',
+      lastSenderId: '',
+      members: [{
+        id: 'member-1',
+        name: 'Sophia Lane',
+        initials: 'SL',
+        gender: 'woman',
+        imageUrl: '/media/sophia.webp'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('MyScoutee System');
+    expect(row.subtitle).toBe('Random Room R2');
+    expect(row.icon).toBe('auto_awesome');
+    expect(row.avatarUrl).toBeNull();
+    expect(row.avatarInitials).toBeNull();
+    expect(row.avatarToneClass).toBe('notification-system-avatar');
+  });
+
+  it('renders a real random-room sender after a member writes a message', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      channelType: 'mainEvent',
+      ownerId: 'random-room:source-event:stage:group:2',
+      eventId: 'random-room:source-event:stage:group:2',
+      title: 'Random Room R2',
+      lastSenderId: 'member-1',
+      members: [{
+        id: 'member-1',
+        name: 'Sophia Lane',
+        initials: 'SL',
+        gender: 'woman',
+        imageUrl: '/media/sophia.webp'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('Sophia Lane');
+    expect(row.avatarUrl).toBe('/media/sophia.webp');
+    expect(row.icon).toBeNull();
+  });
+
+  it('renders a tournament room with its managed trophy avatar and tournament welcome text', () => {
+    const imageUrl = '/media/public?key=images/system/tournament-room/v1/large.webp';
+    const welcome = 'Welcome to your tournament group for QA TOURNAMENT-002.';
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      avatar: imageUrl,
+      channelType: 'mainEvent',
+      ownerId: 'random-room:source-event:stage:group:1',
+      eventId: 'random-room:source-event:stage:group:1',
+      title: 'Tournament Group R1',
+      lastMessage: welcome,
+      lastSenderId: ''
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Viewer',
+        initials: 'VI',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('MyScoutee System');
+    expect(row.subtitle).toBe('Tournament Group R1');
+    expect(row.detail).toBe(welcome);
+    expect(row.avatarUrl).toBe(imageUrl);
+    expect(row.icon).toBeNull();
+    expect(row.avatarToneClass).toBeNull();
+  });
+
+  it('uses the API member summary for the last sender without a profile cache resolver', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      lastSenderId: 'member-1',
+      members: [{
+        id: 'member-1',
+        name: 'Kai Morgan',
+        initials: 'KM',
+        gender: 'man',
+        imageUrl: '/media/kai.webp'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Nagy Eszter',
+        initials: 'NE',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.title).toBe('Kai Morgan');
+    expect(row.title).not.toBe('Nagy Eszter');
+    expect(row.avatarUrl).toBe('/media/kai.webp');
+    expect(row.avatarInitials).toBe('KM');
+  });
+
+  it('counts member summaries when legacy member ids are absent', () => {
+    const row = ActivityChatSingleRowConverter.convert({
+      ...groupChat(),
+      memberIds: [],
+      members: [{
+        id: 'viewer',
+        name: 'Nagy Eszter',
+        initials: 'NE',
+        gender: 'woman'
+      }, {
+        id: 'member-1',
+        name: 'Kai Morgan',
+        initials: 'KM',
+        gender: 'man'
+      }]
+    }, {
+      activeUser: {
+        id: 'viewer',
+        name: 'Nagy Eszter',
+        initials: 'NE',
+        gender: 'woman'
+      } as unknown as UserDto
+    });
+
+    expect(row.memberCount).toBe(2);
+  });
+});
+
+function groupChat(): ChatDTO {
+  return {
+    id: 'chat-group-b',
+    avatar: 'GB',
+    title: 'Group B · Group Channel',
+    lastMessage: 'Perfect, locking this in.',
+    lastSenderId: 'member-1',
+    memberIds: ['viewer', 'member-1'],
+    unread: 0,
+    channelType: 'groupSubEvent',
+    ownerId: 'event-1:stage-1:stage-1:group:2',
+    eventId: 'event-1',
+    subEventId: 'stage-1',
+    groupId: 'stage-1:group:2',
+    navigationContext: {
+      eventId: 'event-1',
+      eventTitle: 'Seattle Wildflower Meetup',
+      eventTarget: 'hosting',
+      eventPendingMembers: 0,
+      subEvent: {
+        id: 'stage-1',
+        name: 'Kickoff',
+        startAt: '2026-07-23T13:30:00Z',
+        endAt: '2026-07-23T14:15:00Z'
+      } as SubEventDTO,
+      group: {
+        id: 'stage-1:group:2',
+        name: 'Group B',
+        source: 'generated',
+        accepted: 2,
+        pending: 1,
+        capacityMin: 0,
+        capacityMax: 5
+      }
+    }
+  };
+}

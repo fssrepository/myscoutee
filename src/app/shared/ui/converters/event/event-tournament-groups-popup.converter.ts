@@ -1,0 +1,478 @@
+import {
+  UiDateUtils,
+  type UiAccordionItem,
+  type UiAccordionModel,
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type UiConverter
+} from '@myscoutee/components';
+import { AssetDefaultsBuilder } from '../../../core/base/builders/asset-defaults.builder';
+import * as AppConstants from '../../../core/common/constants';
+import type { AssetType } from '../../../core/common/constants';
+import type {
+  EventMode,
+  EventTournamentGroupDTO,
+  EventTournamentGroupsStateDTO,
+  EventTournamentStageDTO
+} from '../../../core/contracts/event.interface';
+
+export interface EventTournamentGroupsPopupConverterInput {
+  state: EventTournamentGroupsStateDTO | null;
+  mode?: EventMode | null;
+  selectedStageId: string | null;
+  openGroupIds: readonly string[];
+}
+
+export interface EventTournamentGroupsStageMenuContext {
+  stageId: string;
+}
+
+export interface EventTournamentGroupsAccordionContext {
+  groupId: string;
+  stageId: string;
+}
+
+export type EventTournamentGroupsAction =
+  | 'add-entry'
+  | 'edit-group'
+  | 'delete-group'
+  | 'members'
+  | 'transport'
+  | 'accommodation'
+  | 'supplies';
+
+export interface EventTournamentGroupsActionContext {
+  action: EventTournamentGroupsAction;
+  stageId: string;
+  groupId: string;
+}
+
+export interface EventTournamentGroupsPopupModel {
+  mode: EventMode;
+  title: string;
+  subtitle: string;
+  selectedStage: EventTournamentStageDTO | null;
+  canManage: boolean;
+  stageTrigger: AppMenuTrigger;
+  stageItems: readonly AppMenuItem<string, EventTournamentGroupsStageMenuContext>[];
+  accordion: UiAccordionModel<
+    string,
+    EventTournamentGroupsAccordionContext,
+    EventTournamentGroupsActionContext
+  >;
+}
+
+export class EventTournamentGroupsPopupConverter
+  implements UiConverter<EventTournamentGroupsPopupConverterInput, EventTournamentGroupsPopupModel> {
+  static convert(input: EventTournamentGroupsPopupConverterInput): EventTournamentGroupsPopupModel {
+    const state = input.state;
+    const mode: EventMode = input.mode === 'Mingle' ? 'Mingle' : 'Tournament';
+    const stages = state?.stages ?? [];
+    const selectedStage = this.selectedStage(stages, input.selectedStageId);
+    const openIds = new Set(input.openGroupIds.map(id => id.trim()).filter(Boolean));
+    return {
+      mode,
+      title: state?.title?.trim() || (mode === 'Mingle' ? 'Tables' : 'Groups'),
+      subtitle: selectedStage
+        ? this.stageSubtitle(selectedStage, mode)
+        : state?.subtitle?.trim() || (mode === 'Mingle' ? 'Mingle tables' : 'Tournament groups'),
+      selectedStage,
+      canManage: state?.canManage === true,
+      stageTrigger: this.stageTrigger(selectedStage, mode),
+      stageItems: stages.map(stage => this.stageItem(stage, selectedStage?.subEventId ?? null, mode)),
+      accordion: {
+        items: selectedStage
+          ? selectedStage.groups.map((group, index) => this.groupAccordionItem(
+              selectedStage,
+              group,
+              index,
+              openIds,
+              state?.canManage === true,
+              mode
+            ))
+          : [],
+        multi: false,
+        emptyTitle: selectedStage
+          ? mode === 'Mingle' ? 'No tables in this round yet' : 'No groups yet'
+          : mode === 'Mingle' ? 'No Mingle round' : 'No tournament stage',
+        emptyDescription: selectedStage
+          ? mode === 'Mingle' ? 'Tables appear when this round starts.' : 'Add a group from the header action.'
+          : mode === 'Mingle' ? 'Select a round to view its tables.' : 'Select a tournament stage to manage groups.'
+      }
+    };
+  }
+
+  convert(input: EventTournamentGroupsPopupConverterInput): EventTournamentGroupsPopupModel {
+    return EventTournamentGroupsPopupConverter.convert(input);
+  }
+
+  static stagePalette(stageNumber: number): AppMenuPalette {
+    const palettes: AppMenuPalette[] = ['blue', 'green', 'amber', 'violet', 'teal', 'gold'];
+    const index = Math.max(0, Math.trunc(Number(stageNumber) || 1) - 1);
+    return palettes[index % palettes.length] ?? 'blue';
+  }
+
+  static groupPalette(groupIndex: number): AppMenuPalette {
+    const palettes: AppMenuPalette[] = ['amber', 'green', 'mint', 'teal'];
+    const index = Math.max(0, Math.trunc(Number(groupIndex) || 0));
+    return palettes[index % palettes.length] ?? 'amber';
+  }
+
+  private static selectedStage(
+    stages: readonly EventTournamentStageDTO[],
+    selectedStageId: string | null
+  ): EventTournamentStageDTO | null {
+    const id = `${selectedStageId ?? ''}`.trim();
+    if (id) {
+      const selected = stages.find(stage => stage.subEventId === id);
+      if (selected) {
+        return selected;
+      }
+    }
+    return stages[0] ?? null;
+  }
+
+  private static stageTrigger(stage: EventTournamentStageDTO | null, mode: EventMode): AppMenuTrigger {
+    const pending = this.stagePendingTotal(stage, mode);
+    return {
+      label: stage?.title ?? (mode === 'Mingle' ? 'Round' : 'Stage'),
+      icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
+      palette: mode === 'Mingle' ? 'pink' : stage ? this.stagePalette(stage.stageNumber) : 'blue',
+      layout: 'pill',
+      counter: pending > 0
+        ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
+        : null,
+      ariaLabel: mode === 'Mingle' ? 'Select round' : 'Select stage'
+    };
+  }
+
+  private static stageItem(
+    stage: EventTournamentStageDTO,
+    selectedStageId: string | null,
+    mode: EventMode
+  ): AppMenuItem<string, EventTournamentGroupsStageMenuContext> {
+    const pending = this.stagePendingTotal(stage, mode);
+    return {
+      id: stage.subEventId,
+      label: stage.title,
+      description: this.stageSubtitle(stage, mode),
+      icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
+      palette: mode === 'Mingle' ? 'pink' : this.stagePalette(stage.stageNumber),
+      surface: 'tinted',
+      kind: 'radio',
+      active: stage.subEventId === selectedStageId,
+      counter: pending > 0
+        ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
+        : null,
+      counterTone: 'alert',
+      context: { stageId: stage.subEventId }
+    };
+  }
+
+  private static groupAccordionItem(
+    stage: EventTournamentStageDTO,
+    group: EventTournamentGroupDTO,
+    index: number,
+    openIds: ReadonlySet<string>,
+    canManage: boolean,
+    mode: EventMode
+  ): UiAccordionItem<
+    string,
+    EventTournamentGroupsAccordionContext,
+    EventTournamentGroupsActionContext
+  > {
+    const capacity = this.groupCapacityLabel(group);
+    const accepted = Math.max(0, Math.trunc(Number(group.membersAccepted) || 0));
+    const pendingTotal = this.groupPendingTotal(group, mode);
+    const memberLabel = accepted === 1 ? '1 member' : `${accepted} members`;
+    const pendingLabel = pendingTotal === 1 ? '1 pending' : `${pendingTotal} pending`;
+    return {
+      id: group.id,
+      guideFieldId: index === 0 ? 'tournament-group-accordion' : undefined,
+      guideActivateOnStep: index === 0,
+      title: group.name || (mode === 'Mingle'
+        ? `Table ${index + 1}`
+        : `Group ${String.fromCharCode(65 + (index % 26))}`),
+      subtitle: [
+        group.source === 'manual' ? 'Manual' : '',
+        memberLabel,
+        pendingTotal > 0 ? pendingLabel : ''
+      ].filter(Boolean).join(' · '),
+      icon: mode === 'Mingle' ? 'table_restaurant' : 'groups',
+      badges: [
+        {
+          id: 'members-capacity',
+          label: `${accepted} / ${group.capacityMin} - ${group.capacityMax}`,
+          palette: this.groupPalette(index),
+          ariaLabel: `Members ${accepted} of ${group.capacityMin} to ${group.capacityMax}`,
+          title: capacity
+        }
+      ],
+      palette: this.groupPalette(index),
+      open: openIds.has(group.id),
+      actionMenu: this.groupActionMenu(stage, group, canManage, pendingTotal, mode),
+      context: {
+        groupId: group.id,
+        stageId: stage.subEventId
+      }
+    };
+  }
+
+  private static groupActionMenu(
+    stage: EventTournamentStageDTO,
+    group: EventTournamentGroupDTO,
+    canManage: boolean,
+    pendingTotal: number,
+    mode: EventMode
+  ): {
+    guideControlId: string;
+    kind: 'select';
+    trigger: AppMenuTrigger;
+    model: AppMenuModel<string, EventTournamentGroupsActionContext>;
+    panelAlign: 'auto';
+    mobileBreakpointPx: number;
+  } {
+    const contextBase = { stageId: stage.subEventId, groupId: group.id };
+    const actions: AppMenuItem<string, EventTournamentGroupsActionContext>[] = [];
+    if (canManage && (mode !== 'Mingle' || group.source === 'manual')) {
+      if (mode !== 'Mingle' && `${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'SR') {
+        actions.push({
+          id: 'add-entry',
+          label: stage.leaderboardType === 'Fifa' ? 'Add Match' : 'Add Score',
+          icon: stage.leaderboardType === 'Fifa' ? 'add_circle' : 'add',
+          palette: 'blue',
+          context: { ...contextBase, action: 'add-entry' }
+        });
+      }
+      actions.push(
+        {
+          id: 'edit-group',
+          label: 'edit',
+          icon: 'edit',
+          context: { ...contextBase, action: 'edit-group' }
+        },
+        {
+          id: 'delete-group',
+          label: 'delete',
+          icon: 'delete',
+          palette: 'danger',
+          context: { ...contextBase, action: 'delete-group' }
+        }
+      );
+    }
+    return {
+      guideControlId: 'tournament-group-actions',
+      kind: 'select',
+      trigger: {
+        icon: 'more_vert',
+        closeIcon: 'close',
+        hideLabel: true,
+        layout: 'icon',
+        counter: pendingTotal > 0
+          ? { value: pendingTotal, max: 99, ariaLabel: `${pendingTotal} pending changes` }
+          : null,
+        ariaLabel: `Open actions for ${group.name}`
+      },
+      model: {
+        nodes: [
+          ...(actions.length > 0 ? [{ id: 'actions', items: actions }] : []),
+          {
+            id: 'members',
+            items: [
+              this.pendingMenuItem(
+                'members',
+                'members',
+                canManage ? 'group_add' : 'groups',
+                'blue',
+                contextBase,
+                `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
+                group.membersPending
+              )
+            ]
+          },
+          ...(mode === 'Mingle' ? [] : [{
+            id: 'assets',
+            label: 'Assets',
+            items: AppConstants.ASSET_TYPES.map(type => this.resourceMenuItem(type, group, contextBase))
+          }])
+        ]
+      },
+      panelAlign: 'auto',
+      mobileBreakpointPx: 900
+    };
+  }
+
+  private static resourceMenuItem(
+    type: AssetType,
+    group: EventTournamentGroupDTO,
+    contextBase: { stageId: string; groupId: string }
+  ): AppMenuItem<string, EventTournamentGroupsActionContext> {
+    const action = type === AppConstants.ASSET_TYPE_TRANSPORT
+      ? 'transport'
+      : type === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? 'accommodation'
+        : 'supplies';
+    const palette: AppMenuPalette = type === AppConstants.ASSET_TYPE_TRANSPORT
+      ? 'sky'
+      : type === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? 'green'
+        : 'brown';
+    const metric = group.resourceMetricsByType?.[type];
+    const accepted = this.count(metric?.accepted);
+    const capacityMin = this.count(metric?.capacityMin);
+    const capacityMax = Math.max(capacityMin, this.count(metric?.capacityMax));
+    return this.pendingMenuItem(
+      action,
+      AssetDefaultsBuilder.assetTypeLabel(type),
+      AssetDefaultsBuilder.assetTypeIcon(type),
+      palette,
+      contextBase,
+      `${accepted} / ${capacityMin} - ${capacityMax}`,
+      metric?.pending
+    );
+  }
+
+  private static pendingMenuItem(
+    id: EventTournamentGroupsAction,
+    label: string,
+    icon: string,
+    palette: AppMenuPalette,
+    contextBase: { stageId: string; groupId: string },
+    description: string,
+    pendingValue: number | null | undefined
+  ): AppMenuItem<string, EventTournamentGroupsActionContext> {
+    const pending = this.count(pendingValue);
+    return {
+      id,
+      label,
+      description,
+      icon,
+      palette,
+      surface: 'tinted',
+      layout: 'pill',
+      counter: pending > 0
+        ? { value: pending, max: 99, ariaLabel: `${pending} pending` }
+        : null,
+      counterTone: 'alert',
+      context: {
+        ...contextBase,
+        action: id
+      }
+    };
+  }
+
+  static groupPendingTotal(group: EventTournamentGroupDTO | null | undefined, mode: EventMode = 'Tournament'): number {
+    if (!group) {
+      return 0;
+    }
+    const resourcePending = mode === 'Mingle' ? 0 : AppConstants.ASSET_TYPES.reduce(
+      (total, type) => total + this.count(group.resourceMetricsByType?.[type]?.pending),
+      0
+    );
+    return this.count(group.membersPending) + resourcePending;
+  }
+
+  static stagePendingTotal(stage: EventTournamentStageDTO | null | undefined, mode: EventMode = 'Tournament'): number {
+    return (stage?.groups ?? []).reduce(
+      (total, group) => total + this.groupPendingTotal(group, mode),
+      0
+    );
+  }
+
+  static withResourcePendingDelta(
+    state: EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    resourceType: AssetType,
+    pendingDelta: number
+  ): EventTournamentGroupsStateDTO | null {
+    return this.withResourceMetricDeltas(state, stageId, groupId, resourceType, {
+      pending: pendingDelta
+    });
+  }
+
+  static withResourceMetricDeltas(
+    state: EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    resourceType: AssetType,
+    deltas: { accepted?: number; pending?: number; capacityMin?: number; capacityMax?: number }
+  ): EventTournamentGroupsStateDTO | null {
+    const normalizedStageId = `${stageId ?? ''}`.trim();
+    const normalizedGroupId = `${groupId ?? ''}`.trim();
+    const acceptedDelta = Math.trunc(Number(deltas.accepted) || 0);
+    const pendingDelta = Math.trunc(Number(deltas.pending) || 0);
+    const capacityMinDelta = Math.trunc(Number(deltas.capacityMin) || 0);
+    const capacityMaxDelta = Math.trunc(Number(deltas.capacityMax) || 0);
+    if (
+      !state
+      || !normalizedStageId
+      || !normalizedGroupId
+      || (
+        acceptedDelta === 0
+        && pendingDelta === 0
+        && capacityMinDelta === 0
+        && capacityMaxDelta === 0
+      )
+    ) {
+      return state;
+    }
+
+    let changed = false;
+    const stages = state.stages.map(stage => stage.subEventId === normalizedStageId
+      ? {
+          ...stage,
+          groups: stage.groups.map(group => {
+            if (group.id !== normalizedGroupId) {
+              return group;
+            }
+            const current = group.resourceMetricsByType?.[resourceType];
+            if (!current && capacityMaxDelta <= 0) {
+              return group;
+            }
+            changed = true;
+            return {
+              ...group,
+              resourceMetricsByType: {
+                ...group.resourceMetricsByType,
+                [resourceType]: {
+                  accepted: Math.max(0, this.count(current?.accepted) + acceptedDelta),
+                  pending: Math.max(0, this.count(current?.pending) + pendingDelta),
+                  capacityMin: Math.max(0, this.count(current?.capacityMin) + capacityMinDelta),
+                  capacityMax: Math.max(0, this.count(current?.capacityMax) + capacityMaxDelta)
+                }
+              }
+            };
+          })
+        }
+      : stage);
+    return changed ? { ...state, stages } : state;
+  }
+
+  private static stageSubtitle(stage: EventTournamentStageDTO, mode: EventMode): string {
+    const range = UiDateUtils.dateTimeRangeLabel(stage.startAt, stage.endAt, '');
+    const groupLabel = mode === 'Mingle'
+      ? stage.groups.length === 1 ? '1 table' : `${stage.groups.length} tables`
+      : stage.groups.length === 1 ? '1 group' : `${stage.groups.length} groups`;
+    return [range, groupLabel].filter(Boolean).join(' · ');
+  }
+
+  private static groupCapacityLabel(group: EventTournamentGroupDTO): string {
+    const min = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
+    const max = Math.max(min, Math.trunc(Number(group.capacityMax) || min));
+    return `Capacity ${min} - ${max}`;
+  }
+
+  private static count(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+}
+
+export const eventTournamentGroupsPopupConverter =
+  EventTournamentGroupsPopupConverter satisfies UiConverter<
+    EventTournamentGroupsPopupConverterInput,
+    EventTournamentGroupsPopupModel
+  >;

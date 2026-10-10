@@ -5,51 +5,51 @@ export {
   type AssetInfoCardConverterOptions,
   type AssetInfoCardModel,
   type AssetOwnedInfoCardConverterOptions
-} from './asset-info-card.converter';
+} from './asset/asset-info-card.converter';
 export {
   AssetTicketInfoCardConverter,
   assetTicketInfoCardConverter,
   type AssetTicketInfoCardConverterOptions,
   type AssetTicketInfoCardModel
-} from './asset-ticket-info-card.converter';
+} from './asset/asset-ticket-info-card.converter';
 export {
   AssetAvailabilitySingleRowConverter,
   assetAvailabilitySingleRowConverter,
   type AssetAvailabilitySingleRowConverterOptions
-} from './asset-availability-single-row.converter';
+} from './asset/asset-availability-single-row.converter';
 export {
   ActivityChatSingleRowConverter,
   activityChatSingleRowConverter,
   type ActivityChatSingleRowData,
   type ActivityChatSingleRowConverterOptions
-} from './activity-chat-single-row.converter';
+} from './chat/activity-chat-single-row.converter';
 export {
   ChatPopupHeaderContextConverter,
   type ChatMemberSummarySource,
   type ChatPopupHeaderContextConverterOptions
-} from './chat-popup-header-context.converter';
+} from './chat/chat-popup-header-context.converter';
 export {
   EventPolicySingleRowConverter,
   eventPolicySingleRowConverter,
   type EventPolicySingleRowConverterOptions
-} from './event-policy-single-row.converter';
+} from './event/event-policy-single-row.converter';
 export {
   ActivityMemberImageCardConverter,
   activityMemberImageCardConverter,
   type ActivityMemberImageCardConverterOptions
-} from './activity-member-image-card.converter';
+} from './activity/activity-member-image-card.converter';
 export {
   ActivityEventInfoCardConverter,
   activityEventInfoCardConverter,
   type ActivityEventInfoCardConverterOptions,
   type ActivityEventInfoCardSummaryOptions
-} from './activity-event-info-card.converter';
+} from './event/activity-event-info-card.converter';
 export {
   EventExploreInfoCardConverter,
   eventExploreInfoCardConverter,
   type EventExploreInfoCardConverterOptions,
   type EventExploreTopicToneGroup
-} from './event-explore-info-card.converter';
+} from './event/event-explore-info-card.converter';
 export {
   ActivityEventInfoCardMenuConverter,
   activityEventInfoCardMenuConverter,
@@ -57,23 +57,23 @@ export {
   type ActivityEventInfoCardMenuConverterOptions,
   type ActivityEventInfoCardMenuSubject,
   type ActivityEventEditorAction
-} from './activity-event-info-card-menu.converter';
+} from './event/activity-event-info-card-menu.converter';
 export {
   ActivitySubEventResourceInfoCardConverter,
   activitySubEventResourceInfoCardConverter,
   type ActivitySubEventResourceInfoCardConverterOptions
-} from './activity-sub-event-resource-info-card.converter';
+} from './event/activity-sub-event-resource-info-card.converter';
 export {
   ActivityRateImageCardConverter,
   activityRateImageCardConverter,
   type ActivityRateImageCardConverterOptions
-} from './activity-rate-image-card.converter';
+} from './activity/activity-rate-image-card.converter';
 export {
   ActivityRatePairCardConverter,
   ActivityRateSingleCardConverter,
   isActivityRatePairCardRow,
   type ActivityRateCardConverterOptions
-} from './activity-rate-card.converter';
+} from './activity/activity-rate-card.converter';
 export {
   ActivityRateMenuConverter,
   ActivityRateMenuSelectionConverter,
@@ -82,7 +82,7 @@ export {
   type ActivityRateMenuContext,
   type ActivityRateMenuSelection,
   type ActivityRateMenuSubject
-} from './activity-rate-menu.converter';
+} from './activity/activity-rate-menu.converter';
 export {
   HelpCenterDocumentViewerSectionConverter,
   HelpCenterPrivacyDocumentViewerSectionConverter,
@@ -93,7 +93,7 @@ export {
   type HelpCenterPrivacyDocumentViewerSectionConverterInput,
   type HelpCenterRevisionDocumentViewerConfigOptions,
   type HelpCenterRevisionDocumentViewerSectionMode
-} from './help-center-revision-document-viewer.converter';
+} from './app/help-center-revision-document-viewer.converter';
 export {
   EventFeedbackDetailConverter,
   EventFeedbackDetailImageCardConverter,
@@ -101,16 +101,16 @@ export {
   eventFeedbackDetailConverter,
   eventFeedbackDetailImageCardConverter,
   eventFeedbackDetailInfoCardConverter
-} from './event-feedback-detail.converter';
+} from './event/event-feedback-detail.converter';
 export {
   EventFeedbackFormFlowConverter,
   type EventFeedbackFormFlowConverterOptions
-} from './event-feedback-form-flow.converter';
+} from './event/event-feedback-form-flow.converter';
 export {
   EventSubeventRuntimeInfoCardConverter,
   eventSubeventRuntimeInfoCardConverter,
   type EventSubeventRuntimeInfoCardConverterOptions
-} from './event-subevent-runtime-info-card.converter';
+} from './event/event-subevent-runtime-info-card.converter';
 export {
   EventSubeventsSlotConverter,
   eventSubeventsSlotConverter,
@@ -118,7 +118,7 @@ export {
   type EventSubeventsSlotConverterOptions,
   type EventSubeventsSlotModel,
   type EventSubeventsSlotTone
-} from './event-subevents-slot.converter';
+} from './event/event-subevents-slot.converter';
 export {
   EventSubeventRuntimeMenuConverter,
   eventSubeventRuntimeMenuConverter,
@@ -126,14 +126,14 @@ export {
   type EventSubeventRuntimeMenuConverterOptions,
   type EventSubeventRuntimeMenuItemId,
   type EventSubeventRuntimeStageAction
-} from './event-subevent-runtime-menu.converter';
+} from './event/event-subevent-runtime-menu.converter';
 export {
   EventSubeventsListContextMenuConverter,
   eventSubeventsListContextMenuConverter,
   type EventSubeventsListContextAction,
   type EventSubeventsListContextMenuContext,
   type EventSubeventsListContextMenuConverterInput
-} from './event-subevents-list-context-menu.converter';
+} from './event/event-subevents-list-context-menu.converter';
 export {
   EventTournamentGroupsPopupConverter,
   eventTournamentGroupsPopupConverter,
@@ -143,28 +143,28 @@ export {
   type EventTournamentGroupsPopupConverterInput,
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
-} from './event-tournament-groups-popup.converter';
+} from './event/event-tournament-groups-popup.converter';
 export {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   profileFormFlowConverter,
   type ProfileFormFlowConverterOptions,
   type ProfileFormFlowMenuContext
-} from './profile-form-flow.converter';
+} from './profile/profile-form-flow.converter';
 export {
   ProfileHeaderCardConverter,
   type ProfileHeaderCardConverterOptions
-} from './profile-header-card.converter';
+} from './profile/profile-header-card.converter';
 export {
   UserRealtimeUiConverter,
   type UserRealtimeUiPatch,
   type UserRealtimeUiPatchInput
-} from './user-realtime-ui.converter';
+} from './profile/user-realtime-ui.converter';
 export {
   NotificationSingleRowConverter,
   notificationSingleRowConverter,
   type NotificationSingleRowConverterOptions
-} from './notification-single-row.converter';
+} from './notification/notification-single-row.converter';
 export {
   EventFeedbackInfoCardConverter,
   EventFeedbackOrganizerInfoCardConverter,
@@ -173,7 +173,7 @@ export {
   type EventFeedbackInfoCardConverterOptions,
   type EventFeedbackOrganizerInfoCardConverterOptions,
   type EventFeedbackOrganizerInfoCardData
-} from './event-feedback-info-card.converter';
+} from './event/event-feedback-info-card.converter';
 export {
   EventFeedbackFilterMenuConverter,
   EventFeedbackListPresentationConverter,
@@ -198,4 +198,4 @@ export {
   type EventFeedbackOrganizerMessageGroupData,
   type EventFeedbackOrganizerMessageItemData,
   type EventFeedbackOrganizerStatItemData
-} from './event-feedback-page.converter';
+} from './event/event-feedback-page.converter';

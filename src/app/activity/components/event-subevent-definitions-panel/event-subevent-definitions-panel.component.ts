@@ -24,7 +24,7 @@ import {
   DialogStore
 } from '@myscoutee/components';
 
-import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode-menu.converter';
+import { EventModeMenuConverter } from '../../../shared/ui/converters/event/event-mode-menu.converter';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, computed, forwardRef, Input, Output, inject, signal } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';

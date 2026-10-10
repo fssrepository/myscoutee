@@ -10,7 +10,7 @@ import {
   ExplanationGuideService
 } from '@myscoutee/components';
 
-import { ServiceFeedbackStore } from '../../context/stores/service-feedback.store';
+import { ServiceFeedbackStore } from '../../context/stores/services/service-feedback.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/rating-snapshot';
 

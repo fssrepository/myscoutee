@@ -1,0 +1,183 @@
+import { describe, expect, it } from 'vitest';
+
+import type { EventTournamentGroupsStateDTO } from '../../../core/contracts/event.interface';
+import { EventTournamentGroupsPopupConverter } from './event-tournament-groups-popup.converter';
+
+describe('EventTournamentGroupsPopupConverter metrics', () => {
+  it('aggregates group pending changes into stage, accordion trigger, and menu counters', () => {
+    const model = EventTournamentGroupsPopupConverter.convert({
+      state: tournamentState(),
+      selectedStageId: 'stage-1',
+      openGroupIds: []
+    });
+    const group = model.accordion.items[0];
+    const actionNodes = group?.actionMenu?.model?.nodes ?? [];
+    const menuItems = actionNodes.flatMap(node => node.items ?? []);
+
+    expect(model.stageTrigger.counter).toEqual({
+      value: 4,
+      max: 99,
+      ariaLabel: '4 pending changes'
+    });
+    expect(model.stageItems[0]?.counter).toEqual({
+      value: 4,
+      max: 99,
+      ariaLabel: '4 pending changes'
+    });
+    expect(model.stageItems[0]?.counterTone).toBe('alert');
+    expect(group?.subtitle).toBe('2 members · 4 pending');
+    expect(group?.badges?.map(badge => badge.label)).toEqual(['2 / 0 - 5']);
+    expect(group?.actionMenu?.trigger?.counter).toEqual({
+      value: 4,
+      max: 99,
+      ariaLabel: '4 pending changes'
+    });
+    expect(menuItems.find(item => item.id === 'members')?.counter).toEqual({
+      value: 1,
+      max: 99,
+      ariaLabel: '1 pending'
+    });
+    expect(menuItems.find(item => item.id === 'transport')?.counter).toEqual({
+      value: 3,
+      max: 99,
+      ariaLabel: '3 pending'
+    });
+    expect(menuItems.find(item => item.id === 'members')?.counterTone).toBe('alert');
+    expect(menuItems.find(item => item.id === 'transport')?.counterTone).toBe('alert');
+  });
+
+  it('uses the Mingle pink palette for the round selector and its menu items', () => {
+    const model = EventTournamentGroupsPopupConverter.convert({
+      state: tournamentState(),
+      mode: 'Mingle',
+      selectedStageId: 'stage-1',
+      openGroupIds: []
+    });
+
+    expect(model.stageTrigger.palette).toBe('pink');
+    expect(model.stageItems.every(item => item.palette === 'pink')).toBe(true);
+  });
+
+  it('applies a scoped resource-member delta only to the matching group and resource type', () => {
+    const state = tournamentState();
+    const next = EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      1
+    );
+
+    expect(next).not.toBe(state);
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toEqual({
+      accepted: 2,
+      pending: 4,
+      capacityMin: 0,
+      capacityMax: 5
+    });
+    expect(EventTournamentGroupsPopupConverter.stagePendingTotal(next?.stages[0])).toBe(5);
+  });
+
+  it('removes accepted, pending and capacity metrics from the matching menu scope together', () => {
+    const state = tournamentState();
+    const next = EventTournamentGroupsPopupConverter.withResourceMetricDeltas(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      { accepted: -2, pending: -3, capacityMin: 0, capacityMax: -5 }
+    );
+
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toEqual({
+      accepted: 0,
+      pending: 0,
+      capacityMin: 0,
+      capacityMax: 0
+    });
+    expect(EventTournamentGroupsPopupConverter.stagePendingTotal(next?.stages[0])).toBe(1);
+  });
+
+  it('ignores a scoped resource-member delta for another group', () => {
+    const state = tournamentState();
+
+    expect(EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      state,
+      'stage-1',
+      'another-group',
+      'Transport',
+      1
+    )).toBe(state);
+  });
+
+  it('does not synthesize a zero-capacity resource metric from a delta alone', () => {
+    const state = tournamentState();
+    state.stages[0]!.groups[0]!.resourceMetricsByType = {};
+
+    expect(EventTournamentGroupsPopupConverter.withResourcePendingDelta(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      -1
+    )).toBe(state);
+    expect(state.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toBeUndefined();
+  });
+
+  it('creates the resource metric when the first assignment arrives as deltas', () => {
+    const state = tournamentState();
+    state.stages[0]!.groups[0]!.resourceMetricsByType = {};
+
+    const next = EventTournamentGroupsPopupConverter.withResourceMetricDeltas(
+      state,
+      'stage-1',
+      'stage-1:group:1',
+      'Transport',
+      { accepted: 0, pending: 1, capacityMin: 0, capacityMax: 4 }
+    );
+
+    expect(next?.stages[0]?.groups[0]?.resourceMetricsByType?.['Transport']).toEqual({
+      accepted: 0,
+      pending: 1,
+      capacityMin: 0,
+      capacityMax: 4
+    });
+  });
+});
+
+function tournamentState(): EventTournamentGroupsStateDTO {
+  return {
+    eventId: 'event-1',
+    title: 'Seattle Wildflower Meetup',
+    subtitle: '',
+    canManage: true,
+    stages: [{
+      subEventId: 'stage-1',
+      title: 'Kickoff',
+      description: '',
+      location: '',
+      startAt: '2026-07-23T13:30:00Z',
+      endAt: '2026-07-23T14:15:00Z',
+      stageNumber: 1,
+      stageStatus: 'SR',
+      leaderboardType: 'Score',
+      advancePerGroup: 1,
+      groups: [{
+        id: 'stage-1:group:1',
+        name: 'Group A',
+        source: 'generated',
+        capacityMin: 0,
+        capacityMax: 5,
+        membersAccepted: 2,
+        membersPending: 1,
+        resourceMetricsByType: {
+          Transport: {
+            accepted: 2,
+            pending: 3,
+            capacityMin: 0,
+            capacityMax: 5
+          }
+        }
+      }]
+    }]
+  };
+}

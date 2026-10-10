@@ -37,7 +37,7 @@ import {
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import * as AppConstants from '../../common/constants';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 
 interface HttpChatDto {
   id: string;

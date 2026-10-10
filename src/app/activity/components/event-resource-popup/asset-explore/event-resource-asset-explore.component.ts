@@ -29,7 +29,7 @@ import {
   DialogStore
 } from '@myscoutee/components';
 
-import { ChatShareStore } from '../../../../shared/ui/context/stores/chat-share.store';
+import { ChatShareStore } from '../../../../shared/ui/context/stores/chat/chat-share.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -57,10 +57,10 @@ import {
 
 import {
   AssetInfoCardConverter
-} from '../../../../shared/ui/converters/asset-info-card.converter';
+} from '../../../../shared/ui/converters/asset/asset-info-card.converter';
 import {
   ChatPopupHeaderContextConverter
-} from '../../../../shared/ui/converters/chat-popup-header-context.converter';
+} from '../../../../shared/ui/converters/chat/chat-popup-header-context.converter';
 import {
   AppUtils
 } from '../../../../shared/app-utils';
@@ -110,34 +110,34 @@ import type {
 } from '../../../../shared/core/contracts/user.interface';
 import {
   ActivityStore
-} from '../../../../shared/ui/context/stores/activity.store';
+} from '../../../../shared/ui/context/stores/activity/activity.store';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../../shared/ui/context/stores/activity/activities-popup.store';
 
 import {
   AssetStore
-} from '../../../../shared/ui/context/stores/asset.store';
+} from '../../../../shared/ui/context/stores/asset/asset.store';
 import type {
   AssetEditorCheckoutState,
   AssetEditorRuntimeAssignmentState
-} from '../../../../shared/ui/context/stores/asset.store';
+} from '../../../../shared/ui/context/stores/asset/asset.store';
 import {
   AssetPopupStore
-} from '../../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   AssetBorrowDraftStore,
   assetBorrowSelectionSignature,
   type AssetBorrowDraft
-} from '../../../../shared/ui/context/stores/asset-borrow-draft.store';
+} from '../../../../shared/ui/context/stores/asset/asset-borrow-draft.store';
 import {
   SubEventResourcePopupStore
-} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import {
   ProfileStore
-} from '../../../../shared/ui/context/stores/profile.store';
+} from '../../../../shared/ui/context/stores/profile/profile.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
@@ -151,11 +151,11 @@ import type {
   ResourceAssetDTO,
   ResourceAssetViewState,
   ResourcePopupContext
-} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import type {
   AssetExploreBorrowDialogViewState
 } from '../asset-explore-borrow-dialog/event-resource-asset-explore-borrow-dialog.component';
-import { UserProfileStore } from '../../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../shared/ui/context/stores/profile/user-profile.store';
 
 interface AssetExploreSmartListFilters {
   revision?: number;

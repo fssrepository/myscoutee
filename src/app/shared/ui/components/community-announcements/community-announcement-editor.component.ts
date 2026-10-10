@@ -11,7 +11,7 @@ import {
   ExplanationGuideService
 } from '@myscoutee/components';
 
-import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community-announcements.store';
+import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community/community-announcements.store';
 import { MediaService } from '../../../core/base/services/media.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
 

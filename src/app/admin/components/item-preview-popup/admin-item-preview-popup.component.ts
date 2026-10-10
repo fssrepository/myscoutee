@@ -3,7 +3,7 @@ import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { PopupComponent, type PopupModel } from '@myscoutee/components';
-import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
 
 @Component({
   selector: 'app-admin-item-preview-popup',

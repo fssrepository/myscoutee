@@ -31,7 +31,7 @@ import {
 } from '@myscoutee/components';
 
 import { groupPriorityEnabled } from '../../../shared/core/contracts/group-type';
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
 import {
@@ -67,16 +67,16 @@ import {
 } from 'rxjs';
 import {
   ActivitiesPopupStore
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   EventEditorPopupStore,
   type EventEditorCheckoutSurfaceTone,
   type EventPaymentStatusTone
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
+} from '../../../shared/ui/context/stores/event/event-editor-popup.store';
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
-} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
 
 import {
   APP_STATIC_DATA
@@ -112,12 +112,12 @@ import {
 } from '../event-subevent-definitions-panel';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import {
   ActivityStore
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' | 'toggle-approval-required' }
@@ -356,7 +356,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly slotsInputConfig: SlotsInputConfig = {
     labels: SLOTS_INPUT_LABELS,
     normalizeTemplates: items => ActivityEventDetailDTO.normalizeSlotTemplates(items),
-    frequencyLabel: frequency => 'schedule.frequency.' + ({ 'Bi-weekly': 'bi.weekly', 'One-time': 'custom' }[frequency] ?? frequency.toLowerCase()),
+    frequencyLabel: frequency => 'schedule.frequency.' + (frequency === 'Bi-weekly' ? 'bi.weekly' : frequency === 'One-time' ? 'custom' : frequency.toLowerCase()),
 
     startAtIso: () => this.eventDetailDTO.dateRange.startAt,
     endAtIso: () => this.eventDetailDTO.dateRange.endAt,

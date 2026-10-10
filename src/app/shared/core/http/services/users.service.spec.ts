@@ -6,7 +6,7 @@ import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { SessionService, type AppSession } from '../../base/services/session.service';
 import { UserDto, type UserByIdQueryResponse } from '../../contracts/user.interface';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 import { HttpUsersService } from './users.service';
 
 describe('HttpUsersService demo authority boundary', () => {

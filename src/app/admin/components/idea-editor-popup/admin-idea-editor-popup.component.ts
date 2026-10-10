@@ -66,9 +66,9 @@ import {
 
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = IdeaPostAdminFilter;

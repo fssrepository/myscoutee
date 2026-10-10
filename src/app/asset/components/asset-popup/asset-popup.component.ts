@@ -75,17 +75,17 @@ import {
 
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   AssetAvailabilityPopupStore
-} from '../../../shared/ui/context/stores/asset-availability-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-availability-popup.store';
 import {
   AssetStore,
   type AssetVisibleListPatch
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 import {
   SubEventResourcePopupStore
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import {
   I18nService
 } from '../../../shared/core';
@@ -96,9 +96,9 @@ import {
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 import * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
 interface AssetTicketListFilters {
   userId?: string;
   order?: AppConstants.AssetTicketOrder;

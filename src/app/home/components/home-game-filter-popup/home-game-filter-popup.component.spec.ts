@@ -3,7 +3,7 @@ import { SimpleChange } from '@angular/core';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
 import { createInitialGameFilter, GameFilterMenuKind } from '../../shared/home-game-filter.shared';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile-form-flow.converter';
+import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile/profile-form-flow.converter';
 import type { FormFlowMenuControlConfig } from '@myscoutee/components';
 import { UserDto } from '../../../shared/core/contracts/user.interface';
 

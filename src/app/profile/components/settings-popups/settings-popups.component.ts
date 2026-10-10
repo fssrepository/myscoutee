@@ -25,18 +25,18 @@ import {
 import { DocumentViewerComponent } from '../../../shared/ui/components/document-viewer/document-viewer.component';
 import { type DocumentViewerAction, type DocumentViewerActionEvent, type DocumentViewerActionVisibility, type DocumentViewerConfig } from '../../../shared/ui/components/document-viewer';
 
-import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
+import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/app/help-center-revision-document-viewer.converter';
 import {
   ProfileStore,
   type ProfileSettingsPopup
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import {
   ProfileFeedbackPopupComponent
 } from '../feedback-popup/feedback-popup.component';
 import {
   ProfileReportUserPopupComponent
 } from '../report-user-popup/report-user-popup.component';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 @Component({
   selector: 'app-profile-settings-popups',

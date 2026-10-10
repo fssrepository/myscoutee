@@ -1,0 +1,364 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+
+import type {
+  NotificationBucket,
+  NotificationDto,
+  NotificationListFilters,
+  NotificationPageResultDto,
+  NotificationSyncRequestDto,
+  NotificationSyncResponseDto
+} from '../../../../core/contracts/notification.interface';
+import { type ListQuery, type AppMenuDragPosition } from '@myscoutee/components';
+import { NotificationsService } from '../../../../core/base/services/notifications.service';
+
+import { CommunityGroupChangesStore } from '../community/community-group-changes.store';
+import { ActivityStore } from '../activity/activity.store';
+import { UserProfileStore } from '../profile/user-profile.store';
+
+export interface NotificationUnreadSyncOptions {
+  announce?: boolean;
+}
+
+export interface NotificationUnreadSyncToken {
+  userId: string;
+  generation: number;
+  revision: number;
+  unreadCount: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class NotificationCenterStore {
+  private readonly notificationsService = inject(NotificationsService);
+  readonly permissionBusy = signal(false);
+  readonly permissionActionPending = this.permissionBusy.asReadonly();
+  private readonly activityStore = inject(ActivityStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+
+  private readonly activeUserIdRef = signal('');
+  private readonly openRef = signal(false);
+  private readonly unreadCountRef = signal(0);
+  private readonly mutedRef = signal(false);
+  private readonly markReadPendingIdsRef = signal<ReadonlySet<string>>(new Set());
+  private readonly attentionRequestedRef = signal(false);
+  private readonly dragPositionRef = signal<AppMenuDragPosition>({ x: 0, y: 0 });
+  private readonly bucketRef = signal<NotificationBucket>('new');
+
+  readonly activeUserId = this.activeUserIdRef.asReadonly();
+  readonly isOpen = this.openRef.asReadonly();
+  readonly visible = this.isOpen;
+  readonly unreadCount = this.unreadCountRef.asReadonly();
+  readonly muted = this.mutedRef.asReadonly();
+  readonly dragPosition = this.dragPositionRef.asReadonly();
+  readonly bucket = this.bucketRef.asReadonly();
+  readonly workspace = signal('all');
+  readonly attentionVisible = computed(() =>
+    this.attentionRequestedRef()
+    && this.unreadCountRef() > 0
+    && !this.muted()
+    && !this.openRef()
+  );
+
+  private generation = 0;
+  private pageContextRevision = 0;
+  private pageContextRequestSequence = 0;
+
+  initialize(userId: string, initialUnreadCount = 0, initialMuted = false): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      this.reset();
+      return;
+    }
+    if (this.activeUserIdRef() === normalizedUserId) {
+      this.syncUnreadCount(initialUnreadCount);
+      this.syncMuted(initialMuted);
+      return;
+    }
+
+    this.resetState();
+    this.activeUserIdRef.set(normalizedUserId);
+    this.syncUnreadCount(initialUnreadCount);
+    this.syncMuted(initialMuted);
+    this.requestAttention();
+  }
+
+  reset(): void {
+    this.resetState();
+  }
+
+  open(): void {
+    if (!this.activeUserIdRef() || this.openRef()) {
+      return;
+    }
+    this.attentionRequestedRef.set(false);
+    this.openRef.set(true);
+  }
+
+  close(): void {
+    this.openRef.set(false);
+  }
+
+  dismissAttention(): void {
+    this.attentionRequestedRef.set(false);
+  }
+
+  requestAttention(): void {
+    if (
+      this.unreadCountRef() > 0
+      && !this.muted()
+      && !this.openRef()
+    ) {
+      this.attentionRequestedRef.set(true);
+    }
+  }
+
+  setDragPosition(position: AppMenuDragPosition): void {
+    this.dragPositionRef.set({
+      x: this.finiteCoordinate(position?.x),
+      y: this.finiteCoordinate(position?.y)
+    });
+  }
+
+  setBucket(bucket: NotificationBucket): void {
+    this.bucketRef.set(bucket === 'new' ? 'new' : 'all');
+  }
+
+  isMarkReadPending(notificationId: string): boolean {
+    const normalizedNotificationId = notificationId.trim();
+    return Boolean(normalizedNotificationId)
+      && this.markReadPendingIdsRef().has(normalizedNotificationId);
+  }
+
+  syncUnreadCount(count: number, options: NotificationUnreadSyncOptions = {}): void {
+    const nextCount = this.nonNegativeInteger(count);
+    const previousCount = this.unreadCountRef();
+    if (nextCount !== previousCount) {
+      this.pageContextRevision += 1;
+      this.unreadCountRef.set(nextCount);
+      this.syncUserModelCounter(nextCount);
+    }
+    if (nextCount === 0) {
+      this.attentionRequestedRef.set(false);
+      return;
+    }
+    if (
+      options.announce === true
+      && nextCount > previousCount
+      && !this.muted()
+      && !this.openRef()
+    ) {
+      this.attentionRequestedRef.set(true);
+    }
+  }
+
+  captureUnreadSyncToken(): NotificationUnreadSyncToken {
+    return {
+      userId: this.activeUserIdRef(),
+      generation: this.generation,
+      revision: this.pageContextRevision,
+      unreadCount: this.unreadCountRef()
+    };
+  }
+
+  applyRealtimeUnreadCount(
+    token: NotificationUnreadSyncToken,
+    count: number
+  ): boolean {
+    const nextCount = this.nonNegativeInteger(count);
+    if (
+      !token.userId
+      || token.userId !== this.activeUserIdRef()
+      || token.generation !== this.generation
+      || token.revision !== this.pageContextRevision
+    ) {
+      return false;
+    }
+    this.syncUnreadCount(nextCount, {
+      announce: nextCount > token.unreadCount
+    });
+    return true;
+  }
+
+  async queryPage(
+    query: ListQuery<NotificationListFilters>,
+    signal?: AbortSignal
+  ): Promise<NotificationPageResultDto> {
+    const userId = this.activeUserIdRef();
+    if (!userId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null,
+        context: { unreadCount: 0, muted: false }
+      };
+    }
+    const generation = this.generation;
+    const contextRevision = this.pageContextRevision;
+    const contextRequestSequence = ++this.pageContextRequestSequence;
+    const page = await this.notificationsService.queryPage(userId, query, signal);
+    if (
+      generation === this.generation
+      && userId === this.activeUserIdRef()
+      && contextRevision === this.pageContextRevision
+      && contextRequestSequence === this.pageContextRequestSequence
+    ) {
+      this.applyPageContext(page);
+    }
+    return page;
+  }
+
+  private readonly groupChanges = inject(CommunityGroupChangesStore);
+
+  async markRead(notificationId: string, signal?: AbortSignal): Promise<NotificationDto> {
+    const userId = this.activeUserIdRef();
+    const normalizedNotificationId = notificationId.trim();
+    if (!userId || !normalizedNotificationId) {
+      throw new Error('Notification could not be marked as read.');
+    }
+    if (this.isMarkReadPending(normalizedNotificationId)) {
+      throw new Error('Notification is already being marked as read.');
+    }
+    this.setMarkReadPending(normalizedNotificationId, true);
+    try {
+      this.pageContextRevision += 1;
+      const generation = this.generation;
+      const result = await this.notificationsService.markRead(
+        userId,
+        normalizedNotificationId,
+        signal
+      );
+      if (generation === this.generation && userId === this.activeUserIdRef()) {
+        this.syncUnreadCount(result.unreadCount);
+        if (result.communityActivityDelta && result.notification.sourceId)
+          this.groupChanges.signalAttentionDelta(userId, result.notification.sourceId, result.communityActivityDelta);
+      }
+      return result.notification;
+    } finally {
+      this.setMarkReadPending(normalizedNotificationId, false);
+    }
+  }
+
+  async sync(
+    request: NotificationSyncRequestDto,
+    signal?: AbortSignal
+  ): Promise<NotificationSyncResponseDto> {
+    const userId = this.activeUserIdRef();
+    if (!userId) {
+      return {
+        upserts: [],
+        removedIds: [],
+        total: 0,
+        unreadCount: 0,
+        muted: false
+      };
+    }
+    const generation = this.generation;
+    const contextRevision = this.pageContextRevision;
+    const contextRequestSequence = ++this.pageContextRequestSequence;
+    const result = await this.notificationsService.sync(userId, request, signal);
+    if (
+      generation === this.generation
+      && userId === this.activeUserIdRef()
+      && contextRevision === this.pageContextRevision
+      && contextRequestSequence === this.pageContextRequestSequence
+    ) {
+      this.applySyncContext(result);
+    }
+    return result;
+  }
+
+  async setMuted(muted: boolean, signal?: AbortSignal): Promise<boolean> {
+    const userId = this.activeUserIdRef();
+    if (!userId) throw new Error('Notification preferences could not be updated.');
+    if (this.permissionActionPending()) return this.muted();
+    const generation = this.generation;
+    try {
+      this.permissionBusy.set(true);
+      this.pageContextRevision += 1;
+      const result = await this.notificationsService.setMuted(userId, muted === true, signal);
+      if (generation === this.generation && userId === this.activeUserIdRef()) {
+        this.syncMuted(result.muted === true);
+        this.attentionRequestedRef.set(false);
+      }
+      return result.muted === true;
+    } finally {
+      this.permissionBusy.set(false);
+    }
+  }
+
+  pollIntervalMs(): number {
+    return this.notificationsService.pollIntervalMs();
+  }
+
+  private applyPageContext(page: NotificationPageResultDto): void {
+    this.syncUnreadCount(page.context?.unreadCount ?? this.unreadCountRef());
+    this.syncMuted(page.context?.muted === true);
+  }
+
+  private applySyncContext(result: NotificationSyncResponseDto): void {
+    this.syncUnreadCount(result.unreadCount);
+    this.syncMuted(result.muted === true);
+  }
+
+  private syncMuted(muted: boolean): void {
+    const nextMuted = muted === true;
+    if (nextMuted !== this.mutedRef()) {
+      this.pageContextRevision += 1;
+      this.mutedRef.set(nextMuted);
+      const userId = this.activeUserIdRef();
+      if (userId) {
+        this.userProfileStore.patchUserNotificationPreferences(userId, nextMuted);
+      }
+    }
+    if (nextMuted) {
+      this.attentionRequestedRef.set(false);
+    }
+  }
+
+  private syncUserModelCounter(count: number): void {
+    const userId = this.activeUserIdRef();
+    if (!userId) {
+      return;
+    }
+    this.activityStore.setUserCounterOverride(userId, 'notifications', count);
+    this.userProfileStore.patchUserActivityCounters(userId, { notifications: count });
+  }
+
+  private setMarkReadPending(notificationId: string, pending: boolean): void {
+    const current = this.markReadPendingIdsRef();
+    if (current.has(notificationId) === pending) {
+      return;
+    }
+    const next = new Set(current);
+    if (pending) {
+      next.add(notificationId);
+    } else {
+      next.delete(notificationId);
+    }
+    this.markReadPendingIdsRef.set(next);
+  }
+
+  private resetState(): void {
+    this.workspace.set('all');
+    this.generation += 1;
+    this.pageContextRevision = 0;
+    this.pageContextRequestSequence = 0;
+    this.activeUserIdRef.set('');
+    this.openRef.set(false);
+    this.unreadCountRef.set(0);
+    this.mutedRef.set(false);
+    this.markReadPendingIdsRef.set(new Set());
+    this.attentionRequestedRef.set(false);
+    this.dragPositionRef.set({ x: 0, y: 0 });
+    this.bucketRef.set('new');
+  }
+
+  private nonNegativeInteger(value: number): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private finiteCoordinate(value: number): number {
+    return Number.isFinite(Number(value)) ? Number(value) : 0;
+  }
+}

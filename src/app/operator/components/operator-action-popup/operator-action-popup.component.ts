@@ -42,13 +42,13 @@ import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
   OperatorLeaderboardStore,
   type OperatorLeaderboardDeploymentFilters
-} from '../../../shared/ui/context/stores/operator-leaderboard.store';
+} from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
-} from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+} from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 
 import { OperatorRevenueViewComponent } from '../operator-revenue-view/operator-revenue-view.component';
 

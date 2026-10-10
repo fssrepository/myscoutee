@@ -1,4 +1,4 @@
-import { CommunityCaseChangesStore } from '../../../ui/context/stores/community-case-changes.store';
+import { CommunityCaseChangesStore } from '../../../ui/context/stores/community/community-case-changes.store';
 import { Injectable, inject } from '@angular/core';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalCommunityCasesService } from '../../local/source/services/community-cases.service';

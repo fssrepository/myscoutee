@@ -12,10 +12,10 @@ import type {
   OperatorSettlementDto
 } from '../../../shared/core/contracts/operator.interface';
 import { AppMenuComponent, type AppMenuItem, type AppMenuTrigger } from '@myscoutee/components';
-import { OperatorLeaderboardStore } from '../../../shared/ui/context/stores/operator-leaderboard.store';
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+import { OperatorLeaderboardStore } from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
+import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 import { OperatorActionPopupComponent } from './operator-action-popup.component';
 
 describe('OperatorActionPopupComponent', () => {

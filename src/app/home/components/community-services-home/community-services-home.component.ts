@@ -14,10 +14,10 @@ import { AppUtils } from '../../../shared/app-utils';
 import { Component, Input, inject, signal, computed, effect, untracked } from '@angular/core';
 import { defer,map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
-import { ServiceOfferingsStore } from '../../../shared/ui/context/stores/service-offerings.store';
-import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { SERVICE_CATEGORY_STYLE, ServiceOfferingConverter } from '../../../shared/ui/converters/service-offering.converter';
+import { ServiceOfferingsStore } from '../../../shared/ui/context/stores/services/service-offerings.store';
+import { ProfileStore } from '../../../shared/ui/context/stores/profile/profile.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { SERVICE_CATEGORY_STYLE, ServiceOfferingConverter } from '../../../shared/ui/converters/services/service-offering.converter';
 import { ServiceOfferingEditorComponent } from '../../../shared/ui/components/service-offerings/service-offering-editor.component';
 
 import { I18nService } from '../../../shared/core/base/services/i18n.service';

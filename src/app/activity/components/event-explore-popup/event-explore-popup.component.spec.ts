@@ -2,16 +2,16 @@ import { ChangeDetectorRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService } from '../../../shared/core';
 import { AppMenuDispatcher, DialogStore } from '@myscoutee/components';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { ProfileStore } from '../../../shared/ui/context/stores/profile/profile.store';
 
-import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
+import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 import { EventExplorePopupComponent } from './event-explore-popup.component';
 
 const defaults = { friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' as const };

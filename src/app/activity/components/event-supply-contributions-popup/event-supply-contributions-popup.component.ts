@@ -52,16 +52,16 @@ import {
 } from '../../../shared/core';
 import {
   AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 import {
   SubEventResourcePopupStore
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 
 import type {
   ResourcePopupContext,
   SupplyBringDialogState
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
   description?: string;

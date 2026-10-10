@@ -10,7 +10,7 @@ import {
   I18nPipe
 } from '@myscoutee/components';
 import type { IntegrationAccessMode } from '../../../shared/core/contracts/integration.interface';
-import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 
 const MODES: readonly IntegrationAccessMode[] = ['blocked', 'write', 'read', 'full'];
 const STYLE = {

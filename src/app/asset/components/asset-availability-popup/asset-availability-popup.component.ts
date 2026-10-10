@@ -59,16 +59,16 @@ import {
   AssetAvailabilityPopupStore,
   type AssetAvailabilityHeaderState,
   type AssetAvailabilityPopupRequest
-} from '../../../shared/ui/context/stores/asset-availability-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-availability-popup.store';
 
 import {
   AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceMetricsUpdate
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 
 type AssetAvailabilityListItem = AppDTOs.AssetOccupancyStatDTO | AppDTOs.AssetOccupancyRowDTO;
 

@@ -24,7 +24,7 @@ import {
 import {
   type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState
-} from '../../context/stores/demo-bootstrap-selector.store';
+} from '../../context/stores/app/demo-bootstrap-selector.store';
 import { AppUtils } from '../../../app-utils';
 import {
   IndicatorComponent,
@@ -46,7 +46,7 @@ import {
 import {
   UserProfileState
 } from '../../../core/common/user-profile-state';
-import { DemoBootstrapSelectorStore } from '../../context/stores/demo-bootstrap-selector.store';
+import { DemoBootstrapSelectorStore } from '../../context/stores/app/demo-bootstrap-selector.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
 type DemoSelectorRoleMenuItemId = DemoBootstrapSelectorMode;

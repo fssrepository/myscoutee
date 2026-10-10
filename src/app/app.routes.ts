@@ -131,7 +131,7 @@ const adminAreaGuard: CanActivateFn = async (_route, state) => {
   const { UsersService } = await import('./shared/core/base/services/users.service');
   const usersService = injector.get(UsersService);
   if (session.kind === 'demo' && usersService.localModeEnabled) {
-    const { AdminWorkspaceStore } = await import('./shared/ui/context/stores/admin-workspace.store');
+    const { AdminWorkspaceStore } = await import('./shared/ui/context/stores/admin/admin-workspace.store');
     const adminWorkspace = injector.get(AdminWorkspaceStore);
     const userId = session.userId.trim();
     const storedAdminId = adminWorkspace.readStoredAdminId();

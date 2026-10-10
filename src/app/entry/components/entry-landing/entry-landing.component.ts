@@ -21,7 +21,7 @@ import {
 } from '@myscoutee/components';
 import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
 import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
-import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/group-type-menu';
+import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/community/group-type-menu';
 import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';

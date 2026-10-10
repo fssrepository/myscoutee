@@ -1,0 +1,986 @@
+import { Injectable, signal, untracked } from '@angular/core';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+
+import {
+  EventFeedbackDetailDto,
+  type ActivitiesPrimaryFilter,
+  type ActivitiesEventScope,
+  type EventCheckoutResultState,
+  type ActivityCurrentUserMembershipStatus
+} from '../../../../core/contracts/activity.interface';
+import type * as AppDTOs from '../../../../core/contracts';
+import {
+  ASSET_TYPE_ACCOMMODATION,
+  ASSET_TYPE_SUPPLIES,
+  ASSET_TYPE_TRANSPORT,
+  type AssetType
+} from '../../../../core/common/constants';
+import type { ChatMetricBucketDTO } from '../../../../core/contracts/chat.interface';
+import type { SupportCaseStatus } from '../../../../core/contracts/chat.interface';
+import type {
+  UserMenuCounterDeltasDto,
+  UserMenuCountersDto,
+  UserEventCountersDto
+} from '../../../../core/contracts/user.interface';
+import {
+  cloneAssetCounters,
+  cloneChatCounters,
+  cloneEventCounters,
+  cloneEventFeedbackCounters,
+  normalizeCounterValue
+} from '../app/app-context-store.utils';
+
+export type ActivityCounterKey =
+  | 'game'
+  | 'chats'
+  | 'invitations'
+  | 'events'
+  | 'hosting'
+  | 'cars'
+  | 'accommodation'
+  | 'supplies'
+  | 'tickets'
+  | 'contacts'
+  | 'feedback'
+  | 'cases'
+  | 'notifications'
+  | 'paymentRefundsPending'
+  | 'contactRequestsPending'
+  | 'adminJobs'
+  | 'adminMetrics';
+
+export interface ActivityCounters {
+  game: number;
+  chats: number;
+  invitations: number;
+  events: number;
+  hosting: number;
+  cars: number;
+  accommodation: number;
+  supplies: number;
+  tickets: number;
+  contacts: number;
+  feedback: number;
+  notifications?: number;
+  cases?: number;
+  paymentRefundsPending?: number;
+  contactRequestsPending?: number;
+  chat?: ActivityChatCounters;
+  event?: ActivityEventCounters;
+  asset?: ActivityAssetCounters;
+  eventFeedback?: ActivityEventFeedbackCounters;
+  adminJobs: number;
+  adminMetrics: number;
+}
+
+export interface ActivityChatCounters {
+  all: number;
+  event: number;
+  subEvent: number;
+  group: number;
+  service: number;
+  appSupport: number;
+  contacts: number;
+  campaign: number;
+  cases: number;
+  groupSupport: number;
+  supportCases: ActivitySupportCaseCounters;
+}
+
+export interface ActivitySupportCaseCounters {
+  pending: number;
+  warned: number;
+  picked: number;
+  solved: number;
+  blocked: number;
+  all: number;
+}
+
+export interface ActivityEventCounters {
+  all: number;
+  active: number;
+  pending: number;
+  invitations: number;
+  hosting: number;
+  drafts: number;
+  watchlist: number;
+  trash: number;
+}
+
+export interface ActivityAssetCounters {
+  cars: number;
+  accommodation: number;
+  supplies: number;
+  tickets: number;
+  carsPending: number;
+  accommodationPending: number;
+  suppliesPending: number;
+}
+
+export interface ActivityEventFeedbackCounters {
+  ownEvents: number;
+  pending: number;
+  feedbacked: number;
+  removed: number;
+}
+
+export interface ActivityMembersSyncState {
+  updatedMs: number;
+  id: string;
+  eventId?: string;
+  subEventId?: string;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  full?: boolean;
+  checkoutResultState?: EventCheckoutResultState | null;
+  acceptedMemberDelta?: number;
+  pendingMemberDelta?: number;
+  viewerMembershipRemoved?: boolean;
+  resourceAssignmentRemoved?: boolean;
+  currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
+  memberStatusChange?: AppDTOs.AssetMemberStatusChangeDTO | null;
+}
+
+export interface ActivityResourceSyncState {
+  updatedMs: number;
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+  resourceType?: AssetType;
+  readAtIso?: string;
+}
+
+export interface ActivityResourceMemberDeltaSyncState {
+  updatedMs: number;
+  ownerId: string;
+  subEventId: string;
+  assetId: string;
+  resourceType: AssetType;
+  acceptedMemberDelta?: number;
+  pendingMemberDelta: number;
+  capacityMinDelta?: number;
+  capacityMaxDelta?: number;
+  resourceAssignmentRemoved?: boolean;
+}
+
+export interface ActivityEventRuntimeSyncState {
+  updatedMs: number;
+  eventId: string;
+  subEventId: string;
+  activityDelta: number;
+  currentStage?: AppDTOs.TournamentCurrentStageDTO | null;
+  source: 'members' | 'resources' | 'groups' | 'stage';
+}
+
+export type ActivityChatMetricBucketType = 'members' | 'transport' | 'accommodation' | 'supplies';
+
+export interface ActivityChatMetricBucketPatch {
+  updatedMs: number;
+  identity: string;
+  bucketType: ActivityChatMetricBucketType;
+  bucket: ChatMetricBucketDTO;
+}
+
+export interface ActivityEventFeedbackSubmitSyncState {
+  updatedMs: number;
+  dto: EventFeedbackDetailDto;
+}
+
+export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
+  'game',
+  'chats',
+  'invitations',
+  'events',
+  'hosting',
+  'cars',
+  'accommodation',
+  'supplies',
+  'tickets',
+  'contacts',
+  'feedback',
+  'notifications',
+  'cases',
+  'paymentRefundsPending',
+  'contactRequestsPending',
+  'adminJobs',
+  'adminMetrics'
+];
+
+export interface ActivityCounterSyncToken {
+  userId: string;
+  revision: number;
+  accountUserId?: string;
+  accountRevision?: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ActivityStore {
+  private static readonly ACCOUNT_COUNTER_KEYS = new Set<keyof ActivityCounters>([
+    'cars', 'accommodation', 'supplies', 'tickets', 'contacts', 'contactRequestsPending', 'asset'
+  ]);
+
+  constructor(private readonly workspace: GroupWorkspaceContextService) {}
+
+  private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
+  private readonly counterRevisionByUserId: Record<string, number> = {};
+  private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
+  private readonly _activityMembersSyncByOwnerId = signal<Readonly<Record<string, ActivityMembersSyncState>>>({});
+  private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityResourceMemberDeltaSync = signal<ActivityResourceMemberDeltaSyncState | null>(null);
+  private readonly _activityEventRuntimeSync = signal<ActivityEventRuntimeSyncState | null>(null);
+  private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
+  private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
+
+  readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
+  readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly activityMembersSyncByOwnerId = this._activityMembersSyncByOwnerId.asReadonly();
+  readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityResourceMemberDeltaSync = this._activityResourceMemberDeltaSync.asReadonly();
+  readonly activityEventRuntimeSync = this._activityEventRuntimeSync.asReadonly();
+  readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
+  readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
+
+  getUserCounterOverride(userId: string, key: ActivityCounterKey): number | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const value = this.getUserCounterOverrides(normalizedUserId)[key];
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return normalizeCounterValue(value);
+  }
+
+  getUserCounterOverrides(userId: string): Partial<ActivityCounters> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {};
+    }
+    const state = this._counterOverridesByUserId();
+    const overrides = { ...state[normalizedUserId] };
+    const accountId = this.workspace.accountId(normalizedUserId);
+    if (accountId !== normalizedUserId) {
+      const account = state[accountId] ?? {};
+      for (const key of ActivityStore.ACCOUNT_COUNTER_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(account, key)) Object.assign(overrides, { [key]: account[key] });
+      }
+    }
+    return overrides;
+  }
+
+  setUserCounterOverride(userId: string, key: ActivityCounterKey, value: number): void {
+    this.patchUserCounterOverrides(userId, { [key]: value });
+  }
+
+  patchUserCounterOverrides(userId: string, patch: Partial<ActivityCounters>): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedPatch = this.normalizeCounterPatch(patch);
+    if (Object.keys(normalizedPatch).length === 0) {
+      return;
+    }
+    this.bumpCounterRevision(normalizedUserId);
+    const accountId = this.workspace.accountId(normalizedUserId);
+    if (accountId !== normalizedUserId && Object.keys(normalizedPatch).some(key => ActivityStore.ACCOUNT_COUNTER_KEYS.has(key as keyof ActivityCounters))) {
+      this.bumpCounterRevision(accountId);
+    }
+    this.writeCounterOverrides(normalizedUserId, normalizedPatch);
+  }
+
+  captureUserCounterSyncToken(userId: string): ActivityCounterSyncToken {
+    const normalizedUserId = userId.trim();
+    return {
+      userId: normalizedUserId,
+      revision: this.counterRevisionByUserId[normalizedUserId] ?? 0,
+      accountUserId: this.workspace.accountId(normalizedUserId),
+      accountRevision: this.counterRevisionByUserId[this.workspace.accountId(normalizedUserId)] ?? 0
+    };
+  }
+
+  applyRealtimeCounterOverrides(
+    token: ActivityCounterSyncToken,
+    patch: Partial<ActivityCounters>
+  ): boolean {
+    const normalizedUserId = token.userId.trim();
+    if (
+      !normalizedUserId
+      || token.revision !== (this.counterRevisionByUserId[normalizedUserId] ?? 0)
+      || (token.accountUserId !== undefined && (token.accountUserId !== this.workspace.accountId(normalizedUserId)
+        || token.accountRevision !== (this.counterRevisionByUserId[token.accountUserId] ?? 0)))
+    ) {
+      return false;
+    }
+    const normalizedPatch = this.normalizeCounterPatch(patch);
+    if (Object.keys(normalizedPatch).length === 0) {
+      return false;
+    }
+    this.writeCounterOverrides(normalizedUserId, normalizedPatch);
+    return true;
+  }
+
+  applyCanonicalCounterOverrides(
+    token: ActivityCounterSyncToken,
+    counters: UserMenuCountersDto
+  ): boolean {
+    return this.applyRealtimeCounterOverrides(token, {
+      game: normalizeCounterValue(counters.game),
+      chats: normalizeCounterValue(counters.chats),
+      invitations: normalizeCounterValue(counters.invitations),
+      events: normalizeCounterValue(counters.events),
+      hosting: normalizeCounterValue(counters.hosting),
+      cars: normalizeCounterValue(counters.cars),
+      accommodation: normalizeCounterValue(counters.accommodation),
+      supplies: normalizeCounterValue(counters.supplies),
+      tickets: normalizeCounterValue(counters.tickets),
+      contacts: normalizeCounterValue(counters.contacts),
+      feedback: normalizeCounterValue(counters.feedback),
+      notifications: normalizeCounterValue(counters.notifications),
+      cases: normalizeCounterValue(counters.cases),
+      chat: cloneChatCounters(counters.chat),
+      event: cloneEventCounters(counters.event),
+      asset: cloneAssetCounters(counters.asset),
+      eventFeedback: cloneEventFeedbackCounters(counters.eventFeedback),
+      adminJobs: normalizeCounterValue(counters.adminJobs),
+      adminMetrics: normalizeCounterValue(counters.adminMetrics)
+    });
+  }
+
+  private normalizeCounterPatch(patch: Partial<ActivityCounters>): Partial<ActivityCounters> {
+    const normalizedPatch: Partial<ActivityCounters> = {};
+    for (const key of ACTIVITY_COUNTER_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(patch, key)) {
+        continue;
+      }
+      const value = patch[key];
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+      normalizedPatch[key] = normalizeCounterValue(value);
+    }
+    if (patch.event) {
+      normalizedPatch.event = cloneEventCounters(patch.event);
+    }
+    if (patch.chat) {
+      normalizedPatch.chat = cloneChatCounters(patch.chat);
+    }
+    if (patch.asset) {
+      normalizedPatch.asset = cloneAssetCounters(patch.asset);
+    }
+    if (patch.eventFeedback) {
+      normalizedPatch.eventFeedback = cloneEventFeedbackCounters(patch.eventFeedback);
+    }
+    return normalizedPatch;
+  }
+
+  private writeCounterOverrides(
+    userId: string,
+    patch: Partial<ActivityCounters>
+  ): void {
+    const accountId = this.workspace.accountId(userId);
+    const accountPatch: Partial<ActivityCounters> = {};
+    const profilePatch = { ...patch };
+    if (accountId !== userId) {
+      for (const key of ActivityStore.ACCOUNT_COUNTER_KEYS) {
+        if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+        Object.assign(accountPatch, { [key]: patch[key] });
+        delete profilePatch[key];
+      }
+    }
+    this._counterOverridesByUserId.update(state => ({
+      ...state,
+      [userId]: { ...state[userId], ...profilePatch },
+      ...(Object.keys(accountPatch).length ? { [accountId]: { ...state[accountId], ...accountPatch } } : {})
+    }));
+  }
+
+  private bumpCounterRevision(userId: string): void {
+    this.counterRevisionByUserId[userId] = (this.counterRevisionByUserId[userId] ?? 0) + 1;
+  }
+
+  signalUserEventBucketCount(
+    userId: string,
+    scope: ActivitiesEventScope,
+    count: number,
+    baseCounters: Partial<ActivityCounters> | UserMenuCountersDto | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedCount = normalizeCounterValue(count);
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
+    const event = cloneEventCounters(currentOverrides.event ?? baseCounters?.event);
+    const patch: Partial<ActivityCounters> = { event };
+
+    switch (scope) {
+      case 'all':
+        event.all = normalizedCount;
+        break;
+      case 'active-events':
+        event.active = normalizedCount;
+        patch.events = normalizedCount;
+        break;
+      case 'pending':
+        event.pending = normalizedCount;
+        break;
+      case 'invitations':
+        event.invitations = normalizedCount;
+        patch.invitations = normalizedCount;
+        break;
+      case 'my-events':
+        event.hosting = normalizedCount;
+        patch.hosting = normalizedCount;
+        break;
+      case 'drafts':
+        event.drafts = normalizedCount;
+        break;
+      case 'watchlist':
+        event.watchlist = normalizedCount;
+        break;
+      case 'trash':
+        event.trash = normalizedCount;
+        break;
+    }
+
+    this.patchUserCounterOverrides(normalizedUserId, patch);
+  }
+
+  signalUserEventCounterSnapshot(
+    userId: string,
+    counters: UserEventCountersDto | null | undefined
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !counters) {
+      return;
+    }
+    const event = cloneEventCounters(counters);
+    this.patchUserCounterOverrides(normalizedUserId, {
+      events: event.active,
+      invitations: event.invitations,
+      hosting: event.hosting,
+      event
+    });
+  }
+
+  signalUserChatCounterSnapshot(
+    userId: string,
+    chats: number | null | undefined,
+    counters: UserMenuCountersDto['chat']
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !Number.isFinite(chats) || !counters) {
+      return;
+    }
+    this.patchUserCounterOverrides(normalizedUserId, {
+      chats: normalizeCounterValue(chats),
+      chat: cloneChatCounters(counters)
+    });
+  }
+
+  signalUserSupportCaseStatusTransition(
+    userId: string,
+    previousStatus: SupportCaseStatus | null | undefined,
+    nextStatus: SupportCaseStatus | null | undefined,
+    baseCounters: UserMenuCountersDto['chat'] | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !previousStatus || !nextStatus || previousStatus === nextStatus) {
+      return;
+    }
+    const current = cloneChatCounters(
+      this._counterOverridesByUserId()[normalizedUserId]?.chat ?? baseCounters
+    );
+    current.supportCases[previousStatus] = Math.max(0, current.supportCases[previousStatus] - 1);
+    current.supportCases[nextStatus] += 1;
+    this.patchUserCounterOverrides(normalizedUserId, { chat: current });
+  }
+
+  signalUserRateCounterSnapshot(userId: string, game: number | null | undefined): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !Number.isFinite(game)) {
+      return;
+    }
+    this.patchUserCounterOverrides(normalizedUserId, {
+      game: normalizeCounterValue(game)
+    });
+  }
+
+  applyInactiveActivitiesCounterSnapshot(
+    token: ActivityCounterSyncToken,
+    counters: UserMenuCountersDto,
+    activePrimaryFilter: ActivitiesPrimaryFilter
+  ): boolean {
+    const patch: Partial<ActivityCounters> = {};
+    if (activePrimaryFilter !== 'rates') {
+      patch.game = normalizeCounterValue(counters.game);
+    }
+    if (activePrimaryFilter !== 'chats') {
+      patch.chats = normalizeCounterValue(counters.chats);
+      patch.chat = cloneChatCounters(counters.chat);
+    }
+    if (
+      activePrimaryFilter !== 'events'
+      && activePrimaryFilter !== 'hosting'
+      && activePrimaryFilter !== 'invitations'
+    ) {
+      patch.events = normalizeCounterValue(counters.events);
+      patch.invitations = normalizeCounterValue(counters.invitations);
+      patch.hosting = normalizeCounterValue(counters.hosting);
+      patch.event = cloneEventCounters(counters.event);
+    }
+    return this.applyRealtimeCounterOverrides(token, patch);
+  }
+
+  signalUserTicketBucketCount(
+    userId: string,
+    count: number,
+    baseCounters: Partial<ActivityCounters> | UserMenuCountersDto | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedCount = normalizeCounterValue(count);
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
+    const asset = cloneAssetCounters(currentOverrides.asset ?? baseCounters?.asset);
+    asset.tickets = normalizedCount;
+    this.patchUserCounterOverrides(normalizedUserId, {
+      tickets: normalizedCount,
+      asset
+    });
+  }
+
+  signalUserAssetBucketCount(
+    userId: string,
+    type: AssetType,
+    count: number,
+    baseCounters: Partial<ActivityCounters> | UserMenuCountersDto | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedCount = normalizeCounterValue(count);
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
+    const asset = cloneAssetCounters(currentOverrides.asset ?? baseCounters?.asset);
+    const patch: Partial<ActivityCounters> = { asset };
+
+    switch (type) {
+      case ASSET_TYPE_TRANSPORT:
+        asset.cars = normalizedCount;
+        patch.cars = normalizedCount;
+        break;
+      case ASSET_TYPE_ACCOMMODATION:
+        asset.accommodation = normalizedCount;
+        patch.accommodation = normalizedCount;
+        break;
+      case ASSET_TYPE_SUPPLIES:
+        asset.supplies = normalizedCount;
+        patch.supplies = normalizedCount;
+        break;
+    }
+
+    this.patchUserCounterOverrides(normalizedUserId, patch);
+  }
+
+  patchUserCounterDeltas(
+    userId: string,
+    delta: UserMenuCounterDeltasDto | null | undefined,
+    baseCounters: Partial<ActivityCounters> | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !delta) {
+      return;
+    }
+    const currentOverrides = this.getUserCounterOverrides(normalizedUserId);
+    const normalizedPatch: Partial<ActivityCounters> = {};
+    const normalizedPatchRecord = normalizedPatch as Record<string, number>;
+    const overrideRecord = currentOverrides as Record<string, unknown>;
+    const baseRecord = (baseCounters ?? {}) as Record<string, unknown>;
+    const deltaRecord = delta as Record<string, unknown>;
+    for (const key of ACTIVITY_COUNTER_KEYS) {
+      const value = deltaRecord[key];
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+      const baseValue = Number.isFinite(overrideRecord[key])
+        ? overrideRecord[key]
+        : baseRecord[key];
+      normalizedPatchRecord[key] = normalizeCounterValue(
+        normalizeCounterValue(baseValue) + Number(value)
+      );
+    }
+
+    const event = this.applyNestedCounterDeltas<ActivityEventCounters>(
+      delta.event,
+      currentOverrides.event,
+      baseCounters?.event,
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'watchlist', 'trash']
+    );
+    if (event) {
+      normalizedPatch.event = event;
+    }
+
+    const asset = this.applyNestedCounterDeltas<ActivityAssetCounters>(
+      delta.asset,
+      currentOverrides.asset,
+      baseCounters?.asset,
+      ['cars', 'accommodation', 'supplies', 'tickets', 'carsPending', 'accommodationPending', 'suppliesPending']
+    );
+    if (asset) {
+      normalizedPatch.asset = asset;
+    }
+
+    const eventFeedback = this.applyNestedCounterDeltas<ActivityEventFeedbackCounters>(
+      delta.eventFeedback,
+      currentOverrides.eventFeedback,
+      baseCounters?.eventFeedback,
+      ['ownEvents', 'pending', 'feedbacked', 'removed']
+    );
+    if (eventFeedback) {
+      normalizedPatch.eventFeedback = eventFeedback;
+    }
+
+    if (Object.keys(normalizedPatch).length === 0) {
+      return;
+    }
+    this.patchUserCounterOverrides(normalizedUserId, normalizedPatch);
+  }
+
+  private applyNestedCounterDeltas<T extends object>(
+    delta: Partial<Record<keyof T, number>> | null | undefined,
+    current: Partial<T> | null | undefined,
+    base: Partial<T> | null | undefined,
+    keys: Array<keyof T>
+  ): T | null {
+    if (!delta) {
+      return null;
+    }
+    const deltaRecord = delta as Record<string, unknown>;
+    const currentRecord = (current ?? {}) as Record<string, unknown>;
+    const baseRecord = (base ?? {}) as Record<string, unknown>;
+    const next: Record<string, number> = {};
+    let changed = false;
+    for (const key of keys) {
+      const keyName = String(key);
+      const baseValue = Number.isFinite(currentRecord[keyName])
+        ? currentRecord[keyName]
+        : baseRecord[keyName];
+      next[keyName] = normalizeCounterValue(baseValue);
+      const value = deltaRecord[keyName];
+      if (!Object.prototype.hasOwnProperty.call(deltaRecord, keyName) || !Number.isFinite(value)) {
+        continue;
+      }
+      next[keyName] = normalizeCounterValue(next[keyName] + Number(value));
+      changed = true;
+    }
+    return changed ? (next as T) : null;
+  }
+
+  clearUserCounterOverrides(userId: string, keys?: ActivityCounterKey[]): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const accountId = this.workspace.accountId(normalizedUserId);
+    if (accountId !== normalizedUserId && keys?.length) {
+      const accountKeys = keys.filter(key => ActivityStore.ACCOUNT_COUNTER_KEYS.has(key));
+      if (accountKeys.length) this.clearUserCounterOverrides(accountId, accountKeys);
+    }
+    const current = this._counterOverridesByUserId()[normalizedUserId];
+    if (!current) {
+      return;
+    }
+    const clearedKeys = !keys || keys.length === 0
+      ? Object.keys(current)
+      : keys.filter(key => Object.prototype.hasOwnProperty.call(current, key));
+    if (clearedKeys.length === 0) {
+      return;
+    }
+    this.bumpCounterRevision(normalizedUserId);
+    this._counterOverridesByUserId.update(state => {
+      const current = state[normalizedUserId];
+      if (!current) {
+        return state;
+      }
+      if (!keys || keys.length === 0) {
+        const { [normalizedUserId]: _removed, ...rest } = state;
+        return rest;
+      }
+      const next = { ...current };
+      for (const key of keys) {
+        delete next[key];
+      }
+      if (Object.keys(next).length === 0) {
+        const { [normalizedUserId]: _removed, ...rest } = state;
+        return rest;
+      }
+      return {
+        ...state,
+        [normalizedUserId]: next
+      };
+    });
+  }
+
+  resolveUserCounter(userId: string, key: ActivityCounterKey, fallbackValue: number): number {
+    const override = this.getUserCounterOverride(userId, key);
+    if (override !== null) {
+      return override;
+    }
+    return normalizeCounterValue(fallbackValue);
+  }
+
+  emitActivityMembersSync(payload: Omit<ActivityMembersSyncState, 'updatedMs'>): void {
+    const normalizedId = payload.id.trim();
+    if (!normalizedId) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityMembersSync()?.updatedMs ?? 0) + 1
+    );
+    const acceptedMemberDelta = Number.isFinite(Number(payload.acceptedMemberDelta))
+      ? Math.trunc(Number(payload.acceptedMemberDelta))
+      : null;
+    const pendingMemberDelta = Number.isFinite(Number(payload.pendingMemberDelta))
+      ? Math.trunc(Number(payload.pendingMemberDelta))
+      : null;
+    const sync: ActivityMembersSyncState = {
+      updatedMs,
+      id: normalizedId,
+      ...(`${payload.eventId ?? ''}`.trim() ? { eventId: `${payload.eventId ?? ''}`.trim() } : {}),
+      ...(`${payload.subEventId ?? ''}`.trim() ? { subEventId: `${payload.subEventId ?? ''}`.trim() } : {}),
+      acceptedMembers: normalizeCounterValue(payload.acceptedMembers),
+      pendingMembers: normalizeCounterValue(payload.pendingMembers),
+      capacityTotal: Math.max(
+        normalizeCounterValue(payload.acceptedMembers),
+        normalizeCounterValue(payload.capacityTotal)
+      ),
+      ...(acceptedMemberDelta !== null ? { acceptedMemberDelta } : {}),
+      ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
+      ...(payload.full === true ? { full: true } : {}),
+      ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
+      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {}),
+      ...(payload.resourceAssignmentRemoved === true ? { resourceAssignmentRemoved: true } : {}),
+      ...(payload.currentUserMembershipStatus ? { currentUserMembershipStatus: payload.currentUserMembershipStatus } : {}),
+      ...(payload.memberStatusChange
+        ? {
+            memberStatusChange: {
+              ...payload.memberStatusChange,
+              acceptedMemberDelta: Math.trunc(Number(payload.memberStatusChange.acceptedMemberDelta) || 0),
+              pendingMemberDelta: Math.trunc(Number(payload.memberStatusChange.pendingMemberDelta) || 0)
+            }
+          }
+        : {})
+    };
+    this._activityMembersSync.set(sync);
+    this._activityMembersSyncByOwnerId.update(current => ({
+      ...current,
+      [normalizedId]: sync
+    }));
+  }
+
+  cacheActivityMemberStatusChange(
+    change: AppDTOs.AssetMemberStatusChangeDTO,
+    fallback: Pick<ActivityMembersSyncState, 'acceptedMembers' | 'pendingMembers' | 'capacityTotal'>
+  ): ActivityMembersSyncState | null {
+    const assetId = change.assetId.trim();
+    const eventId = change.eventId.trim();
+    const subEventId = change.subEventId.trim();
+    const userId = change.userId.trim();
+    if (!assetId || !eventId || !subEventId || !userId) {
+      return null;
+    }
+
+    const previous = this._activityMembersSyncByOwnerId()[assetId];
+    const previousChange = previous?.memberStatusChange;
+    const sameScope = previousChange?.assetId === assetId
+      && previousChange.eventId === eventId
+      && previousChange.subEventId === subEventId
+      && previousChange.userId === userId;
+    const acceptedMemberDelta = Math.trunc(Number(change.acceptedMemberDelta) || 0);
+    const pendingMemberDelta = Math.trunc(Number(change.pendingMemberDelta) || 0);
+    const duplicateTransition = sameScope
+      && `${previousChange.requestId ?? ''}`.trim() === `${change.requestId ?? ''}`.trim()
+      && previousChange.previousStatus === change.previousStatus
+      && previousChange.status === change.status
+      && previousChange.acceptedMemberDelta === acceptedMemberDelta
+      && previousChange.pendingMemberDelta === pendingMemberDelta;
+    if (duplicateTransition) {
+      return null;
+    }
+
+    const acceptedMembers = Math.max(
+      0,
+      (sameScope
+        ? previous?.acceptedMembers ?? normalizeCounterValue(fallback.acceptedMembers)
+        : normalizeCounterValue(fallback.acceptedMembers))
+        + acceptedMemberDelta
+    );
+    const pendingMembers = Math.max(
+      0,
+      (sameScope
+        ? previous?.pendingMembers ?? normalizeCounterValue(fallback.pendingMembers)
+        : normalizeCounterValue(fallback.pendingMembers))
+        + pendingMemberDelta
+    );
+    const sync: ActivityMembersSyncState = {
+      updatedMs: Math.max(Date.now(), (previous?.updatedMs ?? 0) + 1),
+      id: assetId,
+      eventId,
+      subEventId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(
+        acceptedMembers,
+        sameScope
+          ? previous?.capacityTotal ?? normalizeCounterValue(fallback.capacityTotal)
+          : normalizeCounterValue(fallback.capacityTotal)
+      ),
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      ...(change.resourceAssignmentRemoved === true ? { resourceAssignmentRemoved: true } : {}),
+      memberStatusChange: {
+        ...change,
+        assetId,
+        eventId,
+        subEventId,
+        userId,
+        acceptedMemberDelta,
+        pendingMemberDelta
+      }
+    };
+    this._activityMembersSyncByOwnerId.update(current => ({
+      ...current,
+      [assetId]: sync
+    }));
+    return sync;
+  }
+
+  emitActivityResourceSync(payload: Omit<ActivityResourceSyncState, 'updatedMs'>): void {
+    const ownerId = payload.ownerId.trim();
+    const subEventId = payload.subEventId.trim();
+    const assetOwnerUserId = payload.assetOwnerUserId.trim();
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityResourceSync()?.updatedMs ?? 0) + 1
+    );
+    this._activityResourceSync.set({
+      updatedMs,
+      ownerId,
+      subEventId,
+      assetOwnerUserId,
+      resourceType: payload.resourceType,
+      readAtIso: payload.readAtIso
+    });
+  }
+
+  emitActivityResourceMemberDeltaSync(
+    payload: Omit<ActivityResourceMemberDeltaSyncState, 'updatedMs'>
+  ): void {
+    const ownerId = payload.ownerId.trim();
+    const subEventId = payload.subEventId.trim();
+    const assetId = payload.assetId.trim();
+    const acceptedMemberDelta = Math.trunc(Number(payload.acceptedMemberDelta) || 0);
+    const pendingMemberDelta = Math.trunc(Number(payload.pendingMemberDelta) || 0);
+    const capacityMinDelta = Math.trunc(Number(payload.capacityMinDelta) || 0);
+    const capacityMaxDelta = Math.trunc(Number(payload.capacityMaxDelta) || 0);
+    const resourceAssignmentRemoved = payload.resourceAssignmentRemoved === true;
+    if (
+      !ownerId
+      || !subEventId
+      || !assetId
+      || (
+        acceptedMemberDelta === 0
+        && pendingMemberDelta === 0
+        && capacityMinDelta === 0
+        && capacityMaxDelta === 0
+        && !resourceAssignmentRemoved
+      )
+    ) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (untracked(() => this._activityResourceMemberDeltaSync())?.updatedMs ?? 0) + 1
+    );
+    this._activityResourceMemberDeltaSync.set({
+      updatedMs,
+      ownerId,
+      subEventId,
+      assetId,
+      resourceType: payload.resourceType,
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      capacityMinDelta,
+      capacityMaxDelta,
+      ...(resourceAssignmentRemoved ? { resourceAssignmentRemoved: true } : {})
+    });
+  }
+
+  emitActivityEventRuntimeSync(payload: Omit<ActivityEventRuntimeSyncState, 'updatedMs'>): void {
+    const eventId = payload.eventId.trim();
+    const subEventId = payload.subEventId.trim();
+    if (!eventId || !subEventId) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (untracked(() => this._activityEventRuntimeSync())?.updatedMs ?? 0) + 1
+    );
+    this._activityEventRuntimeSync.set({
+      updatedMs,
+      eventId,
+      subEventId,
+      activityDelta: Number.isFinite(Number(payload.activityDelta))
+        ? Math.trunc(Number(payload.activityDelta))
+        : 0,
+      currentStage: payload.currentStage ? { ...payload.currentStage } : payload.currentStage,
+      source: payload.source
+    });
+  }
+
+  emitActivityChatMetricBucketPatch(payload: Omit<ActivityChatMetricBucketPatch, 'updatedMs'>): void {
+    const identity = payload.identity.trim();
+    if (!identity) {
+      return;
+    }
+    this._activityChatMetricBucketPatch.set({
+      updatedMs: Date.now(),
+      identity,
+      bucketType: payload.bucketType,
+      bucket: {
+        accepted: normalizeCounterValue(payload.bucket.accepted),
+        pending: normalizeCounterValue(payload.bucket.pending),
+        capacityMin: normalizeCounterValue(payload.bucket.capacityMin),
+        capacityMax: Math.max(
+          normalizeCounterValue(payload.bucket.capacityMin),
+          normalizeCounterValue(payload.bucket.capacityMax)
+        )
+      }
+    });
+  }
+
+  emitActivityEventFeedbackSubmit(dto: EventFeedbackDetailDto): void {
+    const eventId = dto.eventId.trim();
+    if (!eventId) {
+      return;
+    }
+    this._activityEventFeedbackSubmitSync.set({
+      updatedMs: Date.now(),
+      dto: new EventFeedbackDetailDto({
+        ...dto,
+        eventId
+      })
+    });
+  }
+}

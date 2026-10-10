@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
 import { PaymentMethodsService } from '../../../core/base/services/payment-methods.service';
 import { PaymentEuroSummaryDto } from '../../../core/contracts/payment-method.interface';
-import { UserProfileStore } from '../../context/stores/user-profile.store';
+import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
 import { PopupComponent, PopupModel, AppMenuComponent, AppMenuItem, I18nPipe } from '@myscoutee/components';
 
 @Component({

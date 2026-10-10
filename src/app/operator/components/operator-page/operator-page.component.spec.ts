@@ -9,18 +9,18 @@ import type {
   OperatorLeaderboardEntryDto,
   OperatorRegistryStatusDto
 } from '../../../shared/core/contracts/operator.interface';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   OperatorLeaderboardStore,
   type OperatorLeaderboardCacheMutation,
   type OperatorLeaderboardFilters
-} from '../../../shared/ui/context/stores/operator-leaderboard.store';
+} from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
-} from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+} from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 import { OperatorPageComponent } from './operator-page.component';
 
 describe('OperatorPageComponent', () => {

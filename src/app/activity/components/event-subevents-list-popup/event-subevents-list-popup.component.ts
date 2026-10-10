@@ -71,23 +71,23 @@ import { EventsService, I18nService } from '../../../shared/core';
 import { tournamentCurrentStageFromSubEvents } from '../../../shared/core/common/tournament-group-count';
 import * as AppConstants from '../../../shared/core/common/constants';
 
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import {
   ActivityStore,
   type ActivityMembersSyncState,
   type ActivityResourceMemberDeltaSyncState
-} from '../../../shared/ui/context/stores/activity.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
 import {
   EventSubeventsPopupStore,
   type EventSubeventsDefinitionDraftUpdate
-} from '../../../shared/ui/context/stores/event-subevents-popup.store';
-import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
+} from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
+import { MingleStore } from '../../../shared/ui/context/stores/activity/mingle.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceMetricsUpdate
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';

@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
+import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payment-methods.service';
 import {
   ExplanationGuideService,

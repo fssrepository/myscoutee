@@ -1,0 +1,482 @@
+import { UiDateUtils, type InfoCardData, type UiListConverter } from '@myscoutee/components';
+import { contentModerationBadge } from '../content/content-moderation-badge';
+import { AppUtils } from '../../../app-utils';
+import type {
+  ActivityEventDTO,
+  ActivityMemberOwnerRef,
+  ActivityMembersSummaryDto
+} from '../../../core/contracts/activity.interface';
+import type {
+  EventVisibility
+} from '../../../core/common/constants';
+
+export interface ActivityEventInfoCardConverterOptions {
+  activeUserId?: string | null;
+  groupLabel?: string | null;
+  trashView?: boolean;
+  state?: InfoCardData['state'];
+  translateParams?: (
+    key: string,
+    values: Record<string, string | number>,
+    fallback?: string | null
+  ) => string;
+}
+
+export interface ActivityEventInfoCardSummaryOptions {
+  capacityByRowId?: Readonly<Record<string, string | null | undefined>>;
+  pendingMembersByRowId?: Readonly<Record<string, number | null | undefined>>;
+  capacityTotal?: number | null;
+}
+
+export class ActivityEventInfoCardConverter {
+  static convert(
+    dto: ActivityEventDTO,
+    options: ActivityEventInfoCardConverterOptions = {}
+  ): InfoCardData {
+    const activeUserId = options.activeUserId ?? '';
+    const status = this.statusCode(dto.status);
+    const statusBadgeLabelKey = this.statusBadgeLabelKey(status, dto, activeUserId);
+    const pending = this.isPending(dto, activeUserId);
+    const invited = this.isInvited(dto, activeUserId);
+    const trashView = options.trashView === true;
+    const title = dto.title;
+    const profileUserId = this.profileUserId(dto);
+
+    return {
+      id: dto.id,
+      smartListKey: `${this.rowType(dto)}:${dto.id}`,
+      dateIso: dto.startAtIso,
+      distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
+      status,
+      ownerId: profileUserId,
+      ownerUserId: profileUserId,
+      groupLabel: options.groupLabel ?? null,
+      title,
+      surfaceTone: trashView ? 'deleted' : status === 'B' && contentModerationBadge(dto.moderationStatus)
+        ? this.surfaceTone('A', { ...dto, status: 'A' }, activeUserId) : this.surfaceTone(status, dto, activeUserId),
+      imageUrl: dto.imageUrl?.trim() || null,
+      placeholderLabel: dto.imageUrl?.trim() ? null : title,
+      metaRows: [
+        ...this.currentStageMetaRows(dto, options),
+        UiDateUtils.dateTimeRangeLabel(dto.startAtIso, dto.endAtIso, dto.timeframe || 'Date unavailable'),
+        ...this.locationMetaRows(dto)
+      ],
+      description: invited
+        ? null
+        : dto.eventType === 'slot'
+          ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
+          : dto.subtitle,
+      footerChips: this.footerChips(dto, pending),
+      descriptionLines: 2,
+      leadingIcon: {
+        icon: this.leadingIcon(dto, status, pending, activeUserId)
+      },
+      mediaStart: this.mediaStart(dto),
+      mediaEnd: dto.cancelled ? {
+        variant: 'badge', tone: 'orange', icon: 'event_busy',
+        label: dto.cancellationRefundsPending ? 'event.cancellation.processing' : 'event.cancelled',
+        ariaLabel: 'event.cancelled', interactive: false
+      } : contentModerationBadge(dto.moderationStatus) ?? {
+        variant: 'badge',
+        tone: trashView ? 'deleted' : this.mediaEndTone(status, dto, activeUserId),
+        label: statusBadgeLabelKey || this.capacityLabel(dto),
+        ariaLabel: statusBadgeLabelKey || 'open.members',
+        interactive: !statusBadgeLabelKey,
+        pendingCount: statusBadgeLabelKey ? 0 : this.pendingMemberCount(dto)
+      },
+      hasMenuOptions: this.hasMenuOptions(dto),
+      menuBadgeCount: Math.max(0, Math.trunc(Number(dto.activity) || 0)),
+      clickable: false,
+      state: options.state ?? 'default'
+    };
+  }
+
+  static convertList(
+    dtos: readonly ActivityEventDTO[],
+    options: ActivityEventInfoCardConverterOptions = {}
+  ): InfoCardData[] {
+    return dtos.map(dto => this.convert(dto, options));
+  }
+
+  static toActivityMembersOwner(card: Pick<InfoCardData, 'id'>): ActivityMemberOwnerRef {
+    return {
+      ownerType: 'event',
+      ownerId: card.id
+    };
+  }
+
+  static toActivityMembersSummary(
+    card: InfoCardData,
+    options: ActivityEventInfoCardSummaryOptions = {}
+  ): ActivityMembersSummaryDto | null {
+    const capacity = this.parseCapacityLabel(
+      options.capacityByRowId?.[card.id] ?? card.mediaEnd?.label
+    );
+    const acceptedMembers = capacity?.acceptedMembers ?? 0;
+    const pendingMembers = this.summaryPendingMembers(card, options);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      capacity?.capacityTotal ?? this.normalizeCount(options.capacityTotal) ?? acceptedMembers
+    );
+    if (acceptedMembers <= 0 && pendingMembers <= 0 && capacityTotal <= 0) {
+      return null;
+    }
+    return {
+      ...this.toActivityMembersOwner(card),
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: []
+    };
+  }
+
+  private static locationMetaRows(dto: ActivityEventDTO): string[] {
+    const location = `${dto.location ?? dto.creatorCity ?? ''}`.trim();
+    const distanceLabel = this.distanceLabel(dto);
+    const line = location && distanceLabel
+      ? `${location} · ${distanceLabel}`
+      : location || distanceLabel;
+    return line ? [line] : [];
+  }
+
+  private static currentStageMetaRows(
+    dto: ActivityEventDTO,
+    options: ActivityEventInfoCardConverterOptions
+  ): string[] {
+    const stage = dto.currentStage;
+    const stageName = `${stage?.name ?? ''}`.trim();
+    if (!stageName) {
+      return [];
+    }
+    const current = Math.max(1, Math.trunc(Number(stage?.stageNumber) || 1));
+    const total = Math.max(current, Math.trunc(Number(stage?.totalStages) || current));
+    const values = { stage: stageName, current, total };
+    const fallback = `Current stage: ${stageName} · ${current}/${total}`;
+    return [options.translateParams?.('event.tournament.current.stage', values, fallback) ?? fallback];
+  }
+
+  private static distanceLabel(dto: ActivityEventDTO): string {
+    const distanceKm = Number(dto.distanceKm);
+    if (!Number.isFinite(distanceKm)) {
+      return '';
+    }
+    return `${distanceKm} km`;
+  }
+
+  private static footerChips(dto: ActivityEventDTO, pending: boolean): NonNullable<InfoCardData['footerChips']> {
+    if (!pending) {
+      return [];
+    }
+    if (dto.pendingReason === 'payment') {
+      return [{ label: 'event.member.payment.pending' }];
+    }
+    if (dto.pendingReason === 'waitlist') {
+      return [{ label: 'waiting.list' }];
+    }
+    return [{ label: 'waiting.for.approval' }];
+  }
+
+  private static mediaStart(dto: ActivityEventDTO): InfoCardData['mediaStart'] {
+    if (dto.eventType === 'random-room') {
+      return {
+        variant: 'badge',
+        shape: 'circle',
+        tone: 'selected',
+        icon: 'auto_awesome',
+        label: '',
+        ariaLabel: 'System generated room',
+        interactive: false
+      };
+    }
+    return {
+      variant: 'badge',
+      layout: 'avatar-metric',
+      tone: 'cool',
+      leadingAccessory: {
+        label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
+        tone: 'default'
+      },
+      ariaLabel: `View ${dto.creatorName || 'organizer'} profile`,
+      interactive: Boolean(this.profileUserId(dto))
+    };
+  }
+
+  private static profileUserId(dto: ActivityEventDTO): string {
+    return `${dto.organizerUserId ?? ''}`.trim() || `${dto.creatorUserId ?? ''}`.trim();
+  }
+
+  private static rowType(dto: ActivityEventDTO): 'events' | 'hosting' | 'invitations' {
+    return dto.type === 'events' || dto.type === 'hosting' || dto.type === 'invitations'
+      ? dto.type
+      : 'events';
+  }
+
+  private static isPending(dto: ActivityEventDTO, activeUserId: string): boolean {
+    if (this.isPendingReview(dto)) {
+      return true;
+    }
+    const userId = activeUserId.trim();
+    if (!userId) {
+      return false;
+    }
+    return this.includesUserId(dto.pendingRequestMemberUserIds, userId)
+      || dto.pendingReason === 'approval'
+      || dto.pendingReason === 'payment'
+      || dto.pendingReason === 'waitlist';
+  }
+
+  private static isFull(dto: ActivityEventDTO): boolean {
+    return this.statusCode(dto.status) === 'A'
+      && (dto.full === true || (dto.capacityTotal > 0 && dto.acceptedMembers >= dto.capacityTotal));
+  }
+
+  private static capacityLabel(dto: ActivityEventDTO): string {
+    if (dto.slotsEnabled === true && dto.eventType !== 'slot') {
+      return 'Multislot';
+    }
+    return `${Math.max(0, dto.acceptedMembers)} / ${Math.max(dto.acceptedMembers, dto.capacityTotal)}`;
+  }
+
+  private static pendingMemberCount(dto: ActivityEventDTO): number {
+    return Math.max(0, Math.trunc(Number(dto.pendingMembers) || 0));
+  }
+
+  private static summaryPendingMembers(
+    card: InfoCardData,
+    options: ActivityEventInfoCardSummaryOptions
+  ): number {
+    return this.normalizeCount(options.pendingMembersByRowId?.[card.id])
+      ?? this.normalizeCount(card.mediaEnd?.pendingCount)
+      ?? 0;
+  }
+
+  private static parseCapacityLabel(
+    label: string | number | null | undefined
+  ): { acceptedMembers: number; capacityTotal: number } | null {
+    const normalizedLabel = `${label ?? ''}`.trim();
+    if (!normalizedLabel.includes('/')) {
+      return null;
+    }
+    const parts = normalizedLabel.split('/').map(part => Number.parseInt(part.trim(), 10));
+    if (parts.length < 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) {
+      return null;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(parts[0]));
+    return {
+      acceptedMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(parts[1]))
+    };
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    const count = Number(value);
+    return Number.isFinite(count)
+      ? Math.max(0, Math.trunc(count))
+      : null;
+  }
+
+  private static surfaceTone(
+    status: string,
+    dto: ActivityEventDTO,
+    activeUserId: string
+  ): InfoCardData['surfaceTone'] {
+    switch (status) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      case 'DR':
+        return 'draft';
+      default:
+        if (dto.eventType === 'random-room' || dto.eventType === 'tournament-room') {
+          return 'system';
+        }
+        if (this.isInvited(dto, activeUserId)) {
+          return 'pending';
+        }
+        if (this.isPending(dto, activeUserId)) {
+          return 'pending';
+        }
+        if (this.statusCode(dto.status) === 'A') {
+          return this.isOwnedByActiveUser(dto, activeUserId) ? 'published' : 'series';
+        }
+        return 'default';
+    }
+  }
+
+  private static mediaEndTone(
+    status: string,
+    dto: ActivityEventDTO,
+    activeUserId: string
+  ): NonNullable<InfoCardData['mediaEnd']>['tone'] {
+    switch (status) {
+      case 'UR':
+        return 'review';
+      case 'B':
+        return 'blocked';
+      case 'D':
+      case 'T':
+        return 'deleted';
+      case 'I':
+        return 'inactive';
+      default:
+        if (this.isInvited(dto, activeUserId)) {
+          return 'invitation';
+        }
+        return this.isFull(dto) ? 'full' : 'default';
+    }
+  }
+
+  private static leadingIcon(
+    dto: ActivityEventDTO,
+    status: string,
+    pending: boolean,
+    activeUserId: string
+  ): string {
+    if (status === 'UR') {
+      return 'pending_actions';
+    }
+    if (status === 'B') {
+      return 'block';
+    }
+    if (status === 'D' || status === 'T') {
+      return 'delete';
+    }
+    if (status === 'I') {
+      return 'visibility_off';
+    }
+    if (pending) {
+      return 'pending_actions';
+    }
+    if (this.isInvited(dto, activeUserId)) {
+      return 'mail';
+    }
+    if (dto.eventType === 'tournament-room') {
+      return 'emoji_events';
+    }
+    if (dto.eventType === 'random-room') {
+      return 'auto_awesome';
+    }
+    return this.visibilityIcon(dto.visibility);
+  }
+
+  private static visibilityIcon(option: EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'public';
+      case 'Friends only':
+        return 'groups';
+      default:
+        return 'mail_lock';
+    }
+  }
+
+  private static hasMenuOptions(dto: ActivityEventDTO): boolean {
+    if (this.isTrashed(dto)) {
+      return this.shouldRestore(dto);
+    }
+    return !!dto.id;
+  }
+
+  private static shouldRestore(dto: ActivityEventDTO): boolean {
+    return this.statusCode(dto.status) === 'T';
+  }
+
+  private static isPendingReview(dto: ActivityEventDTO): boolean {
+    const status = this.statusCode(dto.status);
+    return status === 'UR' || status === 'B';
+  }
+
+  private static isTrashed(dto: ActivityEventDTO): boolean {
+    const status = this.statusCode(dto.status);
+    return status === 'T';
+  }
+
+  private static isInvited(dto: ActivityEventDTO, activeUserId: string): boolean {
+    return this.includesUserId(dto.invitedMemberUserIds, activeUserId);
+  }
+
+  private static isOwnedByActiveUser(dto: ActivityEventDTO, activeUserId: string): boolean {
+    const userId = activeUserId.trim();
+    return !userId || `${dto.creatorUserId ?? ''}`.trim() === userId;
+  }
+
+  private static includesUserId(userIds: readonly string[] | null | undefined, activeUserId: string): boolean {
+    const userId = activeUserId.trim();
+    return !!userId && (userIds ?? []).some(candidate => `${candidate ?? ''}`.trim() === userId);
+  }
+
+  private static statusBadgeLabelKey(
+    status: string,
+    dto: ActivityEventDTO,
+    activeUserId: string
+  ): string {
+    switch (status) {
+      case 'UR':
+        return 'under.review';
+      case 'B':
+        return 'blocked.user';
+      case 'T':
+        return this.trashedBadgeLabelKey(dto, activeUserId);
+      case 'D':
+        return 'deleted.user';
+      case 'I':
+        return 'inactive.user';
+      default:
+        return '';
+    }
+  }
+
+  private static trashedBadgeLabelKey(dto: ActivityEventDTO, activeUserId: string): string {
+    if (dto.type === 'invitations') {
+      return 'trash.invitation';
+    }
+    if (dto.type === 'hosting') {
+      return this.statusCode(dto.statusBeforeSuppression) === 'DR'
+        ? 'trash.draft'
+        : 'trash.own.event';
+    }
+    if (this.isPending(dto, activeUserId)) {
+      return 'trash.pending.event';
+    }
+    if (this.includesUserId(dto.acceptedMemberUserIds, activeUserId)) {
+      return 'trash.joined.event';
+    }
+    return 'trash.event';
+  }
+
+  private static statusCode(statusValue: string | null | undefined): string {
+    const status = `${statusValue ?? ''}`.trim();
+    switch (status) {
+      case 'A':
+        return 'A';
+      case 'DR':
+        return 'DR';
+      case 'T':
+        return 'T';
+      case 'UR':
+        return 'UR';
+      case 'B':
+        return 'B';
+      case 'D':
+        return 'D';
+      case 'I':
+        return 'I';
+      default:
+        return 'A';
+    }
+  }
+}
+
+export const activityEventInfoCardConverter =
+  ActivityEventInfoCardConverter satisfies UiListConverter<
+    ActivityEventDTO,
+    InfoCardData,
+    ActivityEventInfoCardConverterOptions | undefined
+  >;

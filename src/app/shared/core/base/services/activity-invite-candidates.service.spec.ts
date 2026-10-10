@@ -4,7 +4,7 @@ import { environment } from '../../../../../environments/environment';
 import type { ActivityMemberDTO } from '../../contracts/activity.interface';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { LocalActivityInviteCandidatesService } from '../../local/source/services/activity-invite-candidates.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 import { ActivityInviteCandidatesService } from './activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';
 import { EventsService } from './events.service';

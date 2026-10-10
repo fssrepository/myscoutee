@@ -36,7 +36,7 @@ import { LocalActivityResourcesRepository } from '../repositories/activity-resou
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalChatThreadMapper } from '../mappers';
-import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 import type {
   ActivityMemberRecord,

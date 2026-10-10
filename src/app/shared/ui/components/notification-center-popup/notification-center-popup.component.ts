@@ -17,19 +17,19 @@ import {
   type SingleRowData
 } from '@myscoutee/components';
 import { Router } from '@angular/router';
-import { UserProfileStore } from '../../context/stores/user-profile.store';
-import {PaymentMethodsPopupStore} from '../../context/stores/payment-methods-popup.store';
-import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
+import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
+import {PaymentMethodsPopupStore} from '../../context/stores/payment/payment-methods-popup.store';
+import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
 import { ChatsService } from '../../../core/base/services/chats.service';
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
-import { CampaignsStore } from '../../context/stores/campaigns.store';
-import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
-import { ProfileStore } from '../../context/stores/profile.store';
-import { ContactChatAccessStore } from '../../context/stores/contact-chat-access.store';
-import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
+import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
+import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
+import { ContactChatAccessStore } from '../../context/stores/chat/contact-chat-access.store';
+import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
 import { environment } from '../../../../../environments/environment';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
-import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
+import { AppRuntimeStore } from '../../context/stores/app/app-runtime.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -52,13 +52,13 @@ import type {
 
 import {
   NotificationSingleRowConverter
-} from '../../converters/notification-single-row.converter';
+} from '../../converters/notification/notification-single-row.converter';
 
-import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activities-popup.store';
-import { EventSubeventsPopupStore } from '../../context/stores/event-subevents-popup.store';
-import { NotificationCenterStore } from '../../context/stores/notification-center.store';
+import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activity/activities-popup.store';
+import { EventSubeventsPopupStore } from '../../context/stores/event/event-subevents-popup.store';
+import { NotificationCenterStore } from '../../context/stores/notification/notification-center.store';
 
-import { SubEventResourcePopupStore } from '../../context/stores/sub-event-resource-popup.store';
+import { SubEventResourcePopupStore } from '../../context/stores/event/sub-event-resource-popup.store';
 
 interface NotificationRowMenuContext extends Record<string, unknown> {
   notification: NotificationDto;

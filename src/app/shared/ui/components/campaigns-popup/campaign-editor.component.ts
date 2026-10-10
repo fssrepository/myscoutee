@@ -17,9 +17,9 @@ import { FormsModule } from '@angular/forms';
 
 import { I18nService } from '../../../core/base/services/i18n.service';
 
-import { CampaignsStore } from '../../context/stores/campaigns.store';
+import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
 import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type SaveCampaign } from '../../../core/contracts/campaign.interface';
-import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../converters/campaign.converter';
+import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../converters/activity/campaign.converter';
 
 export type CampaignView = 'details' | 'organizer';
 export function campaignViewControl(view: CampaignView): PopupMenuControl {

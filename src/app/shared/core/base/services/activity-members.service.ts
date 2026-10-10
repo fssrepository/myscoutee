@@ -1,6 +1,6 @@
 import { CommunityCasesService } from './community-cases.service';
-import { CommunityCaseConverter } from '../../../ui/converters/community-case.converter';
-import { CommunityGroupChangesStore } from '../../../ui/context/stores/community-group-changes.store';
+import { CommunityCaseConverter } from '../../../ui/converters/community/community-case.converter';
+import { CommunityGroupChangesStore } from '../../../ui/context/stores/community/community-group-changes.store';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
 import { LocalCommunityGroupsService } from '../../local/source/services/community-groups.service';
 import {
@@ -28,8 +28,8 @@ import type {
   ActivityMembersSummaryDto
 } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../ui/context/stores/activity.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
+import { ActivityStore } from '../../../ui/context/stores/activity/activity.store';
 
 @Injectable({
   providedIn: 'root'

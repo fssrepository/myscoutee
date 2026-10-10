@@ -19,12 +19,12 @@ import { CommunityCaseBoardComponent } from './community-case-board.component';
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { defer, map } from 'rxjs';
 
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { CASE_TYPES, type CommunityCase, type CommunityScheduledTask, type CaseFilters, type CaseType, type CaseAction, type ScheduledTaskFilters, type ScheduledTaskAction, type ScheduledTaskStatus } from '../../../core/contracts/community-case.interface';
 
 import { CommunityCaseEditorComponent } from './community-case-editor.component';
-import { CommunityCaseConverter } from '../../converters/community-case.converter';
+import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
 
 @Component({ selector: 'app-community-cases-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, SingleRowComponent, CommunityCaseEditorComponent, CommunityCaseBoardComponent, CommunityCaseQuotationsComponent],

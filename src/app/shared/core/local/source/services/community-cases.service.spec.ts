@@ -1,6 +1,6 @@
 import { LocalCommunityCasesRepository } from '../repositories/community-cases.repository';
 import { LocalChatsService } from './chats.service';
-import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
 import { TestBed } from '@angular/core/testing';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { RouteDelayService } from '../../../base/services/route-delay.service';

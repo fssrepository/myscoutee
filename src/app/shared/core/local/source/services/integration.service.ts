@@ -8,7 +8,7 @@ import { partitionEventInvitesByCapacity } from '../../../base/services/activity
 import type { ActivityMemberDTO } from '../../../contracts/activity.interface';
 import { Injectable, inject } from '@angular/core';
 
-import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
 import { SessionService } from '../../../base/services/session.service';
 import type {
   IntegrationSettingsDto,

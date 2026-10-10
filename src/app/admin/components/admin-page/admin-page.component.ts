@@ -1,6 +1,6 @@
 import { ExplanationGuideService, DeploymentBrandComponent } from '@myscoutee/components';
 import { DestroyRef } from '@angular/core';
-import { UserProfileStore } from "../../../shared/ui/context/stores/user-profile.store";
+import { UserProfileStore } from "../../../shared/ui/context/stores/profile/user-profile.store";
 import {
   CommonModule,
   DOCUMENT
@@ -41,13 +41,13 @@ import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../sha
 
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 import {
   DemoBootstrapSelectorStore
-} from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
+} from '../../../shared/ui/context/stores/app/demo-bootstrap-selector.store';
 
 @Component({
   selector: 'app-admin-page',

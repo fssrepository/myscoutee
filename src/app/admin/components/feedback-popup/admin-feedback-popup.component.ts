@@ -31,8 +31,8 @@ import { ActivityChatSingleRowConverter } from '../../../shared/ui';
 import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
-import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 
 interface AdminFeedbackListFilters {
   revision?: number;

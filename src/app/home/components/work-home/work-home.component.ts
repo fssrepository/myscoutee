@@ -13,11 +13,11 @@ import {
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, inject, computed } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
-import { WorkHomeStore } from '../../../shared/ui/context/stores/work-home.store';
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/campaign.converter';
+import { WorkHomeStore } from '../../../shared/ui/context/stores/services/work-home.store';
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/activity/campaign.converter';
 import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignFilters, type CampaignCategory, type CampaignKind } from '../../../shared/core/contracts/campaign.interface';
 
 import { I18nService } from '../../../shared/core/base/services/i18n.service';

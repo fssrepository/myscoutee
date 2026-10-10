@@ -32,7 +32,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
-import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile-form-flow.converter';
+import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile/profile-form-flow.converter';
 
 import {
   GameFilterForm,

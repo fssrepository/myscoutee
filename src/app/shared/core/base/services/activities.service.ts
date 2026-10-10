@@ -24,7 +24,7 @@ import {
 import {
   BaseRouteModeService
 } from './base-route-mode.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 
 @Injectable({
   providedIn: 'root'

@@ -39,18 +39,18 @@ import type {
   OperatorLeaderboardGroup
 } from '../../../shared/core/contracts/operator.interface';
 
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   OperatorLeaderboardStore,
   type OperatorLeaderboardFilters
-} from '../../../shared/ui/context/stores/operator-leaderboard.store';
+} from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
-} from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
-import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator-leaderboard-single-row.converter';
+} from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
+import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator/operator-leaderboard-single-row.converter';
 
 type OperatorActionId = Exclude<
   OperatorMenuKind,

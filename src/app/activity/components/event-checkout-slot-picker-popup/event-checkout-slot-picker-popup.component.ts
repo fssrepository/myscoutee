@@ -32,7 +32,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { EventsService, type EventCheckoutBasket, type EventCheckoutBasketItem, type EventCheckoutLineItem, type EventCheckoutOptionalSubEvent, type EventCheckoutPricingSummaryRow, type EventCheckoutSlot, type EventCheckoutSlotDay, type EventCheckoutState, type EventCheckoutSlotsResult } from '../../../shared/core';
 
 import { EventCheckoutDraftStore, EventCheckoutSlotPickerStore } from '../../../shared/ui';
-import type { SlotPickerRecord } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
+import type { SlotPickerRecord } from '../../../shared/ui/context/stores/event/event-checkout-slot-picker.store';
 import type { EventCheckoutSlotsQuery } from '../../../shared/core/contracts/activity.interface';
 import {
   EventBasketInputComponent,

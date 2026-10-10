@@ -14,8 +14,8 @@ import { Component, ViewChild, computed, effect, inject, signal, untracked } fro
 import { defer } from 'rxjs';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import type { CampaignHistoryItem } from '../../../shared/core/contracts/campaign.interface';
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
-import { CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/campaign.converter';
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
+import { CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/activity/campaign.converter';
 
 import { CampaignEditorComponent, campaignViewControl, type CampaignView } from '../../../shared/ui/components/campaigns-popup/campaign-editor.component';
 import { ProfileViewPopupComponent } from '../../../profile/components/profile-view-popup/profile-view-popup.component';

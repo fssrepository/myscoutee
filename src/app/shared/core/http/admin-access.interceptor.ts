@@ -22,7 +22,7 @@ import {
 import {
   APP_STORAGE_KEYS
 } from '../common/storage-scope';
-import { UserProfileStore } from '../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../ui/context/stores/profile/user-profile.store';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';

@@ -40,9 +40,9 @@ import {
 } from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
-import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
-import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
-import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores/event-checkout-draft.store';
+import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/app/member-menu.store';
+import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event/event-subevents-popup.store';
+import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores/event/event-checkout-draft.store';
 
 @Component({
   selector: 'app-activities-event-template',

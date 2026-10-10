@@ -23,9 +23,9 @@ import {
   type SmartListStateChange,
   DialogStore
 } from '@myscoutee/components';
-import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community-group-changes.store';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
-import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
+import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community/community-group-changes.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
+import { MingleStore } from '../../../shared/ui/context/stores/activity/mingle.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   CommonModule
@@ -64,20 +64,20 @@ import {
 } from '../../../shared/ui/converters';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import type { ActivityMemberOwnerType, AssetType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/asset.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
   type ActivityCounters
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { canManageScopedAssetMembers } from './scoped-asset-member-management.policy';
 
 interface MembersSmartListFilters {

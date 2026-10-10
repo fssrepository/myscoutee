@@ -68,14 +68,14 @@ import {
 
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import { IntegrationSettingsPopupComponent } from '../integration-settings-popup/integration-settings-popup.component';
-import { CalendarExportStore } from '../../../shared/ui/context/stores/calendar-export.store';
+import { CalendarExportStore } from '../../../shared/ui/context/stores/activity/calendar-export.store';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 

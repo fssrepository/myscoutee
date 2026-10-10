@@ -46,10 +46,10 @@ import {
 } from 'rxjs';
 import {
   ActivitiesPopupStore
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
 
 import {
@@ -79,9 +79,9 @@ import {
   normalizeGameFilter,
   parseGameHeightCm
 } from '../../shared/home-game-filter.shared';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 
 type LocalPopup = 'filter' | null;

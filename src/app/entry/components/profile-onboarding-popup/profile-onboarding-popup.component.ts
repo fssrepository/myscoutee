@@ -25,7 +25,7 @@ import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   type ProfileFormFlowMenuContext
-} from '../../../shared/ui/converters/profile-form-flow.converter';
+} from '../../../shared/ui/converters/profile/profile-form-flow.converter';
 
 type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Workspace' | 'School'>;
 

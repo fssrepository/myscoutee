@@ -18,10 +18,10 @@ import {
   ExplanationGuideService
 } from '@myscoutee/components';
 
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 
-import { CommunityCaseConverter } from '../../converters/community-case.converter';
+import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
 import type { EventPolicyDTO } from '../../../core/contracts/event.interface';
 import type { CaseOffer } from '../../../core/contracts/community-case.interface';
 type Row = SingleRowData<CaseOffer>;

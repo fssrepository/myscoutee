@@ -32,8 +32,8 @@ import {
 
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 interface ProfileImpressionsPulseFlags {
   hostTop: boolean;

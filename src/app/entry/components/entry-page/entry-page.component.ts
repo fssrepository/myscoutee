@@ -69,7 +69,7 @@ import {
 } from '../../../shared/core/base/services/firebase-app.service';
 import { FirebaseMessagingService } from '../../../shared/core/base/services/firebase-messaging.service';
 import { AppLocationService } from '../../../shared/core/base/services/app-location.service';
-import { AppSetupStore } from '../../../shared/ui/context/stores/app-setup.store';
+import { AppSetupStore } from '../../../shared/ui/context/stores/app/app-setup.store';
 import {
   I18nService
 } from '../../../shared/core/base/services/i18n.service';
@@ -92,7 +92,7 @@ import {
 
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 
 import {
   DocumentViewerComponent,
@@ -103,7 +103,7 @@ import {
 } from '../../../shared/ui/components/document-viewer';
 import {
   HelpCenterRevisionDocumentViewerConfigConverter
-} from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
+} from '../../../shared/ui/converters/app/help-center-revision-document-viewer.converter';
 import {
   EntryFirebaseAuthPopupComponent
 } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
@@ -116,7 +116,7 @@ import {
 import {
   DemoBootstrapSelectorStore,
   type DemoBootstrapSelectorMode
-} from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
+} from '../../../shared/ui/context/stores/app/demo-bootstrap-selector.store';
 
 interface EntryDemoUserSelectionEvent {
   userId: string;

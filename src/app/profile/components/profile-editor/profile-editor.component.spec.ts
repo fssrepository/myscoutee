@@ -7,8 +7,8 @@ import { ProfileEditorComponent } from './profile-editor.component';
 import { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
 
 import { UsersService } from '../../../shared/core';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { ProfileStore } from '../../../shared/ui/context/stores/profile/profile.store';
 
 @Component({
   selector: 'app-image-carousel', standalone: true, template: '',

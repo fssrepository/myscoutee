@@ -4,7 +4,7 @@ import { environment } from '../../../../../environments/environment';
 import { HttpGameService } from '../../http/services/game.service';
 import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';
 import { LocalGameService } from '../../local/source/services/game.service';
-import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
+import { AppRuntimeStore } from '../../../ui/context/stores/app/app-runtime.store';
 import { GameService } from './game.service';
 import { RateOutboxService } from './rate-outbox.service';
 import { SessionService } from './session.service';

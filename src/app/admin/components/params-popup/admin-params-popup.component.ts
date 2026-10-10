@@ -41,8 +41,8 @@ import {
 
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
 type AdminParamSelectMenuItemId = `param-option:${string}:${string}`;

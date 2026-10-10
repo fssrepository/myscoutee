@@ -5,7 +5,7 @@ import { EventExplorePopupComponent } from '../event-explore-popup/event-explore
 import { ActivitiesPopupComponent } from '../activities-popup/activities-popup.component';
 import { EventMembersPopupComponent } from './event-members-popup.component';
 import { PhotoFeedPopupComponent } from '../../../shared/ui/components/photo-feed-popup/photo-feed-popup.component';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
 
 const member = { id: 'organizer', userId: 'organizer', name: 'Organizer', status: 'accepted' };
 function setup(surface: string, followed = false) {

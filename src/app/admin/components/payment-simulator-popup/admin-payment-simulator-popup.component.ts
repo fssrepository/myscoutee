@@ -8,7 +8,7 @@ import { HttpPaymentSimulatorAdminService } from '../../../shared/core/http/serv
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import { IndicatorComponent, PopupComponent, type PopupModel, I18nPipe } from '@myscoutee/components';
 
-import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
 
 @Component({
   selector: 'app-admin-payment-simulator-popup',

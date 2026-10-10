@@ -11,8 +11,8 @@ import {
 import { Component, ViewChild, inject, effect, untracked, input, computed } from '@angular/core';
 import {defer,map} from 'rxjs';
 
-import {ServiceOfferingsStore} from '../../context/stores/service-offerings.store';
-import {CommunityCasesStore} from '../../context/stores/community-cases.store';
+import {ServiceOfferingsStore} from '../../context/stores/services/service-offerings.store';
+import {CommunityCasesStore} from '../../context/stores/community/community-cases.store';
 
 import type {CaseAppointmentCalendarEntry} from '../../../core/contracts/case-appointment.interface';
 

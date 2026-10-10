@@ -1,5 +1,5 @@
 import { CommunityGroupsPopupComponent } from './community-groups-popup.component';
-import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
+import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
 import { AppUtils } from '../../../app-utils';
 
 const rows = [

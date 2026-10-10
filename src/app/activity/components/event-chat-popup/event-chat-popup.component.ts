@@ -22,10 +22,10 @@ import {
   UiPollCoordinator,
   UiTaskScheduler
 } from '@myscoutee/components';
-import { CommunityCasesStore } from '../../../shared/ui/context/stores/community-cases.store';
+import { CommunityCasesStore } from '../../../shared/ui/context/stores/community/community-cases.store';
 import { ContactsService } from '../../../shared/core/base/services/contacts.service';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
-import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat-share.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
+import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat/chat-share.store';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -64,11 +64,11 @@ import {
 import type {
   EventChatHeaderState,
   EventChatSession
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 import { ActivityResourceBuilder, AdminWorkspaceDataService, AssetDefaultsBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, DeploymentConfigurationService, EventsService, I18nService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
@@ -82,25 +82,25 @@ import {
 
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
-import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin/admin-workspace.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
   type ActivityChatMetricBucketPatch
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourcePopupPresentationHeader,
   type SubEventResourcePopupRequest
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import {
   ActivityChatSingleRowConverter,
   ChatPopupHeaderContextConverter,

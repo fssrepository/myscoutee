@@ -21,7 +21,7 @@ import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
@@ -30,7 +30,7 @@ import {
 } from '../../../shared/app-utils';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
-import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community-groups.store';
+import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community/community-groups.store';
 import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
 import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
 import {
@@ -77,18 +77,18 @@ import type { UserDto } from '../../../shared/core/contracts/user.interface';
 
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 import {
   AdminChatReviewPopupComponent
 } from '../chat-review-popup/admin-chat-review-popup.component';
 import {
   AdminItemPreviewPopupComponent
 } from '../item-preview-popup/admin-item-preview-popup.component';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 interface AdminReportListItem {
   id: string;

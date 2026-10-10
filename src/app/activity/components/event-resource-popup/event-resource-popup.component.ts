@@ -9,7 +9,7 @@ import {
   DialogStore
 } from '@myscoutee/components';
 
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -83,33 +83,33 @@ import {
 } from '../../../shared/ui/converters';
 import {
   type ActivitiesNavigationRequest
-} from '../../../shared/ui/context/stores/member-menu.store';
+} from '../../../shared/ui/context/stores/app/member-menu.store';
 import {
   AssetStore,
   type AssetEditorCheckoutState,
   type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   ActivityStore,
   type ActivityMembersSyncState
-} from '../../../shared/ui/context/stores/activity.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceAssignmentQuantityUpdate
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import type {
   AssignedAssetJoinDialogState,
   AssignedAssetJoinPricingPreview,
@@ -119,7 +119,7 @@ import type {
   ResourcePopupContext,
   SubEventResourcePopupPresentationHeader,
   SubEventResourcePopupRequest
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   EventResourceListComponent,
@@ -128,8 +128,8 @@ import {
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
 
 interface ResourceAssignmentRemovalRequest {
   assetId: string;

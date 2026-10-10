@@ -47,18 +47,18 @@ import {
 } from '../../../shared/core';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 
 interface ActivityInviteFilters {
   ownerId?: string;

@@ -22,7 +22,7 @@ import { AppMenuComponent, type AppMenuItem, DialogComponent } from '@myscoutee/
 
 import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
 
-import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/demo-bootstrap-selector.store';
+import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/app/demo-bootstrap-selector.store';
 import { AppUtils } from './shared/app-utils';
 
 @Component({

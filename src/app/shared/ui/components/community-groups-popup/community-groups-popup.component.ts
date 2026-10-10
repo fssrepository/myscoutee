@@ -17,12 +17,12 @@ import { defer, map } from 'rxjs';
 
 import { I18nService } from '../../../core/base/services/i18n.service';
 
-import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
-import { ProfileStore } from '../../context/stores/profile.store';
-import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
+import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
+import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community/community-group.converter';
 import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort, groupMembershipBucket } from '../../../core/contracts/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
-import { ContentModerationStore } from '../../context/stores/content-moderation.store';
+import { ContentModerationStore } from '../../context/stores/content/content-moderation.store';
 
 import { isBaseGroupId } from '../../../core/contracts/group-type';
 @Component({ selector: 'app-community-groups-popup', standalone: true,

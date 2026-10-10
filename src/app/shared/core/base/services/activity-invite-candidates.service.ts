@@ -30,7 +30,7 @@ import {
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import type * as AppConstants from '../../common/constants';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 import { partitionEventInvitesByCapacity } from './activity-invite-capacity.policy';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';

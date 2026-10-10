@@ -18,8 +18,8 @@ import {
 
 import type * as AppDTOs from '../../contracts';
 import type { AssetType } from '../../common/constants';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../ui/context/stores/activity.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
+import { ActivityStore } from '../../../ui/context/stores/activity/activity.store';
 const ACTIVITY_SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
 
 @Injectable({

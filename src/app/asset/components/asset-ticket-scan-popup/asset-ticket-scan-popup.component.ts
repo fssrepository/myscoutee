@@ -19,10 +19,10 @@ import {
 } from '../../../shared/core';
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   AssetTicketScanConverter
-} from '../../../shared/ui/converters/asset-ticket-scan.converter';
+} from '../../../shared/ui/converters/asset/asset-ticket-scan.converter';
 import { PopupComponent, type PopupModel } from '@myscoutee/components';
 import {
   AssetTicketCodePopupComponent
@@ -32,7 +32,7 @@ import {
 } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
 

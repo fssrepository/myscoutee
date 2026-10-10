@@ -5,7 +5,7 @@ import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../../../shared/ui/context/stores/activity/activities-popup.store';
 import { type CardMenuActionEvent, SingleRowComponent, type SingleRowData } from '@myscoutee/components';
 
 @Component({

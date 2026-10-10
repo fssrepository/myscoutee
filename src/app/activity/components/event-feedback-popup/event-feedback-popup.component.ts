@@ -22,8 +22,8 @@ import {
   DialogStore,
   type DialogConfig
 } from '@myscoutee/components';
-import { ServiceFeedbackStore } from '../../../shared/ui/context/stores/service-feedback.store';
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
+import { ServiceFeedbackStore } from '../../../shared/ui/context/stores/services/service-feedback.store';
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   Component,
@@ -55,14 +55,14 @@ import {
   EventsService
 } from '../../../shared/core/base';
 
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
   type ActivityEventFeedbackCounters
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 

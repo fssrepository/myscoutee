@@ -34,7 +34,7 @@ import {
   type FirebaseAppRuntime,
   type FirebaseConfigFile
 } from './firebase-app.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 import { DeviceRegistrationsService } from './device-registrations.service';
 import { DeploymentConfigurationService } from './deployment-configuration.service';
 import { I18nService } from './i18n.service';

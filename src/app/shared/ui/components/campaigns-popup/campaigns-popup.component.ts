@@ -17,9 +17,9 @@ import { defer, map } from 'rxjs';
 
 import { I18nService } from '../../../core/base/services/i18n.service';
 
-import { CampaignsStore } from '../../context/stores/campaigns.store';
-import { ProfileStore } from '../../context/stores/profile.store';
-import { CampaignConverter, CAMPAIGN_STATUS_STYLE } from '../../converters/campaign.converter';
+import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
+import { CampaignConverter, CAMPAIGN_STATUS_STYLE } from '../../converters/activity/campaign.converter';
 import type { Campaign, CampaignFilters, CampaignStatus } from '../../../core/contracts/campaign.interface';
 import { CampaignEditorComponent } from './campaign-editor.component';
 import { CampaignHistoryPopupComponent } from '../../../../activity/components/campaign-history-popup/campaign-history-popup.component';

@@ -27,8 +27,8 @@ import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
 import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
 import * as AppConstants from '../../../shared/core/common/constants';
 import type { AssetType } from '../../../shared/core/common/constants';
-import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/app/demo-bootstrap-selector.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
 
 @Component({
   selector: 'app-admin-help-session-page',

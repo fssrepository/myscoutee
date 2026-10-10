@@ -7,7 +7,7 @@ import { SeedCommunityAnnouncementsRepository } from '../../seed/repositories/co
 import { LocalCommunityAnnouncementsService } from './community-announcements.service';
 import { LocalCommunityGroupsService } from './community-groups.service';
 import { LocalChatsService } from './chats.service';
-import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 
 describe('Community announcements, member voting and notifications', () => {

@@ -25,9 +25,9 @@ import {
 
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 interface FeedbackFormValue {
   category: string;

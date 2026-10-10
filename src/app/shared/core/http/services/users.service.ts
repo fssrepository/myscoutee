@@ -48,7 +48,7 @@ import {
 } from '../../base/services/session.service';
 import { firstValueFrom, timeout } from 'rxjs';
 import { AppUtils } from '../../../app-utils';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 
 @Injectable({
   providedIn: 'root'

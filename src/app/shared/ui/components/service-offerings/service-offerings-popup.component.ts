@@ -16,10 +16,10 @@ import { ServiceProviderCalendarComponent } from './service-provider-calendar.co
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { defer,map } from 'rxjs';
 
-import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
-import { ProfileStore } from '../../context/stores/profile.store';
+import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { type ServiceImageCard, ServiceOfferingConverter, SERVICE_STATUS_STYLE, SERVICE_CATEGORY_STYLE } from '../../converters/service-offering.converter';
+import { type ServiceImageCard, ServiceOfferingConverter, SERVICE_STATUS_STYLE, SERVICE_CATEGORY_STYLE } from '../../converters/services/service-offering.converter';
 import { ServiceOfferingEditorComponent } from './service-offering-editor.component';
 import { SERVICE_CATEGORIES,type ServiceOfferingItem,type ServiceOfferingFilters,type ServiceCategory,type ServiceStatus,type ServiceAction } from '../../../core/contracts/service-offering.interface';
 

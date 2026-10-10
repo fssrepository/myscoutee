@@ -31,7 +31,7 @@ import {
 import {
   RateOutboxService
 } from './rate-outbox.service';
-import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
+import { AppRuntimeStore } from '../../../ui/context/stores/app/app-runtime.store';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 

@@ -34,11 +34,11 @@ import {
   ExplanationGuideService
 } from '@myscoutee/components';
 
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -87,13 +87,13 @@ import {
   ActivitiesPopupStore,
   type ActivityEventSyncMessage,
   type EventChatRowPatch
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
+} from '../../../shared/ui/context/stores/event/event-editor-popup.store';
 import {
   AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { resolveActivityRateOrder } from '../../../shared/core/base/activity-rate-order';
@@ -113,13 +113,13 @@ import type {
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
-} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
 import {
   EventCheckoutDialogStore
-} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import {
   EventCheckoutPopupComponent
 } from '../event-checkout-popup';
@@ -146,14 +146,14 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
   type ActivityChatMetricBucketPatch
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;

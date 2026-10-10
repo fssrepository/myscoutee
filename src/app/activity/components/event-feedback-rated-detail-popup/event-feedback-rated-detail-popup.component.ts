@@ -16,7 +16,7 @@ import type { EventFeedbackCard } from '../../../shared/ui/models';
 import {
   ActivitiesPopupStore,
   type EventFeedbackRatedDetailPopupSession
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 @Component({
   selector: 'app-event-feedback-rated-detail-popup',

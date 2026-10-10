@@ -7,8 +7,8 @@ import { PaymentCardComponent, type PaymentCardData, I18nPipe } from '@myscoutee
 import type {
   EventEditorCheckoutSurfaceTone,
   EventPaymentStatusTone
-} from '../../../../shared/ui/context/stores/event-editor-popup.store';
-import { PaymentMethodsPopupStore } from '../../../../shared/ui/context/stores/payment-methods-popup.store';
+} from '../../../../shared/ui/context/stores/event/event-editor-popup.store';
+import { PaymentMethodsPopupStore } from '../../../../shared/ui/context/stores/payment/payment-methods-popup.store';
 
 export interface EventPaymentInputConfig {
   title?: string;

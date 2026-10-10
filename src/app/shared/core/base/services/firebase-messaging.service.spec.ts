@@ -9,8 +9,8 @@ import { DeploymentConfigurationService } from './deployment-configuration.servi
 import { I18nService } from './i18n.service';
 import { AppLocationService } from './app-location.service';
 import { PwaService } from './pwa.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
-import { AppSetupStore } from '../../../ui/context/stores/app-setup.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
+import { AppSetupStore } from '../../../ui/context/stores/app/app-setup.store';
 import { AppSetupPopupComponent } from '../../../ui/components/app-setup-popup/app-setup-popup.component';
 
 vi.mock('firebase/messaging', () => ({

@@ -5,9 +5,9 @@ import type {
   OperatorMeasurementSyncDto,
   OperatorRegistryStatusDto
 } from '../../../shared/core/contracts/operator.interface';
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 import { type LinkInputConfig, type AppMenuItem, type PopupModel } from '@myscoutee/components';
 
 import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';

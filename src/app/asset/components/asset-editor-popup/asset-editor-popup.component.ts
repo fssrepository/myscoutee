@@ -48,7 +48,7 @@ import {
   type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState,
   type AssetFormState
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 
 import { type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
 
@@ -69,8 +69,8 @@ import { environment } from '../../../../environments/environment';
 
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'category'; category: AppConstants.AssetCategory }

@@ -1,6 +1,6 @@
 import { Component, OnDestroy, ViewChild, effect, inject } from '@angular/core';
 import { defer, map } from 'rxjs';
-import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
+import { PhotoFeedStore } from '../../context/stores/content/photo-feed.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import {
   PopupComponent,
@@ -20,12 +20,12 @@ import {
   ExplanationGuideService
 } from '@myscoutee/components';
 
-import { PhotoFeedConverter } from '../../converters/photo-feed.converter';
+import { PhotoFeedConverter } from '../../converters/content/photo-feed.converter';
 import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedStatusFilter } from '../../../core/contracts/photo-feed.interface';
 import { MODERATION_STATUSES } from '../../../core/contracts/content-moderation.interface';
-import { MODERATION_STATUS_STYLE } from '../../converters/content-moderation-presentation';
-import { FollowingStore } from '../../context/stores/following.store';
-import { ProfileStore } from '../../context/stores/profile.store';
+import { MODERATION_STATUS_STYLE } from '../../converters/content/content-moderation-presentation';
+import { FollowingStore } from '../../context/stores/activity/following.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
 
 import { PhotoFeedEventPickerComponent } from './photo-feed-event-picker.component';
 import type { ImageEventReference } from '../../../core/contracts/image-gallery.interface';

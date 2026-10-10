@@ -30,10 +30,10 @@ import {
   DialogStore
 } from '@myscoutee/components';
 
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { untracked } from '@angular/core';
-import { ChatShareStore } from '../../../shared/ui/context/stores/chat-share.store';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
+import { ChatShareStore } from '../../../shared/ui/context/stores/chat/chat-share.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
 import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
   ChangeDetectionStrategy,
@@ -79,30 +79,30 @@ import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 import { EventExploreInfoCardConverter } from '../../../shared/ui';
 
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
-} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
 import {
   EventCheckoutDialogStore
-} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;

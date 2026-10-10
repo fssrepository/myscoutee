@@ -14,7 +14,7 @@ import {
 } from '@myscoutee/components';
 
 import { ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
-import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile.store';
+import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile/profile.store';
 
 interface ProfileViewRow {
   label: string;

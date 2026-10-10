@@ -27,17 +27,17 @@ import { EventsService } from '../../../shared/core/base/services/events.service
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import { PaymentAuthorizationService } from '../../../shared/core/base/services/payment-authorization.service';
 import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
-import { EventCheckoutSlotPickerStore } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
+import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
+import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
+import { EventCheckoutSlotPickerStore } from '../../../shared/ui/context/stores/event/event-checkout-slot-picker.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 import {
   EventEditorPopupStore,
   type EventEditorCheckoutSurfaceTone,
   type EventEditorPresentationOptions
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+} from '../../../shared/ui/context/stores/event/event-editor-popup.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
 
 import { EventPromoCodePopupComponent } from './event-promo-code-popup';
 

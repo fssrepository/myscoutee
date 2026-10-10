@@ -13,8 +13,8 @@ import {
 import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
-import { SERVICE_CATEGORY_STYLE } from '../../converters/service-offering.converter';
+import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
+import { SERVICE_CATEGORY_STYLE } from '../../converters/services/service-offering.converter';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { SERVICE_CATEGORIES,type ServiceOfferingItem,type SaveServiceOffering } from '../../../core/contracts/service-offering.interface';
 @Component({selector:'app-service-offering-editor',standalone:true,imports:[FormsModule,PopupComponent,FormFlowComponent],template:`

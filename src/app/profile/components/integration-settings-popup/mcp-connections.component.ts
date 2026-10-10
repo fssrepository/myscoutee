@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 import { IntegrationAccessButtonComponent } from './integration-access-button.component';
 import {
   DialogStore,

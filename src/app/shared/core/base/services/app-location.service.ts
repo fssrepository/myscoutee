@@ -23,7 +23,7 @@ import {
   appLocationStorageKey
 } from '../../common/storage-scope';
 import { GroupWorkspaceContextService } from './group-workspace-context.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 
 type HttpUsersServiceInstance = import('../../http/services/users.service').HttpUsersService;
 

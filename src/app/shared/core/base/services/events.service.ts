@@ -78,7 +78,7 @@ import {
   UsersService
 } from './users.service';
 import { RouteDelayService } from './route-delay.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 
 @Injectable({
   providedIn: 'root'

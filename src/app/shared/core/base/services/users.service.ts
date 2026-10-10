@@ -37,12 +37,12 @@ import type { LocationCoordinates } from '../../contracts/user.interface';
 import {
   BaseRouteModeService
 } from './base-route-mode.service';
-import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
-import { AppRuntimeStore, DEFAULT_LOAD_STATE } from '../../../ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../ui/context/stores/activity.store';
+import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore, DEFAULT_LOAD_STATE } from '../../../ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../ui/context/stores/activity/activity.store';
 import { RouteDelayService } from './route-delay.service';
 import { OfflineCacheService } from './offline-cache.service';
-import { UserRealtimeUiConverter } from '../../../ui/converters/user-realtime-ui.converter';
+import { UserRealtimeUiConverter } from '../../../ui/converters/profile/user-realtime-ui.converter';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 

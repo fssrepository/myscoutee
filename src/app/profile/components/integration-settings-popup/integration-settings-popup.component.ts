@@ -1,6 +1,6 @@
 import { McpConnectionsComponent } from './mcp-connections.component';
 import { IntegrationAccessButtonComponent } from './integration-access-button.component';
-import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 import {
   CopyLinkComponent,
   ExplanationGuideService,

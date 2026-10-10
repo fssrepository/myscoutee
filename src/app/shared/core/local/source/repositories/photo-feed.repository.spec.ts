@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { PHOTO_FEED_TABLE_NAME, type PhotoFeedRecord } from '../entity/photo-feed.entity';
 import { LocalPhotoFeedRepository } from './photo-feed.repository';
-import { PhotoFeedConverter } from '../../../../ui/converters/photo-feed.converter';
+import { PhotoFeedConverter } from '../../../../ui/converters/content/photo-feed.converter';
 
 describe('Photo feed local persistence and distance paging', () => {
   let db: LocalMemoryDb;

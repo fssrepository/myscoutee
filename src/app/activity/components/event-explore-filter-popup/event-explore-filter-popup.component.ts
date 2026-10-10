@@ -10,7 +10,7 @@ import {
   type AppMenuItemSelectEvent,
   type PopupModel
 } from '@myscoutee/components';
-import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode-menu.converter';
+import { EventModeMenuConverter } from '../../../shared/ui/converters/event/event-mode-menu.converter';
 
 @Component({
   selector: 'app-event-explore-filter-popup',

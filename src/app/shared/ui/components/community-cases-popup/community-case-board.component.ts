@@ -20,10 +20,10 @@ import { Component, computed, effect, inject, signal, untracked, viewChildren } 
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
 
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 
-import { CommunityCaseConverter } from '../../converters/community-case.converter';
+import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
 import type { CaseBoardTask, CaseOffer } from '../../../core/contracts/community-case.interface';
 
 const STAGES = [

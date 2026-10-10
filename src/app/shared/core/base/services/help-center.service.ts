@@ -20,7 +20,7 @@ import type { HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConse
 import {
   BaseRouteModeService
 } from './base-route-mode.service';
-import { HelpCenterStore } from '../../../ui/context/stores/help-center.store';
+import { HelpCenterStore } from '../../../ui/context/stores/app/help-center.store';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 

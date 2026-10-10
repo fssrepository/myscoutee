@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
+import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event/event-editor-popup.store';
 
 export interface EventBasketInputPricingSummaryRow {
   key: string;

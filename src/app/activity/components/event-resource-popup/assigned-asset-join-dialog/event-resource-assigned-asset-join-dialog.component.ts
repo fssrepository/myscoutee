@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } 
 
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
