@@ -5,8 +5,8 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of } from 'rxjs';
 
-import { environment } from '../../../../environments/environment';
-import { SessionService } from '../base/services/session.service';
+import { environment } from '../../../../../environments/environment';
+import { SessionService } from '../../base/services/session.service';
 import { firebaseAuthInterceptor } from './firebase-auth.interceptor';
 
 describe('firebaseAuthInterceptor bootstrap isolation', () => {

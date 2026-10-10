@@ -6,7 +6,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
 
-import { SessionService, type AppSession } from '../base/services/session.service';
+import { SessionService, type AppSession } from '../../base/services/session.service';
 import { operatorBootstrapAuthInterceptor } from './operator-bootstrap-auth.interceptor';
 
 describe('operatorBootstrapAuthInterceptor', () => {

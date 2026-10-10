@@ -2,7 +2,7 @@ import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { tap } from 'rxjs';
 
-import { DeploymentConfigurationService } from '../base/services/deployment-configuration.service';
+import { DeploymentConfigurationService } from '../../base/services/deployment-configuration.service';
 
 export const PAYMENT_PROVIDER_RESPONSE_HEADER = 'X-MyScoutee-Payment-Provider';
 

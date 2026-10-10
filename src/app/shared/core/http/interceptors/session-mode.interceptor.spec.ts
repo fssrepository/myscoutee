@@ -6,7 +6,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of } from 'rxjs';
 
-import { SessionService } from '../base/services/session.service';
+import { SessionService } from '../../base/services/session.service';
 import {
   APP_SESSION_ID_HEADER,
   DEMO_SESSION_HEADER,

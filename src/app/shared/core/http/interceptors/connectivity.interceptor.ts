@@ -1,8 +1,8 @@
 import { HttpInterceptorFn, HttpResponse, HttpErrorResponse } from '@angular/common/http';
 import { defer, finalize, tap } from 'rxjs';
-import { environment } from '../../../../environments/environment';
-import { reportBackendStatus } from '../common/backend-connectivity';
-import { trackDemoWrite } from '../common/demo-failover';
+import { environment } from '../../../../../environments/environment';
+import { reportBackendStatus } from '../../common/backend-connectivity';
+import { trackDemoWrite } from '../../common/demo-failover';
 
 // Observe API connectivity and guard dev-trial writes. Never retry/replay.
 export const connectivityInterceptor: HttpInterceptorFn = (request, next) => {

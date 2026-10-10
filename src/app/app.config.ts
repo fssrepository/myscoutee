@@ -4,12 +4,12 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { MYSCOUTEE_UI_PROVIDERS } from './shared/ui/context/ui.providers';
-import { adminAccessInterceptor } from './shared/core/http/admin-access.interceptor';
-import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interceptor';
-import { operatorBootstrapAuthInterceptor } from './shared/core/http/operator-bootstrap-auth.interceptor';
-import { paymentProviderSyncInterceptor } from './shared/core/http/payment-provider-sync.interceptor';
-import { sessionModeInterceptor } from './shared/core/http/session-mode.interceptor';
-import { connectivityInterceptor } from './shared/core/http/connectivity.interceptor';
+import { adminAccessInterceptor } from './shared/core/http/interceptors/admin-access.interceptor';
+import { firebaseAuthInterceptor } from './shared/core/http/interceptors/firebase-auth.interceptor';
+import { operatorBootstrapAuthInterceptor } from './shared/core/http/interceptors/operator-bootstrap-auth.interceptor';
+import { paymentProviderSyncInterceptor } from './shared/core/http/interceptors/payment-provider-sync.interceptor';
+import { sessionModeInterceptor } from './shared/core/http/interceptors/session-mode.interceptor';
+import { connectivityInterceptor } from './shared/core/http/interceptors/connectivity.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
