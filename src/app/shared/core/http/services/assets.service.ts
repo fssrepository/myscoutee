@@ -730,7 +730,8 @@ export class HttpAssetsService {
                 quantity: Number.isFinite(Number(request.booking.quantity))
                   ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
                   : null,
-                totalAmount: Number.isFinite(Number(request.booking.totalAmount))
+                totalAmount: request.booking.totalAmount != null
+                  && Number.isFinite(Number(request.booking.totalAmount))
                   ? Math.max(0, Number(request.booking.totalAmount))
                   : null,
                 previousTotalAmount: request.booking.previousTotalAmount != null
