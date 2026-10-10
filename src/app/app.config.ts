@@ -3,6 +3,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
+import { MYSCOUTEE_UI_PROVIDERS } from './shared/ui/ui.providers';
 import { adminAccessInterceptor } from './shared/core/http/admin-access.interceptor';
 import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interceptor';
 import { operatorBootstrapAuthInterceptor } from './shared/core/http/operator-bootstrap-auth.interceptor';
@@ -12,6 +13,7 @@ import { connectivityInterceptor } from './shared/core/http/connectivity.interce
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    ...MYSCOUTEE_UI_PROVIDERS,
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([

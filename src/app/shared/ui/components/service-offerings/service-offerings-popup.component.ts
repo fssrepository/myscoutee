@@ -1,17 +1,28 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  SmartListComponent,
+  InfoCardComponent,
+  SingleCardComponent,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type InfoCardData,
+  type AppMenuItemSelectEvent
+} from '@myscoutee/components';
 import { ServiceProviderCalendarComponent } from './service-provider-calendar.component';
-import { AppUtils } from '../../../app-utils';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { defer,map } from 'rxjs';
-import { PopupComponent,type PopupModel } from '../core/popup';
-import { SmartListComponent,InfoCardComponent,SingleCardComponent,type SmartListConfig,type SmartListLoadPage,type InfoCardData } from '../core/smart-list';
+
 import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { type ServiceImageCard, ServiceOfferingConverter, SERVICE_STATUS_STYLE, SERVICE_CATEGORY_STYLE } from '../../converters/service-offering.converter';
 import { ServiceOfferingEditorComponent } from './service-offering-editor.component';
 import { SERVICE_CATEGORIES,type ServiceOfferingItem,type ServiceOfferingFilters,type ServiceCategory,type ServiceStatus,type ServiceAction } from '../../../core/contracts/service-offering.interface';
-import type { AppMenuItemSelectEvent } from '../core/menu';
+
 @Component({selector:'app-service-offerings-popup',standalone:true,imports:[ServiceProviderCalendarComponent,PopupComponent,SmartListComponent,InfoCardComponent,SingleCardComponent,ServiceOfferingEditorComponent],template:`
  @if(store.session()){
  <app-popup [model]="model()" [zIndex]="14600" data-guide-context="community-services">
@@ -34,7 +45,7 @@ export class ServiceOfferingsPopupComponent {
  protected readonly query = computed(() => {return {filters:{scope:this.store.session()?.pick?'all' as const:'own' as const,status:this.status(),category:this.store.session()?.pick?this.category():null},userId:this.store.profileId()};});
  protected readonly config:SmartListConfig<InfoCardData<ServiceOfferingItem>,ServiceOfferingFilters>={pageSize:20,listLayout:'card-grid',trackBy:(_,c)=>c.id,cacheable:{identity:c=>c.id},headerProgress:{enabled:true,placement:'inline'},
    sortable:{sortKey:(c,_index,q)=>[q.filters?.scope==='own'?-Date.parse(c.dateIso??''):(c.eagerDetail?.distanceKm??Infinity),c.id]},
-   groupBy:(c,q)=>q.filters?.scope==='own'?AppUtils.smartListDayLabel(new Date(c.dateIso!)):'',
+   groupBy:(c,q)=>q.filters?.scope==='own'?UiDateUtils.smartListDayLabel(new Date(c.dateIso!)):'',
    showFirstGroupMarker:false,menuItems:c=>c.item?.eagerDetail?ServiceOfferingConverter.menu(c.item.eagerDetail):[]};
  protected readonly providerConfig:SmartListConfig<ServiceImageCard>={pageSize:20,listLayout:'card-grid',trackBy:(_,card)=>card.id,showStickyHeader:false,showGroupMarker:()=>false,headerProgress:{enabled:true},emptyLabel:'service.empty'};
  protected readonly loadProviders:SmartListLoadPage<ServiceImageCard>=(q,c)=>defer(()=>this.store.page(q,c?.signal)).pipe(map(p=>({...p,items:p.items.map(item=>ServiceOfferingConverter.imageCard(item,k=>this.i18n.translate(k)))})));

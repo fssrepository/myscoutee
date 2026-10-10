@@ -5,7 +5,7 @@ import type {
   NotificationListFilters,
   NotificationSyncRequestDto
 } from '../../../contracts/notification.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';

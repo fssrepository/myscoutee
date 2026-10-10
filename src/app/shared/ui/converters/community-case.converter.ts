@@ -1,8 +1,14 @@
 import type { ActivityMemberDTO } from '../../core/contracts/activity.interface';
 import { AppUtils } from '../../app-utils';
 import { CASE_TYPES, type CaseOffer, type CaseFilters, type CaseListContext, type CaseStatus, type CaseType, type CommunityCase } from '../../core/contracts/community-case.interface';
-import type { InfoCardData, InfoCardOverlayTone, SingleRowData } from '../components/core/smart-list/card';
-import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
+import {
+  type InfoCardData,
+  type InfoCardOverlayTone,
+  type SingleRowData,
+  type AppMenuItem,
+  type AppMenuPalette,
+  type AppMenuTrigger
+} from '@myscoutee/components';
 
 type Presentation = { icon: string; palette: NonNullable<InfoCardData['leadingIcon']>['palette']; hue: number; tone: InfoCardOverlayTone };
 const TYPES: Record<CaseType, Presentation> = {

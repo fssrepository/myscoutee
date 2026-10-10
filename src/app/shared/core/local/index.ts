@@ -23,9 +23,6 @@ export { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME, type Activi
 export { type CountryPartition, type CountryPartitionBounds } from './source/entity/country-partition.entity';
 export { type ActivityEventRecord } from '../contracts/activity.interface';
 
-
-
-
 export { USERS_TABLE_NAME, type UsersMemorySchema } from './source/entity/user.entity';
 export { LocalAssetsRepository } from './source/repositories/assets.repository';
 export { LocalAssetRequestsRepository } from './source/repositories/asset-requests.repository';

@@ -1,3 +1,12 @@
+import {
+  UiLinkUtils,
+  UiDateUtils,
+  DialogStore,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
+} from '@myscoutee/components';
+
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, effect, inject, signal } from '@angular/core';
@@ -10,7 +19,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
 
 import { environment } from '../../../../environments/environment';
-import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
@@ -23,18 +31,14 @@ import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../share
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { EventCheckoutSlotPickerStore } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   EventEditorPopupStore,
   type EventEditorCheckoutSurfaceTone,
   type EventEditorPresentationOptions
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import {
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
+
 import { EventPromoCodePopupComponent } from './event-promo-code-popup';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -505,8 +509,8 @@ export class EventCheckoutPopupComponent {
       const dateLabel = this.selectedSlotDateLabel();
       return dateLabel === 'All dates' ? 'Choose a slot' : `${dateLabel} · choose a slot`;
     }
-    const start = AppUtils.isoLocalDateTimeToDate(slot.startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(slot.endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(slot.startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(slot.endAtIso);
     if (!start || !end) {
       return slot.timeframe || 'Choose a slot';
     }
@@ -2891,7 +2895,7 @@ export class EventCheckoutPopupComponent {
           {
             id: joinResult.paymentSessionId ?? '',
             status: joinResult.paymentStatus ?? 'requires_action',
-            paymentUrl: AppUtils.normalizeHttpUrl(joinResult.paymentUrl)
+            paymentUrl: UiLinkUtils.normalizeHttpUrl(joinResult.paymentUrl)
           },
           dialog.userId,
           dialog.record.id,
@@ -3513,7 +3517,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private resolveHoursUntilStart(startAtIso: string): number {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
     if (!start) {
       return 0;
     }
@@ -3524,7 +3528,7 @@ export class EventCheckoutPopupComponent {
     rules: readonly ContractTypes.PricingCancellationRule[],
     startAtIso: string
   ): ContractTypes.PricingCancellationRule | null {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
     if (!start) {
       return null;
     }
@@ -3648,7 +3652,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private slotDateValueFromIso(value: string): Date | null {
-    const parsed = AppUtils.isoLocalDateTimeToDate(value);
+    const parsed = UiDateUtils.isoLocalDateTimeToDate(value);
     if (!parsed) {
       return null;
     }
@@ -3667,12 +3671,12 @@ export class EventCheckoutPopupComponent {
   }
 
   private slotDateKeyFromIso(value: string): string {
-    const parsed = AppUtils.isoLocalDateTimeToDate(value);
+    const parsed = UiDateUtils.isoLocalDateTimeToDate(value);
     return parsed ? this.slotDateKeyFromDate(parsed) : '';
   }
 
   private slotDateKeyFromDate(value: Date): string {
-    return `${value.getFullYear()}-${AppUtils.pad2(value.getMonth() + 1)}-${AppUtils.pad2(value.getDate())}`;
+    return `${value.getFullYear()}-${UiDateUtils.pad2(value.getMonth() + 1)}-${UiDateUtils.pad2(value.getDate())}`;
   }
 
   private async persistCheckoutDraft(
@@ -3814,14 +3818,14 @@ export class EventCheckoutPopupComponent {
 
   private rebuildSlotCaches(slots: readonly ContractTypes.EventSlotOccurrenceDTO[]): void {
     this.availableSlotsCache = [...slots].sort((left, right) => {
-      const leftMs = AppUtils.isoLocalDateTimeToDate(left.startAtIso)?.getTime() ?? 0;
-      const rightMs = AppUtils.isoLocalDateTimeToDate(right.startAtIso)?.getTime() ?? 0;
+      const leftMs = UiDateUtils.isoLocalDateTimeToDate(left.startAtIso)?.getTime() ?? 0;
+      const rightMs = UiDateUtils.isoLocalDateTimeToDate(right.startAtIso)?.getTime() ?? 0;
       return leftMs - rightMs;
     });
 
     const grouped = new Map<string, { value: Date; count: number }>();
     for (const slot of this.availableSlotsCache) {
-      const parsed = AppUtils.isoLocalDateTimeToDate(slot.startAtIso);
+      const parsed = UiDateUtils.isoLocalDateTimeToDate(slot.startAtIso);
       if (!parsed) {
         continue;
       }

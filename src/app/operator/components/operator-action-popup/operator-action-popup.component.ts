@@ -13,50 +13,32 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type {
-  DeploymentSocialLinkDto,
-  ListQuery,
-  OperatorClaimEligibilityStatus,
-  OperatorClaimRequestDto,
-  OperatorDeploymentUpdatePhase,
-  OperatorLeaderboardDeploymentDto,
-  OperatorRevenueReportDto,
-  OperatorRevenueReportFilters,
-  OperatorRevenueSyncState,
-  OperatorSettlementDto,
-  OperatorSettlementFilters,
-  OperatorTlsCertificateMode
-} from '../../../shared/core/contracts';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { ImageCarouselComponent } from '../../../shared/ui/components/core/image-carousel';
-import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
 import {
+  type ListQuery,
+  ImageCarouselComponent,
+  IndicatorComponent,
   FormFlowComponent,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form';
-import {
+  type FormFlowModel,
   LinkInputComponent,
-  type LinkInputConfig
-} from '../../../shared/ui/components/core/form/inputs';
-import {
+  type LinkInputConfig,
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuTrigger
-} from '../../../shared/ui/components/core/menu';
-import {
+  type AppMenuTrigger,
   PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
+  type PopupModel,
   SingleRowComponent,
   SmartListComponent,
   type SingleRowBadge,
   type SingleRowData,
   type SmartListConfig,
-  type SmartListLoadPage
-} from '../../../shared/ui/components/core/smart-list';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+  type SmartListLoadPage,
+  DialogStore,
+  I18nPipe
+} from '@myscoutee/components';
+import type { DeploymentSocialLinkDto, OperatorClaimEligibilityStatus, OperatorClaimRequestDto, OperatorDeploymentUpdatePhase, OperatorLeaderboardDeploymentDto, OperatorRevenueReportDto, OperatorRevenueReportFilters, OperatorRevenueSyncState, OperatorSettlementDto, OperatorSettlementFilters, OperatorTlsCertificateMode } from '../../../shared/core/contracts';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
+
 import {
   OperatorLeaderboardStore,
   type OperatorLeaderboardDeploymentFilters
@@ -67,7 +49,7 @@ import {
 } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
-import { I18nPipe } from '../../../shared/ui/pipes';
+
 import { OperatorRevenueViewComponent } from '../operator-revenue-view/operator-revenue-view.component';
 
 type OperatorPopupAction =
@@ -2188,6 +2170,5 @@ export class OperatorActionPopupComponent {
         return 'slate';
     }
   }
-
 
 }

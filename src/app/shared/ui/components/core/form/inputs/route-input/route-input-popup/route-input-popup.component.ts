@@ -8,12 +8,7 @@ import {
   FormFlowPopupStore,
   type FormFlowRouteInputEditorState
 } from '../../../flow/form-flow-popup.store';
-import {
-  PopupComponent,
-  type PopupAction,
-  type PopupActionEvent,
-  type PopupModel
-} from '../../../../popup';
+import { PopupComponent, type PopupAction, type PopupActionEvent, type PopupModel } from '@myscoutee/components';
 
 @Component({
   selector: 'app-route-input-popup',

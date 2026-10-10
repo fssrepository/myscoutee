@@ -1,3 +1,27 @@
+import {
+  UiDateUtils,
+  AppCalendarDateAdapter,
+  AppCalendarDateFormats,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  FormFlowComponent,
+  type FormFlowModel,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel,
+  DialogStore,
+  SingleRowComponent,
+  type SingleRowData,
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListFilters,
+  type SmartListLoadPage
+} from '@myscoutee/components';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -19,7 +43,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../../../../app-static-data';
-import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../../../../app-calendar-date-adapter';
+
 import { AppUtils } from '../../../../../../app-utils';
 import { UserExperiencesService, type UserExperiencesRouteConfig } from '../../../../../../core';
 import type {
@@ -29,35 +53,6 @@ import type {
   ExperienceImportStatistics,
   UserExperienceImportDraft
 } from '../../../../../../core/contracts/profile.interface';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger
-} from '../../../menu';
-import {
-  FormFlowComponent,
-  type FormFlowModel
-} from '../../flow';
-import {
-  PopupComponent,
-  type PopupActionEvent,
-  type PopupModel
-} from '../../../popup';
-import { DialogStore } from '../../../../../context/stores/dialog.store';
-import {
-  SingleRowComponent,
-  type SingleRowData
-} from '../../../smart-list/card';
-import {
-  SmartListComponent,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListFilters,
-  type SmartListLoadPage
-} from '../../../smart-list';
 
 type ProfileExperienceManagerMenuId = string;
 
@@ -859,8 +854,8 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
   }
 
   private yearMonthToIsoDate(value: string): string {
-    const parsed = AppUtils.fromYearMonth(value);
-    return parsed ? AppUtils.toIsoDate(parsed) : '';
+    const parsed = UiDateUtils.fromYearMonth(value);
+    return parsed ? UiDateUtils.toIsoDate(parsed) : '';
   }
 
   private isoDateToYearMonth(value: string): string {
@@ -868,8 +863,8 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     if (/^\d{4}-\d{2}$/.test(normalized)) {
       return normalized;
     }
-    const parsed = AppUtils.fromIsoDate(normalized);
-    return parsed ? AppUtils.toYearMonth(parsed) : '';
+    const parsed = UiDateUtils.fromIsoDate(normalized);
+    return parsed ? UiDateUtils.toYearMonth(parsed) : '';
   }
 
   private createEmptyExperienceImportDialogState(): ExperienceImportDialogState {
@@ -1013,7 +1008,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
   ): ExperienceListRow[] {
     const filtered = entries.filter(item => filter === 'All' || item.type === filter);
     return [...filtered]
-      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom))
+      .sort((a, b) => UiDateUtils.toSortableDate(b.dateFrom) - UiDateUtils.toSortableDate(a.dateFrom))
       .map(entry => this.toExperienceRow(entry));
   }
 

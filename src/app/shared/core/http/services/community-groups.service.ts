@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace } from '../../contracts/community-group.interface';
-import type { ListQuery, PageResult } from '../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class HttpCommunityGroupsService implements ICommunityGroupsService {
   private readonly http = inject(HttpClient);

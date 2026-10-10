@@ -26,24 +26,19 @@ import {
   type AdminParamsStateDto
 } from '../../../shared/core';
 import {
-  I18nPipe
-} from '../../../shared/ui';
-import {
+  I18nPipe,
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger,
-  type AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
-import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
-import {
+  type AppMenuPalette,
+  IndicatorComponent,
   PopupComponent,
   type PopupActionEvent,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '../../../shared/ui/components/core/popup';
+} from '@myscoutee/components';
+
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';

@@ -16,36 +16,27 @@ import {
   validateOperatorRegistryBaseUrl
 } from '../../../shared/core/base/operator-registry-candidate';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import type {
-  ListQuery,
-  OperatorMeasurementReportDto,
-  OperatorMeasurementReportFilters,
-  OperatorMeasurementSyncState
-} from '../../../shared/core/contracts';
 import {
+  type ListQuery,
   LinkInputComponent,
-  type LinkInputConfig
-} from '../../../shared/ui/components/core/form/inputs/link-input';
-import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
-import {
+  type LinkInputConfig,
+  IndicatorComponent,
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui/components/core/menu';
-import {
+  type AppMenuItemSelectEvent,
   PopupComponent,
   type PopupActionEvent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
+  type PopupModel,
   SmartListComponent,
   type SmartListConfig,
-  type SmartListLoadPage
-} from '../../../shared/ui/components/core/smart-list';
+  type SmartListLoadPage,
+  I18nPipe
+} from '@myscoutee/components';
+import type { OperatorMeasurementReportDto, OperatorMeasurementReportFilters, OperatorMeasurementSyncState } from '../../../shared/core/contracts';
+
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
-import { I18nPipe } from '../../../shared/ui/pipes';
 
 @Component({
   selector: 'app-operator-registry-popup',

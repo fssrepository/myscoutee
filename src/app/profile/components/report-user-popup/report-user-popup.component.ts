@@ -1,4 +1,3 @@
-
 import {
   Component,
   OnDestroy,
@@ -13,10 +12,17 @@ import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
-import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
-import { type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type FormFlowControlModel, type FormFlowModel } from '../../../shared/ui';
-import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
+import {
+  AppMenuComponent,
+  I18nPipe,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type FormFlowControlModel,
+  type FormFlowModel,
+  FormFlowComponent
+} from '@myscoutee/components';
+
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';

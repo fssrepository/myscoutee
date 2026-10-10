@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { Campaign, CampaignAction, CampaignFilters, CampaignHistoryItem, ICampaignsService, SaveCampaign } from '../../contracts/campaign.interface';
-import type { ListQuery, PageResult } from '../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 
 @Injectable({ providedIn: 'root' })
 export class HttpCampaignsService implements ICampaignsService {

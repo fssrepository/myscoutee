@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
@@ -54,7 +55,7 @@ export class ActivityMembersBuilder {
     metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
   ): ActivityMemberDTO {
     const seed = AppUtils.hashText(`${rowKey}:${user.id}`);
-    const metAt = AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
+    const metAt = UiDateUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
     const place = metPlaces.length > 0 ? metPlaces[seed % metPlaces.length] : APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere;
     return {
       id: `${rowKey}:${user.id}`,
@@ -69,8 +70,8 @@ export class ActivityMembersBuilder {
       pendingSource: defaults.pendingSource,
       requestKind: defaults.status === 'pending' ? 'invite' : null,
       invitedByActiveUser: defaults.invitedByActiveUser,
-      metAtIso: AppUtils.toIsoDateTime(metAt),
-      actionAtIso: AppUtils.toIsoDateTime(metAt),
+      metAtIso: UiDateUtils.toIsoDateTime(metAt),
+      actionAtIso: UiDateUtils.toIsoDateTime(metAt),
       metWhere: place,
       avatarUrl: AppUtils.firstImageUrl(user.images),
       profile: user
@@ -78,11 +79,11 @@ export class ActivityMembersBuilder {
   }
 
   static sortActivityMembersByActionTimeDesc(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
-    return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
+    return [...entries].sort((a, b) => UiDateUtils.toSortableDate(b.actionAtIso) - UiDateUtils.toSortableDate(a.actionAtIso));
   }
 
   static sortActivityMembersByActionTimeAsc(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
-    return [...entries].sort((a, b) => AppUtils.toSortableDate(a.actionAtIso) - AppUtils.toSortableDate(b.actionAtIso));
+    return [...entries].sort((a, b) => UiDateUtils.toSortableDate(a.actionAtIso) - UiDateUtils.toSortableDate(b.actionAtIso));
   }
 
 }

@@ -1,27 +1,7 @@
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
-
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
 import {
-  EventsService,
-  type EventCheckoutBasket,
-  type EventCheckoutBasketItem,
-  type EventCheckoutLineItem,
-  type EventCheckoutOptionalSubEvent,
-  type EventCheckoutPricingSummaryRow,
-  type EventCheckoutSlot,
-  type EventCheckoutSlotDay,
-  type EventCheckoutState,
-  type EventCheckoutSlotsResult,
-  type PageResult
-} from '../../../shared/core';
-import {
-  EventCheckoutDraftStore,
-  EventCheckoutSlotPickerStore,
+  UiDateUtils,
+  ExplanationGuideService,
+  type PageResult,
   PopupComponent,
   SmartListComponent,
   TextCardComponent,
@@ -40,7 +20,18 @@ import {
   type SmartListItemSelectEvent,
   type TextCardStatusTone,
   type TextCardTone
-} from '../../../shared/ui';
+} from '@myscoutee/components';
+
+import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { from } from 'rxjs';
+
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+
+import { EventsService, type EventCheckoutBasket, type EventCheckoutBasketItem, type EventCheckoutLineItem, type EventCheckoutOptionalSubEvent, type EventCheckoutPricingSummaryRow, type EventCheckoutSlot, type EventCheckoutSlotDay, type EventCheckoutState, type EventCheckoutSlotsResult } from '../../../shared/core';
+
+import { EventCheckoutDraftStore, EventCheckoutSlotPickerStore } from '../../../shared/ui';
 import type { SlotPickerRecord } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
 import type { EventCheckoutSlotsQuery } from '../../../shared/core/contracts/activity.interface';
 import {
@@ -1357,8 +1348,8 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private formatRecordDateRange(record: SlotPickerRecord): string {
-    const start = AppUtils.isoLocalDateTimeToDate(record.startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(record.endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(record.startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(record.endAtIso);
     if (!start || !end) {
       return '';
     }
@@ -1376,7 +1367,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private formatDateGroup(value: string): string {
-    const parsed = AppUtils.isoLocalDateTimeToDate(value);
+    const parsed = UiDateUtils.isoLocalDateTimeToDate(value);
     return parsed
       ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : value.slice(0, 10);

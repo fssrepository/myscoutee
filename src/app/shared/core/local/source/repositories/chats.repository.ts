@@ -1,3 +1,4 @@
+import { UiDateUtils, type ListQuery } from '@myscoutee/components';
 import { caseOfferChatParticipantIds, caseChatParticipantIds, COMMUNITY_CASES_TABLE_NAME, type CommunityCaseRecord } from '../entity/community-case.entity';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { LocalUsersRepository } from './users.repository';
@@ -17,7 +18,8 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalChatMessageMapper, LocalChatThreadMapper } from '../mappers';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
-import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
+
+import type { ActivitiesFeedFilters } from '../../../contracts';
 
 @Injectable({
   providedIn: 'root'
@@ -1134,12 +1136,12 @@ export class LocalChatsRepository {
       return sorted.sort((left, right) =>
         this.chatMetricScore(right) - this.chatMetricScore(left)
         || direction * (
-          AppUtils.toSortableDate(left.dateIso ?? '') - AppUtils.toSortableDate(right.dateIso ?? '')
+          UiDateUtils.toSortableDate(left.dateIso ?? '') - UiDateUtils.toSortableDate(right.dateIso ?? '')
         )
       );
     }
     return sorted.sort((left, right) =>
-      direction * (AppUtils.toSortableDate(left.dateIso ?? '') - AppUtils.toSortableDate(right.dateIso ?? ''))
+      direction * (UiDateUtils.toSortableDate(left.dateIso ?? '') - UiDateUtils.toSortableDate(right.dateIso ?? ''))
     );
   }
 
@@ -1169,8 +1171,8 @@ export class LocalChatsRepository {
     messagesTable: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
   ): ContractTypes.ChatMessageDto {
     const latestRecord = this.latestChatMessageRecord(messagesTable, chat);
-    const latestMs = latestRecord ? AppUtils.toSortableDate(latestRecord.sentAtIso) : Number.NaN;
-    const messageMs = AppUtils.toSortableDate(message.sentAtIso ?? '');
+    const latestMs = latestRecord ? UiDateUtils.toSortableDate(latestRecord.sentAtIso) : Number.NaN;
+    const messageMs = UiDateUtils.toSortableDate(message.sentAtIso ?? '');
     if (!Number.isFinite(latestMs) || (Number.isFinite(messageMs) && messageMs > latestMs)) {
       return message;
     }
@@ -1178,7 +1180,7 @@ export class LocalChatsRepository {
     const sentAt = new Date(latestMs + 60 * 1000);
     return {
       ...message,
-      sentAtIso: AppUtils.toIsoDateTime(sentAt),
+      sentAtIso: UiDateUtils.toIsoDateTime(sentAt),
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     };
   }
@@ -1295,12 +1297,12 @@ export class LocalChatsRepository {
   }
 
   private compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {
-    return AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
+    return UiDateUtils.toSortableDate(left.sentAtIso) - UiDateUtils.toSortableDate(right.sentAtIso)
       || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`);
   }
 
   private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {
-    const dateMs = AppUtils.toSortableDate(record.dateIso ?? '');
+    const dateMs = UiDateUtils.toSortableDate(record.dateIso ?? '');
     return dateMs >= rangeStartMs && dateMs <= rangeEndMs;
   }
 
@@ -1309,7 +1311,7 @@ export class LocalChatsRepository {
     if (!text) {
       return fallback;
     }
-    const dateMs = AppUtils.toSortableDate(text);
+    const dateMs = UiDateUtils.toSortableDate(text);
     return Number.isFinite(dateMs) ? dateMs : fallback;
   }
 
@@ -1404,7 +1406,7 @@ export class LocalChatsRepository {
   ): ActivityContracts.ActivityMemberDTO {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
     const label = user?.name?.trim() || userId;
-    const when = AppUtils.addDays(new Date(), -Math.max(0, index));
+    const when = UiDateUtils.addDays(new Date(), -Math.max(0, index));
     return {
       id: `chat:${chatId}:${userId}`,
       userId,
@@ -1419,8 +1421,8 @@ export class LocalChatsRepository {
       requestKind: null,
       invitedByActiveUser: false,
       invitedByUserId: null,
-      metAtIso: AppUtils.toIsoDateTime(when),
-      actionAtIso: AppUtils.toIsoDateTime(when),
+      metAtIso: UiDateUtils.toIsoDateTime(when),
+      actionAtIso: UiDateUtils.toIsoDateTime(when),
       metWhere: 'Chat',
       avatarUrl: AppUtils.firstImageUrl(user?.images),
       profile: user ? { ...user, images: [...(user.images ?? [])] } : null

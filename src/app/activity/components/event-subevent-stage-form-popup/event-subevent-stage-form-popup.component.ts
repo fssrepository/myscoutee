@@ -1,13 +1,6 @@
-import { CommonModule } from '@angular/common';
-import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { AppUtils } from '../../../shared/app-utils';
-import { PricingBuilder } from '../../../shared/core/base/builders';
-import type * as ContractTypes from '../../../shared/core/contracts';
 import {
+  type DateRangeDto as SharedDateRangeDto,
+  UiDateUtils,
   AppMenuComponent,
   DateInputComponent,
   type DateInputModel,
@@ -21,10 +14,19 @@ import {
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel,
-  PricingEditorInputComponent,
-  I18nPipe,
-  type PricingEditorConfig
-} from '../../../shared/ui';
+  I18nPipe
+} from '@myscoutee/components';
+
+import { CommonModule } from '@angular/common';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { PricingBuilder } from '../../../shared/core/base/builders';
+import type * as ContractTypes from '../../../shared/core/contracts';
+
+import { PricingEditorInputComponent, type PricingEditorConfig } from '../../../shared/ui';
 
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
 export type EventSubeventStageInsertPlacement = 'before' | 'during' | 'after';
@@ -80,7 +82,7 @@ export interface EventSubeventStageFormModel {
   name: string;
   description: string;
   location: string;
-  dateRange?: ContractTypes.DateRangeDto;
+  dateRange?: SharedDateRangeDto;
   offsetMinutes?: number;
   durationMinutes?: number;
   optional: boolean;
@@ -546,8 +548,8 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     }
 
     target.dateRange = {
-      startAt: AppUtils.toIsoDateTimeLocal(start),
-      endAt: AppUtils.toIsoDateTimeLocal(safeEnd),
+      startAt: UiDateUtils.toIsoDateTimeLocal(start),
+      endAt: UiDateUtils.toIsoDateTimeLocal(safeEnd),
       precision: 'minute'
     };
   }

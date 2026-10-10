@@ -4,17 +4,16 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppMenuComponent, I18nPipe, IndicatorComponent } from '../../../shared/ui';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import {
-  ContactsService,
-  ExplanationGuideService,
-  type ExperienceEntry,
-  type ProfileViewData,
-  type ProfileDetailFormGroup,
-  type ProfileDetailFormRow,
-  type UserDto
-} from '../../../shared/core';
+  AppMenuComponent,
+  I18nPipe,
+  IndicatorComponent,
+  PopupComponent,
+  type PopupModel,
+  ExplanationGuideService
+} from '@myscoutee/components';
+
+import { ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
 import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile.store';
 
 interface ProfileViewRow {

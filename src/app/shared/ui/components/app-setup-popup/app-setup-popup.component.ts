@@ -2,9 +2,16 @@ import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-sur
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { AppMenuComponent, type AppMenuItem, type AppMenuModel, type AppMenuItemSelectEvent } from '../core/menu';
-import { I18nPipe } from '../../pipes';
+import {
+  PopupComponent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuItemSelectEvent,
+  I18nPipe
+} from '@myscoutee/components';
+
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
 import { I18nService } from '../../../core/base/services/i18n.service';
 

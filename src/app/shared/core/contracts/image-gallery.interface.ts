@@ -1,3 +1,8 @@
+import {
+  normalizeImageDetails as normalizeSharedImageDetails,
+  type ImageDetails as SharedImageDetails,
+  type ImageDetailsConfig as SharedImageDetailsConfig
+} from '@myscoutee/components';
 export interface ImageEventReference {
   id: string;
   title: string;
@@ -5,21 +10,16 @@ export interface ImageEventReference {
   organizerName: string;
   location: string;
 }
-export interface ImageDetails { location: string; caption: string; event?: ImageEventReference | null; }
-export interface ImageDetailsConfig {
+export interface ImageDetails extends SharedImageDetails { event?: ImageEventReference | null; }
+export interface ImageDetailsConfig extends SharedImageDetailsConfig {
   eventRequired?: boolean;
   selectEvent?: (current?: ImageEventReference | null) => Promise<ImageEventReference | null>;
 }
 export type ImageDetailsMap = Record<string, ImageDetails>;
-export const IMAGE_CAPTION_MAX_LENGTH = 40;
 
 /** Keep metadata attached to canonical URLs through reorder/removal and persistence. */
 export function normalizeImageDetails(details: ImageDetailsMap | null | undefined, urls: readonly string[]): ImageDetailsMap {
-  return Object.fromEntries(urls.filter(url => details?.[url]).map(url => {
-    const value = details![url];
-    const caption = `${value.caption ?? ''}`.replace(/\s+/g, ' ').trim();
-    const location = `${value.location ?? ''}`.trim();
-    if (caption.length > IMAGE_CAPTION_MAX_LENGTH || location.length > 240) throw new Error('Image details exceed the allowed length.');
-    return [url, { location, caption, ...(value.event ? { event: { ...value.event } } : {}) }];
-  }));
+  const normalized = normalizeSharedImageDetails(details, urls);
+  return Object.fromEntries(Object.entries(normalized).map(([url, value]) =>
+    [url, { location: value.location, caption: value.caption, ...(value.event ? { event: { ...value.event } } : {}) }]));
 }

@@ -5,16 +5,11 @@ import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type {
-  ContentLanguage,
-  HelpCenterAuditEntryDto,
-  HelpCenterDocumentKind,
-  HelpCenterRevisionDto,
-  HelpCenterRevisionSaveRequestDto,
-  HelpCenterSectionDto,
-  HelpCenterStateDto,
-  PrivacyConsentDto,
-  PrivacyConsentSaveRequestDto
-} from '../../contracts';
+  GuideDocumentKind as HelpCenterDocumentKind,
+  GuideRevision as HelpCenterRevisionDto,
+  GuideSection as HelpCenterSectionDto
+} from '@myscoutee/components';
+import type { ContentLanguage, HelpCenterAuditEntryDto, HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../contracts';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 @Injectable({

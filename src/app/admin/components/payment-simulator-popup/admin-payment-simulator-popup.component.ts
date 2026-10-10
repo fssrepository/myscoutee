@@ -6,10 +6,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { HttpPaymentSimulatorAdminService } from '../../../shared/core/http/services/payment-simulator-admin.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
+import { IndicatorComponent, PopupComponent, type PopupModel, I18nPipe } from '@myscoutee/components';
+
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
-import { I18nPipe } from '../../../shared/ui/pipes';
 
 @Component({
   selector: 'app-admin-payment-simulator-popup',

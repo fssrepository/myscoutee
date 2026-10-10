@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import {
@@ -369,7 +370,7 @@ export class SeedActivityMembersRepository {
     const pendingSource = status === 'accepted' ? null : options.pendingSource ?? 'admin';
     const requestKind = status === 'accepted' ? null : options.requestKind ?? 'invite';
     const seed = AppUtils.hashText(`${rowKey}:${user.id}`);
-    const metAt = AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
+    const metAt = UiDateUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
     const place = SeedActivityMembersRepository.MEMBER_MET_PLACES[
       seed % SeedActivityMembersRepository.MEMBER_MET_PLACES.length
     ] ?? 'Demo event';
@@ -387,8 +388,8 @@ export class SeedActivityMembersRepository {
       requestKind: status === 'pending' ? 'invite' : null,
       invitedByActiveUser: false,
       invitedByUserId: null,
-      metAtIso: AppUtils.toIsoDateTime(metAt),
-      actionAtIso: AppUtils.toIsoDateTime(metAt),
+      metAtIso: UiDateUtils.toIsoDateTime(metAt),
+      actionAtIso: UiDateUtils.toIsoDateTime(metAt),
       metWhere: place,
       avatarUrl: AppUtils.firstImageUrl(user.images),
       profile: user
@@ -419,7 +420,7 @@ export class SeedActivityMembersRepository {
       const owner: ActivityMemberOwnerRef = { ownerType: 'group', ownerId: group.ownerId };
       for (const userId of group.userIds) {
         const user = this.resolveDemoUser(userId, [...usersById.values()], usersById);
-        const metAtIso = AppUtils.rebaseDateTime(
+        const metAtIso = UiDateUtils.rebaseDateTime(
           '2026-03-22T18:00:00.000Z',
           SEED_SCHEDULE_REFERENCE_DATE,
           environment.bootstrapOffsetInDays
@@ -509,7 +510,7 @@ export class SeedActivityMembersRepository {
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityContracts.ActivityMemberDTO[] {
-    const seedBaseDate = AppUtils.shiftDate(
+    const seedBaseDate = UiDateUtils.shiftDate(
       new Date('2026-02-24T12:00:00.000Z'),
       SEED_SCHEDULE_REFERENCE_DATE,
       environment.bootstrapOffsetInDays
@@ -547,7 +548,7 @@ export class SeedActivityMembersRepository {
           ?? AppUtils.findUserByName(userList, request.name)
           ?? this.resolveDemoUser(requestUserId, users, usersById, request.name, request.initials, asset.city, request.gender);
         const seed = AppUtils.hashText(`asset-members:${asset.id}:${request.id}:${matchedUser.id}:${index}`);
-        const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
+        const actionAtIso = UiDateUtils.toIsoDateTime(UiDateUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
         const status: AppConstants.ActivityMemberStatus = request.status === 'pending' ? 'pending' : 'accepted';
         return {
           id: request.id?.trim() || `${asset.id}:member:${index + 1}`,
@@ -834,7 +835,7 @@ export class SeedActivityMembersRepository {
 
   private toRecord(owner: ActivityMemberOwnerRef, member: ActivityContracts.ActivityMemberDTO): ActivityMemberRecord {
     const ownerKey = this.ownerKey(owner);
-    const createdMs = AppUtils.toSortableDate(member.actionAtIso) || Date.now();
+    const createdMs = UiDateUtils.toSortableDate(member.actionAtIso) || Date.now();
     const createdAtIso = member.actionAtIso || new Date(createdMs).toISOString();
     const invitedByUserId = member.status === 'pending'
       && (member.requestKind === 'invite' || member.requestKind === 'waitlist-invite')

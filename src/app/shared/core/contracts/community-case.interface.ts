@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from './list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { EventPolicyDTO } from './event.interface';
 export const CASE_TYPES = ['fault', 'maintenance', 'meter-replacement', 'chimney-sweep', 'renovation', 'other'] as const;
 export type CaseType = typeof CASE_TYPES[number];

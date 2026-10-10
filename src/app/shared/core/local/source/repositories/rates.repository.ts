@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { validRatingSnapshot, type RatingDomain } from '../../../contracts/rating-snapshot';
 import { LocalNotificationsRepository } from './notifications.repository';
 import { CAMPAIGNS_TABLE_NAME } from "../entity/campaign.entity";
@@ -11,7 +12,6 @@ import { USER_RATES_TABLE_NAME } from '../entity/rate.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
 import { UserProfileState } from '../../../common/user-profile-state';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
@@ -21,7 +21,6 @@ import { RateOutboxRepository } from '../../../base/repositories/rate-outbox.rep
 import { compareActivityRateItems } from '../../../base/activity-rate-order';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import { LocalUserRatesMapper } from '../mappers';
-
 
 @Injectable({
   providedIn: 'root'
@@ -253,7 +252,7 @@ export class LocalRatesRepository {
       .map(item => people.has(item.userId) && item.mode === 'individual' ? { ...item, id: `game-card:${normalizedUserId}:${item.userId}` } : item)
       .filter(item => this.activityRateItemUsersAreVisible(item, normalizedUserId, usersById));
     return (campaignId ? aggregateCampaignRatings(items, normalizedUserId, campaignId) : items)
-      .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
+      .sort((left, right) => UiDateUtils.toSortableDate(right.happenedAt) - UiDateUtils.toSortableDate(left.happenedAt));
   }
 
   private activityRateItemUsersAreVisible(
@@ -580,9 +579,9 @@ export class LocalRatesRepository {
   }
 
   private matchesDynamicRateRange(item: ActivityRateDTO, query: ActivityRateRecordQuery): boolean {
-    const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
-    const rangeStartMs = query.rangeStartIso ? AppUtils.toSortableDate(query.rangeStartIso) : null;
-    const rangeEndMs = query.rangeEndIso ? AppUtils.toSortableDate(query.rangeEndIso) : null;
+    const happenedAtMs = UiDateUtils.toSortableDate(item.happenedAt ?? '');
+    const rangeStartMs = query.rangeStartIso ? UiDateUtils.toSortableDate(query.rangeStartIso) : null;
+    const rangeEndMs = query.rangeEndIso ? UiDateUtils.toSortableDate(query.rangeEndIso) : null;
     if (rangeStartMs !== null && happenedAtMs < rangeStartMs) {
       return false;
     }
@@ -593,7 +592,7 @@ export class LocalRatesRepository {
   }
 
   private isFinishedMetActivity(happenedAt: string): boolean {
-    const happenedAtMs = AppUtils.toSortableDate(happenedAt);
+    const happenedAtMs = UiDateUtils.toSortableDate(happenedAt);
     return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 
@@ -815,7 +814,7 @@ export class LocalRatesRepository {
   }
 
   private dynamicRecordDateValue(record: UserRateRecord | null | undefined): number {
-    return AppUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
+    return UiDateUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
   }
 
   async flushPendingUserRatesOutboxBatch(limit = 50): Promise<void> {

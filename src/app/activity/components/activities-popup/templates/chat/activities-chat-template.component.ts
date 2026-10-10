@@ -6,11 +6,7 @@ import {
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
 } from '../../../../../shared/ui/context/stores/activities-popup.store';
-import {
-  type CardMenuActionEvent,
-  SingleRowComponent,
-  type SingleRowData
-} from '../../../../../shared/ui';
+import { type CardMenuActionEvent, SingleRowComponent, type SingleRowData } from '@myscoutee/components';
 
 @Component({
   selector: 'app-activities-chat-template',

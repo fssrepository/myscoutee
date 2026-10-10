@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../contracts';
+import type { GuideRevision as HelpCenterRevisionDto } from '@myscoutee/components';
+import type { HelpCenterStateDto } from '../../contracts';
 import { HelpCenterService } from './help-center.service';
 
 export interface TermsPolicyOpenOptions {

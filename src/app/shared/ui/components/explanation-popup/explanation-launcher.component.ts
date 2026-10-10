@@ -1,11 +1,15 @@
 import { Component, DestroyRef, ElementRef, Input, afterEveryRender, computed, inject, signal, untracked } from '@angular/core';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  FloatingLauncherComponent,
+  IndicatorComponent,
+  type IndicatorTone,
+  I18nPipe,
+  PopupPresenceStore,
+  type AppMenuDragPosition,
+  type AppMenuTrigger
+} from '@myscoutee/components';
 import { ExplanationPopupComponent } from './explanation-popup.component';
-import { FloatingLauncherComponent } from '../core/floating-launcher/floating-launcher.component';
-import { IndicatorComponent, type IndicatorTone } from '../core/indicator';
-import { I18nPipe } from '../../pipes';
-import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
-import type { AppMenuDragPosition, AppMenuTrigger } from '../core/menu';
 
 @Component({ selector: 'app-explanation-launcher', standalone: true,
   imports: [FloatingLauncherComponent, ExplanationPopupComponent, IndicatorComponent, I18nPipe],

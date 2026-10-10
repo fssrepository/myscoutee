@@ -11,7 +11,11 @@ import { Injectable, inject } from '@angular/core';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 
-import type { HelpCenterAuditEntryDto, HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../contracts';
+import type {
+  GuideDocumentKind as HelpCenterDocumentKind,
+  GuideRevision as HelpCenterRevisionDto
+} from '@myscoutee/components';
+import type { HelpCenterAuditEntryDto } from '../../../contracts';
 import { LocalHelpCenterMapper } from '../../source/mappers/help-center.mapper';
 import { SeedHelpCenterContentBuilder } from '../builders/help-center-content-seed.builder';
 import GUIDE_FIELDS_BY_PAGE from '../data/help-center-guide-fields.json';

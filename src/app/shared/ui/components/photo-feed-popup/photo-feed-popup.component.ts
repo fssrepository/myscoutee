@@ -2,22 +2,33 @@ import { Component, OnDestroy, ViewChild, effect, inject } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { SmartListComponent, InfoCardComponent, type InfoCardData, type SmartListConfig, type SmartListLoadPage } from '../core/smart-list';
+import {
+  PopupComponent,
+  type PopupModel,
+  SmartListComponent,
+  InfoCardComponent,
+  type InfoCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItemSelectEvent,
+  type CardMenuRequestEvent,
+  DialogStore,
+  type AppMenuItem,
+  ViewportSeenDirective,
+  ExplanationGuideService
+} from '@myscoutee/components';
+
 import { PhotoFeedConverter } from '../../converters/photo-feed.converter';
 import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedStatusFilter } from '../../../core/contracts/photo-feed.interface';
 import { MODERATION_STATUSES } from '../../../core/contracts/content-moderation.interface';
 import { MODERATION_STATUS_STYLE } from '../../converters/content-moderation-presentation';
 import { FollowingStore } from '../../context/stores/following.store';
 import { ProfileStore } from '../../context/stores/profile.store';
-import { AppMenuDispatcher, AppMenuOutletComponent, type AppMenuItemSelectEvent } from '../core/menu';
-import type { CardMenuRequestEvent } from '../core/smart-list/card';
+
 import { PhotoFeedEventPickerComponent } from './photo-feed-event-picker.component';
 import type { ImageEventReference } from '../../../core/contracts/image-gallery.interface';
-import { DialogStore } from '../../context/stores/dialog.store';
-import type { AppMenuItem } from '../core/menu';
-import { ViewportSeenDirective } from '../../directives/viewport-seen.directive';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 
 @Component({
   selector: 'app-photo-feed-popup', standalone: true,

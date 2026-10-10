@@ -1,10 +1,10 @@
 import { ChangeDetectorRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService } from '../../../shared/core';
-import { AppMenuDispatcher } from '../../../shared/ui';
+import { AppMenuDispatcher, DialogStore } from '@myscoutee/components';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+
 import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';

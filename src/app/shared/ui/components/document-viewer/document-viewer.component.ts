@@ -8,19 +8,25 @@ import { APP_STATIC_DATA } from '../../../app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
-import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
-import { LazyBgImageDirective } from '../../directives';
 import {
+  type GuideDocumentKind as HelpCenterDocumentKind,
+  type GuideRevision as HelpCenterRevisionDto,
+  LazyBgImageDirective,
   AccordionComponent,
   type UiAccordionItem,
   type UiAccordionModel,
   type UiAccordionSelectionToggleEvent,
-  type UiAccordionToggleEvent
-} from '../core/accordion';
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../core/menu';
-import { IndicatorComponent } from '../core/indicator';
-import { DeploymentBrandComponent } from '../core/deployment-brand';
-import { PopupComponent, type PopupModel } from '../core/popup';
+  type UiAccordionToggleEvent,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  IndicatorComponent,
+  DeploymentBrandComponent,
+  PopupComponent,
+  type PopupModel
+} from '@myscoutee/components';
+
 import type {
   DocumentViewerAction,
   DocumentViewerActionEvent,

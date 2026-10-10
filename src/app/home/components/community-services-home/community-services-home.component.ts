@@ -1,5 +1,15 @@
 import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  SmartListComponent,
+  SingleCardComponent,
+  type SingleCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type UiBranding as DeploymentBrandingDto,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '@myscoutee/components';
 import { AppUtils } from '../../../shared/app-utils';
 import { Component, Input, inject, signal, computed, effect, untracked } from '@angular/core';
 import { defer,map } from 'rxjs';
@@ -9,11 +19,10 @@ import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { SERVICE_CATEGORY_STYLE, ServiceOfferingConverter } from '../../../shared/ui/converters/service-offering.converter';
 import { ServiceOfferingEditorComponent } from '../../../shared/ui/components/service-offerings/service-offering-editor.component';
-import { SmartListComponent,SingleCardComponent,type SingleCardData,type SmartListConfig,type SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
+
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { SERVICE_CATEGORIES,type ServiceOfferingFilters,type ServiceCategory,type ServiceOfferingItem } from '../../../shared/core/contracts/service-offering.interface';
-import type { DeploymentBrandingDto } from '../../../shared/core/contracts/deployment-configuration.interface';
-import type { AppMenuItem,AppMenuItemSelectEvent } from '../../../shared/ui/components/core/menu';
+
 type ServiceHomeCard = SingleCardData & { id: string; eagerDetail: ServiceOfferingItem };
 @Component({selector:'app-community-services-home',standalone:true,imports:[HomeHeaderComponent,SmartListComponent,SingleCardComponent,ServiceOfferingEditorComponent],
  template:`<div class="game-page" data-guide-surface="community.services.home">

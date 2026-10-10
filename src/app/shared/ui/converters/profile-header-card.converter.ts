@@ -1,5 +1,5 @@
-import type { IndicatorState } from '../components/core/indicator';
-import type { HeaderCardModel } from '../components/core/smart-list/card/header-card';
+import { type IndicatorState, type HeaderCardModel } from '@myscoutee/components';
+
 import type { UserDto } from '../../core/contracts/user.interface';
 
 export interface ProfileHeaderCardConverterOptions {

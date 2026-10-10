@@ -14,9 +14,15 @@ import {
 } from '../../../shared/app-static-data';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
-import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
-import { type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type FormFlowModel } from '../../../shared/ui';
-import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type FormFlowModel,
+  FormFlowComponent
+} from '@myscoutee/components';
+
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';

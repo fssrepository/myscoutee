@@ -2,11 +2,19 @@ import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ExplanationGuideService, I18nService } from '../../../core';
-import type { HelpCenterGuideFieldDto, HelpCenterSectionDto } from '../../../core/contracts';
-import { I18nPipe } from '../../pipes';
-import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuTrigger } from '../core/menu';
+import {
+  ExplanationGuideService,
+  type GuideField as HelpCenterGuideFieldDto,
+  type GuideSection as HelpCenterSectionDto,
+  I18nPipe,
+  OverlayNavigationStore,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuTrigger
+} from '@myscoutee/components';
+import { I18nService } from '../../../core';
 
 type GuideRect = { left: number; top: number; width: number; height: number };
 

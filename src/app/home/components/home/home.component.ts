@@ -2,7 +2,27 @@ import { CommunityServicesHomeComponent } from '../community-services-home/commu
 import { CommunityAnnouncementsComponent } from '../../../shared/ui/components/community-announcements/community-announcements.component';
 import { WorkHomeComponent } from '../work-home/work-home.component';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
-import { ratingCriteriaFor, type RatingSnapshot } from '../../../shared/core/contracts/rating-snapshot';
+import {
+  type RatingSnapshot,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type CardProfileViewData,
+  type ListQuery,
+  type PageResult,
+  type PairCardData,
+  type AppMenuRateConfig,
+  type SingleCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListStateChange,
+  PairCardComponent,
+  SingleCardComponent,
+  SmartListComponent,
+  ExplanationGuideService,
+  I18nPipe
+} from '@myscoutee/components';
+import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {
   ChangeDetectionStrategy,
@@ -31,36 +51,18 @@ import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
-import type {
-  AppMenuItem,
-  AppMenuItemSelectEvent,
-  AppMenuPalette,
-  CardProfileViewData,
-  ListQuery,
-  PageResult,
-  PairCardData,
-  AppMenuRateConfig,
-  SingleCardData,
-  SmartListConfig,
-  SmartListLoadPage,
-  SmartListStateChange
-} from '../../../shared/ui';
-import { PairCardComponent } from '../../../shared/ui/components/core/smart-list/card/pair-card/pair-card.component';
-import {
-  SingleCardComponent
-} from '../../../shared/ui/components/core/smart-list/card/single-card/single-card.component';
-import { SmartListComponent } from '../../../shared/ui/components/core/smart-list/smart-list.component';
+
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+
 import { GameService } from '../../../shared/core/base/services/game.service';
 import { UsersService } from '../../../shared/core/base/services/users.service';
 import type { UserDto, UserGameMode, UserGameSocialCard } from '../../../shared/core';
 import {
   HomeGameFilterPopupComponent
 } from '../home-game-filter-popup/home-game-filter-popup.component';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -2640,7 +2642,6 @@ export class HomeComponent implements OnDestroy {
     this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
     this.cdr.markForCheck();
   }
-
 
   private maybeStartGameStackPaginationLoad(): void {
     const stateKey = this.gameStackPaginationStateKey();

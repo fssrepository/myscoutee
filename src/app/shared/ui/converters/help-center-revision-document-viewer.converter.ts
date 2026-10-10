@@ -1,6 +1,11 @@
 import { AppUtils } from '../../app-utils';
 import { APP_STATIC_DATA } from '../../app-static-data';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../core/contracts';
+import {
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSection as HelpCenterSectionDto,
+  type UiConverter,
+  type UiListConverter
+} from '@myscoutee/components';
 import type {
   DocumentViewerAction,
   DocumentViewerConfig,
@@ -10,7 +15,6 @@ import type {
   DocumentViewerShell,
   DocumentViewerStatusTone
 } from '../components/document-viewer';
-import type { UiConverter, UiListConverter } from './converter.types';
 
 export type HelpCenterRevisionDocumentViewerSectionMode = 'default' | 'privacy';
 

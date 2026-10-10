@@ -1,6 +1,10 @@
 import GUIDE_VERSIONS from '../data/help-center-guide-versions.json';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import type { HelpCenterDocumentKind, HelpCenterGuideFieldDto, HelpCenterRevisionDto } from '../../../contracts';
+import type {
+  GuideDocumentKind as HelpCenterDocumentKind,
+  GuideField as HelpCenterGuideFieldDto,
+  GuideRevision as HelpCenterRevisionDto
+} from '@myscoutee/components';
 import GUIDE_FIELDS_BY_PAGE from '../data/help-center-guide-fields.json';
 
 const GUIDE_FIELDS_BY_SCREEN = GUIDE_FIELDS_BY_PAGE as Record<string, HelpCenterGuideFieldDto[]>;

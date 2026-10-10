@@ -4,14 +4,12 @@ import type {
 } from '../../core/contracts/notification.interface';
 import * as AppConstants from '../../core/common/constants';
 import { AppUtils } from '../../app-utils';
-import type {
-  SingleRowData,
-  SingleRowSurfaceTone
-} from '../components/core/smart-list/card/card.types';
-import type {
-  ConverterOptionsArg,
-  UiConverter
-} from './converter.types';
+import {
+  type SingleRowData,
+  type SingleRowSurfaceTone,
+  type ConverterOptionsArg,
+  type UiConverter
+} from '@myscoutee/components';
 
 export interface NotificationSingleRowConverterOptions {
   locale?: string | null;

@@ -1,5 +1,26 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  ImageCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  type ImageCardData,
+  type ImageCardMediaAction,
+  type ImageCardMediaActionEvent,
+  type ListQuery,
+  type PageResult,
+  type PopupControl,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListItemTemplateContext,
+  type SmartListLoaders,
+  type SmartListStateChange,
+  DialogStore
+} from '@myscoutee/components';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
 
 import {
   ChangeDetectionStrategy,
@@ -19,25 +40,7 @@ import {
 import {
   AppUtils
 } from '../../../shared/app-utils';
-import {
-  ImageCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuTrigger,
-  type ImageCardData,
-  type ImageCardMediaAction,
-  type ImageCardMediaActionEvent,
-  type ListQuery,
-  type PageResult,
-  type PopupControl,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListItemTemplateContext,
-  type SmartListLoaders,
-  type SmartListStateChange
-} from '../../../shared/ui';
+
 import {
   ActivityInviteCandidatesService,
   ActivityMembersService
@@ -56,7 +59,7 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+
 interface ActivityInviteFilters {
   ownerId?: string;
   sort?: AppConstants.ActivityInviteSort;
@@ -621,7 +624,7 @@ export class AssetMemberPickerPopupComponent {
       return candidates;
     }
     return candidates.sort((left, right) => {
-      return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+      return UiDateUtils.toSortableDate(right.actionAtIso) - UiDateUtils.toSortableDate(left.actionAtIso);
     });
   }
 

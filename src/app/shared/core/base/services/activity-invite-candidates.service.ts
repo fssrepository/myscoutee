@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import {
   Injectable,
   inject
@@ -118,7 +119,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     };
     const currentMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
     const existingUserIds = new Set(currentMembers.map(member => member.userId));
-    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
     const additions = selectedCandidates
       .filter(candidate => !existingUserIds.has(candidate.userId))
       .map(candidate => ({
@@ -172,7 +173,6 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
       rejections
     };
   }
-
 
   private resolveOwnerContext(
     activeUserId: string,

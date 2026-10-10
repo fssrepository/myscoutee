@@ -8,7 +8,7 @@ import {
   type PairCardData,
   type RateCardPerson,
   type SingleCardData
-} from '../components/core/smart-list/card';
+} from '@myscoutee/components';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 
 export interface ActivityRateCardConverterOptions {

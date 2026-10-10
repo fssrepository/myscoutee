@@ -3,14 +3,15 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { MatIconModule } from '@angular/material/icon';
 
 import { EventsService } from '../../../shared/core/base';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
 import {
-  EventFeedbackDetailConverter,
+  ExplanationGuideService,
   IndicatorComponent,
   PopupComponent,
   type PopupModel
-} from '../../../shared/ui';
+} from '@myscoutee/components';
+import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
+
+import { EventFeedbackDetailConverter } from '../../../shared/ui';
 import type { EventFeedbackCard } from '../../../shared/ui/models';
 import {
   ActivitiesPopupStore,

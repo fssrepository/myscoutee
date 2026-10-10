@@ -46,7 +46,6 @@ import {
 import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
-  ActivityChatSingleRowConverter,
   ImageCardComponent,
   I18nPipe,
   SingleRowComponent,
@@ -60,25 +59,22 @@ import {
   type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage
-} from '../../../shared/ui';
-import type {
-  AppMenuModel,
-  AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
-import {
+  type SmartListLoadPage,
+  type AppMenuModel,
+  type AppMenuPalette,
   PopupComponent,
   type PopupActionEvent,
   type PopupControl,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
+  type PopupModel,
+  DialogStore
+} from '@myscoutee/components';
+import { ActivityChatSingleRowConverter } from '../../../shared/ui';
+
 import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';

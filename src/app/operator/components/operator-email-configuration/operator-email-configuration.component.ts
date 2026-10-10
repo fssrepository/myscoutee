@@ -1,7 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { AppMenuComponent, I18nPipe, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  I18nPipe,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
+} from '@myscoutee/components';
 import { OperatorEmailService } from '../../../shared/core/base/services/operator-email.service';
 import type { OperatorEmailConfiguration } from '../../../shared/core/contracts/operator-email.interface';
 @Component({ selector: 'app-operator-email-configuration', standalone: true, imports: [FormsModule, MatIconModule, AppMenuComponent, I18nPipe],

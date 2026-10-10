@@ -18,10 +18,10 @@ import { DeploymentConfigurationService } from './shared/core/base/services/depl
 import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
 import { SessionService } from './shared/core/base/services/session.service';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
-import type { AppMenuItem } from './shared/ui/components/core/menu/menu.types';
+import { AppMenuComponent, type AppMenuItem, DialogComponent } from '@myscoutee/components';
+
 import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
-import { DialogComponent } from './shared/ui/components/core/dialog';
+
 import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/demo-bootstrap-selector.store';
 import { AppUtils } from './shared/app-utils';
 

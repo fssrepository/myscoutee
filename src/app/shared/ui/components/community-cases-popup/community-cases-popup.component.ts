@@ -1,15 +1,28 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  SmartListComponent,
+  InfoCardComponent,
+  SingleRowComponent,
+  type InfoCardData,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '@myscoutee/components';
 import { CommunityCaseQuotationsComponent } from './community-case-quotations.component';
 import { CommunityCaseBoardComponent } from './community-case-board.component';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
-import { AppUtils } from '../../../app-utils';
+
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { defer, map } from 'rxjs';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { SmartListComponent, InfoCardComponent, SingleRowComponent, type InfoCardData, type SingleRowData, type SmartListConfig, type SmartListLoadPage } from '../core/smart-list';
+
 import { CommunityCasesStore } from '../../context/stores/community-cases.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { CASE_TYPES, type CommunityCase, type CommunityScheduledTask, type CaseFilters, type CaseType, type CaseAction, type ScheduledTaskFilters, type ScheduledTaskAction, type ScheduledTaskStatus } from '../../../core/contracts/community-case.interface';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../core/menu';
+
 import { CommunityCaseEditorComponent } from './community-case-editor.component';
 import { CommunityCaseConverter } from '../../converters/community-case.converter';
 
@@ -49,14 +62,14 @@ export class CommunityCasesPopupComponent {
   protected readonly config: SmartListConfig<InfoCardData<CommunityCase>, CaseFilters> = {
     pageSize: 20, listLayout: 'card-grid', trackBy: (_, c) => c.id, cacheable: { identity: c => c.id },
     headerProgress: { enabled: true, placement: 'inline' }, sortable: { sortKey: c => [-Date.parse(c.dateIso ?? ''), c.id] },
-    groupBy: card => AppUtils.smartListDayLabel(new Date(card.dateIso!)), showFirstGroupMarker: false,
+    groupBy: card => UiDateUtils.smartListDayLabel(new Date(card.dateIso!)), showFirstGroupMarker: false,
     menuItems: context => context.item?.eagerDetail ? this.menu(context.item.eagerDetail) : []
   };
   protected readonly taskQuery = signal<{filters:ScheduledTaskFilters}>({filters:{status:'active'}});
   protected readonly taskConfig: SmartListConfig<SingleRowData<CommunityScheduledTask>, ScheduledTaskFilters> = {
     pageSize: 20, trackBy: (_, row) => row.id, cacheable: { identity: row => row.id },
     headerProgress: { enabled: true, placement: 'inline' }, sortable: { sortKey: row => [row.eagerDetail?.nextDueAtIso ?? '', row.id] },
-    groupBy: row => AppUtils.smartListDayLabel(new Date(row.eagerDetail!.nextDueAtIso)), showFirstGroupMarker: false,
+    groupBy: row => UiDateUtils.smartListDayLabel(new Date(row.eagerDetail!.nextDueAtIso)), showFirstGroupMarker: false,
     menuItems: context => context.item?.eagerDetail ? this.taskMenu(context.item.eagerDetail) : []
   };
   protected readonly loadPage: SmartListLoadPage<InfoCardData<CommunityCase>, CaseFilters> = (query, context) =>

@@ -13,7 +13,7 @@ import type { CommunityGroupRecord } from '../entity/community-group.entity';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../contracts/community-group.interface';
 import { GROUP_CATEGORIES, communityGroupSummary, groupSort, groupMembershipBucket, type CommunityGroupSummary } from '../../../contracts/community-group.interface';
-import type { ListQuery, PageResult } from '../../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../contracts/activity.interface';
 
 @Injectable({ providedIn: 'root' })

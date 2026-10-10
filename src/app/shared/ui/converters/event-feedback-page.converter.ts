@@ -1,3 +1,11 @@
+import {
+  UiDateUtils,
+  type AppMenuItem,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type UiConverter,
+  type UiListConverter
+} from '@myscoutee/components';
 import { AppUtils } from '../../app-utils';
 import { APP_STATIC_DATA } from '../../app-static-data';
 import type { EventFeedbackListFilter } from '../../core/common/constants';
@@ -10,8 +18,6 @@ import type {
   EventFeedbackStatSectionDto,
   SubmittedEventFeedbackAnswer
 } from '../../core/contracts/activity.interface';
-import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
-import type { UiConverter, UiListConverter } from './converter.types';
 
 export interface EventFeedbackFilterOption {
   key: EventFeedbackListFilter;
@@ -154,11 +160,11 @@ export class EventFeedbackListPresentationConverter {
   ): string {
     const item = result?.itemById(itemId) ?? null;
     const timestampMs = item ? result?.groupTimestampMs(item, filter) ?? null : null;
-    const timestampDate = AppUtils.parseDate(timestampMs);
+    const timestampDate = UiDateUtils.parseDate(timestampMs);
     if (!timestampDate) {
       return 'No date';
     }
-    return AppUtils.weekdayMonthDayYearLabel(timestampDate);
+    return UiDateUtils.weekdayMonthDayYearLabel(timestampDate);
   }
 }
 
@@ -408,18 +414,18 @@ export class EventFeedbackOrganizerMessageGroupConverter {
     const groups = new Map<string, EventFeedbackOrganizerMessageGroupData>();
     for (const entry of input.result?.organizerEntries(input.eventId) ?? []) {
       const timestampIso = this.entryTimestampIso(entry);
-      const timestampDate = AppUtils.parseDate(timestampIso);
+      const timestampDate = UiDateUtils.parseDate(timestampIso);
       const answer = this.entryEventAnswer(entry);
       const viewerName = entry.viewerName?.trim() || entry.viewerUserId.trim() || 'Member';
       const viewerInitials = entry.viewerInitials?.trim() || AppUtils.initialsFromText(viewerName);
       const viewerGender = entry.viewerGender === 'woman' ? 'woman' : 'man';
       const viewerImageUrl = entry.viewerImageUrl?.trim() || '';
-      const dayKey = timestampDate ? AppUtils.toIsoDate(timestampDate) : 'undated';
+      const dayKey = timestampDate ? UiDateUtils.toIsoDate(timestampDate) : 'undated';
       const dayLabel = timestampDate
-        ? AppUtils.weekdayMonthDayLabel(timestampDate)
+        ? UiDateUtils.weekdayMonthDayLabel(timestampDate)
         : 'No date';
       const timeLabel = timestampDate
-        ? AppUtils.clockTimeLabel(timestampDate)
+        ? UiDateUtils.clockTimeLabel(timestampDate)
         : '';
       const group = groups.get(dayKey) ?? { dayKey, label: dayLabel, items: [] };
       group.items.push({
@@ -450,8 +456,8 @@ export class EventFeedbackOrganizerMessageGroupConverter {
       .map(group => ({
         ...group,
         items: [...group.items].sort((left, right) => {
-          const leftMs = AppUtils.dateTimeMs(left.timestampIso) ?? 0;
-          const rightMs = AppUtils.dateTimeMs(right.timestampIso) ?? 0;
+          const leftMs = UiDateUtils.dateTimeMs(left.timestampIso) ?? 0;
+          const rightMs = UiDateUtils.dateTimeMs(right.timestampIso) ?? 0;
           return rightMs - leftMs || left.viewerName.localeCompare(right.viewerName);
         })
       }))

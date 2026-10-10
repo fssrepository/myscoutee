@@ -2,7 +2,7 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
-import { scheduleAfterPaint } from '../../scheduler/after-paint';
+import { scheduleAfterPaint } from '@myscoutee/components';
 
 export type ProfileSettingsPopup =
   | 'help'
@@ -248,6 +248,5 @@ export class ProfileStore {
     const module = await import('../../../../profile/components/contacts-popup/contacts-popup.component');
     this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
   }
-
 
 }

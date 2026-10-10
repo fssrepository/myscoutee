@@ -1,12 +1,19 @@
+import {
+  UiDateUtils,
+  PopupComponent,
+  type PopupModel,
+  SmartListComponent,
+  InfoCardComponent,
+  type InfoCardData,
+  type SmartListConfig,
+  type SmartListLoadPage
+} from '@myscoutee/components';
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { defer } from 'rxjs';
 import { PhotoFeedService } from '../../../core/base/services/photo-feed.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { AppUtils } from '../../../app-utils';
 import type { ImageEventReference } from '../../../core/contracts/image-gallery.interface';
 import type { PhotoFeedEventOption } from '../../../core/contracts/photo-feed.interface';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { SmartListComponent, InfoCardComponent, type InfoCardData, type SmartListConfig, type SmartListLoadPage } from '../core/smart-list';
 
 @Component({
   selector: 'app-photo-feed-event-picker', standalone: true,
@@ -34,7 +41,7 @@ export class PhotoFeedEventPickerComponent {
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: option => {
       const date = new Date(option.startAtIso ?? '');
-      return Number.isNaN(date.getTime()) ? 'Date unavailable' : AppUtils.smartListDayLabel(date);
+      return Number.isNaN(date.getTime()) ? 'Date unavailable' : UiDateUtils.smartListDayLabel(date);
     },
     headerProgress: { enabled: true },
     emptyLabel: () => this.i18n.translate('feed.event.empty')

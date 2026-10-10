@@ -1,3 +1,13 @@
+import type {
+  GuideSection as HelpCenterSectionDto,
+  GuideSectionPanelSpan as HelpCenterSectionPanelSpan,
+  GuideDocumentKind as HelpCenterDocumentKind,
+  GuidePresentation as HelpCenterPresentation,
+  GuideHeaderColor as HelpCenterHeaderColor,
+  GuideRevision as HelpCenterRevisionDto,
+  GuideField as HelpCenterGuideFieldDto
+} from '@myscoutee/components';
+
 import { ImageDetailsMap } from './image-gallery.interface';
 import type * as UserContracts from './user.interface';
 
@@ -90,26 +100,6 @@ export interface IdeaArticleDetailDto {
   featured: boolean;
 }
 
-export interface HelpCenterSectionDto {
-  id: string;
-  icon: string;
-  title: string;
-  blurb: string;
-  contentHtml: string;
-  imageUrls?: string[];
-  panelSpan?: HelpCenterSectionPanelSpan;
-  optional?: boolean;
-  guideStepId?: string | null;
-  details?: string[];
-  points?: string[];
-}
-
-export type HelpCenterSectionPanelSpan = 'span-1' | 'span-2' | 'span-3';
-
-export type HelpCenterDocumentKind = 'help' | 'privacy' | 'terms' | 'explanation';
-export type HelpCenterPresentation = 'document' | 'tour';
-export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
-
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';
 
 export interface ContentLanguage {
@@ -127,27 +117,6 @@ export interface ExplainableSurface {
   enabled: boolean;
 }
 
-export interface HelpCenterRevisionDto {
-  isSystem?: boolean;
-  id: string;
-  documentKind?: HelpCenterDocumentKind;
-  contextKey?: string | null;
-  lang: string;
-  languageLabel: string;
-  version: number;
-  title: string;
-  summary: string;
-  description: string;
-  headerColor?: HelpCenterHeaderColor;
-  presentation?: HelpCenterPresentation;
-  sections: HelpCenterSectionDto[];
-  active: boolean;
-  createdAtIso: string;
-  createdByUserId: string;
-  updatedAtIso: string;
-  updatedByUserId: string;
-}
-
 export interface HelpCenterAuditEntryDto {
   id: string;
   documentKind?: HelpCenterDocumentKind;
@@ -159,14 +128,6 @@ export interface HelpCenterAuditEntryDto {
   actorUserId: string;
   createdAtIso: string;
   message: string;
-}
-
-export interface HelpCenterGuideFieldDto {
-  id: string;
-  screenKey: string;
-  group: string;
-  i18nKey: string;
-  order: number;
 }
 
 export interface HelpCenterStateDto {

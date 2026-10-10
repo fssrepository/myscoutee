@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '../../../core/contracts/rating-snapshot';
+import { type RatingSnapshot, DialogStore, type AppMenuItem, type ListQuery } from '@myscoutee/components';
 import { CaseAppointmentsService } from '../../../core/base/services/case-appointments.service';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 import { ServiceOfferingsService } from '../../../core/base/services/service-offerings.service';
@@ -8,12 +8,11 @@ import { ActivityMembersService } from '../../../core/base/services/activity-mem
 import { ActivityInvitePopupStore } from './activity-invite-popup.store';
 import { UserProfileStore } from './user-profile.store';
 import { ProfileStore } from './profile.store';
-import { DialogStore } from './dialog.store';
-import type { AppMenuItem } from '../../components/core/menu';
+
 import type { CaseAppointmentCalendarEntry } from '../../../core/contracts/case-appointment.interface';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../core/contracts/group-type';
 import type { ServiceOfferingItem, ServiceOfferingFilters, SaveServiceOffering, ServiceAction } from '../../../core/contracts/service-offering.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 @Injectable({providedIn:'root'})
 export class ServiceOfferingsStore {

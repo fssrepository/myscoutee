@@ -1,9 +1,4 @@
 export {
-  type ConverterOptionsArg,
-  type UiConverter,
-  type UiListConverter
-} from './converter.types';
-export {
   AssetInfoCardConverter,
   assetInfoCardConverter,
   type AssetExploreInfoCardConverterOptions,

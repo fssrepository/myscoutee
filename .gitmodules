@@ -1,0 +1,5 @@
+[submodule "components"]
+	path = myscoutee-components
+	url = https://github.com/fssrepository/myscoutee-components.git
+	branch = master
+	update = merge

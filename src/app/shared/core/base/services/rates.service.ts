@@ -1,7 +1,7 @@
-import type { RatingSnapshot } from '../../contracts/rating-snapshot';
+import { type RatingSnapshot, type ListQuery } from '@myscoutee/components';
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
+import type { ActivitiesFeedFilters } from '../../contracts';
 import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
 import type { IRatesService } from '../../contracts/activity.interface';
 import { LocalRatesService } from '../../local';

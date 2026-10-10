@@ -1,7 +1,7 @@
 import { ActivityInvitePopupStore } from './activity-invite-popup.store';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { GroupWorkspaceStore } from './group-workspace.store';
-import { DialogStore } from './dialog.store';
+import { DialogStore, type ListQuery } from '@myscoutee/components';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { CommunityGroupConverter } from '../../converters/community-group.converter';
 import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
@@ -12,7 +12,7 @@ import { ActivityMembersService } from '../../../core/base/services/activity-mem
 import { UserProfileStore } from './user-profile.store';
 import { MemberMenuStore } from './member-menu.store';
 import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupCategory, GroupSyncRequest } from '../../../core/contracts/community-group.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+
 import { canPreviewGroupMembers } from '../../../core/contracts/community-group.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {

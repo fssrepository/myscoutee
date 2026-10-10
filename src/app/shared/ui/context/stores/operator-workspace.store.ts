@@ -9,7 +9,7 @@ import {
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
 import { PwaService } from '../../../core/base/services/pwa.service';
 import { OperatorConfigurationMapper } from '../../../core/base/mappers/operator-configuration.mapper';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import {
   SessionService,
   type AppSession

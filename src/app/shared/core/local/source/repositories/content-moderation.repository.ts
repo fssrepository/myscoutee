@@ -4,7 +4,7 @@ import { CONTENT_MODERATION_TABLE_NAME, contentModerationSnapshot, type ContentM
 import { changeModerationItem } from '../builders/content-moderation.builder';
 import type { ContentModerationDecision, ContentModerationSettings, ContentModerationSnapshot, ModerationCategoryFilter, ModerationStatus } from '../../../contracts/content-moderation.interface';
 import { moderationCount, moderationDecisionAllowed } from '../../../contracts/content-moderation.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class LocalContentModerationRepository {
   private readonly db = inject(LocalMemoryDb);

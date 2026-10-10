@@ -10,6 +10,23 @@ It includes domain-specific ratings, document attachments, contextual EN/HU
 guides and API/MCP permission controls. The Java client and MCP development
 version is **1.6.0**; full execution QA for these extensions is pending.
 
+### Shared components development
+
+Shared UI source is owned by the `myscoutee-components` Git submodule, kept on
+`master`. Initialize submodules, switch that checkout to `master`, then run
+`npm ci`. Existing `npm run build:*`, `start:*` and `watch:*` scripts build the
+components workspace before the application. The dev stack uses that same path.
+
+Use public imports from `@myscoutee/components` and
+`@myscoutee/components/styles`; do not add forwarding files or source-path imports.
+Generic tests live beside the library source and run with `npm test` inside the
+submodule. Application integration tests stay here. The component repository also
+builds independently with `npm ci && npm run build`.
+
+When editing a separate components checkout, commit there and fast-forward the
+submodule's `master` branch. Then commit the updated frontend gitlink. Generated
+`dist/` and dependencies are ignored; no npm publication is needed.
+
 ### Source snapshot — 7 October 2026
 
 | Scope | Physical source lines |

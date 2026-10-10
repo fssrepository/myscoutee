@@ -1,3 +1,4 @@
+import { clampNumber, ExplanationGuideService, PopupComponent, type PopupModel } from '@myscoutee/components';
 import {
   CommonModule
 } from '@angular/common';
@@ -23,15 +24,12 @@ import {
   AppUtils
 } from '../../../shared/app-utils';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
-import { ExplanationGuideService } from '../../../shared/core';
+
 import {
   resolveSideMenuPresentation,
   type SideMenuPresentation
 } from '../../../shared/ui/components/side-menu/side-menu-presenters';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui';
+
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
@@ -480,7 +478,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
     if (!Number.isFinite(value)) {
       return null;
     }
-    return AppUtils.clampNumber(Number(value), 0, 5);
+    return clampNumber(Number(value), 0, 5);
   }
 
   private impressionSectionBadgeList(items: readonly string[] | undefined): string[] | null {

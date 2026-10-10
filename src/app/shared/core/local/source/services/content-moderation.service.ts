@@ -4,7 +4,7 @@ import type { AdminUserDto } from '../../../contracts/admin.interface';
 import { GROUP_MODERATION_CATEGORIES } from '../../../contracts/content-moderation.interface';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import type { ContentModerationDecision, ContentModerationSettings, ModerationCategoryFilter, ModerationStatus } from '../../../contracts/content-moderation.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import { LocalContentModerationRepository } from '../repositories/content-moderation.repository';
 import { LocalAssetsService } from './assets.service';
 import { LocalEventsService } from './events.service';

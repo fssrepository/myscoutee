@@ -1,29 +1,26 @@
-import { AppUtils } from '../../../../shared/app-utils';
+import {
+  UiDateUtils,
+  DateInputComponent,
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue,
+  I18nPipe,
+  PopupComponent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '@myscoutee/components';
 import { PaymentRefundPolicyComponent } from '../../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import {
-  DateInputComponent,
-  type DateInputModel,
-  type DateInputRangeValue,
-  type DateInputValue
-} from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
 import { I18nService } from '../../../../shared/core/base/services/i18n.service';
-import { I18nPipe } from '../../../../shared/ui/pipes/i18n.pipe';
+
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../../shared/ui/components/core/popup';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../../shared/ui/components/core/menu';
 
 type BorrowDialogActionId = 'borrow-back' | 'borrow-cancel' | 'borrow-confirm';
 
@@ -168,7 +165,6 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     );
   }
 
-
   protected close(event?: Event): void {
     event?.stopPropagation();
     this.resourcePopupStore.requestBorrowDialogClose(event);
@@ -189,8 +185,8 @@ export class EventResourceAssetExploreBorrowDialogComponent {
       return;
     }
     this.changeDateRange(
-      AppUtils.isoLocalDateTimeToDate(value.startAt),
-      AppUtils.isoLocalDateTimeToDate(value.endAt)
+      UiDateUtils.isoLocalDateTimeToDate(value.startAt),
+      UiDateUtils.isoLocalDateTimeToDate(value.endAt)
     );
   }
 

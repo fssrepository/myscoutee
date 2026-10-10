@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
@@ -1483,7 +1484,7 @@ export class LocalAssetsRepository {
   }
 
   private parseLocalDateMs(value: string | null | undefined): number | null {
-    const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
+    const parsed = UiDateUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
     return parsed ? parsed.getTime() : null;
   }
 

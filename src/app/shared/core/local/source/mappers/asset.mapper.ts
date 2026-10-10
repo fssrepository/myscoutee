@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { AppUtils } from '../../../../app-utils';
 import { LocalActivityEventsMapper } from './event.mapper';
@@ -308,8 +309,8 @@ export class LocalAssetsMapper {
   }
 
   private static toAssetAvailabilityStatDto(record: AssetAvailabilityStatRecord): AppDTOs.AssetOccupancyStatDTO {
-    const day = AppUtils.dateOnly(record.date);
-    const nextDay = AppUtils.addDays(day, 1);
+    const day = UiDateUtils.dateOnly(record.date);
+    const nextDay = UiDateUtils.addDays(day, 1);
     const overlapping = record.requests
       .filter(request => this.assetRequestDateRangeOverlaps(request, day, nextDay));
     const occupied = overlapping
@@ -318,14 +319,14 @@ export class LocalAssetsMapper {
     const pending = overlapping
       .filter(request => this.isPendingAssetRequest(request));
     const pendingQuantity = pending.reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
-    const dateIso = AppUtils.dateKey(day);
+    const dateIso = UiDateUtils.dateKey(day);
     return {
       id: `${record.assetId}:${dateIso}`,
       assetId: record.assetId,
       ownerUserId: record.ownerUserId,
       dateIso,
-      startAtIso: AppUtils.toIsoDateTimeLocal(day),
-      endAtIso: AppUtils.toIsoDateTimeLocal(nextDay),
+      startAtIso: UiDateUtils.toIsoDateTimeLocal(day),
+      endAtIso: UiDateUtils.toIsoDateTimeLocal(nextDay),
       occupied,
       capacity: Math.max(0, Math.trunc(Number(record.assetCapacity) || 0)),
       pendingCount: pending.length,
@@ -363,7 +364,7 @@ export class LocalAssetsMapper {
       ownerUserId: request.ownerUserId,
       userId: request.userId,
       isManager: (request.menuActions ?? []).includes('revokeManager'),
-      dateIso: requestRange ? AppUtils.dateKey(requestRange.start) : '',
+      dateIso: requestRange ? UiDateUtils.dateKey(requestRange.start) : '',
       startAtIso: request.booking?.startAtIso,
       endAtIso: request.booking?.endAtIso,
       title: request.name,
@@ -437,7 +438,7 @@ export class LocalAssetsMapper {
     const parsedEnd = this.parseAssetRequestDate(request.booking?.endAtIso);
     const end = parsedEnd && parsedEnd.getTime() > start.getTime()
       ? parsedEnd
-      : AppUtils.addDays(start, 1);
+      : UiDateUtils.addDays(start, 1);
     return { start, end };
   }
 
@@ -455,7 +456,7 @@ export class LocalAssetsMapper {
     if (!normalized) {
       return null;
     }
-    return AppUtils.isoLocalDateTimeToDate(normalized) ?? AppUtils.parseDate(normalized);
+    return UiDateUtils.isoLocalDateTimeToDate(normalized) ?? UiDateUtils.parseDate(normalized);
   }
 
   private static isCommittedAssetRequest(request: AssetRequestRecord): boolean {
@@ -500,7 +501,7 @@ export class LocalAssetsMapper {
   }
 
   private static formatAssetRequestDateRange(start: Date, end: Date): string {
-    const sameDay = AppUtils.dateKey(start) === AppUtils.dateKey(end);
+    const sameDay = UiDateUtils.dateKey(start) === UiDateUtils.dateKey(end);
     const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });

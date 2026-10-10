@@ -1,7 +1,13 @@
+import {
+  UiDateUtils,
+  type InfoCardData,
+  type InfoCardOverlayAction,
+  type InfoCardOverlayTone,
+  type UiListConverter
+} from '@myscoutee/components';
 import { AppUtils } from '../../app-utils';
 import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
-import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
+
 import { EventSubeventRuntimeMenuConverter } from './event-subevent-runtime-menu.converter';
 
 export interface EventSubeventRuntimeInfoCardConverterOptions {
@@ -32,7 +38,7 @@ export class EventSubeventRuntimeInfoCardConverter
   ): InfoCardData {
     const mode = this.resolveMode(item, options);
     const slotTimeframe = `${options.slotTimeframe ?? ''}`.trim();
-    const dateLabel = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, slotTimeframe || 'Date unavailable');
+    const dateLabel = UiDateUtils.dateTimeRangeLabel(item.startAt, item.endAt, slotTimeframe || 'Date unavailable');
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
     const isMainEvent = this.isMainEventRuntime(item);
     const isTournament = mode === 'Tournament';

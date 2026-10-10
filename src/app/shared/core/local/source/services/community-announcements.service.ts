@@ -8,7 +8,7 @@ import { LocalNotificationsRepository } from '../repositories/notifications.repo
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { VOTE_CHOICES, type ICommunityAnnouncementsService, type CommunityAnnouncement, type SaveAnnouncement, type AnnouncementCommand, type AnnouncementFilters } from '../../../contracts/community-announcement.interface';
 import type { CommunityAnnouncementRecord } from '../entity/community-announcement.entity';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 
 @Injectable({ providedIn: 'root' })
 export class LocalCommunityAnnouncementsService extends LocalRouteDelayService implements ICommunityAnnouncementsService {

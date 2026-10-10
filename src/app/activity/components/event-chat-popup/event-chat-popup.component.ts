@@ -1,3 +1,27 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  AppMenuComponent,
+  AppMenuTriggerComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuGroup,
+  type AppMenuImageStackItem,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type ListQuery,
+  type PageResult,
+  type PopupControl,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  DialogStore,
+  UiPollCoordinator,
+  UiTaskScheduler
+} from '@myscoutee/components';
 import { CommunityCasesStore } from '../../../shared/ui/context/stores/community-cases.store';
 import { ContactsService } from '../../../shared/core/base/services/contacts.service';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
@@ -45,20 +69,8 @@ import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
-import {
-  ActivityResourceBuilder,
-  AdminWorkspaceDataService,
-  AssetDefaultsBuilder,
-  ActivityResourcesService,
-  ChatsService,
-  ChatVoiceClipsService,
-  DeploymentConfigurationService,
-  ExplanationGuideService,
-  EventsService,
-  I18nService,
-  MediaService,
-  ShareTokensService
-} from '../../../shared/core';
+
+import { ActivityResourceBuilder, AdminWorkspaceDataService, AssetDefaultsBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, DeploymentConfigurationService, EventsService, I18nService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
@@ -67,28 +79,7 @@ import {
   type AssetType,
   type SubEventResourceFilter
 } from '../../../shared/core/common/constants';
-import {
-  AppMenuComponent,
-  AppMenuTriggerComponent,
-  PopupComponent,
-  SmartListComponent,
-  type AppMenuGroup,
-  type AppMenuImageStackItem,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type ListQuery,
-  type PageResult,
-  type PopupControl,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListLoadPage
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
@@ -120,10 +111,7 @@ import {
 import { mergeChatReadAvatars } from './chat-message-read-state';
 import { ChatCallPopupComponent } from './chat-call-popup.component';
 import { ChatCallService } from '../../../shared/core/base/services/chat-call.service';
-import {
-  UiPollCoordinator,
-  UiTaskScheduler
-} from '../../../shared/ui/scheduler';
+
 interface ChatThreadFilters {
   targetMessageId?: string | null;
   revision?: number;
@@ -1740,7 +1728,7 @@ export class EventChatPopupComponent implements OnDestroy {
     startAtIso: string | null | undefined,
     endAtIso: string | null | undefined
   ): string {
-    return AppUtils.dateTimeRangeLabel(startAtIso, endAtIso, '');
+    return UiDateUtils.dateTimeRangeLabel(startAtIso, endAtIso, '');
   }
 
   private joinDistinctHeaderLabels(parts: readonly string[]): string {
@@ -3012,7 +3000,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected pinnedMessages(): ContractTypes.ChatMessageDto[] {
     return this.messages
       .filter(message => !!message.pinnedAtIso)
-      .sort((first, second) => AppUtils.toSortableDate(second.pinnedAtIso ?? '') - AppUtils.toSortableDate(first.pinnedAtIso ?? ''));
+      .sort((first, second) => UiDateUtils.toSortableDate(second.pinnedAtIso ?? '') - UiDateUtils.toSortableDate(first.pinnedAtIso ?? ''));
   }
 
   protected openPinnedMessagesDialog(event?: Event): void {
@@ -3841,13 +3829,13 @@ export class EventChatPopupComponent implements OnDestroy {
   ): PageResult<ContractTypes.ChatMessageDto> {
     const items = this.normalizeChatMessages(page.items)
       .sort((first, second) =>
-        AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
+        UiDateUtils.toSortableDate(second.sentAtIso) - UiDateUtils.toSortableDate(first.sentAtIso)
       );
     this.messages = this.deduplicateChatMessages(options.replace === true
       ? items
       : [...this.messages, ...items]
     ).sort((first, second) =>
-      AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
+      UiDateUtils.toSortableDate(second.sentAtIso) - UiDateUtils.toSortableDate(first.sentAtIso)
     );
     this.visibleChatThreadTotal = this.messages.length;
     const pageTotal = Math.trunc(Number(page.total) || 0);
@@ -3963,7 +3951,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.flagFreshMessage(normalizedMessage.id);
     this.messages = this.deduplicateChatMessages([...this.messages, normalizedMessage])
-      .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+      .sort((first, second) => UiDateUtils.toSortableDate(second.sentAtIso) - UiDateUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
 
@@ -3994,7 +3982,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.messages = this.deduplicateChatMessages(this.messages)
-      .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+      .sort((first, second) => UiDateUtils.toSortableDate(second.sentAtIso) - UiDateUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
     this.refreshVisibleChatThreadSurface();
@@ -4249,7 +4237,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     let matchedId: string | null = null;
     let matchedDiff = Number.POSITIVE_INFINITY;
-    const messageSentAtMs = AppUtils.toSortableDate(message.sentAtIso);
+    const messageSentAtMs = UiDateUtils.toSortableDate(message.sentAtIso);
 
     for (const pendingMessage of this.messages) {
       if (
@@ -4259,7 +4247,7 @@ export class EventChatPopupComponent implements OnDestroy {
       ) {
         continue;
       }
-      const diffMs = Math.abs(AppUtils.toSortableDate(pendingMessage.sentAtIso) - messageSentAtMs);
+      const diffMs = Math.abs(UiDateUtils.toSortableDate(pendingMessage.sentAtIso) - messageSentAtMs);
       if (diffMs > this.pendingMessageMatchWindowMs || diffMs >= matchedDiff) {
         continue;
       }
@@ -4316,7 +4304,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
 
     this.messages = this.deduplicateChatMessages(nextMessages)
-      .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+      .sort((first, second) => UiDateUtils.toSortableDate(second.sentAtIso) - UiDateUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(nextMessage);
 
@@ -4387,7 +4375,7 @@ export class EventChatPopupComponent implements OnDestroy {
       const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot.items);
     
       this.messages = mergedMessages
-        .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+        .sort((first, second) => UiDateUtils.toSortableDate(second.sentAtIso) - UiDateUtils.toSortableDate(first.sentAtIso));
 
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
@@ -5003,13 +4991,13 @@ export class EventChatPopupComponent implements OnDestroy {
     if (Number.isNaN(value.getTime())) {
       return 'Unknown day';
     }
-    const day = AppUtils.dateOnly(value);
-    const current = AppUtils.dateOnly(new Date());
-    if (AppUtils.toIsoDate(day) === AppUtils.toIsoDate(current)) {
+    const day = UiDateUtils.dateOnly(value);
+    const current = UiDateUtils.dateOnly(new Date());
+    if (UiDateUtils.toIsoDate(day) === UiDateUtils.toIsoDate(current)) {
       return 'Today';
     }
-    const yesterday = AppUtils.addDays(current, -1);
-    if (AppUtils.toIsoDate(day) === AppUtils.toIsoDate(yesterday)) {
+    const yesterday = UiDateUtils.addDays(current, -1);
+    if (UiDateUtils.toIsoDate(day) === UiDateUtils.toIsoDate(yesterday)) {
       return 'Yesterday';
     }
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
@@ -5528,7 +5516,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const eventTitle = `${state.eventTitle ?? navigation?.eventTitle ?? ''}`.trim();
     const subEvent = state.subEvent ?? navigation?.subEvent ?? null;
     const subEventName = `${subEvent?.name ?? ''}`.trim();
-    const timeframe = AppUtils.dateTimeRangeLabel(subEvent?.startAt, subEvent?.endAt, '');
+    const timeframe = UiDateUtils.dateTimeRangeLabel(subEvent?.startAt, subEvent?.endAt, '');
     const parts = [eventTitle, subEventName, timeframe].filter(Boolean);
     return parts.filter((part, index) => (
       parts.findIndex(candidate => candidate.toLocaleLowerCase('en-US') === part.toLocaleLowerCase('en-US')) === index

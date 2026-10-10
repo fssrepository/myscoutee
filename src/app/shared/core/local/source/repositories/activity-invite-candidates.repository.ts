@@ -1,6 +1,6 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
 import type { ActivityInviteCandidatesQuery } from '../../../contracts/activity.interface';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { LocalActivityInviteCandidateRecord } from '../mappers';
@@ -81,7 +81,7 @@ export class LocalActivityInviteCandidatesRepository {
         .filter(record => record.status === 'accepted')
         .filter(record => !excludedUserIds.has(record.userId.trim()))
         .sort((left, right) => {
-          const actionDelta = AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+          const actionDelta = UiDateUtils.toSortableDate(right.actionAtIso) - UiDateUtils.toSortableDate(left.actionAtIso);
           return actionDelta || left.userId.localeCompare(right.userId);
         })
         .map(record => {
@@ -107,7 +107,7 @@ export class LocalActivityInviteCandidatesRepository {
     })
       .filter(record => record.status === 'pending' && record.userId.trim() !== activeUserId
         && (query.owner.ownerType !== 'community' || record.requestKind === 'invite'))
-      .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso))
+      .sort((left, right) => UiDateUtils.toSortableDate(right.actionAtIso) - UiDateUtils.toSortableDate(left.actionAtIso))
       .map(record => {
         const user = this.usersRepository.queryUserById(record.userId.trim());
         return user
@@ -145,7 +145,7 @@ export class LocalActivityInviteCandidatesRepository {
       const metWhere = item.eventName?.trim() || 'Met on MyScoutee';
       const userRateAffinity = this.normalizeRateItemAffinity(item);
       const current = latestMetByUserId.get(candidateUserId);
-      if (!current || AppUtils.toSortableDate(metAtIso) > AppUtils.toSortableDate(current.metAtIso)) {
+      if (!current || UiDateUtils.toSortableDate(metAtIso) > UiDateUtils.toSortableDate(current.metAtIso)) {
         latestMetByUserId.set(candidateUserId, {
           metAtIso,
           metWhere,
@@ -177,7 +177,7 @@ export class LocalActivityInviteCandidatesRepository {
           return rightUserRateAffinity - leftUserRateAffinity;
         }
       }
-      return AppUtils.toSortableDate(right.metAtIso) - AppUtils.toSortableDate(left.metAtIso);
+      return UiDateUtils.toSortableDate(right.metAtIso) - UiDateUtils.toSortableDate(left.metAtIso);
     });
     const candidates = [
       ...pendingCandidates,
@@ -232,7 +232,7 @@ export class LocalActivityInviteCandidatesRepository {
   }
 
   private isFinishedMetActivity(happenedAt: string): boolean {
-    const happenedAtMs = AppUtils.toSortableDate(happenedAt);
+    const happenedAtMs = UiDateUtils.toSortableDate(happenedAt);
     return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 }

@@ -3,8 +3,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 import { ChatCallService } from '../../../shared/core/base/services/chat-call.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { PopupComponent, SmartListComponent, type PopupModel, type SmartListConfig, type SmartListLoadPage } from '../../../shared/ui';
+import {
+  ExplanationGuideService,
+  PopupComponent,
+  SmartListComponent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage
+} from '@myscoutee/components';
 
 interface CallPage {
   id: string;

@@ -1,8 +1,0 @@
-<app-menu kind="fab" [draggable]="true" [dragActivationDelayMs]="350"
-  [dragPosition]="displayPosition" [trigger]="trigger"
-  (dragPositionChange)="move($event)" (dragStateChange)="drag($event)"
-  (itemSelect)="itemSelect.emit($event)"></app-menu>
-@if (dragging()) {
-  <div #dismissTarget class="floating-launcher-dismiss-target" [style.z-index]="layer"
-    [class.is-over]="targeted()" aria-hidden="true"><mat-icon>close</mat-icon></div>
-}

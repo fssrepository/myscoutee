@@ -17,17 +17,14 @@ import {
 } from '../../../shared/core';
 import {
   FormFlowComponent,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form/flow';
-import {
+  type FormFlowModel,
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui/components/core/menu';
-import {
+  type AppMenuItemSelectEvent,
   PopupComponent,
   type PopupModel
-} from '../../../shared/ui/components/core/popup';
+} from '@myscoutee/components';
+
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';

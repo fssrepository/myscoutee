@@ -28,10 +28,8 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
 import { I18nService } from '../../../../../../core';
-import { I18nPipe } from '../../../../../pipes';
-import type * as ContractTypes from '../../../../../../core/contracts';
-import { PricingSlotPanelComponent } from './pricing-slot-panel';
 import {
+  I18nPipe,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
@@ -39,7 +37,10 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger
-} from '../../../menu';
+} from '@myscoutee/components';
+import type * as ContractTypes from '../../../../../../core/contracts';
+import { PricingSlotPanelComponent } from './pricing-slot-panel';
+
 import {
   FormFlowPopupStore,
   type FormFlowPricingEditorPopupActionRequest,
@@ -267,8 +268,6 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.disabled = isDisabled;
     this.cdr.markForCheck();
   }
-
-
 
   protected actionLabel(action: AppConstants.PricingRuleActionKind): string {
     switch (action) {

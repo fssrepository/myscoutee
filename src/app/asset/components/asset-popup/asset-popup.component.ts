@@ -1,4 +1,35 @@
 import {
+  UiLinkUtils,
+  clampNumber,
+  UiDateUtils,
+  ExplanationGuideService,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  InfoCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupModel,
+  type InfoCardData,
+  type CardMenuActionEvent,
+  type CardMenuAction,
+  type ListQuery,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListItemSelectEvent,
+  type SmartListPollDeltaSnapshot,
+  type SmartListPollDeltaResult,
+  type SmartListStateChange,
+  DialogComponent,
+  DialogStore
+} from '@myscoutee/components';
+
+import {
   CommonModule
 } from '@angular/common';
 import {
@@ -33,47 +64,15 @@ import {
   AssetTicketInfoCardConverter,
   type ActivityCounterKey
 } from '../../../shared/ui';
-import {
-  ActivityResourceBuilder,
-  ActivityResourcesService,
-  AssetsService,
-  AssetTicketsService,
-  ExplanationGuideService,
-} from '../../../shared/core';
+
+import { ActivityResourceBuilder, ActivityResourcesService, AssetsService, AssetTicketsService } from '../../../shared/core';
 import {
   AssetEditorPopupComponent
 } from '../asset-editor-popup/asset-editor-popup.component';
 import {
   AssetTicketScanPopupComponent
 } from '../asset-ticket-scan-popup/asset-ticket-scan-popup.component';
-import {
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  InfoCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type PopupActionEvent,
-  type PopupControl,
-  type PopupModel,
-  type InfoCardData,
-  type CardMenuActionEvent,
-  type CardMenuAction,
-  type ListQuery,
-  type SingleRowData,
-  type SmartListConfig,
-  type SmartListItemSelectEvent,
-  type SmartListPollDeltaSnapshot,
-  type SmartListPollDeltaResult,
-  type SmartListStateChange,
-  DialogComponent
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   AssetPopupStore
 } from '../../../shared/ui/context/stores/asset-popup.store';
@@ -679,7 +678,7 @@ export class AssetPopupComponent {
       return;
     }
     if (event.actionId === 'externalInfo') {
-      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(card.sourceLink ?? ''));
+      UiLinkUtils.openExternalUrl(UiLinkUtils.normalizeHttpUrl(card.sourceLink ?? ''));
       return;
     }
     if (event.actionId === 'delete') {
@@ -1847,7 +1846,7 @@ export class AssetPopupComponent {
     if (!query) {
       return;
     }
-    AppUtils.openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+    UiLinkUtils.openExternalUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
   }
 
   protected onAssetFilterChange(filter: AppConstants.AssetFilterType): void {
@@ -2088,8 +2087,8 @@ export class AssetPopupComponent {
       }
       const previous = previousSettings[assetId];
       const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = AppUtils.clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = AppUtils.clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       nextSettings[assetId] = {
         capacityMin,
         capacityMax,
@@ -2201,7 +2200,7 @@ export class AssetPopupComponent {
     if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.resourcePopupStore.supplyContributionEntries(subEvent.id, card.id)
-          .reduce((entrySum, entry) => entrySum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0), 0),
+          .reduce((entrySum, entry) => entrySum + clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0), 0),
         capacityMin,
         capacityMax,
         pending
@@ -2278,7 +2277,7 @@ export class AssetPopupComponent {
       }
       const settings = this.getSubEventAssignedAssetSettings(subEvent.id, AppConstants.ASSET_TYPE_SUPPLIES)[card.id];
       const quantity = this.resourcePopupStore.supplyContributionEntries(subEvent.id, card.id)
-        .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0)
+        .reduce((sum, entry) => sum + clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0)
         || Math.max(0, Math.trunc(Number(settings?.capacityMax ?? card.capacityTotal) || 0));
       if (quantity <= 0) {
         return null;
@@ -2337,8 +2336,8 @@ export class AssetPopupComponent {
   }
 
   private assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
     if (!start || !end) {
       return '';
     }
@@ -2374,8 +2373,8 @@ export class AssetPopupComponent {
       }
       const previous = existing[assetId];
       const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = AppUtils.clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = AppUtils.clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
         capacityMin,
         capacityMax,

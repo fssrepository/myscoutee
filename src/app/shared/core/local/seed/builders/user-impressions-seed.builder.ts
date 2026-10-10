@@ -1,5 +1,5 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { resolvePersonalityTraitId } from '../../../common/game-user-facet';
-import { AppUtils } from '../../../../app-utils';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { environment } from '../../../../../../environments/environment';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
@@ -189,8 +189,7 @@ export class SeedUserImpressionsBuilder {
       label: entry.trait.label,
       percent: percents[index],
       evidenceCount: this.seededMetric(user, 90 + index + (scope === 'host' ? 0 : 13), 2, 12),
-      lastRatedAtIso: AppUtils
-        .shiftDate(
+      lastRatedAtIso: UiDateUtils.shiftDate(
           new Date(Date.UTC(2026, 2, this.seededMetric(user, 120 + index + (scope === 'host' ? 0 : 13), 1, 24), 12, 0, 0)),
           SEED_SCHEDULE_REFERENCE_DATE,
           environment.bootstrapOffsetInDays
@@ -210,6 +209,5 @@ export class SeedUserImpressionsBuilder {
       .slice(0, 3)
       .map(trait => `${trait.label} ${Math.max(0, Math.trunc(Number(trait.percent) || 0))}%`);
   }
-
 
 }

@@ -1,3 +1,25 @@
+import {
+  clampNumber,
+  UiDateUtils,
+  PopupComponent,
+  SingleRowComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type ListQuery,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupModel,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListItemTemplateContext,
+  type SmartListLoadPage,
+  FormFlowComponent,
+  type FormFlowControlModel,
+  type FormFlowModel,
+  DialogStore
+} from '@myscoutee/components';
+
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import * as AppConstants from '../../../shared/core/common/constants';
@@ -15,26 +37,7 @@ import {
 import {
   from
 } from 'rxjs';
-import {
-  PopupComponent,
-  SingleRowComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type ListQuery,
-  type PopupActionEvent,
-  type PopupControl,
-  type PopupModel,
-  type SingleRowData,
-  type SmartListConfig,
-  type SmartListItemTemplateContext,
-  type SmartListLoadPage
-} from '../../../shared/ui';
-import {
-  FormFlowComponent,
-  type FormFlowControlModel,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form/flow';
+
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
@@ -53,9 +56,7 @@ import {
 import {
   SubEventResourcePopupStore
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import type {
   ResourcePopupContext,
   SupplyBringDialogState
@@ -179,7 +180,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         && current.addedAtIso === next.addedAtIso
     },
     sortable: {
-      sortKey: row => [-AppUtils.toSortableDate(row.addedAtIso), row.id]
+      sortKey: row => [-UiDateUtils.toSortableDate(row.addedAtIso), row.id]
     }
   };
 
@@ -486,7 +487,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       return;
     }
     const parsed = Number(value);
-    const quantity = AppUtils.clampNumber(
+    const quantity = clampNumber(
       Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
       dialog.min,
       dialog.max
@@ -526,7 +527,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       userId: this.activeUser().id,
       quantity: dialog.quantity,
-      addedAtIso: AppUtils.toIsoDateTime(new Date())
+      addedAtIso: UiDateUtils.toIsoDateTime(new Date())
     };
     const currentEntries = nextState.supplyContributionEntriesByAssetId[dialog.cardId] ?? [];
     nextState.supplyContributionEntriesByAssetId = {
@@ -647,7 +648,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   protected quantityLabel(quantity: number): string {
-    const normalized = AppUtils.clampNumber(Math.trunc(quantity), 0, Number.MAX_SAFE_INTEGER);
+    const normalized = clampNumber(Math.trunc(quantity), 0, Number.MAX_SAFE_INTEGER);
     return normalized === 1 ? '1 item' : `${normalized} items`;
   }
 
@@ -678,10 +679,10 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
           age: Math.max(0, Math.trunc(Number(entry.age ?? user?.age) || 0)),
           city: entry.city?.trim() || user?.city || '',
           addedAtIso: entry.addedAtIso,
-          quantity: AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
+          quantity: clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
         };
       })
-      .sort((a, b) => AppUtils.toSortableDate(b.addedAtIso) - AppUtils.toSortableDate(a.addedAtIso));
+      .sort((a, b) => UiDateUtils.toSortableDate(b.addedAtIso) - UiDateUtils.toSortableDate(a.addedAtIso));
   }
 
   private insertVisibleSupplyContribution(entry: AppDTOs.SubEventSupplyContributionEntryDTO): void {
@@ -947,7 +948,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
 
   private subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
     return this.subEventSupplyContributionEntries(subEventId, cardId)
-      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+      .reduce((sum, entry) => sum + clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
   private abortPendingSupplyBringRequest(): void {

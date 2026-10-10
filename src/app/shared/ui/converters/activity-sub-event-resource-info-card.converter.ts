@@ -8,8 +8,7 @@ import {
 import type * as AppDTOs from '../../core/contracts';
 import * as AppConstants from '../../core/common/constants';
 import type { UserDto } from '../../core/contracts/user.interface';
-import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
+import { type CardMenuActionId, type InfoCardData, type UiListConverter } from '@myscoutee/components';
 
 export interface ActivitySubEventResourceInfoCardAssetRef {
   id: string;

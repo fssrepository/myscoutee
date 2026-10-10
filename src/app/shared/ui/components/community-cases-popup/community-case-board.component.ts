@@ -1,19 +1,31 @@
+import {
+  UiDateUtils,
+  PopupComponent,
+  type PopupModel,
+  type DateInputRangeValue,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowActionEvent,
+  SmartListComponent,
+  TextCardComponent,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  I18nPipe,
+  ExplanationGuideService,
+  type TextCardTone
+} from '@myscoutee/components';
 import { Component, computed, effect, inject, signal, untracked, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
-import { AppUtils } from '../../../app-utils';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import type { DateInputRangeValue } from '../core/form/inputs/date-input';
-import { FormFlowComponent, type FormFlowModel, type FormFlowActionEvent } from '../core/form/flow';
-import { SmartListComponent, TextCardComponent, type SmartListConfig, type SmartListLoadPage } from '../core/smart-list';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../core/menu';
+
 import { CommunityCasesStore } from '../../context/stores/community-cases.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+
 import { CommunityCaseConverter } from '../../converters/community-case.converter';
 import type { CaseBoardTask, CaseOffer } from '../../../core/contracts/community-case.interface';
-import type { TextCardTone } from '../core/smart-list/card/text-card/text-card.component';
+
 const STAGES = [
   { id: 'todo', icon: 'checklist', palette: 'blue', tone: 'blue' },
   { id: 'in-progress', icon: 'play_circle', palette: 'orange', tone: 'orange' },
@@ -104,8 +116,8 @@ export class CommunityCaseBoardComponent {
       for(const id of task.offerIds??[]){const offer=offers.get(id);if(offer)totals.set(offer.currency,(totals.get(offer.currency)??0)+offer.amount);}
       const price=[...totals].map(([currency,amount])=>`${new Intl.NumberFormat(this.i18n.currentLanguage(),{maximumFractionDigits:2}).format(amount)} ${currency}`).join(' · ');
       return { id: task.id, price, icon:task.status==='deleted'?'delete':STAGES.find(s=>s.id===task.status)!.icon, task, title: task.title,
-        subtitle: task.startAtIso ? task.endAtIso ? AppUtils.dateTimeRangeLabel(task.startAtIso, task.endAtIso, '')
-          : `${AppUtils.shortMonthDayLabel(new Date(task.startAtIso))}, ${AppUtils.clockTimeLabel(new Date(task.startAtIso))}` : '',
+        subtitle: task.startAtIso ? task.endAtIso ? UiDateUtils.dateTimeRangeLabel(task.startAtIso, task.endAtIso, '')
+          : `${UiDateUtils.shortMonthDayLabel(new Date(task.startAtIso))}, ${UiDateUtils.clockTimeLabel(new Date(task.startAtIso))}` : '',
         meta: task.assigneeAccountIds.map(id => names.get(id) ?? '').filter(Boolean).join(' · '),
         detail: [task.description, task.dependsOnIds.length ? `${this.i18n.translate('case.board.dependencies')}: ${task.dependsOnIds.map(id => tasks.get(id)?.title ?? '').join(' · ')}` : ''].filter(Boolean),
         tone: task.status==='deleted'?'danger':STAGES.find(s => s.id === task.status)!.tone, menu };
@@ -161,7 +173,7 @@ export class CommunityCaseBoardComponent {
   });
   protected taskFormChanged(value: CaseBoardTask & {dateRange:DateInputRangeValue}): void {
     const {dateRange,...task}=value;
-    this.task.set({...task,startAtIso:AppUtils.isoLocalDateTimeToDate(dateRange.startAt)?.toISOString()??null,endAtIso:AppUtils.isoLocalDateTimeToDate(dateRange.endAt)?.toISOString()??null});
+    this.task.set({...task,startAtIso:UiDateUtils.isoLocalDateTimeToDate(dateRange.startAt)?.toISOString()??null,endAtIso:UiDateUtils.isoLocalDateTimeToDate(dateRange.endAt)?.toISOString()??null});
   }
   protected readonly taskFlow = computed<FormFlowModel>(() => {
     const t = (key: string) => this.i18n.translate(key), editable = this.canEditTask(), task=this.task()!, c=this.store.board()!;

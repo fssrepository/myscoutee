@@ -10,7 +10,7 @@ import type {
   NotificationSyncRequestDto,
   NotificationSyncResponseDto
 } from '../../../contracts/notification.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalNotificationMapper } from '../mappers/notification.mapper';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';

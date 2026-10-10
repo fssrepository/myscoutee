@@ -1,21 +1,7 @@
-import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode-menu.converter';
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, computed, forwardRef, Input, Output, inject, signal } from '@angular/core';
-import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
-
-import { AppUtils } from '../../../shared/app-utils';
-import { I18nService } from '../../../shared/core';
-import { PricingBuilder } from '../../../shared/core/base/builders';
 import {
-  ActivityEventDetailDTO,
-  type MingleConfigurationDTO,
-  type SubEventDefinitionDTO
-} from '../../../shared/core/contracts/activity.interface';
-import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
-import type * as EventContracts from '../../../shared/core/contracts/event.interface';
-import {
+  clampNumber,
+  UiDateUtils,
+  type DateRangeDto,
   CARD_MENU_ACTIONS,
   InfoCardComponent,
   AppMenuComponent,
@@ -34,9 +20,27 @@ import {
   type SmartListLoadPage,
   type TextCardBadgeTone,
   type TextCardStatusTone,
-  type TextCardTone
-} from '../../../shared/ui';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+  type TextCardTone,
+  DialogStore
+} from '@myscoutee/components';
+
+import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode-menu.converter';
+import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, computed, forwardRef, Input, Output, inject, signal } from '@angular/core';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { of } from 'rxjs';
+
+import { I18nService } from '../../../shared/core';
+import { PricingBuilder } from '../../../shared/core/base/builders';
+import {
+  ActivityEventDetailDTO,
+  type MingleConfigurationDTO,
+  type SubEventDefinitionDTO
+} from '../../../shared/core/contracts/activity.interface';
+
+import type * as EventContracts from '../../../shared/core/contracts/event.interface';
+
 import { EventMingleConfigurationPopupComponent } from '../event-mingle-configuration-popup/event-mingle-configuration-popup.component';
 import {
   EventSubeventStageFormPopupComponent,
@@ -532,7 +536,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (totalStages <= 1) {
       return 210;
     }
-    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
+    const ratio = clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
     return Math.round(210 - (210 * ratio));
   }
 
@@ -738,7 +742,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     const leaderboardType = this.normalizedTournamentLeaderboardType(model.tournamentLeaderboardType);
     const timingBounds = this.definitionTimingBounds();
     const timingSummaryMeta = timingBounds
-      ? `Main event range ${AppUtils.dateTimeRangeLabel(timingBounds.startAt, timingBounds.endAt, 'Date unavailable')}`
+      ? `Main event range ${UiDateUtils.dateTimeRangeLabel(timingBounds.startAt, timingBounds.endAt, 'Date unavailable')}`
       : (isTournament ? 'event.editor.subevents.tournament.definition' : 'event.editor.subevents.casual.definition');
 
     const insertPlacement = state?.insertPlacement ?? 'after';
@@ -988,8 +992,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       return null;
     }
     return {
-      startAt: AppUtils.toIsoDateTimeLocal(start),
-      endAt: AppUtils.toIsoDateTimeLocal(end),
+      startAt: UiDateUtils.toIsoDateTimeLocal(start),
+      endAt: UiDateUtils.toIsoDateTimeLocal(end),
       precision: 'minute'
     };
   }

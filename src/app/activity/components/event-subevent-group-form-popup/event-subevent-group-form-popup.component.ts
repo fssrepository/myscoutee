@@ -5,9 +5,10 @@ import {
   type AppMenuItem,
   PopupComponent,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui';
-import { FormFlowComponent, type FormFlowModel } from '../../../shared/ui/components/core/form/flow';
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel
+} from '@myscoutee/components';
 
 export interface GroupFormModel {
   name: string;

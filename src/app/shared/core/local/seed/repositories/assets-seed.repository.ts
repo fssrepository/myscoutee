@@ -1,7 +1,7 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
-import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import {
   ASSET_REQUESTS_TABLE_NAME,
@@ -140,7 +140,7 @@ export class SeedAssetsRepository {
       }
       const ownerBucket = nextIdsByOwnerUserId[ownerUserId] ?? [];
       const ownerIdSet = new Set(ownerBucket);
-      const createdAt = AppUtils.shiftDate(
+      const createdAt = UiDateUtils.shiftDate(
         new Date('2026-02-01T12:00:00.000Z'),
         SEED_SCHEDULE_REFERENCE_DATE,
         environment.bootstrapOffsetInDays
@@ -371,7 +371,7 @@ export class SeedAssetsRepository {
   ): AssetRequestRecord {
     const start = this.seedRequestDate(anchorDate, offsetDays, hour);
     const end = new Date(start.getTime() + Math.max(1, durationHours) * 60 * 60 * 1000);
-    const requestedAtIso = AppUtils.addDays(start, -1).toISOString();
+    const requestedAtIso = UiDateUtils.addDays(start, -1).toISOString();
     const createdMs = start.getTime() - 24 * 60 * 60 * 1000;
     return {
       id: `${assetId}:${requestKey}`,
@@ -413,7 +413,7 @@ export class SeedAssetsRepository {
   }
 
   private seedRequestDate(anchorDate: Date, offsetDays: number, hour: number): Date {
-    const date = AppUtils.addDays(anchorDate, offsetDays);
+    const date = UiDateUtils.addDays(anchorDate, offsetDays);
     date.setHours(Math.max(0, Math.min(23, Math.trunc(hour))), 0, 0, 0);
     return date;
   }

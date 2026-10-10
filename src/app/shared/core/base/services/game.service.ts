@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '../../contracts/rating-snapshot';
+import type { RatingSnapshot } from '@myscoutee/components';
 import {
   Injectable,
   inject
@@ -707,7 +707,6 @@ export class GameService extends BaseRouteModeService {
       this.userRatesOutboxSyncInFlight = false;
     }
   }
-
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
     this.runtimeStore.setStatus(contextKey, status, message);

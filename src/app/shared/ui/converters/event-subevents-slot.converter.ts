@@ -1,4 +1,4 @@
-import { AppUtils } from '../../app-utils';
+import { UiDateUtils } from '@myscoutee/components';
 import { ActivityEventDetailDTO, type SubEventsSlotDTO } from '../../core/contracts/activity.interface';
 import type { EventSlotTemplateDTO, SubEventDTO } from '../../core/contracts/event.interface';
 
@@ -115,13 +115,13 @@ export class EventSubeventsSlotConverter {
     event: EventSubeventsSlotConverterEvent | null | undefined
   ): string {
     const template = this.slotTemplate(slot, event);
-    const templateStart = AppUtils.parseDate(template?.startAt) ?? AppUtils.parseDate(slot.startAt ?? firstItem?.startAt);
+    const templateStart = UiDateUtils.parseDate(template?.startAt) ?? UiDateUtils.parseDate(slot.startAt ?? firstItem?.startAt);
     const frequency = ActivityEventDetailDTO.normalizeFrequency(event?.frequency ?? '');
     if (templateStart && frequency !== 'One-time' && frequency !== 'Custom') {
       return this.formatRecurringSlotLabel(frequency, templateStart);
     }
     return `${slot.timeframe ?? ''}`.trim()
-      || AppUtils.dateTimeRangeLabel(slot.startAt ?? firstItem?.startAt, slot.endAt ?? firstItem?.endAt, '');
+      || UiDateUtils.dateTimeRangeLabel(slot.startAt ?? firstItem?.startAt, slot.endAt ?? firstItem?.endAt, '');
   }
 
   private static slotTemplate(
@@ -171,12 +171,12 @@ export class EventSubeventsSlotConverter {
       case 'Yearly':
         return `Every year on ${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
       default:
-        return AppUtils.dateTimeRangeLabel(start.toISOString(), '', '');
+        return UiDateUtils.dateTimeRangeLabel(start.toISOString(), '', '');
     }
   }
 
   private static dateMs(value: string | null | undefined): number {
-    return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
+    return UiDateUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 }
 

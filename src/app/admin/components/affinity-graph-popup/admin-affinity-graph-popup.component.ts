@@ -21,14 +21,8 @@ import {
 import {
   AdminAffinityGraphService
 } from '../../../shared/core';
-import {
-  LazyBgImageDirective
-} from '../../../shared/ui/directives';
-import {
-  IndicatorComponent,
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components';
+import { LazyBgImageDirective, IndicatorComponent, PopupComponent, type PopupModel } from '@myscoutee/components';
+
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 

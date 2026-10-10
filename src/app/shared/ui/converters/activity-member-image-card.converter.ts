@@ -1,8 +1,6 @@
 import type { ActivityMemberOwnerType } from '../../core/common/constants';
 import type { ActivityMemberDTO } from '../../core/contracts/activity.interface';
-import type { AppMenuPalette } from '../components/core/menu';
-import type { ImageCardData } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
+import { type AppMenuPalette, type ImageCardData, type UiListConverter } from '@myscoutee/components';
 
 export interface ActivityMemberImageCardConverterOptions {
   ownerType?: ActivityMemberOwnerType | null;

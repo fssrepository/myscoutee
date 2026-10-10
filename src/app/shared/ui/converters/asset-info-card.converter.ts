@@ -1,11 +1,16 @@
+import {
+  UiLinkUtils,
+  type CardMenuActionId,
+  type InfoCardData,
+  type InfoCardOverlayAccessoryTone,
+  type UiListConverter
+} from '@myscoutee/components';
 import { contentModerationBadge } from './content-moderation-badge';
 import { AppUtils } from '../../app-utils';
 import { AssetCardBuilder } from '../../core/base/builders/asset-card.builder';
 import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
 import type * as AppDTOs from '../../core/contracts';
 import * as AppConstants from '../../core/common/constants';
-import type { CardMenuActionId, InfoCardData, InfoCardOverlayAccessoryTone } from '../components/core/smart-list/card/card.types';
-import type { UiListConverter } from './converter.types';
 
 export type AssetInfoCardModel = InfoCardData;
 
@@ -258,7 +263,7 @@ export class AssetInfoCardConverter {
     if (!actions.includes('assetAvailability')) {
       actions.unshift('assetAvailability');
     }
-    const sourceLink = AppUtils.normalizeHttpUrl(card.sourceLink ?? '');
+    const sourceLink = UiLinkUtils.normalizeHttpUrl(card.sourceLink ?? '');
     if (sourceLink && !actions.includes('externalInfo')) {
       actions.unshift('externalInfo');
     }

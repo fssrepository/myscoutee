@@ -10,23 +10,22 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../../core/contracts';
-import { I18nPipe } from '../../../../../../pipes';
+import {
+  I18nPipe,
+  PopupComponent,
+  type PopupAction,
+  type PopupActionEvent,
+  type PopupModel,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent
+} from '@myscoutee/components';
 import { PricingSlotPanelComponent } from '../pricing-slot-panel';
 import {
   FormFlowPopupStore,
   type FormFlowPricingEditorPopupState
 } from '../../../flow/form-flow-popup.store';
-import {
-  PopupComponent,
-  type PopupAction,
-  type PopupActionEvent,
-  type PopupModel
-} from '../../../../popup';
-import {
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  AppMenuTriggerComponent
-} from '../../../../menu';
+
 import {
   PricingEditorInputComponent,
   type PricingEditorConfig

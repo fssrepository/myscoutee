@@ -1,14 +1,22 @@
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  SmartListComponent,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  AccordionComponent,
+  type UiAccordionModel
+} from '@myscoutee/components';
+
 import { Component, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { defer } from 'rxjs';
-import { AppUtils } from '../../../shared/app-utils';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import type { CampaignHistoryItem } from '../../../shared/core/contracts/campaign.interface';
 import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
 import { CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/campaign.converter';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
-import { SmartListComponent, type SmartListConfig, type SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
-import { AccordionComponent, type UiAccordionModel } from '../../../shared/ui/components/core/accordion';
+
 import { CampaignEditorComponent, campaignViewControl, type CampaignView } from '../../../shared/ui/components/campaigns-popup/campaign-editor.component';
 import { ProfileViewPopupComponent } from '../../../profile/components/profile-view-popup/profile-view-popup.component';
 
@@ -60,7 +68,7 @@ export class CampaignHistoryPopupComponent {
     trackBy: (_index, row) => row.campaign.id, cacheable: { identity: row => row.campaign.id },
     headerProgress: { enabled: true, placement: 'inline' },
     sortable: { sortKey: row => [-Date.parse(row.lastInteractionAtIso), row.campaign.id] },
-    groupBy: row => AppUtils.smartListDayLabel(new Date(row.lastInteractionAtIso)),
+    groupBy: row => UiDateUtils.smartListDayLabel(new Date(row.lastInteractionAtIso)),
     showFirstGroupMarker: true,
     emptyLabel: () => this.i18n.translate(this.error() || 'campaign.history.empty')
   };

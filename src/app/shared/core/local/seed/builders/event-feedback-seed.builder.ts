@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { environment } from '../../../../../../environments/environment';
@@ -259,7 +260,7 @@ export class SeedEventFeedbackBuilder {
   ): string {
     const startMs = this.eventStartAtMs(eventRecord);
     const baseMs = startMs === null
-      ? AppUtils.shiftDate(
+      ? UiDateUtils.shiftDate(
         new Date(Date.UTC(2026, 2, 20, 18, 0, 0, 0)),
         SEED_SCHEDULE_REFERENCE_DATE,
         environment.bootstrapOffsetInDays

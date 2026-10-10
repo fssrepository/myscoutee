@@ -4,32 +4,33 @@
   "scripts": {
     "ng": "ng",
     "start": "npm run start:local",
-    "start:local": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 ng serve --configuration local 2>&1 | tee .agent/logs/ng-serve-local.log'",
-    "start:dev": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 ng serve --configuration dev 2>&1 | tee .agent/logs/ng-serve-dev.log'",
-    "start:e2e": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 ng serve --configuration e2e 2>&1 | tee .agent/logs/ng-serve-e2e.log'",
-    "start:pcores": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; taskset -c 0-3 env WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 ng serve --configuration local 2>&1 | tee .agent/logs/ng-serve-local.log'",
+    "start:local": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs serve --configuration local 2>&1 | tee .agent/logs/ng-serve-local.log'",
+    "start:dev": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs serve --configuration dev 2>&1 | tee .agent/logs/ng-serve-dev.log'",
+    "start:e2e": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs serve --configuration e2e 2>&1 | tee .agent/logs/ng-serve-e2e.log'",
+    "start:pcores": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; taskset -c 0-3 env WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs serve --configuration local 2>&1 | tee .agent/logs/ng-serve-local.log'",
     "start:log": "npm run start",
-    "start:nolog": "WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 ng serve --configuration local",
-    "start:prod": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 ng serve --configuration production-serve 2>&1 | tee .agent/logs/ng-serve-prod.log'",
+    "start:nolog": "WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs serve --configuration local",
+    "start:prod": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; WATCHPACK_POLLING=true NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs serve --configuration production-serve 2>&1 | tee .agent/logs/ng-serve-prod.log'",
     "start:events": "bash scripts/watch-ng-serve-log.sh",
     "start:wait-build": "bash scripts/watch-ng-serve-log.sh --once",
     "build": "npm run build:local",
-    "build:local": "NG_BUILD_MAX_WORKERS=12 ng build --configuration local",
-    "build:dev": "NG_BUILD_MAX_WORKERS=12 ng build --configuration dev",
-    "build:e2e": "NG_BUILD_MAX_WORKERS=12 ng build --configuration e2e",
-    "build:github": "NG_BUILD_MAX_WORKERS=12 ng build --configuration github --base-href /myscoutee/ && FRONTEND_BUILD_OUTPUT_DIR=docs node scripts/stamp-prod-build.js",
-    "build:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --configuration local",
-    "build:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng build --configuration local 2>&1 | tee .agent/logs/ng-build-local.log'",
-    "build:prod": "NG_BUILD_MAX_WORKERS=12 ng build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
-    "build:prod:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
-    "build:prod:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng build --configuration production 2>&1 | tee .agent/logs/ng-build-prod.log && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js 2>&1 | tee -a .agent/logs/ng-build-prod.log'",
+    "build:local": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration local",
+    "build:dev": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration dev",
+    "build:e2e": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration e2e",
+    "build:github": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration github --base-href /myscoutee/ && FRONTEND_BUILD_OUTPUT_DIR=docs node scripts/stamp-prod-build.js",
+    "build:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration local",
+    "build:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration local 2>&1 | tee .agent/logs/ng-build-local.log'",
+    "build:prod": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
+    "build:prod:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
+    "build:prod:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration production 2>&1 | tee .agent/logs/ng-build-prod.log && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js 2>&1 | tee -a .agent/logs/ng-build-prod.log'",
     "audit:i18n-seeds": "node scripts/audit-i18n-mongo-seed.js",
     "watch": "npm run watch:dev",
-    "watch:dev": "NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration dev",
-    "watch:e2e": "NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration e2e",
-    "watch:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration dev",
-    "watch:log": "bash -lc 'mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration dev 2>&1 | tee .agent/logs/ng-watch-dev.log'",
-    "test": "ng test"
+    "watch:dev": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --watch --configuration dev",
+    "watch:e2e": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --watch --configuration e2e",
+    "watch:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --watch --configuration dev",
+    "watch:log": "bash -lc 'mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --watch --configuration dev 2>&1 | tee .agent/logs/ng-watch-dev.log'",
+    "test": "node scripts/with-components.mjs test",
+    "build:components": "npm run build --workspace @myscoutee/components"
   },
   "prettier": {
     "printWidth": 100,
@@ -59,7 +60,8 @@
     "material-icons": "^1.13.14",
     "qrcode": "1.5.4",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "@myscoutee/components": "0.0.0"
   },
   "devDependencies": {
     "@angular/build": "^21.2.12",
@@ -71,5 +73,8 @@
     "playwright": "^1.60.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
-  }
+  },
+  "workspaces": [
+    "myscoutee-components"
+  ]
 }

@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from './list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 
 export type PaymentProvider = 'stripe' | 'barion';
 export type PaymentHistoryDirection = 'all' | 'expenses' | 'income';

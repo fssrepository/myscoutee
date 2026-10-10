@@ -3,7 +3,7 @@ import { PaymentMethodsService } from './payment-methods.service';
 import { SessionService } from './session.service';
 import { HttpPaymentMethodsService } from '../../http/services/payment-methods.service';
 import { LocalPaymentMethodsService } from '../../local/source/services/payment-methods.service';
-import type { ListQuery } from '../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 
 // Both adapters have bounded pages; the visible SmartList window can span them.
 describe('payment history visible window', () => {

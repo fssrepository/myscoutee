@@ -2,20 +2,19 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ExplanationGuideService } from '../../../core';
-import * as AppConstants from '../../../core/common/constants';
-import type {
-  HelpCenterRevisionDto,
-  HelpCenterSectionDto
-} from '../../../core/contracts';
-import { I18nPipe } from '../../pipes';
-import { LazyBgImageDirective } from '../../directives';
-import { IndicatorComponent } from '../core/indicator';
-import { ExplanationGuideOverlayComponent } from './explanation-guide-overlay.component';
 import {
+  ExplanationGuideService,
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSection as HelpCenterSectionDto,
+  I18nPipe,
+  LazyBgImageDirective,
+  IndicatorComponent,
   PopupComponent,
   type PopupModel
-} from '../core/popup';
+} from '@myscoutee/components';
+import * as AppConstants from '../../../core/common/constants';
+
+import { ExplanationGuideOverlayComponent } from './explanation-guide-overlay.component';
 
 type HomeFilterModeOption = Readonly<{
   key: string;

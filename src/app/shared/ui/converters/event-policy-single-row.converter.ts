@@ -1,8 +1,5 @@
 import type * as EventContracts from '../../core/contracts/event.interface';
-import type {
-  SingleRowData
-} from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
+import { type SingleRowData, type UiListConverter } from '@myscoutee/components';
 
 export interface EventPolicySingleRowConverterOptions {
   index?: number;

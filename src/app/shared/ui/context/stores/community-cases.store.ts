@@ -11,17 +11,15 @@ import { ActivityMembersService } from '../../../core/base/services/activity-mem
 import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../core/contracts/group-type';
 import type { CaseCommand, CaseFilters, CaseListContext, CommunityCase, CommunityScheduledTask, SaveCommunityCase, SaveCommunityScheduledTask, ScheduledTaskFilters, ScheduledTaskCounters, ScheduledTaskAction } from '../../../core/contracts/community-case.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+import { type ListQuery, DialogStore, type AppMenuItem } from '@myscoutee/components';
 import { ProfileStore } from './profile.store';
 import { UserProfileStore } from './user-profile.store';
 import { GroupWorkspaceStore } from './group-workspace.store';
 import { ActivityInvitePopupStore } from './activity-invite-popup.store';
 import { MemberMenuStore } from './member-menu.store';
-import { DialogStore } from './dialog.store';
-import { AppUtils } from '../../../app-utils';
+
 import type { ChatMessageAttachment } from '../../../core/contracts/chat.interface';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
-import type { AppMenuItem } from '../../components/core/menu';
 
 export type CaseEditorState = { kind: 'case'; value: CommunityCase | null; readOnly: boolean } | { kind: 'task'; value: CommunityScheduledTask | null; readOnly: boolean };
 @Injectable({ providedIn: 'root' })

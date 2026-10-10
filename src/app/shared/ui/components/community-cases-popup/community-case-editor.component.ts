@@ -1,9 +1,15 @@
 import { AppUtils } from '../../../app-utils';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowActionEvent
+} from '@myscoutee/components';
 import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { FormFlowComponent, type FormFlowModel, type FormFlowActionEvent } from '../core/form/flow';
+
 import { CommunityCasesStore, type CaseEditorState } from '../../context/stores/community-cases.store';
 import { CommunityCaseConverter } from '../../converters/community-case.converter';
 import { I18nService } from '../../../core/base/services/i18n.service';

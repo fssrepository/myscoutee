@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from './list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { PricingConfig } from './pricing.interface';
 import type { EventSlotTemplateDTO } from './event.interface';
 export const SERVICE_CATEGORIES = ['maintenance','plumbing','electrical','cleaning','renovation','fitness','education','other'] as const;

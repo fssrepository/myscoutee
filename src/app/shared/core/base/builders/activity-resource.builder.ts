@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { UiDateUtils } from '@myscoutee/components';
 import type * as ContractTypes from '../../contracts';
 import { PricingBuilder } from './pricing.builder';
 
@@ -387,7 +387,7 @@ export class ActivityResourceBuilder {
           addedAtIso: `${entry?.addedAtIso ?? ''}`.trim()
         }))
         .filter(entry => entry.id.length > 0 && entry.userId.length > 0 && entry.quantity > 0)
-        .sort((left, right) => AppUtils.toSortableDate(left.addedAtIso) - AppUtils.toSortableDate(right.addedAtIso));
+        .sort((left, right) => UiDateUtils.toSortableDate(left.addedAtIso) - UiDateUtils.toSortableDate(right.addedAtIso));
       if (entries.length > 0) {
         next[normalizedAssetId] = entries;
       }
@@ -707,8 +707,8 @@ export class ActivityResourceBuilder {
   }
 
   static assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
     if (!start || !end) {
       return '';
     }
@@ -725,7 +725,7 @@ export class ActivityResourceBuilder {
   static defaultAssetExploreRange(
     subEvent: ContractTypes.SubEventDTO
   ): { startAtIso: string; endAtIso: string } {
-    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(new Date());
+    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(new Date());
     const endAtIso = `${subEvent.endAt ?? ''}`.trim();
     if (endAtIso) {
       return {
@@ -733,12 +733,12 @@ export class ActivityResourceBuilder {
         endAtIso
       };
     }
-    const base = AppUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
+    const base = UiDateUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
     const nextEnd = new Date(base);
     nextEnd.setHours(nextEnd.getHours() + 2);
     return {
       startAtIso,
-      endAtIso: AppUtils.toIsoDateTimeLocal(nextEnd)
+      endAtIso: UiDateUtils.toIsoDateTimeLocal(nextEnd)
     };
   }
 

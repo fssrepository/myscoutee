@@ -1,11 +1,12 @@
-import type { RatingDomain, RatingSnapshot } from './rating-snapshot';
+import { type RatingSnapshot, type DateRangeDto, type ListQuery } from '@myscoutee/components';
+import type { RatingDomain } from './rating-snapshot';
 import { ImageDetailsMap, normalizeImageDetails } from './image-gallery.interface';
 import * as AppConstants from '../common/constants';
 import type * as AssetContracts from './asset.interface';
 import type * as ChatContracts from './chat.interface';
-import type { DateRangeDto } from './date.interface';
+
 import type * as EventContracts from './event.interface';
-import type { ListQuery } from './list.interface';
+
 import type * as PricingContracts from './pricing.interface';
 import type * as UserContracts from './user.interface';
 

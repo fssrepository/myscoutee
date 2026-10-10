@@ -5,18 +5,29 @@ import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { from } from 'rxjs';
 
 import {
-  AssetCardBuilder,
-  AssetsService,
-  DeploymentConfigurationService,
-  EventsService,
-  I18nService,
-  PaymentMethodsService,
   ExplanationGuideService,
-  UsersService
-} from '../../../core';
+  type ListQuery,
+  DialogStore,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  PopupComponent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  PaymentCardComponent,
+  SingleRowComponent,
+  type PaymentCardData,
+  type SingleRowData,
+  I18nPipe
+} from '@myscoutee/components';
+import { AssetCardBuilder, AssetsService, DeploymentConfigurationService, EventsService, I18nService, PaymentMethodsService, UsersService } from '../../../core';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+
 import type {
   PaymentHistoryDirection,
   PaymentHistoryItemDto,
@@ -34,26 +45,7 @@ import {
 import { EventCheckoutDialogStore } from '../../context/stores/event-checkout-dialog.store';
 import { AssetStore } from '../../context/stores/asset.store';
 import { AssetPopupStore } from '../../context/stores/asset-popup.store';
-import { DialogStore } from '../../context/stores/dialog.store';
-import type { AppMenuItem, AppMenuItemSelectEvent, AppMenuTrigger } from '../core/menu';
-import {
-  PopupComponent,
-  type PopupControl,
-  type PopupMenuSelectEvent,
-  type PopupModel
-} from '../core/popup';
-import {
-  SmartListComponent,
-  type SmartListConfig,
-  type SmartListLoadPage
-} from '../core/smart-list';
-import {
-  PaymentCardComponent,
-  SingleRowComponent,
-  type PaymentCardData,
-  type SingleRowData
-} from '../core/smart-list/card';
-import { I18nPipe } from '../../pipes';
+
 import { ChatPopupHeaderContextConverter } from '../../converters/chat-popup-header-context.converter';
 
 interface PaymentListFilters { counterpartyUserId?:string; revision: number; direction?: PaymentHistoryDirection; }

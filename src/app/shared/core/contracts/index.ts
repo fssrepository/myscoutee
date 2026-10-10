@@ -5,10 +5,10 @@ export * from './integration.interface';
 export * from './chat.interface';
 export * from './contact.interface';
 export * from './content.interface';
-export * from './date.interface';
+
 export * from './deployment-configuration.interface';
 export * from './event.interface';
-export * from './list.interface';
+
 export * from './notification.interface';
 export * from './payment-method.interface';
 export * from './operator.interface';

@@ -14,29 +14,26 @@ import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';
-import type { ListQuery, PageResult } from '../../../../shared/core/contracts/list.interface';
-import { AppMenuComponent } from '../../../../shared/ui/components/core/menu/menu.component';
-import { AppMenuDispatcher } from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
-import { AppMenuOutletComponent } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
-import type {
-  AppMenuItem,
-  AppMenuItemSelectEvent,
-  AppMenuPalette,
-  AppMenuTrigger
-} from '../../../../shared/ui/components/core/menu/menu.types';
 import {
+  type ListQuery,
+  type PageResult,
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   CARD_MENU_ACTIONS,
   type CardMenuAction,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type InfoCardData
-} from '../../../../shared/ui/components/core/smart-list/card/card.types';
-import { InfoCardComponent } from '../../../../shared/ui/components/core/smart-list/card/info-card/info-card.component';
-import { SmartListComponent } from '../../../../shared/ui/components/core/smart-list/smart-list.component';
-import type {
-  SmartListConfig,
-  SmartListLoadPage
-} from '../../../../shared/ui/components/core/smart-list/smart-list.types';
+  type InfoCardData,
+  InfoCardComponent,
+  SmartListComponent,
+  type SmartListConfig,
+  type SmartListLoadPage
+} from '@myscoutee/components';
 
 export interface EventResourceListItem {
   card: AppDTOs.SubEventResourceCardDTO;

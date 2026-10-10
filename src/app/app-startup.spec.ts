@@ -6,7 +6,7 @@ import { NavigationCancel, NavigationCancellationCode, NavigationEnd, Navigation
 import { Subject } from 'rxjs';
 import { App } from './app';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
+import { AppMenuComponent } from '@myscoutee/components';
 import { SessionService } from './shared/core/base/services/session.service';
 import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
 import { PwaService } from './shared/core/base/services/pwa.service';
@@ -143,7 +143,6 @@ describe('application startup loading handoff', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
   });
-
 
   it.each(['/', '/game'])('shows the shared header and avatar loader before guards finish on %s', url => {
     currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'cached-user' } });

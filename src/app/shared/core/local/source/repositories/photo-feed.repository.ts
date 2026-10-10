@@ -5,7 +5,7 @@ import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { LocalPhotoFeedMapper } from '../mappers/photo-feed.mapper';
 import type { PhotoFeedPost, PhotoFeedFilters } from '../../../contracts/photo-feed.interface';
 import { MODERATION_STATUSES } from '../../../contracts/content-moderation.interface';
-import type { ListQuery, PageResult } from '../../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { PhotoFeedCounters } from '../../../contracts/photo-feed.interface';
 import { CONTENT_MODERATION_TABLE_NAME } from '../entity/content-moderation.entity';
 import { changeModerationItem } from '../builders/content-moderation.builder';

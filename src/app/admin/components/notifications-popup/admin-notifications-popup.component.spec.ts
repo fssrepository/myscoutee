@@ -4,12 +4,14 @@ import type {
   AdminNotificationCenterState,
   AdminNotificationRule
 } from '../../../shared/core';
-import type { ListQuery, PageResult } from '../../../shared/core/contracts/list.interface';
+import {
+  type ListQuery,
+  type PageResult,
+  type SmartListComponent,
+  type SmartListStateChange
+} from '@myscoutee/components';
 import { AdminNotificationsSeedBuilder } from '../../../shared/core/local/seed/builders/admin/admin-notifications-seed.builder';
-import type {
-  SmartListComponent,
-  SmartListStateChange
-} from '../../../shared/ui/components/core/smart-list';
+
 import { AdminNotificationsPopupComponent } from './admin-notifications-popup.component';
 
 type ProcessListFilter = 'all' | 'active' | 'suspended' | 'running' | 'failed';

@@ -30,7 +30,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   type SingleRowData
-} from '../../../../shared/ui';
+} from '@myscoutee/components';
 import {
   EventPromoCodePopupStore,
   type EventPromoCodeAddPopupActionRequest,

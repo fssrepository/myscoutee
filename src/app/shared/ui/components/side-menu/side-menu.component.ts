@@ -5,11 +5,36 @@ import { CommunityAnnouncementsStore } from '../../context/stores/community-anno
 import { CommunityCasesStore } from '../../context/stores/community-cases.store';
 import { CampaignsStore } from '../../context/stores/campaigns.store';
 import { ExplanationLauncherComponent } from '../explanation-popup/explanation-launcher.component';
-import { FloatingLauncherComponent } from '../core/floating-launcher/floating-launcher.component';
-import { OverlayNavigationStore } from '../../context/stores/overlay-navigation.store';
+import {
+  FloatingLauncherComponent,
+  OverlayNavigationStore,
+  type AppMenuPalette,
+  ImageGalleryPopupComponent,
+  ImageGalleryStore,
+  type AppMenuDragPosition,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuTrigger,
+  type AppMenuValueMap,
+  type HeaderCardModel,
+  AppMenuComponent,
+  HeaderCardComponent,
+  UiPollCoordinator,
+  UiTaskScheduler,
+  ExplanationGuideService,
+  type GuideRevision as HelpCenterRevisionDto,
+  DialogStore,
+  PopupPresenceStore,
+  PopupComponent,
+  type PopupModel,
+  IndicatorComponent,
+  I18nPipe
+} from '@myscoutee/components';
+
 import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
-import type { AppMenuPalette } from '../core/menu';
+
 import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
 import { CommunityGroupsPopupComponent } from '../community-groups-popup/community-groups-popup.component';
 import { ContentModerationStore } from '../../context/stores/content-moderation.store';
@@ -17,8 +42,7 @@ import { AdminNotificationsService } from '../../../core/base/services/admin-not
 import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
 import { PhotoFeedStore } from '../../context/stores/photo-feed.store';
 import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
-import { ImageGalleryPopupComponent } from '../core/image-gallery/image-gallery-popup.component';
-import { ImageGalleryStore } from '../../context/stores/image-gallery.store';
+
 import { FollowingStore } from '../../context/stores/following.store';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
@@ -44,22 +68,9 @@ import {
   Router
 } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import type {
-  ActivityCounters,
-  ActivityCounterKey,
-  AppMenuDragPosition,
-  AppMenuItem,
-  AppMenuItemSelectEvent,
-  AppMenuModel,
-  AppMenuTrigger,
-  AppMenuValueMap,
-  HeaderCardModel,
-  UserImpressionChangeFlags
-} from '../..';
-import { AppMenuComponent } from '../core/menu/menu.component';
-import { HeaderCardComponent } from '../core/smart-list/card/header-card/header-card.component';
-import { UiPollCoordinator } from '../../scheduler/ui-poll-coordinator';
-import { UiTaskScheduler } from '../../scheduler/ui-task-scheduler';
+
+import type { ActivityCounters, ActivityCounterKey, UserImpressionChangeFlags } from '../..';
+
 import { ProfileHeaderCardConverter } from '../../converters/profile-header-card.converter';
 import {
   cloneEventCounters,
@@ -85,7 +96,7 @@ import {
 import {
   SubEventResourcePopupStore
 } from '../../context/stores/sub-event-resource-popup.store';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { HelpCenterService } from '../../../core/base/services/help-center.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
@@ -98,7 +109,8 @@ import {
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
-import type { HelpCenterRevisionDto, PrivacyConsentDto, UserDto } from '../../../core';
+
+import type { PrivacyConsentDto, UserDto } from '../../../core';
 import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
@@ -115,9 +127,7 @@ import {
   navigatorContentMenuModel,
   navigatorTableMenuModel
 } from './side-menu-presenters';
-import {
-  DialogStore
-} from '../../context/stores/dialog.store';
+
 import {
   APP_STORAGE_KEYS
 } from '../../../core/common/storage-scope';
@@ -135,13 +145,10 @@ import { isNavigatorHydrationRoute } from './navigator-hydration-route';
 import { hasOperatorRole } from '../../../core/common/user-role';
 import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-policy';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
-import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
+
 import { PaymentMethodsPopupStore } from '../../context/stores/payment-methods-popup.store';
 import { PwaService } from '../../../core/base/services/pwa.service';
-import { PopupComponent } from '../core/popup/popup.component';
-import type { PopupModel } from '../core/popup';
-import { IndicatorComponent } from '../core/indicator/indicator.component';
-import { I18nPipe } from '../../pipes/i18n.pipe';
+
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { MingleStore } from '../../context/stores/mingle.store';
 import { environment } from '../../../../../environments/environment';
@@ -1436,7 +1443,6 @@ export class SideMenuComponent implements OnDestroy {
       this.lastHandledEventFeedbackRequestMs = request.updatedMs;
       void this.openEventFeedbackPopupFromNavigatorRequest();
     });
-
 
   }
 

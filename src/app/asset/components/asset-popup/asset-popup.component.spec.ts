@@ -2,26 +2,18 @@ import { ChangeDetectorRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
-import {
-  ActivityResourcesService,
-  AssetTicketsService,
-  AssetsService,
-  ExplanationGuideService,
-  I18nService,
-  ShareTokensService
-} from '../../../shared/core';
+import { ExplanationGuideService, AppMenuDispatcher, DialogStore } from '@myscoutee/components';
+import { ActivityResourcesService, AssetTicketsService, AssetsService, I18nService, ShareTokensService } from '../../../shared/core';
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import {
-  AppMenuDispatcher
-} from '../../../shared/ui';
+
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { AssetAvailabilityPopupStore } from '../../../shared/ui/context/stores/asset-availability-popup.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
 import { AssetStore } from '../../../shared/ui/context/stores/asset.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AssetPopupComponent } from './asset-popup.component';

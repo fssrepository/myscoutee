@@ -1,3 +1,28 @@
+import {
+  UiDateUtils,
+  DialogStore,
+  ExplanationGuideService,
+  AppMenuComponent,
+  buildTabbedMenuModel,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  DateInputComponent,
+  type DateInputModel,
+  ImageGalleryComponent,
+  LinkInputComponent,
+  LocationInputComponent,
+  type LocationInputConfig,
+  IndicatorComponent,
+  I18nPipe,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '@myscoutee/components';
 import { groupPriorityEnabled } from '../../../shared/core/contracts/group-type';
 import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
@@ -45,9 +70,7 @@ import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
 } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
@@ -59,45 +82,13 @@ import {
   PricingBuilder
 } from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import {
-  ActivityMembersService,
-  EventsService,
-  ExplanationGuideService,
-  RouteDelayService
-} from '../../../shared/core';
+
+import { ActivityMembersService, EventsService, RouteDelayService } from '../../../shared/core';
 import {
   ActivityEventDetailDTO
 } from '../../../shared/core/contracts/activity.interface';
-import {
-  AppMenuComponent,
-  buildTabbedMenuModel,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  DateInputComponent,
-  type DateInputModel,
-  ImageGalleryComponent,
-  SlotsInputComponent,
-  type SlotsInputConfig,
-  type SlotOverrideRequest,
-  LinkInputComponent,
-  LocationInputComponent,
-  type LocationInputConfig,
-  PricingEditorInputComponent,
-  PoliciesInputComponent,
-  type PoliciesInputConfig,
-  type PricingEditorConfig,
-  type PricingEditorRuntimePreview,
-  IndicatorComponent,
-  I18nPipe,
-  PopupComponent,
-  type PopupActionEvent,
-  type PopupControl,
-  type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui';
+
+import { SlotsInputComponent, type SlotsInputConfig, type SlotOverrideRequest, PricingEditorInputComponent, PoliciesInputComponent, type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
 import {
   EventBasketInputComponent,
   type EventBasketInputConfig,
@@ -638,8 +629,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private formatCheckoutDateRange(startAtIso: string | null | undefined, endAtIso: string | null | undefined): string {
-    const start = AppUtils.isoLocalDateTimeToDate(`${startAtIso ?? ''}`.trim());
-    const end = AppUtils.isoLocalDateTimeToDate(`${endAtIso ?? ''}`.trim());
+    const start = UiDateUtils.isoLocalDateTimeToDate(`${startAtIso ?? ''}`.trim());
+    const end = UiDateUtils.isoLocalDateTimeToDate(`${endAtIso ?? ''}`.trim());
     if (!start && !end) {
       return '';
     }
@@ -900,7 +891,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private parseEventEditorDateValue(value: unknown): Date | null {
-    return AppUtils.parseDate(value);
+    return UiDateUtils.parseDate(value);
   }
 
   protected onEventDateRangeChange(value: {
@@ -1615,7 +1606,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!selected) {
       return;
     }
-    const selectedStartAt = AppUtils.toIsoDateTimeLocal(selected);
+    const selectedStartAt = UiDateUtils.toIsoDateTimeLocal(selected);
     this.slotOverrideEditor = {
       slot: { ...request.slot },
       slotIndex: request.slotIndex,
@@ -1710,7 +1701,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return [];
     }
     return this.slotOverrideVisibleCandidates(editor).map(startAt => {
-      const startAtIso = AppUtils.toIsoDateTimeLocal(startAt);
+      const startAtIso = UiDateUtils.toIsoDateTimeLocal(startAt);
       return {
         id: startAtIso,
         label: this.slotOverrideSummaryLabel(startAtIso),
@@ -1743,7 +1734,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!selected) {
       return;
     }
-    const selectedStartAt = AppUtils.toIsoDateTimeLocal(selected);
+    const selectedStartAt = UiDateUtils.toIsoDateTimeLocal(selected);
     this.slotOverrideEditor = {
       ...this.slotOverrideEditor,
       selectedStartAt,
@@ -1799,7 +1790,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const pageEditor = { ...this.slotOverrideEditor, page };
     const selected = this.slotOverrideVisibleCandidates(pageEditor)[0];
     const selectedStartAt = selected
-      ? AppUtils.toIsoDateTimeLocal(selected)
+      ? UiDateUtils.toIsoDateTimeLocal(selected)
       : this.slotOverrideEditor.selectedStartAt;
     this.slotOverrideEditor = {
       ...this.slotOverrideEditor,
@@ -1989,7 +1980,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const overrideId = this.slotOverrideTemplateId(editor.slot, selectedDateKey);
     const overrideTemplate: ContractTypes.EventSlotTemplateDTO = {
       id: overrideId,
-      startAt: AppUtils.toIsoDateTimeLocal(selectedStart),
+      startAt: UiDateUtils.toIsoDateTimeLocal(selectedStart),
       overrideDate: selectedDateKey,
       closed: false,
       subEventDefinitions: normalizedDefinitions
@@ -2515,8 +2506,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       creatorCity: activeUserProfile?.city ?? '',
       visibility: target === 'hosting' ? 'Invitation only' : 'Public',
       dateRange: {
-        startAt: AppUtils.toIsoDateTimeLocal(start),
-        endAt: AppUtils.toIsoDateTimeLocal(end),
+        startAt: UiDateUtils.toIsoDateTimeLocal(start),
+        endAt: UiDateUtils.toIsoDateTimeLocal(end),
         precision: 'minute'
       }
     });
@@ -2526,8 +2517,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private normalizeEventDateRange(anchor: 'start' | 'end' = 'start'): void {
-    const start = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.startAt);
-    let end = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.endAt);
+    const start = UiDateUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.startAt);
+    let end = UiDateUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.endAt);
     if (!start || !end) {
       return;
     }
@@ -2540,8 +2531,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     this.applyEventDateRange(this.eventDateRangeWithMinimum({
-      startAt: AppUtils.toIsoDateTimeLocal(start),
-      endAt: AppUtils.toIsoDateTimeLocal(end),
+      startAt: UiDateUtils.toIsoDateTimeLocal(start),
+      endAt: UiDateUtils.toIsoDateTimeLocal(end),
       precision: 'minute'
     }, anchor));
     this.normalizeEventSlotTemplates();
@@ -2551,8 +2542,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     range: { startAt: string; endAt: string; precision?: 'date' | 'minute' },
     anchor: 'start' | 'end'
   ): { startAt: string; endAt: string; precision: 'minute' } {
-    let start = AppUtils.isoLocalDateTimeToDate(range.startAt) ?? new Date();
-    let end = AppUtils.isoLocalDateTimeToDate(range.endAt) ?? new Date(start.getTime() + (60 * 60 * 1000));
+    let start = UiDateUtils.isoLocalDateTimeToDate(range.startAt) ?? new Date();
+    let end = UiDateUtils.isoLocalDateTimeToDate(range.endAt) ?? new Date(start.getTime() + (60 * 60 * 1000));
     const minimumDurationMs = this.subEventDefinitionsMinimumDurationMs();
     if (end.getTime() - start.getTime() < minimumDurationMs) {
       if (anchor === 'end') {
@@ -2562,8 +2553,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
     }
     return {
-      startAt: AppUtils.toIsoDateTimeLocal(start),
-      endAt: AppUtils.toIsoDateTimeLocal(end),
+      startAt: UiDateUtils.toIsoDateTimeLocal(start),
+      endAt: UiDateUtils.toIsoDateTimeLocal(end),
       precision: 'minute'
     };
   }

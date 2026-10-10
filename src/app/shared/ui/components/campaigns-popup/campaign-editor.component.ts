@@ -2,13 +2,21 @@ import { NgTemplateOutlet } from '@angular/common';
 import { DocumentAttachments } from '../core/form/flow/document-attachments';
 import { MediaService } from '../../../core/base/services/media.service';
 import { ProfileViewPopupComponent } from '../../../../profile/components/profile-view-popup/profile-view-popup.component';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  PopupComponent,
+  PopupModel,
+  PopupMenuControl,
+  FormFlowComponent,
+  FormFlowModel,
+  type FormFlowActionEvent,
+  I18nPipe
+} from '@myscoutee/components';
 import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent, PopupModel, PopupMenuControl } from '../core/popup';
-import { FormFlowComponent, FormFlowModel, type FormFlowActionEvent } from '../core/form/flow';
+
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
+
 import { CampaignsStore } from '../../context/stores/campaigns.store';
 import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type SaveCampaign } from '../../../core/contracts/campaign.interface';
 import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../converters/campaign.converter';

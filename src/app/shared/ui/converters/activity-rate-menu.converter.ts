@@ -1,10 +1,10 @@
-import type { RatingSnapshot } from '../../core/contracts/rating-snapshot';
-import type {
-  AppMenuItem,
-  AppMenuItemSelectEvent,
-  AppMenuRateConfig
-} from '../components';
-import type { UiConverter } from './converter.types';
+import {
+  type RatingSnapshot,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuRateConfig,
+  type UiConverter
+} from '@myscoutee/components';
 
 const ACTIVITY_RATE_MENU_RATING_ITEM_ID = 'rating';
 

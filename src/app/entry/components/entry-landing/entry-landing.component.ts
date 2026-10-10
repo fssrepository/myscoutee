@@ -1,4 +1,24 @@
-import { PopupPresenceStore } from '../../../shared/ui/context/stores/popup-presence.store';
+import {
+  PopupPresenceStore,
+  DeploymentBrandComponent,
+  InfoCardComponent,
+  WarpImageCardComponent,
+  type InfoCardData,
+  type WarpImageCardData,
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListItemRenderState,
+  type SmartListLoadPage,
+  PopupComponent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuItemSelectEvent,
+  I18nPipe
+} from '@myscoutee/components';
 import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
 import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
 import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/group-type-menu';
@@ -18,24 +38,6 @@ import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { PwaService } from '../../../shared/core/base/services/pwa.service';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
-import {
-  InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
-} from '../../../shared/ui/components/core/smart-list/card';
-import {
-  SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
-} from '../../../shared/ui/components/core/smart-list';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuModel,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui/components/core/menu';
-import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 type EntryHeroCtaId = 'explore' | 'join';

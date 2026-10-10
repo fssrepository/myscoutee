@@ -4,9 +4,8 @@ import { createEnvironmentInjector, runInInjectionContext, signal, type Environm
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventsService } from '../../../core/base/services/events.service';
 import { UserProfileStore } from './user-profile.store';
-import { DialogStore } from './dialog.store';
+import { DialogStore } from '@myscoutee/components';
 import { CalendarExportStore } from './calendar-export.store';
-
 
 describe('Calendar download request lifecycle', () => {
   let injector: EnvironmentInjector;

@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../../../shared/app-utils';
+import { clampNumber } from '@myscoutee/components';
 
 export function animateActivitiesRateEditorScrollTo(
   scrollElement: HTMLElement,
@@ -65,7 +65,7 @@ export function syncActivitiesRatesListPositionToRow(
 }
 
 function activitiesRateEditorLiftEasedProgress(progress: number): number {
-  return sampleCubicBezierYForX(AppUtils.clampNumber(progress, 0, 1), 0.22, 1, 0.36, 1);
+  return sampleCubicBezierYForX(clampNumber(progress, 0, 1), 0.22, 1, 0.36, 1);
 }
 
 function sampleCubicBezierYForX(x: number, x1: number, y1: number, x2: number, y2: number): number {
@@ -112,5 +112,5 @@ function sampleCubicBezierYForX(x: number, x1: number, y1: number, x2: number, y
     t = (lowerBound + upperBound) / 2;
   }
 
-  return sampleCurveY(AppUtils.clampNumber(t, 0, 1));
+  return sampleCurveY(clampNumber(t, 0, 1));
 }

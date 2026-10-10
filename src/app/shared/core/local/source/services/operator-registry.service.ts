@@ -5,7 +5,7 @@ import { OperatorConfigurationMapper } from '../../../base/mappers/operator-conf
 import {
   DEFAULT_DEPLOYMENT_BRANDING
 } from '../../../contracts/deployment-configuration.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,
@@ -1486,7 +1486,6 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         currentLeaderboard.length - previousLeaderboard.length
     };
   }
-
 
   private requireClaimVerificationRequest(
     request: OperatorClaimRequestDto

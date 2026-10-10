@@ -1,3 +1,4 @@
+import { UiDateUtils, type ListQuery, type PageResult } from '@myscoutee/components';
 import {
   Injectable,
   inject
@@ -19,7 +20,8 @@ import type {
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
-import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
+
+import type { ActivitiesFeedFilters } from '../../contracts';
 import type { UserEventCountersDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
@@ -147,7 +149,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       options.signal
     );
     if (this.isCalendarActivitiesView(query.view) && query.filters?.eventScopeFilter !== 'trash') {
-      const items = AppUtils.filterItemsByDateOnlyRange(
+      const items = UiDateUtils.filterItemsByDateOnlyRange(
         page.items,
         query.rangeStart,
         query.rangeEnd,

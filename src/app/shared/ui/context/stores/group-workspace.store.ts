@@ -6,7 +6,7 @@ import { AdminWorkspaceDataService } from "../../../core/base/services/admin-wor
 import { UsersService } from '../../../core/base/services/users.service';
 import { AppUtils } from '../../../app-utils';
 import { ContentModerationStore } from './content-moderation.store';
-import type { AppMenuItem, AppMenuPalette } from '../../components/core/menu';
+import { type AppMenuItem, type AppMenuPalette, UiTaskScheduler, UiPollCoordinator } from '@myscoutee/components';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommunityGroupsService } from '../../../core/base/services/community-groups.service';
@@ -15,7 +15,7 @@ import { SessionService } from '../../../core/base/services/session.service';
 import { UserProfileStore } from './user-profile.store';
 import { ActivityStore } from './activity.store';
 import { profileMenuBadgeCount } from './app-context-store.utils';
-import { UiTaskScheduler, UiPollCoordinator } from '../../scheduler';
+
 import type { GroupCategory, GroupBucket, GroupWorkspace } from '../../../core/contracts/community-group.interface';
 import { groupMembershipBucket } from '../../../core/contracts/community-group.interface';
 

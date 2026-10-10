@@ -1,3 +1,21 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  AppMenuComponent,
+  type LocationInputConfig,
+  IndicatorComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowTone,
+  PopupComponent,
+  type PopupControl,
+  type PopupModel,
+  type DateInputRangeValue
+} from '@myscoutee/components';
 import { PaymentRefundPolicyComponent } from '../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import {
   CommonModule
@@ -20,11 +38,8 @@ import {
   AssetDefaultsBuilder,
   PricingBuilder
 } from '../../../shared/core/base/builders';
-import {
-  AssetsService,
-  ExplanationGuideService,
-  I18nService
-} from '../../../shared/core';
+
+import { AssetsService, I18nService } from '../../../shared/core';
 import {
   AssetStore,
   type AssetEditorCheckoutState,
@@ -32,28 +47,9 @@ import {
   type AssetEditorRuntimeRouteState,
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
-import {
-  AppMenuComponent,
-  type LocationInputConfig,
-  IndicatorComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  FormFlowComponent,
-  type FormFlowModel,
-  type FormFlowTone,
-  type PoliciesInputConfig,
-  type PricingEditorConfig,
-  type PricingEditorRuntimePreview,
-  PopupComponent,
-  type PopupControl,
-  type PopupModel,
-  type RouteInputConfig
-} from '../../../shared/ui';
-import type {
-  DateInputRangeValue
-} from '../../../shared/ui/components/core/form/inputs/date-input';
+
+import { type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview, type RouteInputConfig } from '../../../shared/ui';
+
 import {
   EventBasketInputComponent,
   type EventBasketInputConfig,
@@ -1139,7 +1135,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
   protected checkoutPaymentTimeframe(): string {
     const dateRange = this.assetCheckout()?.dateRange;
     return dateRange
-      ? AppUtils.dateTimeRangeLabel(dateRange.startAt, dateRange.endAt, '')
+      ? UiDateUtils.dateTimeRangeLabel(dateRange.startAt, dateRange.endAt, '')
       : '';
   }
 

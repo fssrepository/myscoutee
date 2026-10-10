@@ -8,9 +8,8 @@ import type {
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
-import type { LinkInputConfig } from '../../../shared/ui/components/core/form/inputs/link-input';
-import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
-import type { PopupModel } from '../../../shared/ui/components/core/popup';
+import { type LinkInputConfig, type AppMenuItem, type PopupModel } from '@myscoutee/components';
+
 import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';
 
 describe('OperatorRegistryPopupComponent', () => {

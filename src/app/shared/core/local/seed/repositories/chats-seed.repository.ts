@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import type { ChatMessageRecord, ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
 import { USERS_TABLE_NAME, type UserChatCountersRecord } from '../../source/entity/user.entity';
@@ -66,7 +67,7 @@ export class SeedChatsRepository {
     const unread = this.countUnreadMessages(normalizedMessages, ownerUserId);
     const messageRecords = normalizedMessages.map(message => LocalChatMessageMapper.toRecord(ownerUserId, chatId, message));
     const latest = [...normalizedMessages].sort((left, right) =>
-      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      UiDateUtils.toSortableDate(right.sentAtIso) - UiDateUtils.toSortableDate(left.sentAtIso)
       || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
     )[0] ?? null;
     const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, chatId);
@@ -113,7 +114,7 @@ export class SeedChatsRepository {
       .map((message, index) => ({ message, index }))
       .filter(entry => !entry.message.mine && `${entry.message.senderAvatar?.id ?? ''}`.trim() !== ownerUserId)
       .sort((left, right) =>
-        AppUtils.toSortableDate(right.message.sentAtIso) - AppUtils.toSortableDate(left.message.sentAtIso)
+        UiDateUtils.toSortableDate(right.message.sentAtIso) - UiDateUtils.toSortableDate(left.message.sentAtIso)
         || `${right.message.id ?? ''}`.localeCompare(`${left.message.id ?? ''}`)
       )
       .map(entry => entry.index);
@@ -232,7 +233,7 @@ export class SeedChatsRepository {
       const left = nextById[leftId];
       const right = nextById[rightId];
       return left && right
-        ? AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
+        ? UiDateUtils.toSortableDate(left.sentAtIso) - UiDateUtils.toSortableDate(right.sentAtIso)
           || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`)
         : left ? -1 : right ? 1 : 0;
     });

@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import {
   EVENTS_TABLE_NAME,
   type ActivityEventRecordCollection
@@ -177,7 +178,7 @@ export class SeedActivityResourcesRepository {
     const sourceRecords = seedSourceRecords ?? [];
     const seenRecordIds = new Set<string>();
     const nextRecords: ActivitySubEventResourceRecord[] = [];
-    let createdMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
+    let createdMs = UiDateUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
 
     for (const record of sourceRecords) {
       if (!this.shouldSeedResourcesForParticipant(
@@ -253,7 +254,7 @@ export class SeedActivityResourcesRepository {
       return [];
     }
 
-    const createdMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() + 50_000;
+    const createdMs = UiDateUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() + 50_000;
     const createdAtIso = new Date(createdMs).toISOString();
     return [{
       id: this.resourceRecordId(ref),
@@ -661,7 +662,7 @@ export class SeedActivityResourcesRepository {
     if (Number.isFinite(createdMs) && createdMs > 0) {
       return createdMs;
     }
-    const sortableCreatedAt = AppUtils.toSortableDate(request.createdAtIso);
+    const sortableCreatedAt = UiDateUtils.toSortableDate(request.createdAtIso);
     return sortableCreatedAt > 0 ? sortableCreatedAt : Date.now();
   }
 
@@ -670,7 +671,7 @@ export class SeedActivityResourcesRepository {
     if (Number.isFinite(updatedMs) && updatedMs > 0) {
       return updatedMs;
     }
-    const sortableUpdatedAt = AppUtils.toSortableDate(request.updatedAtIso);
+    const sortableUpdatedAt = UiDateUtils.toSortableDate(request.updatedAtIso);
     return sortableUpdatedAt > 0 ? sortableUpdatedAt : this.assetRequestSeedMs(request);
   }
 
@@ -946,7 +947,7 @@ export class SeedActivityResourcesRepository {
           addedAtIso: `${entry?.addedAtIso ?? ''}`.trim()
         }))
         .filter(entry => entry.id.length > 0 && entry.userId.length > 0 && entry.quantity > 0)
-        .sort((left, right) => AppUtils.toSortableDate(left.addedAtIso) - AppUtils.toSortableDate(right.addedAtIso));
+        .sort((left, right) => UiDateUtils.toSortableDate(left.addedAtIso) - UiDateUtils.toSortableDate(right.addedAtIso));
       if (entries.length > 0) {
         next[normalizedAssetId] = entries;
       }

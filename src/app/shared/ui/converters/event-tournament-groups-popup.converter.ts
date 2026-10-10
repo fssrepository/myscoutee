@@ -1,4 +1,13 @@
-import { AppUtils } from '../../app-utils';
+import {
+  UiDateUtils,
+  type UiAccordionItem,
+  type UiAccordionModel,
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type UiConverter
+} from '@myscoutee/components';
 import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../core/common/constants';
 import type { AssetType } from '../../core/common/constants';
@@ -8,14 +17,6 @@ import type {
   EventTournamentGroupsStateDTO,
   EventTournamentStageDTO
 } from '../../core/contracts/event.interface';
-import type { UiAccordionItem, UiAccordionModel } from '../components/core/accordion';
-import type {
-  AppMenuItem,
-  AppMenuModel,
-  AppMenuPalette,
-  AppMenuTrigger
-} from '../components/core/menu';
-import type { UiConverter } from './converter.types';
 
 export interface EventTournamentGroupsPopupConverterInput {
   state: EventTournamentGroupsStateDTO | null;
@@ -451,7 +452,7 @@ export class EventTournamentGroupsPopupConverter
   }
 
   private static stageSubtitle(stage: EventTournamentStageDTO, mode: EventMode): string {
-    const range = AppUtils.dateTimeRangeLabel(stage.startAt, stage.endAt, '');
+    const range = UiDateUtils.dateTimeRangeLabel(stage.startAt, stage.endAt, '');
     const groupLabel = mode === 'Mingle'
       ? stage.groups.length === 1 ? '1 table' : `${stage.groups.length} tables`
       : stage.groups.length === 1 ? '1 group' : `${stage.groups.length} groups`;

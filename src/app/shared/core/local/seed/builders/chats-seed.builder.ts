@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import type {
   ChatMessageRecord,
   ChatMessageRecordCollection,
@@ -645,19 +646,19 @@ export class SeedChatsBuilder {
   }
 
   private static sortSubEventsByStartAsc(items: readonly ChatSeedSubEvent[]): ChatSeedSubEvent[] {
-    return [...items].sort((left, right) => AppUtils.toSortableDate(left.startAt) - AppUtils.toSortableDate(right.startAt));
+    return [...items].sort((left, right) => UiDateUtils.toSortableDate(left.startAt) - UiDateUtils.toSortableDate(right.startAt));
   }
 
   private static buildDateIso(ownerUserId: string, item: ChatRecord): string {
     const seed = AppUtils.hashText(`chat-date:${ownerUserId}:${item.id}:${item.title}`);
-    const value = AppUtils.shiftDate(
+    const value = UiDateUtils.shiftDate(
       new Date(this.FALLBACK_TIME),
       SEED_SCHEDULE_REFERENCE_DATE,
       environment.bootstrapOffsetInDays
     );
     value.setDate(value.getDate() + (seed % 9));
     value.setHours(8 + (seed % 11), (seed % 4) * 15, 0, 0);
-    return AppUtils.toIsoDateTime(value);
+    return UiDateUtils.toIsoDateTime(value);
   }
 
   private static buildMessageRecords(ownerUserId: string, item: ChatRecord, anchorIso: string): ChatMessageRecord[] {
@@ -689,7 +690,7 @@ export class SeedChatsBuilder {
       },
       bodyText: text,
       timeLabel: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      sentAtIso: AppUtils.toIsoDateTime(sentAt),
+      sentAtIso: UiDateUtils.toIsoDateTime(sentAt),
       mine: author.id === me.id,
       readBy: readBy.map(user => ({
         userId: user.id,
@@ -751,7 +752,7 @@ export class SeedChatsBuilder {
       item,
       me,
       [...olderMessages, ...recentMessages]
-        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso))
+        .sort((first, second) => UiDateUtils.toSortableDate(first.sentAtIso) - UiDateUtils.toSortableDate(second.sentAtIso))
     );
   }
 
@@ -764,7 +765,7 @@ export class SeedChatsBuilder {
     const incomingIndexes = messages
       .map((message, index) => ({ message, index }))
       .filter(entry => !entry.message.mine && entry.message.senderAvatar.userId !== owner.id)
-      .sort((left, right) => AppUtils.toSortableDate(right.message.sentAtIso) - AppUtils.toSortableDate(left.message.sentAtIso))
+      .sort((left, right) => UiDateUtils.toSortableDate(right.message.sentAtIso) - UiDateUtils.toSortableDate(left.message.sentAtIso))
       .map(entry => entry.index);
     const unreadIndexes = new Set(incomingIndexes.slice(0, unreadTarget));
     return messages.map((message, index) => {
@@ -822,7 +823,7 @@ export class SeedChatsBuilder {
   }
 
   private static rebaseDateIso(value: string): string {
-    return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
+    return UiDateUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
   }
 
   private static rebaseSupportCase(supportCase: ChatSupportCase | null | undefined): ChatSupportCase | null | undefined {
@@ -934,7 +935,7 @@ export class SeedChatsBuilder {
       );
     }
 
-    return messages.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    return messages.sort((first, second) => UiDateUtils.toSortableDate(first.sentAtIso) - UiDateUtils.toSortableDate(second.sentAtIso));
   }
 
   private static supportCaseOpeningLine(item: ChatRecord): string {

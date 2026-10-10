@@ -1,12 +1,10 @@
 import type { OperatorLeaderboardEntryDto } from '../../core/contracts/operator.interface';
-import type {
-  SingleRowBadge,
-  SingleRowData
-} from '../components/core/smart-list/card/card.types';
-import type {
-  ConverterOptionsArg,
-  UiConverter
-} from './converter.types';
+import {
+  type SingleRowBadge,
+  type SingleRowData,
+  type ConverterOptionsArg,
+  type UiConverter
+} from '@myscoutee/components';
 
 export interface OperatorLeaderboardSingleRowConverterOptions {
   locale?: string | null;

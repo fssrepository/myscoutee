@@ -1,5 +1,6 @@
 import { InjectionToken, inject } from '@angular/core';
-import { ExplanationGuideService } from './explanation-guide.service';
+import { ExplanationGuideService } from '@myscoutee/components';
+import { myScouteeGuideOptions } from '../../../ui/guide-options';
 import { LandingContentService } from './landing-content.service';
 import { backendUnavailable } from '../../common/backend-connectivity';
 import { environment } from '../../../../../environments/environment';
@@ -8,7 +9,7 @@ import { environment } from '../../../../../environments/environment';
 export const LANDING_EXPLANATION_GUIDE = new InjectionToken<ExplanationGuideService>('Landing explanation guide', {
   providedIn: 'root', factory: () => {
     const content = inject(LandingContentService);
-    return new ExplanationGuideService({
+    return new ExplanationGuideService(myScouteeGuideOptions({
       dismissalScope: 'visit',
       loadState: (context, language) => {
         if (environment.activitiesDataSource === 'http' && backendUnavailable()) {
@@ -16,6 +17,6 @@ export const LANDING_EXPLANATION_GUIDE = new InjectionToken<ExplanationGuideServ
         }
         return content.loadExplanationState(context, language);
       }
-    });
+    }));
   }
 });

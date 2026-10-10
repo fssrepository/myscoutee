@@ -1,4 +1,4 @@
-import type { InfoCardOverlayAction } from '../components/core/smart-list/card/card.types';
+import type { InfoCardOverlayAction } from '@myscoutee/components';
 
 /** Content review is independent of the owner's account lifecycle. */
 export function contentModerationBadge(status?: string | null): InfoCardOverlayAction | null {

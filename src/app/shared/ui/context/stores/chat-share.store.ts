@@ -2,9 +2,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ChatsService } from '../../../core/base/services/chats.service';
 import type { ChatDTO, ChatMessageDto } from '../../../core/contracts/chat.interface';
 import type { ShareTokenCreateRequest } from '../../../core/contracts/share.interface';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/menu';
-import type { PopupControl } from '../../components/core/popup';
-import type { InfoCardData } from '../../components/core/smart-list';
+import {
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type PopupControl,
+  type InfoCardData
+} from '@myscoutee/components';
 
 export interface ChatShareItem extends ShareTokenCreateRequest {
   kind: 'event' | 'asset';

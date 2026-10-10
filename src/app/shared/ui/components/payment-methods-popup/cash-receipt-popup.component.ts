@@ -2,12 +2,17 @@ import { Component, EventEmitter, Input, Output, inject, signal, computed } from
 import { FormsModule } from '@angular/forms';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payment-methods.service';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowModel,
+  I18nPipe
+} from '@myscoutee/components';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../core/contracts/payment-method.interface';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { FormFlowComponent, type FormFlowActionEvent, type FormFlowModel } from '../core/form/flow';
-import { I18nPipe } from '../../pipes';
 
 @Component({
   selector: 'app-cash-receipt-popup', standalone: true,

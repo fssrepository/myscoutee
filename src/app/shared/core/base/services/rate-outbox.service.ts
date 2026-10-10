@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '../../contracts/rating-snapshot';
+import type { RatingSnapshot } from '@myscoutee/components';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';

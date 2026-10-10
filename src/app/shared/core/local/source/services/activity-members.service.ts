@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
@@ -327,7 +328,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
             && this.eventsRepository.isTournamentAdmissionLocked(normalizedOwner.ownerId)) {
           throw new Error('event.tournament.registration.closed.message');
         }
-        const nowIso = AppUtils.toIsoDateTime(new Date());
+        const nowIso = UiDateUtils.toIsoDateTime(new Date());
         const approvalBasket = normalizedOwner.ownerType === 'event' && action === 'accept' && targetIsApprovalRequest
           ? await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedTargetUserId, normalizedOwner.ownerId)
           : null;
@@ -1115,7 +1116,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     if (!asset) {
       return [];
     }
-    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
     const users = this.localActivityMemberUsers;
     const ownerUserId = `${asset.ownerUserId ?? ''}`.trim();
     const scopedManagerUserId = this.activityResourcesService.peekAssignedAssetManagerUserId(

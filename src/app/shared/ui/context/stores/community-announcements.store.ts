@@ -4,11 +4,11 @@ import { Injectable, Type, computed, effect, inject, signal } from '@angular/cor
 import { CommunityAnnouncementsService } from '../../../core/base/services/community-announcements.service';
 import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import { UserProfileStore } from './user-profile.store';
-import { DialogStore } from './dialog.store';
-import type { AppMenuPalette } from '../../components/core/menu';
+import { DialogStore, type AppMenuPalette, type ListQuery } from '@myscoutee/components';
+
 import { COMMUNITY_BASE_GROUP_ID } from '../../../core/contracts/group-type';
 import type { CommunityAnnouncement, AnnouncementAction, AnnouncementFilters, SaveAnnouncement, VoteChoice } from '../../../core/contracts/community-announcement.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+
 export type AnnouncementEditor = { value: CommunityAnnouncement | null; readOnly: boolean; defaultVoting?: boolean; view?: 'details' | 'voting' };
 @Injectable({ providedIn: 'root' })
 export class CommunityAnnouncementsStore {

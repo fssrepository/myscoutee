@@ -24,16 +24,13 @@ import {
   type AdminStatsTimelinePointDto
 } from '../../../shared/core';
 import {
-  I18nPipe
-} from '../../../shared/ui';
-import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
-import {
+  I18nPipe,
+  IndicatorComponent,
   PopupComponent,
   type PopupActionEvent,
   type PopupModel
-} from '../../../shared/ui/components/core/popup';
+} from '@myscoutee/components';
+
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';

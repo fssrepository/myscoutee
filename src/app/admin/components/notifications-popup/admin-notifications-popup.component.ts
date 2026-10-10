@@ -34,37 +34,26 @@ import type {
   AdminNotificationScheduleSlot,
   AdminNotificationIntervalUnit
 } from '../../../shared/core';
-import type {
-  ListQuery,
-  PageResult
-} from '../../../shared/core/contracts/list.interface';
 import {
-  I18nPipe
-} from '../../../shared/ui';
-import {
+  type ListQuery,
+  type PageResult,
+  I18nPipe,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuModel
-} from '../../../shared/ui/components/core/menu';
-import {
+  type AppMenuModel,
   FormFlowComponent,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form';
-import {
+  type FormFlowModel,
   PopupComponent,
   type PopupActionEvent,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
-import {
+  type PopupModel,
+  IndicatorComponent,
   SmartListComponent,
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListStateChange
-} from '../../../shared/ui/components/core/smart-list';
+} from '@myscoutee/components';
+
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';

@@ -1,3 +1,21 @@
+import {
+  UiDateUtils,
+  type ListQuery,
+  DialogStore,
+  ExplanationGuideService,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  PopupComponent,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListPollDeltaSnapshot,
+  SingleRowComponent,
+  type SingleRowData
+} from '@myscoutee/components';
 import { Router } from '@angular/router';
 import { UserProfileStore } from '../../context/stores/user-profile.store';
 import {PaymentMethodsPopupStore} from '../../context/stores/payment-methods-popup.store';
@@ -23,7 +41,6 @@ import {
 } from '@angular/core';
 import { from } from 'rxjs';
 
-import { AppUtils } from '../../../app-utils';
 import { I18nService } from '../../../core';
 import * as AppConstants from '../../../core/common/constants';
 import type {
@@ -32,38 +49,16 @@ import type {
   NotificationListFilters,
   NotificationSyncRequestDto
 } from '../../../core/contracts/notification.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+
 import {
   NotificationSingleRowConverter
 } from '../../converters/notification-single-row.converter';
-import { DialogStore } from '../../context/stores/dialog.store';
+
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activities-popup.store';
 import { EventSubeventsPopupStore } from '../../context/stores/event-subevents-popup.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+
 import { SubEventResourcePopupStore } from '../../context/stores/sub-event-resource-popup.store';
-import {
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuTrigger
-} from '../core/menu';
-import {
-  PopupComponent,
-  type PopupMenuSelectEvent,
-  type PopupModel
-} from '../core/popup';
-import {
-  SmartListComponent,
-  type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListPollDeltaSnapshot
-} from '../core/smart-list';
-import {
-  SingleRowComponent
-} from '../core/smart-list/card/single-row/single-row.component';
-import type {
-  SingleRowData
-} from '../core/smart-list/card/card.types';
 
 interface NotificationRowMenuContext extends Record<string, unknown> {
   notification: NotificationDto;
@@ -309,7 +304,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     const groupDate = new Date(value);
     return Number.isNaN(groupDate.getTime())
       ? 'Date unavailable'
-      : AppUtils.smartListDayLabel(groupDate);
+      : UiDateUtils.smartListDayLabel(groupDate);
   }
 
   private notificationDateMs(value: string): number {

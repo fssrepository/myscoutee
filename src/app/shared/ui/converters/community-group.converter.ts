@@ -1,11 +1,19 @@
 import { AppUtils } from '../../app-utils';
 import { canPreviewGroupMembers, communityGroupSummary, groupMembershipBucket, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../core/contracts/community-group.interface';
-import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
-import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
-import { appMenuAlertCounter, appMenuResolveLiveValue } from '../components/core/menu';
+import {
+  type InfoCardData,
+  type InfoCardOverlayAction,
+  type InfoCardOverlayTone,
+  type AppMenuItem,
+  type AppMenuPalette,
+  appMenuAlertCounter,
+  appMenuResolveLiveValue,
+  CARD_MENU_ACTIONS
+} from '@myscoutee/components';
+
 import { contentModerationBadge } from './content-moderation-badge';
 import { ActivityEventInfoCardMenuConverter } from './activity-event-info-card-menu.converter';
-import { CARD_MENU_ACTIONS } from '../components/core/smart-list/card';
+
 import { baseGroupType } from '../../core/contracts/group-type';
 import { GROUP_TYPE_STYLES, groupTypeTrigger } from './group-type-menu';
 export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette; tone: InfoCardOverlayTone }> = {

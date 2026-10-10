@@ -1,3 +1,5 @@
+import { type ListQuery as SharedListQuery, clampNumber, UiDateUtils } from '@myscoutee/components';
+
 import { isCurrentFollowedEvent } from '../builders/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../entity/mingle.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.entity';
@@ -170,8 +172,8 @@ export class LocalEventsRepository {
         || ['under-review', 'blocked', 'rejected'].includes(parent.moderationStatus ?? '')) return [];
       return LocalActivityEventsMapper.toSubEventsSlots(parent.id, parent, {
         userId, eventId: parent.id, order: 'upcoming',
-        rangeStart: AppUtils.toIsoDate(new Date(parent.startAtIso)),
-        rangeEnd: AppUtils.toIsoDate(new Date(parent.endAtIso))
+        rangeStart: UiDateUtils.toIsoDate(new Date(parent.startAtIso)),
+        rangeEnd: UiDateUtils.toIsoDate(new Date(parent.endAtIso))
       })
         .filter(slot => !!slot.slotSourceId)
         .map(slot => ({
@@ -507,7 +509,7 @@ export class LocalEventsRepository {
 
   queryActivitiesEventRecordPage(
     userId: string,
-    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+    query: SharedListQuery<ContractTypes.ActivitiesFeedFilters>
   ): ActivityEventActivitiesRecordQueryResult {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -565,7 +567,7 @@ export class LocalEventsRepository {
   }
 
   private activitiesEventScopeFilter(
-    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+    query: SharedListQuery<ContractTypes.ActivitiesFeedFilters>
   ): ActivityEventScopeFilter {
     const value = query.filters?.eventScopeFilter;
     if (
@@ -584,25 +586,25 @@ export class LocalEventsRepository {
   }
 
   private activitiesHostingPublicationFilter(
-    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+    query: SharedListQuery<ContractTypes.ActivitiesFeedFilters>
   ): ContractTypes.HostingPublicationFilter {
     return query.filters?.hostingPublicationFilter === 'drafts' ? 'drafts' : 'all';
   }
 
   private activitiesSecondaryFilter(
-    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+    query: SharedListQuery<ContractTypes.ActivitiesFeedFilters>
   ): ContractTypes.ActivitiesSecondaryFilter {
     const value = query.filters?.secondaryFilter;
     return value === 'relevant' || value === 'past' ? value : 'recent';
   }
 
-  private activitiesView(query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>): ContractTypes.ActivitiesView {
+  private activitiesView(query: SharedListQuery<ContractTypes.ActivitiesFeedFilters>): ContractTypes.ActivitiesView {
     const value = query.view;
     return value === 'month' || value === 'week' || value === 'distance' ? value : 'day';
   }
 
   private activitiesSort(
-    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>,
+    query: SharedListQuery<ContractTypes.ActivitiesFeedFilters>,
     view: ContractTypes.ActivitiesView,
     secondaryFilter: ContractTypes.ActivitiesSecondaryFilter
   ): ContractTypes.ActivityEventActivitiesSort {
@@ -1579,7 +1581,7 @@ export class LocalEventsRepository {
     if (dateStart < 0) {
       return null;
     }
-    const date = AppUtils.parseDate(sourceTail.slice(dateStart + 1));
+    const date = UiDateUtils.parseDate(sourceTail.slice(dateStart + 1));
     return date ? date.toISOString().slice(0, 10) : null;
   }
 
@@ -2816,7 +2818,7 @@ export class LocalEventsRepository {
   }
 
   private resolveActivitiesEndTimestamp(record: ActivityEventRecord): number {
-    const endAtMs = AppUtils.toSortableDate(record.endAtIso);
+    const endAtMs = UiDateUtils.toSortableDate(record.endAtIso);
     if (Number.isFinite(endAtMs) && endAtMs > 0) {
       return endAtMs;
     }
@@ -2841,7 +2843,7 @@ export class LocalEventsRepository {
   }
 
   private timestampOrderValue(record: ActivityEventRecord): number {
-    return AppUtils.toSortableDate(record.startAtIso);
+    return UiDateUtils.toSortableDate(record.startAtIso);
   }
 
   private dayOrderValue(record: ActivityEventRecord): number {
@@ -2849,7 +2851,7 @@ export class LocalEventsRepository {
     if (!Number.isFinite(timestamp)) {
       return 0;
     }
-    return AppUtils.dateOnly(new Date(timestamp)).getTime();
+    return UiDateUtils.dateOnly(new Date(timestamp)).getTime();
   }
 
   private compareRecordIdentity(left: ActivityEventRecord, right: ActivityEventRecord): number {
@@ -2935,7 +2937,7 @@ export class LocalEventsRepository {
     const endAtMs = this.resolveActivitiesEndTimestamp(record);
     const dayKey = this.dayOrderValue(record);
     const distanceMeters = this.distanceOrderValue(record);
-    const ratingValue = -Math.round(AppUtils.clampNumber(Number(record.rating) || 0, 0, 10) * 100);
+    const ratingValue = -Math.round(clampNumber(Number(record.rating) || 0, 0, 10) * 100);
     const affinityDistance = Math.abs(this.affinityOrderValue(record) - viewerAffinity);
     const boostAffinityRank = this.boostAffinityRank(record, affinityDistance);
     const isPast = endAtMs < Date.now() ? 1 : 0;
@@ -3579,7 +3581,7 @@ export class LocalEventsRepository {
     if (definitions.length === 0) {
       return [];
     }
-    const slotStart = AppUtils.parseDate(`${record.startAtIso ?? ''}`.trim()) ?? new Date();
+    const slotStart = UiDateUtils.parseDate(`${record.startAtIso ?? ''}`.trim()) ?? new Date();
     const items = this.subEventDefinitionTimeline(definitions)
       .map(({ item, startOffsetMinutes, durationMinutes }, index): ContractTypes.SubEventDTO => {
         const stageId = `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`;
@@ -4524,7 +4526,7 @@ export class LocalEventsRepository {
       return [];
     }
 
-    const scheduleAnchorMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
+    const scheduleAnchorMs = UiDateUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
     const dayMs = 24 * 60 * 60 * 1000;
     const horizonStart = new Date(Math.max(parentStart.getTime(), scheduleAnchorMs - dayMs));
     const horizonEnd = new Date(Math.min(parentEnd.getTime(), scheduleAnchorMs + (45 * dayMs)));

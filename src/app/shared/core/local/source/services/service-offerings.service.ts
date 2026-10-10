@@ -7,7 +7,7 @@ import { LocalCampaignMapper } from '../mappers/campaign.mapper';
 import { UserProfileState } from '../../../common/user-profile-state';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { SERVICE_CATEGORIES, SERVICE_FREQUENCIES, type IServiceOfferingsService, type ServiceOffering, type ServiceOfferingItem, type SaveServiceOffering, type ServiceAction, type ServiceOfferingFilters } from '../../../contracts/service-offering.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class LocalServiceOfferingsService extends LocalRouteDelayService implements IServiceOfferingsService {
   private readonly services = inject(LocalServiceOfferingsRepository);

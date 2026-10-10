@@ -3,7 +3,13 @@ import { backendUnavailable } from '../../../shared/core/common/backend-connecti
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSection as HelpCenterSectionDto,
+  DialogStore,
+  type InfoCardData
+} from '@myscoutee/components';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
 import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
 import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
@@ -40,7 +46,8 @@ import {
 import {
   hasOperatorRole
 } from '../../../shared/core/common/user-role';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto, SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
+
+import type { SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
@@ -82,13 +89,11 @@ import {
 import {
   UsersService
 } from '../../../shared/core/base/services/users.service';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   AdminWorkspaceStore
 } from '../../../shared/ui/context/stores/admin-workspace.store';
-import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
+
 import {
   DocumentViewerComponent,
   type DocumentViewerAction,
@@ -194,7 +199,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
-
 
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;

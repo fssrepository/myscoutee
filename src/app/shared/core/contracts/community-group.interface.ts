@@ -1,6 +1,6 @@
 import type { UserDto } from './user.interface';
 import type { GroupType } from './group-type';
-import type { ListQuery, PageResult } from './list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 export const GROUP_CATEGORIES = ['friends', 'work', 'sport', 'learning', 'hobbies', 'neighbourhood'] as const;
 export type GroupCategory = typeof GROUP_CATEGORIES[number];
 export type GroupVisibility = 'public' | 'private' | 'invitation';

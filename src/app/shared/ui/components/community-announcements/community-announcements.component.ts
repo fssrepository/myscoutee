@@ -1,18 +1,31 @@
+import {
+  UiDateUtils,
+  PopupComponent,
+  type PopupModel,
+  SmartListComponent,
+  SingleRowComponent,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  I18nPipe,
+  ExplanationGuideService,
+  type UiBranding as DeploymentBrandingDto,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
+} from '@myscoutee/components';
 import { Component, Input, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { defer, map } from 'rxjs';
 import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
-import { AppUtils } from '../../../app-utils';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { SmartListComponent, SingleRowComponent, type SingleRowData, type SmartListConfig, type SmartListLoadPage } from '../core/smart-list';
+
 import { HomeHeaderComponent } from '../../../../home/components/home-header/home-header.component';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+
 import { CommunityAnnouncementEditorComponent } from './community-announcement-editor.component';
-import type { DeploymentBrandingDto } from '../../../core/contracts/deployment-configuration.interface';
+
 import type { CommunityAnnouncement, AnnouncementFilters, AnnouncementStatus, AnnouncementAction } from '../../../core/contracts/community-announcement.interface';
-import type { AppMenuItem, AppMenuItemSelectEvent, AppMenuPalette } from '../core/menu';
+
 const ANNOUNCEMENT_STATUS_STYLE:Record<AnnouncementStatus,{icon:string;palette:AppMenuPalette}>={published:{icon:'public',palette:'green'},draft:{icon:'edit_note',palette:'gold'},trash:{icon:'delete',palette:'danger'}};
 @Component({ selector: 'app-community-announcements', standalone: true,
   imports: [NgTemplateOutlet, PopupComponent, SmartListComponent, SingleRowComponent, HomeHeaderComponent, I18nPipe, CommunityAnnouncementEditorComponent],
@@ -46,7 +59,7 @@ export class CommunityAnnouncementsComponent {
   protected readonly config: SmartListConfig<SingleRowData<CommunityAnnouncement>, AnnouncementFilters> = {
     pageSize:20, trackBy: (_,row) => row.id, cacheable: { identity: row => row.id }, headerProgress: { enabled:true, placement:'inline' },
     sortable: { sortKey: row => [-Date.parse(row.eagerDetail?.publishedAtIso ?? row.eagerDetail?.createdAtIso ?? ''), row.id] },
-    groupBy: row => AppUtils.smartListDayLabel(new Date(row.eagerDetail!.publishedAtIso ?? row.eagerDetail!.createdAtIso)),
+    groupBy: row => UiDateUtils.smartListDayLabel(new Date(row.eagerDetail!.publishedAtIso ?? row.eagerDetail!.createdAtIso)),
     showFirstGroupMarker: false,
     emptyLabel: 'announcement.empty', menuItems: context => context.item?.eagerDetail ? this.menu(context.item.eagerDetail) : []
   };

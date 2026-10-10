@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { ICommunityAnnouncementsService, CommunityAnnouncement, AnnouncementFilters, SaveAnnouncement, AnnouncementCommand } from '../../contracts/community-announcement.interface';
-import type { ListQuery, PageResult } from '../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class HttpCommunityAnnouncementsService implements ICommunityAnnouncementsService {
   private readonly http = inject(HttpClient);

@@ -1,16 +1,27 @@
+import {
+  UiDateUtils,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  TextCardComponent,
+  type TextCardTone,
+  FormFlowComponent,
+  type FormFlowControlModel,
+  type FormFlowModel,
+  PopupComponent,
+  type PopupModel,
+  I18nPipe
+} from '@myscoutee/components';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DoCheck, EventEmitter, forwardRef, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../../../../app-utils';
 import { ActivityEventDetailDTO } from '../../../../../../core/contracts/activity.interface';
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger } from '../../../menu';
-import { TextCardComponent, type TextCardTone } from '../../../smart-list/card';
-import { FormFlowComponent, type FormFlowControlModel, type FormFlowModel } from '../../flow';
-import { PopupComponent, type PopupModel } from '../../../popup';
+
 import type * as ContractTypes from '../../../../../../core/contracts';
-import { I18nPipe } from '../../../../../pipes';
 
 export type SlotsInputConfigValue<TValue> = TValue | (() => TValue);
 export type SlotsInputEditorMode = 'base' | 'date';
@@ -671,7 +682,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     const record = value && typeof value === 'object' ? value as Record<string, unknown> : {};
     const frequency = this.normalizeFrequency(record['frequency']);
     const startAt = `${record['startAt'] ?? ''}`.trim()
-      || AppUtils.toIsoDateTimeLocal(this.defaultScheduleDraftDate());
+      || UiDateUtils.toIsoDateTimeLocal(this.defaultScheduleDraftDate());
     const baseDate = this.parseDateValue(startAt) ?? this.defaultScheduleDraftDate();
     const normalizedFrequency = !this.config.scheduleOnly && frequency === 'One-time' ? this.defaultEnabledFrequency() : frequency;
     const month = this.normalizeScheduleMonth(record['month'], baseDate);
@@ -691,7 +702,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     const month = `${date.getMonth() + 1}`;
     return {
       frequency: !this.config.scheduleOnly && normalizedFrequency === 'One-time' ? this.defaultEnabledFrequency() : normalizedFrequency,
-      startAt: AppUtils.toIsoDateTimeLocal(date),
+      startAt: UiDateUtils.toIsoDateTimeLocal(date),
       time: this.formatScheduleTimeInput(date),
       weekday: `${date.getDay()}`,
       day: date.getDate(),
@@ -1075,7 +1086,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
         start = new Date(eventStart);
         break;
     }
-    return AppUtils.toIsoDateTimeLocal(this.applyDraftTime(start, timeSource));
+    return UiDateUtils.toIsoDateTimeLocal(this.applyDraftTime(start, timeSource));
   }
 
   private normalizeScheduleTime(value: unknown, fallbackDate: Date): string {
@@ -1239,7 +1250,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
 
     return {
       ...slot,
-      startAt: AppUtils.toIsoDateTimeLocal(startDate)
+      startAt: UiDateUtils.toIsoDateTimeLocal(startDate)
     };
   }
 
@@ -1275,14 +1286,14 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       return {
         start: new Date(baseStart),
         end: new Date(baseEnd),
-        startAt: AppUtils.toIsoDateTimeLocal(baseStart),
-        endAt: AppUtils.toIsoDateTimeLocal(baseEnd)
+        startAt: UiDateUtils.toIsoDateTimeLocal(baseStart),
+        endAt: UiDateUtils.toIsoDateTimeLocal(baseEnd)
       };
     }
 
     const overrideDateValue = this.parseOverrideDate(overrideDate);
     const shiftedStartAt = overrideDateValue
-      ? AppUtils.applyDatePartToIsoLocal(this.resolvedConfig.startAtIso, overrideDateValue)
+      ? UiDateUtils.applyDatePartToIsoLocal(this.resolvedConfig.startAtIso, overrideDateValue)
       : this.resolvedConfig.startAtIso;
     const shiftedStart = this.parseDateValue(shiftedStartAt) ?? new Date(baseStart);
     const boundaryEnd = this.eventFrequencyBoundaryEnd(shiftedStart) ?? new Date(baseEnd);
@@ -1292,15 +1303,15 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       return {
         start: shiftedStart,
         end: fallbackEnd,
-        startAt: AppUtils.toIsoDateTimeLocal(shiftedStart),
-        endAt: AppUtils.toIsoDateTimeLocal(fallbackEnd)
+        startAt: UiDateUtils.toIsoDateTimeLocal(shiftedStart),
+        endAt: UiDateUtils.toIsoDateTimeLocal(fallbackEnd)
       };
     }
     return {
       start: shiftedStart,
       end: shiftedEnd,
-      startAt: AppUtils.toIsoDateTimeLocal(shiftedStart),
-      endAt: AppUtils.toIsoDateTimeLocal(shiftedEnd)
+      startAt: UiDateUtils.toIsoDateTimeLocal(shiftedStart),
+      endAt: UiDateUtils.toIsoDateTimeLocal(shiftedEnd)
     };
   }
 
@@ -1314,13 +1325,13 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
         boundaryDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
         break;
       case 'Weekly':
-        boundaryDate = AppUtils.endOfWeekSunday(start);
+        boundaryDate = UiDateUtils.endOfWeekSunday(start);
         break;
       case 'Bi-weekly':
-        boundaryDate = AppUtils.addDays(AppUtils.endOfWeekSunday(start), 7);
+        boundaryDate = UiDateUtils.addDays(UiDateUtils.endOfWeekSunday(start), 7);
         break;
       case 'Monthly':
-        boundaryDate = AppUtils.endOfMonth(start);
+        boundaryDate = UiDateUtils.endOfMonth(start);
         break;
       case 'Yearly':
         boundaryDate = new Date(start.getFullYear(), 11, 31);
@@ -1348,10 +1359,10 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   private parseDateValue(value: unknown): Date | null {
-    return AppUtils.parseDate(value);
+    return UiDateUtils.parseDate(value);
   }
 
   private parseOverrideDate(value: unknown): Date | null {
-    return AppUtils.parseDateOnly(value);
+    return UiDateUtils.parseDateOnly(value);
   }
 }

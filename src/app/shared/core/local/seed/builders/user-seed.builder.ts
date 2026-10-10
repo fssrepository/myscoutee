@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import demoLocations from '../data/demo-locations.json';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
@@ -5,7 +6,6 @@ import { environment } from '../../../../../../environments/environment';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
-
 
 function buildDemoPortraitStack(
   gender: UserRecord['gender'],
@@ -486,7 +486,7 @@ export class SeedUserBuilder {
     if (index === totalCount - 1) {
       return {
         status: 'D',
-        deletedAtIso: AppUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
+        deletedAtIso: UiDateUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
         statusText: 'Deleted',
         activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }
       };

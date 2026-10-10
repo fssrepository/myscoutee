@@ -1,3 +1,39 @@
+import {
+  UiLinkUtils,
+  UiDateUtils,
+  AppMenuDispatcher,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type CardProfileViewData,
+  type ImageCardData,
+  type InfoCardData,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type CardMenuActionEvent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListItemSelectEvent,
+  type SmartListLocalSortKey,
+  type SmartListLoadContext,
+  type SmartListLoadPage,
+  type SmartListMenuItemsContext,
+  type SmartListPresentation,
+  type SmartListStateChange,
+  type UiListConverter,
+  UiPollCoordinator,
+  DialogStore,
+  ExplanationGuideService
+} from '@myscoutee/components';
+
 import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
@@ -61,39 +97,7 @@ import {
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { resolveActivityRateOrder } from '../../../shared/core/base/activity-rate-order';
-import {
-  AppMenuDispatcher,
-  type AppMenuGroup,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type CardProfileViewData,
-  type ImageCardData,
-  type InfoCardData,
-  PopupComponent,
-  type PopupActionEvent,
-  type PopupControl,
-  type PopupMenuSelectEvent,
-  type PopupModel,
-  SmartListComponent,
-  type CardMenuActionEvent,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListItemSelectEvent,
-  type SmartListLocalSortKey,
-  type SmartListLoadContext,
-  type SmartListLoadPage,
-  type SmartListMenuItemsContext,
-  type SmartListPresentation,
-  type SmartListStateChange,
-  type UiListConverter
-} from '../../../shared/ui';
-import {
-  UiPollCoordinator
-} from '../../../shared/ui/scheduler';
+
 import {
   ActivityChatSingleRowConverter,
   type ActivityChatSingleRowData,
@@ -105,9 +109,7 @@ import type {
   ActivityEventInfoCardMenuContext,
   ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
@@ -135,17 +137,8 @@ import {
   type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import { shouldApplyActivitiesEventBucketLoad } from './activities-event-bucket-state-policy';
-import {
-  ActivityMembersBuilder,
-  ActivitiesService,
-  ActivityMembersService,
-  ActivityResourcesService,
-  ChatsService,
-  EventsService,
-  ExplanationGuideService,
-  RatesService,
-  UsersService
-} from '../../../shared/core';
+
+import { ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, RatesService, UsersService } from '../../../shared/core';
 import {
   I18nService
 } from '../../../shared/core';
@@ -610,7 +603,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     if (action.actionId === 'externalInfo') {
-      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(this.activityEventMenuSubjectFromRow(row)?.sourceLink));
+      UiLinkUtils.openExternalUrl(UiLinkUtils.normalizeHttpUrl(this.activityEventMenuSubjectFromRow(row)?.sourceLink));
       return;
     }
     if (action.actionId === 'followOrganizer' || action.actionId === 'unfollowOrganizer') {
@@ -2700,7 +2693,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private chatRowLocalSortKey(row: ActivityListItem): SmartListLocalSortKey {
     const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
-    const timestamp = AppUtils.toSortableDate(row.dateIso ?? '');
+    const timestamp = UiDateUtils.toSortableDate(row.dateIso ?? '');
     if (secondaryFilter === 'relevant') {
       return [
         -this.chatRowMetricScore(row),
@@ -2771,7 +2764,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const startAtIso = this.isEventStyleActivity(row)
       ? this.eventsService.peekKnownItemById(this.activeUser.id, row.id)?.startAtIso
       : null;
-    return AppUtils.toSortableDate(startAtIso ?? row.dateIso ?? '');
+    return UiDateUtils.toSortableDate(startAtIso ?? row.dateIso ?? '');
   }
 
   private activityRowDayOrderValue(row: ActivityListItem): number {
@@ -2779,7 +2772,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!Number.isFinite(timestamp)) {
       return 0;
     }
-    return AppUtils.dateOnly(new Date(timestamp)).getTime();
+    return UiDateUtils.dateOnly(new Date(timestamp)).getTime();
   }
 
   protected refreshSectionBadges(): void {

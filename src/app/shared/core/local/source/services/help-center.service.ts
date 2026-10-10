@@ -10,15 +10,11 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../../app-utils';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import type {
-  HelpCenterAuditEntryDto,
-  HelpCenterDocumentKind,
-  HelpCenterRevisionDto,
-  HelpCenterRevisionSaveRequestDto,
-  HelpCenterSectionDto,
-  HelpCenterStateDto,
-  PrivacyConsentDto,
-  PrivacyConsentSaveRequestDto
-} from '../../../contracts';
+  GuideDocumentKind as HelpCenterDocumentKind,
+  GuideRevision as HelpCenterRevisionDto,
+  GuideSection as HelpCenterSectionDto
+} from '@myscoutee/components';
+import type { HelpCenterAuditEntryDto, HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
 import { HelpCenterContentBuilder } from '../../../base/builders';
 

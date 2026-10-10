@@ -1,24 +1,23 @@
+import {
+  UiDateUtils,
+  type AppMenuItem,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  buildTabbedMenuModel,
+  type FormFlowCompletionItemConfig,
+  type FormFlowControlModel,
+  type FormFlowDraft,
+  type FormFlowMenuControlConfig,
+  type FormFlowModel,
+  type FormFlowStepModel,
+  formFlowCompletionPercent,
+  type UiConverter
+} from '@myscoutee/components';
 import { APP_STATIC_DATA } from '../../app-static-data';
 import { AppUtils } from '../../app-utils';
 import type { ProfileExtDto, UserDto } from '../../core/contracts/user.interface';
 import { CURRENT_PROFILE_FORM_VERSION, type DetailPrivacy, type ProfileStatus } from '../../core/common/constants';
 import type { ExperienceEntry, ProfileDetailFormGroup } from '../../core/contracts/profile.interface';
-import type {
-  AppMenuItem,
-  AppMenuPalette,
-  AppMenuTrigger
-} from '../components/core/menu/menu.types';
-import { buildTabbedMenuModel } from '../components/core/menu/menu-option-groups';
-import type {
-  FormFlowCompletionItemConfig,
-  FormFlowControlModel,
-  FormFlowDraft,
-  FormFlowMenuControlConfig,
-  FormFlowModel,
-  FormFlowStepModel
-} from '../components/core/form/flow/form-flow.types';
-import { formFlowCompletionPercent } from '../components/core/form/flow/form-flow.utils';
-import type { UiConverter } from './converter.types';
 
 export interface ProfileFormFlowPrivacyOptions {
   lockedFields?: readonly string[];
@@ -112,19 +111,19 @@ export class ProfileFormFlowDataConverter {
   }
 
   private static normalizeProfile(user: UserDto): UserDto {
-    const birthday = AppUtils.isIsoDate(user.birthday) ? user.birthday.trim() : '';
+    const birthday = UiDateUtils.isIsoDate(user.birthday) ? user.birthday.trim() : '';
     const name = `${user.name ?? ''}`.trim();
     return {
       ...user,
       name,
       initials: AppUtils.initialsFromText(name),
       birthday,
-      age: AppUtils.ageFromIsoDate(birthday, user.age),
+      age: UiDateUtils.ageFromIsoDate(birthday, user.age),
       city: `${user.city ?? ''}`.trim(),
       height: this.normalizeHeightValue(user.height),
       physique: `${user.physique ?? ''}`.trim(),
       languages: this.normalizeStringList(user.languages),
-      horoscope: birthday ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(birthday) as Date) : `${user.horoscope ?? ''}`.trim(),
+      horoscope: birthday ? UiDateUtils.horoscopeByDate(UiDateUtils.fromIsoDate(birthday) as Date) : `${user.horoscope ?? ''}`.trim(),
       headline: `${user.headline ?? ''}`.trim(),
       about: `${user.about ?? ''}`.trim().slice(0, 160),
       images: this.normalizeStringList(user.images).slice(0, 8),
@@ -239,7 +238,7 @@ export class ProfileFormFlowDataConverter {
   }
 
   private static formatDateForDetail(value: string): string {
-    const parsed = AppUtils.fromIsoDate(value);
+    const parsed = UiDateUtils.fromIsoDate(value);
     return parsed
       ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '';
@@ -1009,7 +1008,7 @@ export class ProfileFormFlowConverter {
   ): ExperienceEntry[] {
     return (entries ?? [])
       .filter(entry => entry.type === type)
-      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
+      .sort((a, b) => UiDateUtils.toSortableDate(b.dateFrom) - UiDateUtils.toSortableDate(a.dateFrom));
   }
 
   private static experienceSummaryValue(value: unknown, type: 'Workspace' | 'School'): string {

@@ -3,18 +3,16 @@ import { FormsModule } from '@angular/forms';
 
 import {
   FormFlowComponent,
-  type FormFlowModel
-} from '../../../flow';
-import {
-  FormFlowPopupStore,
-  type FormFlowPolicyEditorPopupState
-} from '../../../flow/form-flow-popup.store';
-import {
+  type FormFlowModel,
   PopupComponent,
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '../../../../popup';
+} from '@myscoutee/components';
+import {
+  FormFlowPopupStore,
+  type FormFlowPolicyEditorPopupState
+} from '../../../flow/form-flow-popup.store';
 
 interface PolicyEditorValue {
   id: string;

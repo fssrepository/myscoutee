@@ -1,14 +1,13 @@
-import { AppUtils } from '../../app-utils';
-import type {
-  AppMenuItem,
-  AppMenuPalette
-} from '../components/core/menu';
-import type { EventCheckoutState } from '../../core/contracts/activity.interface';
 import {
+  UiLinkUtils,
+  type AppMenuItem,
+  type AppMenuPalette,
   CARD_MENU_ACTIONS,
-  type CardMenuAction
-} from '../components/core/smart-list/card';
-import type { UiConverter } from './converter.types';
+  type CardMenuAction,
+  type UiConverter
+} from '@myscoutee/components';
+
+import type { EventCheckoutState } from '../../core/contracts/activity.interface';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   menu: 'activity-event-card';
@@ -193,7 +192,7 @@ export class ActivityEventInfoCardMenuConverter {
       case 'shareEvent':
         return true;
       case 'externalInfo':
-        return !!AppUtils.normalizeHttpUrl(subject.sourceLink);
+        return !!UiLinkUtils.normalizeHttpUrl(subject.sourceLink);
       case 'followOrganizer':
       case 'unfollowOrganizer':
         return !!activeUserId.trim() && !!subject.ownerUserId?.trim()

@@ -3,7 +3,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalServiceFeedbackService } from '../../local/source/services/service-feedback.service';
 import { HttpServiceFeedbackService } from '../../http/services/service-feedback.service';
 import type { IServiceFeedbackService,ServiceFeedbackBucket,ServiceFeedbackCommand } from '../../contracts/service-feedback.interface';
-import type { ListQuery } from '../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({providedIn:'root'})
 export class ServiceFeedbackService extends BaseRouteModeService implements IServiceFeedbackService {
   private readonly local=inject(LocalServiceFeedbackService);

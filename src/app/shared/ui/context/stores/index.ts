@@ -54,7 +54,7 @@ export {
   type EventSubeventsListPopupRequest,
   type EventTournamentGroupsPopupRequest
 } from './event-subevents-popup.store';
-export { DialogStore } from './dialog.store';
+
 export { EventCheckoutDialogStore } from './event-checkout-dialog.store';
 export { EventCheckoutDraftStore } from './event-checkout-draft.store';
 export {
@@ -62,7 +62,7 @@ export {
   type EventCheckoutSlotPickerRequest,
   type EventCheckoutSlotPickerState
 } from './event-checkout-slot-picker.store';
-export type { DialogConfig, DialogState, DialogTone } from './dialog.store';
+
 export type { EventCheckoutDialogConfig, EventCheckoutDialogState } from './event-checkout-dialog.store';
 export type { EventCheckoutDraft } from './event-checkout-draft.store';
 export {
@@ -95,7 +95,7 @@ export {
   type NotificationUnreadSyncOptions,
   type NotificationUnreadSyncToken
 } from './notification-center.store';
-export { PopupPresenceStore } from './popup-presence.store';
+
 export {
   PaymentMethodsPopupStore,
   type PaymentMethodPickerRequest

@@ -1,5 +1,28 @@
+import {
+  UiDateUtils,
+  FormFlowComponent,
+  IndicatorComponent,
+  type FormFlowSaveEvent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  InfoCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  type InfoCardData,
+  type CardMenuActionEvent,
+  type CardMenuAction,
+  type ListQuery,
+  type PageResult,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  ExplanationGuideService,
+  DialogStore,
+  type DialogConfig
+} from '@myscoutee/components';
 import { ServiceFeedbackStore } from '../../../shared/ui/context/stores/service-feedback.store';
-import { AppUtils } from '../../../shared/app-utils';
 import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
@@ -25,47 +48,13 @@ import {
   from
 } from 'rxjs';
 
-import {
-  EventFeedbackFormFlowConverter,
-  EventFeedbackFilterMenuConverter,
-  EventFeedbackInfoCardConverter,
-  EventFeedbackListPresentationConverter,
-  EventFeedbackOrganizerCarouselSectionConverter,
-  EventFeedbackOrganizerInfoCardConverter,
-  EventFeedbackOrganizerItemConverter,
-  EventFeedbackOrganizerMessageGroupConverter,
-  FormFlowComponent,
-  IndicatorComponent,
-  type FormFlowSaveEvent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type EventFeedbackFilterMenuContext,
-  type EventFeedbackOrganizerCarouselSectionData,
-  type EventFeedbackOrganizerItemData,
-  InfoCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  type InfoCardData,
-  type CardMenuActionEvent,
-  type CardMenuAction,
-  type ListQuery,
-  type PageResult,
-  type PopupControl,
-  type PopupMenuSelectEvent,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListLoadPage
-} from '../../../shared/ui';
+import { EventFeedbackFormFlowConverter, EventFeedbackFilterMenuConverter, EventFeedbackInfoCardConverter, EventFeedbackListPresentationConverter, EventFeedbackOrganizerCarouselSectionConverter, EventFeedbackOrganizerInfoCardConverter, EventFeedbackOrganizerItemConverter, EventFeedbackOrganizerMessageGroupConverter, type EventFeedbackFilterMenuContext, type EventFeedbackOrganizerCarouselSectionData, type EventFeedbackOrganizerItemData } from '../../../shared/ui';
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
 import {
   EventsService
 } from '../../../shared/core/base';
-import { ExplanationGuideService } from '../../../shared/core';
-import {
-  DialogStore,
-  type DialogConfig
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import {
@@ -236,7 +225,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     showStickyHeader: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: (item, query) => EventFeedbackInfoCardConverter.serviceItem(item)
-      ? AppUtils.weekdayMonthDayYearLabel(new Date(item.dateIso!))
+      ? UiDateUtils.weekdayMonthDayYearLabel(new Date(item.dateIso!))
       : EventFeedbackListPresentationConverter.convert({
       result: this.eventFeedbackPageResult(),
       itemId: item.id,

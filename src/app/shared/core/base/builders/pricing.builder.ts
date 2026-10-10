@@ -1,7 +1,7 @@
+import { UiDateUtils } from '@myscoutee/components';
 import type * as ContractTypes from '../../contracts';
 
 import type * as AppConstants from '../../common/constants';
-import { AppUtils } from '../../../app-utils';
 
 export interface AssetBorrowPricingPreview {
   amount: number;
@@ -502,7 +502,7 @@ export class PricingBuilder {
   }
 
   private static resolveHoursUntilStart(startAtIso: string): number {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
     if (!start) {
       return 0;
     }
@@ -510,8 +510,8 @@ export class PricingBuilder {
   }
 
   private static resolveAssetBorrowBillableDays(startAtIso: string, endAtIso: string): number {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
     if (!start || !end || end.getTime() <= start.getTime()) {
       return 1;
     }
@@ -551,7 +551,7 @@ export class PricingBuilder {
   }
 
   private static parseLocalDateMs(value: string | null | undefined): number | null {
-    const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
+    const parsed = UiDateUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
     return parsed ? parsed.getTime() : null;
   }
 

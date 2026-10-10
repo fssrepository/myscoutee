@@ -1,18 +1,28 @@
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
-import { AppUtils } from '../../../app-utils';
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  PopupComponent,
+  PopupModel,
+  SmartListComponent,
+  ImageCardComponent,
+  ImageCardData,
+  SmartListConfig,
+  SmartListLoadPage,
+  I18nPipe,
+  type AppMenuItemSelectEvent
+} from '@myscoutee/components';
+
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { defer, map } from 'rxjs';
-import { PopupComponent, PopupModel } from '../core/popup';
-import { SmartListComponent, ImageCardComponent, ImageCardData, SmartListConfig, SmartListLoadPage } from '../core/smart-list';
+
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
+
 import { CampaignsStore } from '../../context/stores/campaigns.store';
 import { ProfileStore } from '../../context/stores/profile.store';
 import { CampaignConverter, CAMPAIGN_STATUS_STYLE } from '../../converters/campaign.converter';
 import type { Campaign, CampaignFilters, CampaignStatus } from '../../../core/contracts/campaign.interface';
 import { CampaignEditorComponent } from './campaign-editor.component';
 import { CampaignHistoryPopupComponent } from '../../../../activity/components/campaign-history-popup/campaign-history-popup.component';
-import type { AppMenuItemSelectEvent } from '../core/menu';
 
 @Component({ selector: 'app-campaigns-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, ImageCardComponent, CampaignEditorComponent, CampaignHistoryPopupComponent, I18nPipe],
@@ -41,7 +51,7 @@ export class CampaignsPopupComponent {
     trackBy: (_index, card) => card.id, cacheable: { identity: card => card.id },
     headerProgress: { enabled: true, placement: 'inline' },
     sortable: { sortKey: card => [-Date.parse(card.dateIso ?? ''), card.id] },
-    groupBy: card => AppUtils.smartListDayLabel(new Date(card.dateIso!)), showFirstGroupMarker: false
+    groupBy: card => UiDateUtils.smartListDayLabel(new Date(card.dateIso!)), showFirstGroupMarker: false
   };
   protected readonly loadPage: SmartListLoadPage<ImageCardData<Campaign>, CampaignFilters> = (query, context) =>
     defer(() => this.store.page(query, context?.signal)).pipe(map(page => ({ ...page,

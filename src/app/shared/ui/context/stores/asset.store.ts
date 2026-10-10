@@ -5,11 +5,8 @@ import { PricingBuilder } from '../../../core/base/builders';
 import { GroupWorkspaceContextService } from '../../../core/base/services/group-workspace-context.service';
 import * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
-import type { AppMenuItem } from '../../components/core/menu';
-import type {
-  DateInputModel,
-  DateInputRangeValue
-} from '../../components/core/form/inputs/date-input';
+import { type AppMenuItem, type DateInputModel, type DateInputRangeValue } from '@myscoutee/components';
+
 import type {
   PricingEditorRuntimePreview
 } from '../../components/core/form/inputs/pricing-editor';

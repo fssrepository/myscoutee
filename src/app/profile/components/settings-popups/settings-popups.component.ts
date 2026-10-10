@@ -16,11 +16,15 @@ import {
 } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
 import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
+import {
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSection as HelpCenterSectionDto,
+  PopupComponent,
+  type PopupModel
+} from '@myscoutee/components';
 import { DocumentViewerComponent } from '../../../shared/ui/components/document-viewer/document-viewer.component';
 import { type DocumentViewerAction, type DocumentViewerActionEvent, type DocumentViewerActionVisibility, type DocumentViewerConfig } from '../../../shared/ui/components/document-viewer';
-import { PopupComponent } from '../../../shared/ui/components/core/popup/popup.component';
-import { type PopupModel } from '../../../shared/ui/components/core/popup';
+
 import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
 import {
   ProfileStore,

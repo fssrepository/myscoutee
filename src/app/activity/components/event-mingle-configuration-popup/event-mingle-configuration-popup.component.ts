@@ -5,14 +5,15 @@ import {
   ActivityEventDetailDTO,
   type MingleConfigurationDTO
 } from '../../../shared/core/contracts/activity.interface';
-import { ExplanationGuideService, I18nService } from '../../../shared/core';
 import {
+  ExplanationGuideService,
   I18nPipe,
   PopupComponent,
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '../../../shared/ui';
+} from '@myscoutee/components';
+import { I18nService } from '../../../shared/core';
 
 type MingleNumberField = Exclude<keyof MingleConfigurationDTO, 'requireGenderBalance'>;
 

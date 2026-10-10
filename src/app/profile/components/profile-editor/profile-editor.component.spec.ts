@@ -1,11 +1,12 @@
 import { Component, NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { By } from '@angular/platform-browser';
-import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow';
+import { FormFlowComponent, ExplanationGuideService } from '@myscoutee/components';
 import { TestBed } from '@angular/core/testing';
 import { ProfileEditorComponent } from './profile-editor.component';
 import { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
-import { UsersService, ExplanationGuideService } from '../../../shared/core';
+
+import { UsersService } from '../../../shared/core';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
 

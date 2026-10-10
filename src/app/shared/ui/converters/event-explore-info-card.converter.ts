@@ -1,9 +1,14 @@
+import {
+  UiLinkUtils,
+  type CardMenuActionId,
+  type CardRenderState,
+  type InfoCardData,
+  type UiListConverter
+} from '@myscoutee/components';
 import { AppUtils } from '../../app-utils';
 import type * as ContractTypes from '../../core/contracts';
 import type * as AppConstants from '../../core/common/constants';
 import type { ActivityEventRecord } from '../../core/contracts/activity.interface';
-import type { CardMenuActionId, CardRenderState, InfoCardData } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
 
 export type EventExploreTopicToneGroup = {
   toneClass: string;
@@ -101,7 +106,7 @@ export class EventExploreInfoCardConverter {
     const watchActions = this.canWatchEvent(record, normalizedUserId)
       ? [this.watchActionId(record)]
       : [];
-    const externalActions: CardMenuActionId[] = AppUtils.normalizeHttpUrl(record.sourceLink) ? ['externalInfo'] : [];
+    const externalActions: CardMenuActionId[] = UiLinkUtils.normalizeHttpUrl(record.sourceLink) ? ['externalInfo'] : [];
     if (normalizedUserId && record.creatorUserId === normalizedUserId) {
       return ['view', ...externalActions, 'notifyParticipants'];
     }

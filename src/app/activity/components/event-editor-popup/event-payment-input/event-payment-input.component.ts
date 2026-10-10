@@ -3,13 +3,12 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject
 import { MatIconModule } from '@angular/material/icon';
 import { DeploymentConfigurationService } from '../../../../shared/core/base/services/deployment-configuration.service';
 import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payment-method.interface';
-import { PaymentCardComponent, type PaymentCardData } from '../../../../shared/ui/components/core/smart-list/card';
+import { PaymentCardComponent, type PaymentCardData, I18nPipe } from '@myscoutee/components';
 import type {
   EventEditorCheckoutSurfaceTone,
   EventPaymentStatusTone
 } from '../../../../shared/ui/context/stores/event-editor-popup.store';
 import { PaymentMethodsPopupStore } from '../../../../shared/ui/context/stores/payment-methods-popup.store';
-import { I18nPipe } from '../../../../shared/ui/pipes';
 
 export interface EventPaymentInputConfig {
   title?: string;

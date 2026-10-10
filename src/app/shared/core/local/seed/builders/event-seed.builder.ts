@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type * as ContractTypes from '../../../contracts';
@@ -89,7 +90,7 @@ export class SeedEventBuilder {
       dateSource?.endIso
       ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
     );
-    const startMs = Number.isNaN(start.getTime()) ? AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() : start.getTime();
+    const startMs = Number.isNaN(start.getTime()) ? UiDateUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() : start.getTime();
     const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
       ? (startMs + (4 * 60 * 60 * 1000))
       : end.getTime();

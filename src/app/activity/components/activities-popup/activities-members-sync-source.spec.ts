@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ActivityEventDTO } from '../../../shared/core/contracts/activity.interface';
-import type { InfoCardData } from '../../../shared/ui';
+import type { InfoCardData } from '@myscoutee/components';
 
 import { ActivitiesPopupComponent } from './activities-popup.component';
 

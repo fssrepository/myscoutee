@@ -3,7 +3,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { HttpPhotoFeedService } from '../../http/services/photo-feed.service';
 import { LocalPhotoFeedService } from '../../local/source/services/photo-feed.service';
 import type { CreatePhotoFeedPost, IPhotoFeedService, PhotoFeedFilters } from '../../contracts/photo-feed.interface';
-import type { ListQuery } from '../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class PhotoFeedService extends BaseRouteModeService implements IPhotoFeedService {
   private readonly http = inject(HttpPhotoFeedService);

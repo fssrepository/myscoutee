@@ -1,5 +1,4 @@
-import type { AppMenuItem } from '../components/core/menu';
-import type { UiConverter } from './converter.types';
+import { type AppMenuItem, type UiConverter } from '@myscoutee/components';
 
 export type EventSubeventsListContextAction =
   | 'participantFilter'

@@ -1,16 +1,8 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 
-import {
-  DEFAULT_DEPLOYMENT_BRANDING,
-  DEFAULT_DEPLOYMENT_PRIVACY_CONTACT,
-  DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
-  type DeploymentBrandingDto,
-  type DeploymentConfigurationDto,
-  type DeploymentPrivacyContactDto,
-  type DeploymentConfigurationServiceContract,
-  type DeploymentSocialLinkDto
-} from '../../contracts/deployment-configuration.interface';
+import { type UiBranding as DeploymentBrandingDto } from '@myscoutee/components';
+import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_PRIVACY_CONTACT, DEFAULT_DEPLOYMENT_SOCIAL_LINKS, type DeploymentConfigurationDto, type DeploymentPrivacyContactDto, type DeploymentConfigurationServiceContract, type DeploymentSocialLinkDto } from '../../contracts/deployment-configuration.interface';
 import { OperatorConfigurationMapper } from '../mappers/operator-configuration.mapper';
 import { HttpDeploymentConfigurationService } from '../../http/services/deployment-configuration.service';
 import { LocalDeploymentConfigurationService } from '../../local/source/services/deployment-configuration.service';

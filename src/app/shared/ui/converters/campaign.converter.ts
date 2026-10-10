@@ -1,6 +1,10 @@
 import type { Campaign, CampaignCategory, CampaignKind, CampaignStatus } from '../../core/contracts/campaign.interface';
-import type { ImageCardData, SingleCardData } from '../components/core/smart-list/card';
-import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
+import {
+  type ImageCardData,
+  type SingleCardData,
+  type AppMenuItem,
+  type AppMenuPalette
+} from '@myscoutee/components';
 
 export const CAMPAIGN_KIND_STYLE: Record<CampaignKind, { icon: string; palette: AppMenuPalette }> = {
   work: { icon: 'work', palette: 'blue' }, business: { icon: 'lightbulb', palette: 'amber' }, both: { icon: 'handshake', palette: 'teal' }

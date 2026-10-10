@@ -1,3 +1,35 @@
+import {
+  UiLinkUtils,
+  UiDateUtils,
+  ExplanationGuideService,
+  AppMenuDispatcher,
+  AppMenuComponent,
+  AppMenuOutletComponent,
+  appMenuPaletteFromToneClass,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  CARD_MENU_ACTIONS,
+  InfoCardComponent,
+  PopupComponent,
+  type PageResult,
+  SmartListComponent,
+  type InfoCardData,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardMenuAction,
+  type ListQuery,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadContext,
+  type SmartListItemTemplateContext,
+  type SmartListLocalSortKey,
+  type SmartListStateChange,
+  DialogStore
+} from '@myscoutee/components';
+
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import { untracked } from '@angular/core';
 import { ChatShareStore } from '../../../shared/ui/context/stores/chat-share.store';
@@ -41,52 +73,16 @@ import {
 import {
   AppUtils
 } from '../../../shared/app-utils';
-import {
-  ActivityMembersBuilder,
-  ActivityMembersService,
-  ActivitiesService,
-  ExplanationGuideService,
-  EventsService,
-  GameService,
-  UsersService,
-  type UserDto
-} from '../../../shared/core';
+
+import { ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
-import {
-  AppMenuDispatcher,
-  AppMenuComponent,
-  AppMenuOutletComponent,
-  appMenuPaletteFromToneClass,
-  EventExploreInfoCardConverter,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  CARD_MENU_ACTIONS,
-  InfoCardComponent,
-  PopupComponent,
-  type PageResult,
-  SmartListComponent,
-  type InfoCardData,
-  type CardMenuActionEvent,
-  type CardMenuRequestEvent,
-  type CardMenuAction,
-  type ListQuery,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListLoadContext,
-  type SmartListItemTemplateContext,
-  type SmartListLocalSortKey,
-  type SmartListStateChange
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
+import { EventExploreInfoCardConverter } from '../../../shared/ui';
+
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
@@ -929,7 +925,7 @@ export class EventExplorePopupComponent implements OnDestroy {
 
   protected onEventExploreCardMenuAction(record: ActivityEventRecord, action: CardMenuActionEvent<InfoCardData>): void {
     if (action.actionId === 'externalInfo') {
-      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(record.sourceLink));
+      UiLinkUtils.openExternalUrl(UiLinkUtils.normalizeHttpUrl(record.sourceLink));
       return;
     }
     if (action.actionId === 'view') {
@@ -1080,7 +1076,7 @@ export class EventExplorePopupComponent implements OnDestroy {
   }
 
   private checkoutDraftTimeframeLabel(entry: CheckoutDraftEntry): string {
-    return AppUtils.normalizeDateTimeRangeText(
+    return UiDateUtils.normalizeDateTimeRangeText(
       entry.draft.eventTimeframe || entry.record?.timeframe,
       'Pending checkout'
     );
@@ -1651,7 +1647,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     if (Number.isNaN(parsed.getTime())) {
       return 'Date unavailable';
     }
-    return AppUtils.smartListDayLabel(parsed);
+    return UiDateUtils.smartListDayLabel(parsed);
   }
 
   private runEventExploreServiceChatAction(record: ActivityEventRecord): void {
@@ -2447,10 +2443,10 @@ export class EventExplorePopupComponent implements OnDestroy {
       case 'most-relevant':
         return (Number(right.affinity) || 0) - (Number(left.affinity) || 0);
       case 'past-events':
-        return AppUtils.toSortableDate(right.startAtIso) - AppUtils.toSortableDate(left.startAtIso);
+        return UiDateUtils.toSortableDate(right.startAtIso) - UiDateUtils.toSortableDate(left.startAtIso);
       case 'upcoming':
       default:
-        return AppUtils.toSortableDate(left.startAtIso) - AppUtils.toSortableDate(right.startAtIso);
+        return UiDateUtils.toSortableDate(left.startAtIso) - UiDateUtils.toSortableDate(right.startAtIso);
     }
   }
 

@@ -1,5 +1,5 @@
 import { EventExploreFilterPopupComponent } from './event-explore-filter-popup.component';
-import type { AppMenuItemSelectEvent } from '../../../shared/ui';
+import type { AppMenuItemSelectEvent } from '@myscoutee/components';
 import type { EventExploreFilterPreferences } from '../../../shared/core/contracts/activity.interface';
 
 class FilterHarness extends EventExploreFilterPopupComponent {

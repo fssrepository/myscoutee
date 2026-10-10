@@ -5,7 +5,7 @@ import { LocalPhotoFeedMapper } from '../mappers/photo-feed.mapper';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type { CreatePhotoFeedPost, IPhotoFeedService, PhotoFeedFilters } from '../../../contracts/photo-feed.interface';
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class LocalPhotoFeedService extends LocalRouteDelayService implements IPhotoFeedService {
   private readonly repository = inject(LocalPhotoFeedRepository);

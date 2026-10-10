@@ -1,5 +1,5 @@
 import type { ModerationStatus } from '../../core/contracts/content-moderation.interface';
-import type { AppMenuPalette } from '../components/core/menu';
+import type { AppMenuPalette } from '@myscoutee/components';
 
 export const MODERATION_STATUS_STYLE: Record<ModerationStatus, { icon: string; palette: AppMenuPalette }> = {
   'under-review': { icon: 'fact_check', palette: 'teal' },

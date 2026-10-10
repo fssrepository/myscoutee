@@ -1,13 +1,13 @@
-import type {
-  ListQuery,
-  SmartListCalendarConfig,
-  SmartListCalendarVariant,
-  SmartListFilters,
-  SmartListViewMode
-} from '../components/core/smart-list/smart-list.types';
-import type { CalendarCardModel } from '../components/core/smart-list/card/calendar-card';
-import type { SmartListPage } from '../components/core/smart-list/smart-list-page.adapter';
-import type { UiConverter } from './converter.types';
+import {
+  type ListQuery,
+  type SmartListCalendarConfig,
+  type SmartListCalendarVariant,
+  type SmartListFilters,
+  type SmartListViewMode,
+  type CalendarCardModel,
+  type SmartListPage,
+  type UiConverter
+} from '@myscoutee/components';
 
 export interface CalendarCardConverterInput<T, TFilters extends SmartListFilters = SmartListFilters> {
   viewMode: SmartListViewMode;

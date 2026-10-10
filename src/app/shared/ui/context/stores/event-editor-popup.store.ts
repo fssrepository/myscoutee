@@ -1,7 +1,7 @@
 import { Injectable, Type, computed, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/menu';
+import type { AppMenuItem, AppMenuItemSelectEvent } from '@myscoutee/components';
 import type { SavedPaymentMethodDto } from '../../../core/contracts/payment-method.interface';
 
 export type EventEditorPresentationMode = 'default' | 'checkout-review';

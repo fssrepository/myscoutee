@@ -27,21 +27,16 @@ import {
 } from '../../context/stores/demo-bootstrap-selector.store';
 import { AppUtils } from '../../../app-utils';
 import {
-  IndicatorComponent
-} from '../core/indicator';
-import {
+  IndicatorComponent,
   type AppMenuItem,
-  type AppMenuTrigger
-} from '../core/menu';
-import {
+  type AppMenuTrigger,
   PopupComponent,
   type PopupControl,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../core/popup';
-import {
+  type PopupModel,
   I18nPipe
-} from '../../pipes';
+} from '@myscoutee/components';
+
 import {
   UsersService,
   type BootstrapProcessState,

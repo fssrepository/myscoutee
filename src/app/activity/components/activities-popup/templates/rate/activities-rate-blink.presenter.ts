@@ -1,4 +1,4 @@
-import type { ImageCardData } from '../../../../../shared/ui';
+import type { ImageCardData } from '@myscoutee/components';
 
 export function isActivitiesRateBlinking(
   row: ImageCardData,

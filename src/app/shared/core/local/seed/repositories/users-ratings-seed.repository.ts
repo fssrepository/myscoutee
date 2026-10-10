@@ -1,10 +1,10 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import type { UserRatesRecordCollection } from '../../source/entity/rate.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserRateRecord } from '../../source/entity/rate.entity';
 
@@ -202,6 +202,6 @@ export class SeedUsersRatingsRepository {
   }
 
   private dynamicRecordDateValue(record: UserRateRecord | null | undefined): number {
-    return AppUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
+    return UiDateUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
   }
 }

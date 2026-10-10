@@ -1,30 +1,7 @@
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { CommonModule } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ViewChild,
-  computed,
-  effect,
-  inject,
-  signal,
-  untracked
-} from '@angular/core';
-import { from, map } from 'rxjs';
-
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AssetCardBuilder } from '../../../shared/core/base/builders';
-import {
-  AssetsService,
-  I18nService
-} from '../../../shared/core';
-import * as AppConstants from '../../../shared/core/common/constants';
-import type * as AppDTOs from '../../../shared/core/contracts';
-import {
+  UiDateUtils,
+  ExplanationGuideService,
   PopupComponent,
-
   SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -48,8 +25,33 @@ import {
   type SmartListConfig,
   type SmartListItemSelectEvent,
   type SmartListLoadContext,
-  type SmartListLoadPage
-} from '../../../shared/ui';
+  type SmartListLoadPage,
+  DialogStore
+} from '@myscoutee/components';
+
+import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
+import { from, map } from 'rxjs';
+
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { AssetCardBuilder } from '../../../shared/core/base/builders';
+import {
+  AssetsService,
+  I18nService
+} from '../../../shared/core';
+import * as AppConstants from '../../../shared/core/common/constants';
+import type * as AppDTOs from '../../../shared/core/contracts';
+
 import {
   AssetAvailabilitySingleRowConverter
 } from '../../../shared/ui/converters';
@@ -58,7 +60,7 @@ import {
   type AssetAvailabilityHeaderState,
   type AssetAvailabilityPopupRequest
 } from '../../../shared/ui/context/stores/asset-availability-popup.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
@@ -203,7 +205,7 @@ export class AssetAvailabilityPopupComponent {
   };
   private readonly dayListDateRangeInputValue = computed<DateInputRangeValue>(() => {
     const request = this.availabilityPopupStore.dayListPopup();
-    const fallback = this.dateInputDateKey(request?.initialDateIso) ?? AppUtils.toIsoDate(new Date());
+    const fallback = this.dateInputDateKey(request?.initialDateIso) ?? UiDateUtils.toIsoDate(new Date());
     const startAt = this.dateInputDateKey(request?.rangeStart) ?? fallback;
     const endAt = this.dateInputDateKey(request?.rangeEnd) ?? startAt;
     return {
@@ -1047,15 +1049,15 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private availabilityDateRange(item: AssetAvailabilityListItem): SmartListCalendarDateRange | null {
-    const start = AppUtils.parseDate(item.startAtIso) ?? AppUtils.parseDateOnlyLocal(item.dateIso);
+    const start = UiDateUtils.parseDate(item.startAtIso) ?? UiDateUtils.parseDateOnlyLocal(item.dateIso);
     if (!start) {
       return null;
     }
     if (this.isAvailabilityStat(item)) {
-      const day = AppUtils.parseDateOnlyLocal(item.dateIso) ?? AppUtils.dateOnly(start);
+      const day = UiDateUtils.parseDateOnlyLocal(item.dateIso) ?? UiDateUtils.dateOnly(start);
       return { start: day, end: day };
     }
-    const end = AppUtils.parseDate(item.endAtIso) ?? AppUtils.addDays(start, 1);
+    const end = UiDateUtils.parseDate(item.endAtIso) ?? UiDateUtils.addDays(start, 1);
     return { start, end };
   }
 
@@ -1082,7 +1084,7 @@ export class AssetAvailabilityPopupComponent {
     const subEventTitle = `${row.subEventTitle ?? ''}`.trim() || 'Sub Event';
     const startAt = `${row.subEventStartAtIso ?? row.startAtIso ?? ''}`.trim();
     const endAt = `${row.subEventEndAtIso ?? row.endAtIso ?? ''}`.trim();
-    const timeframe = AppUtils.dateTimeRangeLabel(startAt, endAt, '');
+    const timeframe = UiDateUtils.dateTimeRangeLabel(startAt, endAt, '');
     this.resourcePopupStore.requestSubEventResourcePopup({
       type,
       ownerId,
@@ -1322,8 +1324,8 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private dateInputDateKey(value: unknown): string | null {
-    const parsed = AppUtils.parseDateOnlyLocal(value);
-    return parsed ? AppUtils.toIsoDate(parsed) : null;
+    const parsed = UiDateUtils.parseDateOnlyLocal(value);
+    return parsed ? UiDateUtils.toIsoDate(parsed) : null;
   }
 
   private scopedOverrideValue<T>(
@@ -1371,7 +1373,7 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private groupLabelForDate(dateIso: string, view: AppDTOs.AssetAvailabilityView): string {
-    const parsed = AppUtils.parseDateOnlyLocal(dateIso) ?? AppUtils.parseDate(dateIso);
+    const parsed = UiDateUtils.parseDateOnlyLocal(dateIso) ?? UiDateUtils.parseDate(dateIso);
     if (!parsed) {
       return 'Availability';
     }

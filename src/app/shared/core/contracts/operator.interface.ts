@@ -1,9 +1,6 @@
-import type { ListQuery, PageResult } from './list.interface';
-import type {
-  DeploymentBrandingDto,
-  DeploymentPrivacyContactDto,
-  DeploymentSocialLinkDto
-} from './deployment-configuration.interface';
+import { type ListQuery, type PageResult, type UiBranding as DeploymentBrandingDto } from '@myscoutee/components';
+
+import type { DeploymentPrivacyContactDto, DeploymentSocialLinkDto } from './deployment-configuration.interface';
 
 export type OperatorRegistryMode = 'DEMO' | 'REAL';
 

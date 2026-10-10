@@ -3,7 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import type { PricingCancellationPolicy, PricingCancellationRule } from '../../../core/contracts/pricing.interface';
 import type { PaymentRefundPreviewDto } from '../../../core/contracts/payment-method.interface';
-import { I18nPipe } from '../../pipes/i18n.pipe';
+import { I18nPipe } from '@myscoutee/components';
 
 @Component({
   selector: 'app-payment-refund-policy',

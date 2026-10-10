@@ -1,3 +1,4 @@
+import { UiDateUtils, type InfoCardData, type UiListConverter } from '@myscoutee/components';
 import { contentModerationBadge } from './content-moderation-badge';
 import { AppUtils } from '../../app-utils';
 import type {
@@ -8,10 +9,6 @@ import type {
 import type {
   EventVisibility
 } from '../../core/common/constants';
-import type {
-  InfoCardData
-} from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
 
 export interface ActivityEventInfoCardConverterOptions {
   activeUserId?: string | null;
@@ -61,7 +58,7 @@ export class ActivityEventInfoCardConverter {
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
         ...this.currentStageMetaRows(dto, options),
-        AppUtils.dateTimeRangeLabel(dto.startAtIso, dto.endAtIso, dto.timeframe || 'Date unavailable'),
+        UiDateUtils.dateTimeRangeLabel(dto.startAtIso, dto.endAtIso, dto.timeframe || 'Date unavailable'),
         ...this.locationMetaRows(dto)
       ],
       description: invited

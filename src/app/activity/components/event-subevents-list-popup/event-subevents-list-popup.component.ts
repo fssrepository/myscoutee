@@ -1,4 +1,24 @@
 import {
+  UiDateUtils,
+  InfoCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuTrigger,
+  type InfoCardData,
+  type ListQuery,
+  type PageResult,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  ExplanationGuideService,
+  DialogStore
+} from '@myscoutee/components';
+import {
   CommonModule
 } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -34,23 +54,7 @@ import {
   type SubEventsSlotDTO
 } from '../../../shared/core/contracts/activity.interface';
 import type { EventMode, EventSlotTemplateDTO, EventTournamentStageDTO, SubEventDTO } from '../../../shared/core/contracts/event.interface';
-import {
-  InfoCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuTrigger,
-  type InfoCardData,
-  type ListQuery,
-  type PageResult,
-  type PopupControl,
-  type PopupMenuSelectEvent,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListLoadPage
-} from '../../../shared/ui';
+
 import {
   ActivityChatSingleRowConverter,
   EventSubeventRuntimeInfoCardConverter,
@@ -62,16 +66,11 @@ import {
   type EventSubeventRuntimeMenuContext,
   type EventSubeventRuntimeMenuItemId
 } from '../../../shared/ui/converters';
-import {
-  EventsService,
-  ExplanationGuideService,
-  I18nService
-} from '../../../shared/core';
+
+import { EventsService, I18nService } from '../../../shared/core';
 import { tournamentCurrentStageFromSubEvents } from '../../../shared/core/common/tournament-group-count';
 import * as AppConstants from '../../../shared/core/common/constants';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import {
   ActivityStore,
@@ -558,7 +557,7 @@ export class EventSubeventsListPopupComponent {
     if (!event) {
       return '';
     }
-    return AppUtils.dateTimeRangeLabel(event.startAtIso, event.endAtIso, event.timeframe || '');
+    return UiDateUtils.dateTimeRangeLabel(event.startAtIso, event.endAtIso, event.timeframe || '');
   }
 
   private popupHeaderControls(): PopupControl<EventSubeventsListPopupMenuContext>[] {
@@ -1007,7 +1006,7 @@ export class EventSubeventsListPopupComponent {
     }
     const parentTitle = this.popupSubtitle();
     const itemTitle = `${item.name ?? ''}`.trim();
-    const timeframe = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, '');
+    const timeframe = UiDateUtils.dateTimeRangeLabel(item.startAt, item.endAt, '');
     this.resourcePopupStore.requestSubEventResourcePopup({
       type: context.resourceType,
       ownerId,
@@ -1229,7 +1228,7 @@ export class EventSubeventsListPopupComponent {
 
     const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(update.definitions ?? []);
     const existingItemsById = new Map(this.items.map(item => [`${item.id ?? ''}`.trim(), item]));
-    const anchor = AppUtils.parseDate(update.startAtIso ?? this.event?.startAtIso);
+    const anchor = UiDateUtils.parseDate(update.startAtIso ?? this.event?.startAtIso);
     let previousStartOffsetMinutes = 0;
     let previousEndOffsetMinutes = 0;
     let hasPrevious = false;
@@ -1250,10 +1249,10 @@ export class EventSubeventsListPopupComponent {
       const existing = existingItemsById.get(id);
       const start = anchor
         ? new Date(anchor.getTime() + (startOffsetMinutes * 60 * 1000))
-        : AppUtils.parseDate(existing?.startAt);
+        : UiDateUtils.parseDate(existing?.startAt);
       const end = start
         ? new Date(start.getTime() + (durationMinutes * 60 * 1000))
-        : AppUtils.parseDate(existing?.endAt);
+        : UiDateUtils.parseDate(existing?.endAt);
       const tournamentMode = update.mode === 'Tournament';
       return {
         ...existing,
@@ -1837,7 +1836,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   private groupLabel(value: string | null | undefined, view: EventSubeventsListView): string {
-    const date = AppUtils.parseDate(value);
+    const date = UiDateUtils.parseDate(value);
     if (!date) {
       return 'Date unavailable';
     }
@@ -1845,21 +1844,21 @@ export class EventSubeventsListPopupComponent {
       return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
     if (view === 'week') {
-      const start = AppUtils.startOfWeekMonday(date);
+      const start = UiDateUtils.startOfWeekMonday(date);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
-      return `${AppUtils.shortMonthDayLabel(start)} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      return `${UiDateUtils.shortMonthDayLabel(start)} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     }
-    return AppUtils.smartListDayLabel(date);
+    return UiDateUtils.smartListDayLabel(date);
   }
 
   private dateMs(value: string | null | undefined): number {
-    return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
+    return UiDateUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
   private slotSectionCalendarRange(section: EventSubeventsSlotModel) {
-    const start = AppUtils.parseDate(section.startAt);
-    const end = AppUtils.parseDate(section.endAt) ?? start;
+    const start = UiDateUtils.parseDate(section.startAt);
+    const end = UiDateUtils.parseDate(section.endAt) ?? start;
     if (!start || !end) {
       return null;
     }
@@ -1874,9 +1873,9 @@ export class EventSubeventsListPopupComponent {
     if (!event) {
       return null;
     }
-    const today = AppUtils.dateOnly(new Date());
-    const start = AppUtils.parseDate(event.startAtIso);
-    const end = AppUtils.parseDate(event.endAtIso);
+    const today = UiDateUtils.dateOnly(new Date());
+    const start = UiDateUtils.parseDate(event.startAtIso);
+    const end = UiDateUtils.parseDate(event.endAtIso);
     if (this.order === 'past') {
       if (end && end.getTime() < today.getTime()) {
         return end;

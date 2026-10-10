@@ -1,14 +1,11 @@
 import type {
-  HelpCenterAuditEntryDto,
-  HelpCenterAuditAction,
-  HelpCenterDocumentKind,
-  HelpCenterHeaderColor,
-  HelpCenterRevisionDto,
-  HelpCenterSectionDto,
-  HelpCenterSectionPanelSpan,
-  PrivacyConsentSource,
-  PrivacyConsentDto
-} from '../../../contracts/content.interface';
+  GuideDocumentKind as HelpCenterDocumentKind,
+  GuideHeaderColor as HelpCenterHeaderColor,
+  GuideRevision as HelpCenterRevisionDto,
+  GuideSection as HelpCenterSectionDto,
+  GuideSectionPanelSpan as HelpCenterSectionPanelSpan
+} from '@myscoutee/components';
+import type { HelpCenterAuditEntryDto, HelpCenterAuditAction, PrivacyConsentSource, PrivacyConsentDto } from '../../../contracts/content.interface';
 import type {
   HelpCenterAuditRecord,
   HelpCenterRevisionRecord,

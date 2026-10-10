@@ -7,12 +7,10 @@ import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores
 import {
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../../shared/ui/components/core/menu';
-import {
+  type AppMenuItemSelectEvent,
   PopupComponent,
   type PopupModel
-} from '../../../../shared/ui/components/core/popup';
+} from '@myscoutee/components';
 
 type AssignedAssetJoinActionId = 'join-cancel' | 'join-confirm';
 

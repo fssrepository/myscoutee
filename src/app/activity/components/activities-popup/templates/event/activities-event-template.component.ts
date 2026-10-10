@@ -1,3 +1,13 @@
+import {
+  UiDateUtils,
+  InfoCardComponent,
+  type InfoCardData,
+  type AppMenuPalette,
+  type CardMenuAction,
+  type CardMenuActionEvent,
+  type CardProfileViewData,
+  type CardMenuRequestEvent
+} from '@myscoutee/components';
 import type * as ActivityContracts from '../../../../../shared/core/contracts/activity.interface';
 
 import {
@@ -19,17 +29,8 @@ import {
 } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
-import {
-  type ActivityCounterKey,
-  type ActivityCounters,
-  InfoCardComponent,
-  type InfoCardData,
-  type AppMenuPalette,
-  type CardMenuAction,
-  type CardMenuActionEvent,
-  type CardProfileViewData,
-  type CardMenuRequestEvent
-} from '../../../../../shared/ui';
+
+import { type ActivityCounterKey, type ActivityCounters } from '../../../../../shared/ui';
 import {
   ActivityEventInfoCardConverter,
   ActivityEventInfoCardMenuConverter,
@@ -42,7 +43,6 @@ import type * as AppConstants from '../../../../../shared/core/common/constants'
 import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
 import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
 import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores/event-checkout-draft.store';
-
 
 @Component({
   selector: 'app-activities-event-template',
@@ -1673,7 +1673,7 @@ export class ActivitiesEventsController {
     activeUserId: string,
     requiresAdminApproval: boolean
   ): ActivityContracts.ActivityMemberDTO[] | null {
-    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
     let didUpdate = false;
     const nextMembers = members.map(member => {
       if (member.userId !== activeUserId) {
@@ -1806,7 +1806,7 @@ export class ActivitiesEventsController {
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
     }
-    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
     this.selectedActivityMembers = this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {

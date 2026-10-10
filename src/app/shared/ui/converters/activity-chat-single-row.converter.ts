@@ -1,3 +1,4 @@
+import { UiDateUtils, type SingleRowData, type UiListConverter } from '@myscoutee/components';
 import type {
   ChatChannelType,
   ChatDTO,
@@ -6,8 +7,6 @@ import type {
 } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import { AppUtils } from '../../app-utils';
-import type { SingleRowData } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
 
 export interface ActivityChatSingleRowData extends SingleRowData {
   chatRevision: number;
@@ -157,7 +156,7 @@ export class ActivityChatSingleRowConverter {
     if (!navigation) {
       return '';
     }
-    const timeframe = AppUtils.dateTimeRangeLabel(
+    const timeframe = UiDateUtils.dateTimeRangeLabel(
       navigation.subEvent?.startAt,
       navigation.subEvent?.endAt,
       ''

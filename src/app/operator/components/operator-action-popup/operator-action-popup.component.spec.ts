@@ -11,11 +11,7 @@ import type {
   OperatorTlsConfigurationUpdateDto,
   OperatorSettlementDto
 } from '../../../shared/core/contracts/operator.interface';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuTrigger
-} from '../../../shared/ui/components/core/menu';
+import { AppMenuComponent, type AppMenuItem, type AppMenuTrigger } from '@myscoutee/components';
 import { OperatorLeaderboardStore } from '../../../shared/ui/context/stores/operator-leaderboard.store';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';

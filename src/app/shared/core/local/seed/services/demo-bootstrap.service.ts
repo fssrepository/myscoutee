@@ -22,14 +22,6 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
 
-
-
-
-
-
-
-
-
 import { BootstrapProcessService, bootstrapProcessStep, type BootstrapProcessListener, type BootstrapProcessStage, type BootstrapProcessState } from '../../../base/services/bootstrap.service';
 import { SeedActivityMembersRepository } from '../repositories/activity-members-seed.repository';
 import { SeedCommunityGroupsRepository } from '../repositories/community-groups-seed.repository';

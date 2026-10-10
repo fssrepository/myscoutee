@@ -1,3 +1,5 @@
+import { clampNumber, UiDateUtils } from '@myscoutee/components';
+
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { environment } from '../../../../../../environments/environment';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
@@ -968,7 +970,6 @@ const SEED_STATUS_BY_ID: Record<string, ActivityEventRecord['status']> = {
   h4: 'DR'
 };
 
-
 const SEED_EXPLORE_REBALANCE_BY_OWNER_USER: Record<string, readonly string[]> = {
   u1: ['e2', 'e3', 'e6', 'e8']
 };
@@ -1091,7 +1092,6 @@ export class SeedEventsBuilder {
     }
     return merged;
   }
-
 
   private static rebalanceSeedExploreItems(seedItemsByUser: Record<string, ActivityEventSeedItem[]>): void {
     for (const [ownerUserId, eventIds] of Object.entries(SEED_EXPLORE_REBALANCE_BY_OWNER_USER)) {
@@ -1496,15 +1496,15 @@ export class SeedEventsBuilder {
     if (definitions.length === 0) {
       return [];
     }
-    const slotStartMs = AppUtils.toSortableDate(record.startAtIso);
+    const slotStartMs = UiDateUtils.toSortableDate(record.startAtIso);
     const items = this.seedSubEventDefinitionTimeline(definitions)
       .map(({ item, startOffsetMinutes, durationMinutes }, index): ContractTypes.SubEventDTO => {
         const subEventId = `${item.id ?? ''}`.trim() || `${record.id}-subevent-${index + 1}`;
         const startAt = Number.isFinite(slotStartMs) && slotStartMs > 0
-          ? AppUtils.toIsoDateTime(new Date(slotStartMs + (startOffsetMinutes * 60 * 1000)))
+          ? UiDateUtils.toIsoDateTime(new Date(slotStartMs + (startOffsetMinutes * 60 * 1000)))
           : record.startAtIso;
         const endAt = Number.isFinite(slotStartMs) && slotStartMs > 0
-          ? AppUtils.toIsoDateTime(new Date(slotStartMs + ((startOffsetMinutes + durationMinutes) * 60 * 1000)))
+          ? UiDateUtils.toIsoDateTime(new Date(slotStartMs + ((startOffsetMinutes + durationMinutes) * 60 * 1000)))
           : record.endAtIso;
         const capacityMin = this.normalizeCount(item.capacityMin) ?? 0;
         const capacityMax = Math.max(
@@ -1743,7 +1743,7 @@ export class SeedEventsBuilder {
     if (nextAdmin !== currentAdmin) {
       return nextAdmin;
     }
-    return AppUtils.toSortableDate(next.startAtIso) < AppUtils.toSortableDate(current.startAtIso);
+    return UiDateUtils.toSortableDate(next.startAtIso) < UiDateUtils.toSortableDate(current.startAtIso);
   }
 
   private static isRecordAdmin(record: Pick<ActivityEventRecord, 'userId' | 'creatorUserId' | 'adminIds'>): boolean {
@@ -2138,7 +2138,7 @@ export class SeedEventsBuilder {
     return (
       this.resolveAffinityTokenScore(tokens, `event:${options.id}`) * 89
       + averageParticipantAffinity
-      + Math.round(AppUtils.clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
+      + Math.round(clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
       + Math.max(0, Math.trunc(Number(options.acceptedMembers) || 0)) * 19
       + Math.max(0, Math.trunc(Number(options.capacityTotal) || 0)) * 7
     );
@@ -2187,7 +2187,7 @@ export class SeedEventsBuilder {
     const hour = hourBase + ((seed >> 3) % hourSpan);
     const minute = ((seed >> 7) % 4) * 15;
     return this.rebaseSeedDateTime(new Date(2026, monthIndex, day, hour, minute, 0, 0))
-      ?? AppUtils.toIsoDateTimeLocal(new Date(2026, monthIndex, day, hour, minute, 0, 0));
+      ?? UiDateUtils.toIsoDateTimeLocal(new Date(2026, monthIndex, day, hour, minute, 0, 0));
   }
 
   private static resolveEndAtIso(
@@ -2196,11 +2196,11 @@ export class SeedEventsBuilder {
   ): string {
     const startAt = new Date(startAtIso);
     if (Number.isNaN(startAt.getTime())) {
-      return AppUtils.toIsoDateTimeLocal(AppUtils.anchorDate(environment.bootstrapOffsetInDays));
+      return UiDateUtils.toIsoDateTimeLocal(UiDateUtils.anchorDate(environment.bootstrapOffsetInDays));
     }
     const seed = AppUtils.hashText(`event-duration:${this.recordSeedKey(record)}`);
     const durationMinutes = 90 + ((seed % 5) * 30);
-    return AppUtils.toIsoDateTimeLocal(new Date(startAt.getTime() + (durationMinutes * 60 * 1000)));
+    return UiDateUtils.toIsoDateTimeLocal(new Date(startAt.getTime() + (durationMinutes * 60 * 1000)));
   }
 
   private static resolveDistanceKm(
@@ -2595,7 +2595,7 @@ export class SeedEventsBuilder {
   }
 
   static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
-    return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays);
+    return UiDateUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays);
   }
 
   private static normalizeGeneratedSeedDateTime(value: string | Date | null | undefined): string | undefined {
@@ -2603,7 +2603,7 @@ export class SeedEventsBuilder {
     if (!parsed) {
       return undefined;
     }
-    return AppUtils.toIsoDateTimeLocal(parsed);
+    return UiDateUtils.toIsoDateTimeLocal(parsed);
   }
 
   private static buildSeededTimeframeLabel(options: {

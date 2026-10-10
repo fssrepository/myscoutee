@@ -1,4 +1,4 @@
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { ExplanationGuideService, DeploymentBrandComponent } from '@myscoutee/components';
 import { DestroyRef } from '@angular/core';
 import { UserProfileStore } from "../../../shared/ui/context/stores/user-profile.store";
 import {
@@ -38,7 +38,7 @@ import {
   DeploymentConfigurationService
 } from '../../../shared/core/base/services/deployment-configuration.service';
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
+
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
@@ -98,7 +98,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly paymentSimulatorPopupComponent = this.paymentSimulatorPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
-
 
   constructor() {
     const releaseGuide = inject(ExplanationGuideService).registerContext('admin.home');

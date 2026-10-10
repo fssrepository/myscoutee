@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import type { ListQuery } from '../../../shared/core/contracts/list.interface';
+import { type ListQuery, type AppMenuItem } from '@myscoutee/components';
 import type {
   OperatorClaimStatusDto,
   OperatorLeaderboardEntryDto,
@@ -22,7 +22,6 @@ import {
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { OperatorPageComponent } from './operator-page.component';
-import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
 
 describe('OperatorPageComponent', () => {
   afterEach(() => {

@@ -1,13 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type {
-  EntryConsentStateDto,
-  HelpCenterRevisionDto,
-  HelpCenterSectionDto,
-  HelpCenterStateDto,
-  PrivacyConsentDto,
-  PrivacyConsentSaveRequestDto
-} from '../../contracts';
+  GuideRevision as HelpCenterRevisionDto,
+  GuideSection as HelpCenterSectionDto
+} from '@myscoutee/components';
+import type { EntryConsentStateDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../contracts';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';
 

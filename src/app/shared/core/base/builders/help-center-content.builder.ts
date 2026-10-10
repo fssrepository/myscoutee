@@ -1,5 +1,5 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { HelpCenterDocumentKind } from '../../contracts';
+import type { GuideDocumentKind as HelpCenterDocumentKind } from '@myscoutee/components';
 
 export class HelpCenterContentBuilder {
   static defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {

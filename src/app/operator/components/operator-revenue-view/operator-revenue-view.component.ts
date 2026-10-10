@@ -20,9 +20,9 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuTrigger
-} from '../../../shared/ui/components/core/menu';
-import { I18nPipe } from '../../../shared/ui/pipes';
+  type AppMenuTrigger,
+  I18nPipe
+} from '@myscoutee/components';
 
 type OperatorRevenueTimelineMetric =
   | 'projectedEventMinor'

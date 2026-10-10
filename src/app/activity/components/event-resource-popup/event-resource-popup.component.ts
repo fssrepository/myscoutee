@@ -1,3 +1,14 @@
+import {
+  clampNumber,
+  UiDateUtils,
+  ExplanationGuideService,
+  type CardMenuActionEvent,
+  type InfoCardData,
+  PopupComponent,
+  type PopupModel,
+  DialogStore
+} from '@myscoutee/components';
+
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 import {
   CommonModule
@@ -42,7 +53,7 @@ import {
 import {
   DeploymentConfigurationService
 } from '../../../shared/core/base/services/deployment-configuration.service';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+
 import {
   PaymentAuthorizationService
 } from '../../../shared/core/base/services/payment-authorization.service';
@@ -63,11 +74,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
+
 import {
   ActivityChatSingleRowConverter,
   ActivitySubEventResourceInfoCardConverter,
@@ -89,9 +96,7 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
@@ -774,8 +779,8 @@ export class EventResourcePopupComponent {
     const now = new Date();
     const end = new Date(now);
     end.setHours(end.getHours() + 2);
-    const startAtIso = `${request.startAtIso ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(now);
-    const endAtIso = `${request.endAtIso ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(end);
+    const startAtIso = `${request.startAtIso ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(now);
+    const endAtIso = `${request.endAtIso ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(end);
     const subEvent: ContractTypes.SubEventDTO = {
       id: `asset-explore-${this.activeUser().id || 'user'}`,
       name: 'Asset Explore',
@@ -1879,8 +1884,8 @@ export class EventResourcePopupComponent {
       .filter(request => request.status === 'accepted' || request.status === 'pending')
       .filter(request => AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedManagerUserId)
       .sort((left, right) => {
-        const leftTime = AppUtils.dateTimeMs(left.requestedAtIso) ?? 0;
-        const rightTime = AppUtils.dateTimeMs(right.requestedAtIso) ?? 0;
+        const leftTime = UiDateUtils.dateTimeMs(left.requestedAtIso) ?? 0;
+        const rightTime = UiDateUtils.dateTimeMs(right.requestedAtIso) ?? 0;
         return leftTime - rightTime || left.id.localeCompare(right.id);
       });
   }
@@ -2486,7 +2491,7 @@ export class EventResourcePopupComponent {
     dialog: AssignedAssetJoinDialogState,
     amount: number,
     hasError: boolean
-  ): readonly import('../../../shared/ui/components/core/menu').AppMenuItem<string>[] {
+  ): readonly import('@myscoutee/components').AppMenuItem<string>[] {
     const takeOver = dialog.mode === 'takeover';
     const paymentRequired = takeOver && amount > 0;
     const requiresPaymentMethod = paymentRequired && dialog.paymentStep && !this.cashOnly();
@@ -3045,10 +3050,10 @@ export class EventResourcePopupComponent {
     left: AppDTOs.AssetMemberRequestDTO,
     right: AppDTOs.AssetMemberRequestDTO
   ): boolean {
-    const leftStart = AppUtils.isoLocalDateTimeToDate(`${left.booking?.startAtIso ?? ''}`.trim());
-    const leftEnd = AppUtils.isoLocalDateTimeToDate(`${left.booking?.endAtIso ?? ''}`.trim());
-    const rightStart = AppUtils.isoLocalDateTimeToDate(`${right.booking?.startAtIso ?? ''}`.trim());
-    const rightEnd = AppUtils.isoLocalDateTimeToDate(`${right.booking?.endAtIso ?? ''}`.trim());
+    const leftStart = UiDateUtils.isoLocalDateTimeToDate(`${left.booking?.startAtIso ?? ''}`.trim());
+    const leftEnd = UiDateUtils.isoLocalDateTimeToDate(`${left.booking?.endAtIso ?? ''}`.trim());
+    const rightStart = UiDateUtils.isoLocalDateTimeToDate(`${right.booking?.startAtIso ?? ''}`.trim());
+    const rightEnd = UiDateUtils.isoLocalDateTimeToDate(`${right.booking?.endAtIso ?? ''}`.trim());
     if (leftStart && leftEnd && rightStart && rightEnd) {
       return leftStart.getTime() < rightEnd.getTime() && rightStart.getTime() < leftEnd.getTime();
     }
@@ -3395,8 +3400,8 @@ export class EventResourcePopupComponent {
       }
       const previous = existing[assetId];
       const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = AppUtils.clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = AppUtils.clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
         capacityMin,
         capacityMax,
@@ -3974,7 +3979,7 @@ export class EventResourcePopupComponent {
           ? (pendingRequiresAdminApproval ? 'invite' : 'join')
           : null;
         const seed = AppUtils.hashText(`asset-members:${card.id}:${request.id}:${userId}`);
-        const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
+        const actionAtIso = UiDateUtils.toIsoDateTime(UiDateUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
         return {
           id: request.id,
           userId,
@@ -4255,7 +4260,7 @@ export class EventResourcePopupComponent {
 
   private subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
     return this.subEventSupplyContributionEntries(subEventId, cardId)
-      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+      .reduce((sum, entry) => sum + clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
   private subEventDisplayName(subEvent: ContractTypes.SubEventDTO | null | undefined): string {

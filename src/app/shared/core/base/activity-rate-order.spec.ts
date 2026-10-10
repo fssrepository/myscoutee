@@ -1,4 +1,5 @@
-import type { ActivitiesFeedFilters, ListQuery } from '../contracts';
+import type { ListQuery } from '@myscoutee/components';
+import type { ActivitiesFeedFilters } from '../contracts';
 import type { ActivityRateDTO } from '../contracts/activity.interface';
 
 import {

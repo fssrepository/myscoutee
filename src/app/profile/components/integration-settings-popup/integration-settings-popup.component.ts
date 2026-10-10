@@ -1,7 +1,19 @@
 import { McpConnectionsComponent } from './mcp-connections.component';
 import { IntegrationAccessButtonComponent } from './integration-access-button.component';
 import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
-import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/copy-link.component';
+import {
+  CopyLinkComponent,
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  I18nPipe,
+  DialogStore
+} from '@myscoutee/components';
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
 import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
 import { CommonModule } from '@angular/common';
@@ -10,19 +22,10 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { IntegrationService } from '../../../shared/core/base/services/integration.service';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+
 import type {
   IntegrationTokenDto
 } from '../../../shared/core/contracts/integration.interface';
-import { PopupComponent, type PopupActionEvent, type PopupModel } from '../../../shared/ui';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel
-} from '../../../shared/ui/components/core/menu';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 
 type IntegrationActionContext =
   | { action: 'copy'; value: string }

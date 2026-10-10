@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { IServiceFeedbackService,ServiceFeedbackItem,ServiceFeedbackBucket,ServiceFeedbackCommand,ServiceFeedbackStats } from '../../contracts/service-feedback.interface';
-import type { ListQuery,PageResult } from '../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 @Injectable({providedIn:'root'})
 export class HttpServiceFeedbackService implements IServiceFeedbackService {
   private readonly http=inject(HttpClient);

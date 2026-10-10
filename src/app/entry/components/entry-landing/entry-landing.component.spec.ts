@@ -7,8 +7,13 @@ import { DeploymentConfigurationService } from '../../../shared/core/base/servic
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
-import type { PageResult, SmartListConfig, SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
-import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card';
+import {
+  type PageResult,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type InfoCardData
+} from '@myscoutee/components';
+
 import { EntryLandingComponent } from './entry-landing.component';
 
 describe('EntryLandingComponent article lists', () => {

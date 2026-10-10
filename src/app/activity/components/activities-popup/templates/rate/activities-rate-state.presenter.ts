@@ -1,6 +1,6 @@
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import type { ImageCardData } from '../../../../../shared/ui';
+import type { ImageCardData } from '@myscoutee/components';
 
 export function matchesActivitiesRateFilter(
   item: ActivityRateDTO,

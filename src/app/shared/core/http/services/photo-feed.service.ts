@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { CreatePhotoFeedPost, IPhotoFeedService, PhotoFeedPost, PhotoFeedEventOption, PhotoFeedFilters } from '../../contracts/photo-feed.interface';
-import type { ListQuery, PageResult } from '../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { PhotoFeedCounters } from '../../contracts/photo-feed.interface';
 @Injectable({ providedIn: 'root' })
 export class HttpPhotoFeedService implements IPhotoFeedService {

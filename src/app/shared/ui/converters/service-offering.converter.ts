@@ -1,6 +1,11 @@
 import type { ServiceCategory, ServiceStatus, ServiceOfferingItem } from '../../core/contracts/service-offering.interface';
-import type { InfoCardData, SingleCardData } from '../components/core/smart-list';
-import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
+import {
+  type InfoCardData,
+  type SingleCardData,
+  type AppMenuItem,
+  type AppMenuPalette
+} from '@myscoutee/components';
+
 export const SERVICE_STATUS_STYLE: Record<ServiceStatus, { icon: string; palette: AppMenuPalette }> = {
   published: { icon: 'public', palette: 'green' }, draft: { icon: 'edit_note', palette: 'gold' }, trash: { icon: 'delete', palette: 'danger' }
 };

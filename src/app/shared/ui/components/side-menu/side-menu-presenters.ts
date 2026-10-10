@@ -1,7 +1,6 @@
-import type { AppMenuModel } from '../core/menu/menu.types';
+import { type AppMenuModel, type AppMenuPalette } from '@myscoutee/components';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import type { AppMenuPalette } from '../..';
 
 export interface SideMenuPresentation {
   aliases: readonly string[];

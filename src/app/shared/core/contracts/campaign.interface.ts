@@ -1,6 +1,5 @@
-import type { RatingSnapshot } from './rating-snapshot';
+import { type RatingSnapshot, type ListQuery, type PageResult } from '@myscoutee/components';
 import type { DocumentAttachment } from './document-attachment.interface';
-import type { ListQuery, PageResult } from './list.interface';
 
 export const CAMPAIGN_KINDS = ['work', 'business', 'both'] as const;
 export type CampaignKind = typeof CAMPAIGN_KINDS[number];

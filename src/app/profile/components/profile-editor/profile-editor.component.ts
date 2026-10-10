@@ -1,3 +1,25 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  HeaderCardComponent,
+  ImageCarouselComponent,
+  PopupComponent,
+  type HeaderCardModel,
+  type PopupControl,
+  type PopupModel,
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowDraft,
+  type FormFlowModel,
+  DialogStore
+} from '@myscoutee/components';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   CommonModule
@@ -28,48 +50,22 @@ import {
 import {
   AppUtils
 } from '../../../shared/app-utils';
-import {
-  ExplanationGuideService,
-  USER_PROFILE_SAVE_CONTEXT_KEY,
-  UsersService
-} from '../../../shared/core';
+
+import { USER_PROFILE_SAVE_CONTEXT_KEY, UsersService } from '../../../shared/core';
 import {
   ProfileExtDto,
   UserDto
 } from '../../../shared/core/contracts/user.interface';
-import {
-  HeaderCardComponent,
-  ImageCarouselComponent,
-  PopupComponent,
-  type HeaderCardModel,
-  type PopupControl,
-  type PopupModel,
-  ProfileExperienceManagerComponent
-} from '../../../shared/ui';
-import {
-  AppMenuComponent,
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
-import {
-  FormFlowComponent,
-  type FormFlowActionEvent,
-  type FormFlowDraft,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form/flow';
+
+import { ProfileExperienceManagerComponent } from '../../../shared/ui';
+
 import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
@@ -266,7 +262,7 @@ export class ProfileEditorComponent implements OnDestroy {
 
   protected get profileEditorAge(): number {
     const profile = this.profileEditorData.profile;
-    return AppUtils.ageFromIsoDate(profile.birthday, profile.age);
+    return UiDateUtils.ageFromIsoDate(profile.birthday, profile.age);
   }
 
   protected onProfileEditorFlowAction(event: FormFlowActionEvent): void {

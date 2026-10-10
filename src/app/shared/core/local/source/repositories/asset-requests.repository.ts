@@ -1,7 +1,7 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { LocalUsersRepository } from './users.repository';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import {
   ASSET_REQUESTS_TABLE_NAME,
@@ -92,7 +92,7 @@ export class LocalAssetRequestsRepository {
     const range = this.availabilityStatsRange(query.rangeStart, query.rangeEnd);
     const assetCapacity = this.resolveAssetCapacity(requests);
     const dates: Date[] = [];
-    for (let cursor = new Date(range.start); cursor.getTime() <= range.end.getTime(); cursor = AppUtils.addDays(cursor, 1)) {
+    for (let cursor = new Date(range.start); cursor.getTime() <= range.end.getTime(); cursor = UiDateUtils.addDays(cursor, 1)) {
       dates.push(new Date(cursor));
     }
     if (order === 'earlier') {
@@ -191,7 +191,7 @@ export class LocalAssetRequestsRepository {
 
   private availabilityRequestDaySortTime(request: AssetRequestRecord): number {
     const timestamp = this.availabilityRequestSortTime(request);
-    return timestamp > 0 ? AppUtils.dateOnly(new Date(timestamp)).getTime() : 0;
+    return timestamp > 0 ? UiDateUtils.dateOnly(new Date(timestamp)).getTime() : 0;
   }
 
   private assetRequestDateRangeOverlaps(request: AssetRequestRecord, start: Date, end: Date): boolean {
@@ -209,7 +209,7 @@ export class LocalAssetRequestsRepository {
     const parsedEnd = this.parseAvailabilityDate(request.booking?.endAtIso);
     const end = parsedEnd && parsedEnd.getTime() > start.getTime()
       ? parsedEnd
-      : AppUtils.addDays(start, 1);
+      : UiDateUtils.addDays(start, 1);
     return { start, end };
   }
 
@@ -222,13 +222,13 @@ export class LocalAssetRequestsRepository {
     if (range) {
       return range;
     }
-    const parsed = AppUtils.parseDateOnlyLocal(`${dateIso ?? ''}`.trim());
+    const parsed = UiDateUtils.parseDateOnlyLocal(`${dateIso ?? ''}`.trim());
     if (!parsed) {
       return null;
     }
     return {
       start: parsed,
-      end: AppUtils.addDays(parsed, 1)
+      end: UiDateUtils.addDays(parsed, 1)
     };
   }
 
@@ -249,12 +249,12 @@ export class LocalAssetRequestsRepository {
     if (!start) {
       return null;
     }
-    end = end ?? AppUtils.addDays(start, 1);
+    end = end ?? UiDateUtils.addDays(start, 1);
     if (end.getTime() < start.getTime()) {
       return { start: end, end: start };
     }
     if (end.getTime() === start.getTime()) {
-      return { start, end: AppUtils.addDays(start, 1) };
+      return { start, end: UiDateUtils.addDays(start, 1) };
     }
     return { start, end };
   }
@@ -266,21 +266,21 @@ export class LocalAssetRequestsRepository {
     }
     const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(normalized);
     const parsed = dateOnly
-      ? AppUtils.parseDateOnlyLocal(normalized)
+      ? UiDateUtils.parseDateOnlyLocal(normalized)
       : this.parseAvailabilityDate(normalized);
     if (!parsed) {
       return null;
     }
-    return isEnd && dateOnly ? AppUtils.addDays(parsed, 1) : parsed;
+    return isEnd && dateOnly ? UiDateUtils.addDays(parsed, 1) : parsed;
   }
 
   private availabilityStatsRange(
     rangeStart: string | null | undefined,
     rangeEnd: string | null | undefined
   ): AssetAvailabilityDateRangeRecord {
-    const fallback = AppUtils.dateOnly(new Date());
-    const start = AppUtils.parseDateOnlyLocal(`${rangeStart ?? ''}`.trim()) ?? AppUtils.startOfMonth(fallback);
-    const end = AppUtils.parseDateOnlyLocal(`${rangeEnd ?? ''}`.trim()) ?? AppUtils.endOfMonth(start);
+    const fallback = UiDateUtils.dateOnly(new Date());
+    const start = UiDateUtils.parseDateOnlyLocal(`${rangeStart ?? ''}`.trim()) ?? UiDateUtils.startOfMonth(fallback);
+    const end = UiDateUtils.parseDateOnlyLocal(`${rangeEnd ?? ''}`.trim()) ?? UiDateUtils.endOfMonth(start);
     if (end.getTime() < start.getTime()) {
       return { start: end, end: start };
     }
@@ -292,7 +292,7 @@ export class LocalAssetRequestsRepository {
     if (!normalized) {
       return null;
     }
-    return AppUtils.isoLocalDateTimeToDate(normalized) ?? AppUtils.parseDate(normalized);
+    return UiDateUtils.isoLocalDateTimeToDate(normalized) ?? UiDateUtils.parseDate(normalized);
   }
 
   private isCommittedAvailabilityRequest(request: AssetRequestRecord): boolean {

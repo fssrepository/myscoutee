@@ -2,8 +2,8 @@ import type {
   EventFeedbackDto,
   EventFeedbackPageStateSnapshotDto,
 } from '../../core/contracts/activity.interface';
-import type { InfoCardData, CardMenuActionId } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
+import { type InfoCardData, type CardMenuActionId, type UiListConverter } from '@myscoutee/components';
+
 import type { ServiceFeedbackItem } from '../../core/contracts/service-feedback.interface';
 
 export interface ServiceFeedbackCardDetail {

@@ -8,9 +8,9 @@ import type {
   NotificationSyncRequestDto,
   NotificationSyncResponseDto
 } from '../../../core/contracts/notification.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+import { type ListQuery, type AppMenuDragPosition } from '@myscoutee/components';
 import { NotificationsService } from '../../../core/base/services/notifications.service';
-import type { AppMenuDragPosition } from '../../components/core/menu';
+
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { ActivityStore } from './activity.store';
 import { UserProfileStore } from './user-profile.store';

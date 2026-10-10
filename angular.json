@@ -169,6 +169,11 @@
                   "inline": true
                 }
               }
+            },
+            "unit-test": {
+              "polyfills": [
+                "@angular/compiler"
+              ]
             }
           },
           "defaultConfiguration": "local"
@@ -191,7 +196,8 @@
                 "@firebase/messaging",
                 "@firebase/util",
                 "@angular/material",
-                "@angular/cdk"
+                "@angular/cdk",
+                "@myscoutee/components"
               ]
             }
           },
@@ -220,7 +226,11 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "buildTarget": "myscoutee:build:local"
+            "buildTarget": "myscoutee:build:local,unit-test",
+            "providersFile": "src/app/shared/ui/ui.providers.ts",
+            "include": [
+              "**/*.spec.ts"
+            ]
           }
         }
       }

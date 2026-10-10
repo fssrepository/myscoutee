@@ -1,3 +1,28 @@
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  ImageCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  UiPollCoordinator,
+  UiTaskScheduler,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type ImageCardData,
+  type ImageCardMediaAction,
+  type ImageCardMediaActionEvent,
+  type ListQuery,
+  type PageResult,
+  type PopupActionEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListItemTemplateContext,
+  type SmartListLoaders,
+  type SmartListStateChange,
+  DialogStore
+} from '@myscoutee/components';
 import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community-group-changes.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
@@ -29,43 +54,11 @@ import {
   AppUtils
 } from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
-import {
-  ActivityMembersService,
-  ActivityInviteCandidatesService,
-  AssetsService,
-  ChatsService,
-  ExplanationGuideService,
-  EventsService,
-  I18nService,
-  UsersService
-} from '../../../shared/core';
+
+import { ActivityMembersService, ActivityInviteCandidatesService, AssetsService, ChatsService, EventsService, I18nService, UsersService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { tournamentParticipationLocked } from '../../../shared/core/common/tournament-group-count';
-import {
-  ImageCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  UiPollCoordinator,
-  UiTaskScheduler,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type ImageCardData,
-  type ImageCardMediaAction,
-  type ImageCardMediaActionEvent,
-  type ListQuery,
-  type PageResult,
-  type PopupActionEvent,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListItemTemplateContext,
-  type SmartListLoaders,
-  type SmartListStateChange
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   ActivityMemberImageCardConverter
 } from '../../../shared/ui/converters';
@@ -1274,7 +1267,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           status: 'accepted' as const,
           pendingSource: null,
           requestKind: null,
-          actionAtIso: AppUtils.toIsoDateTime(new Date())
+          actionAtIso: UiDateUtils.toIsoDateTime(new Date())
         }
       : member);
     await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
@@ -1405,7 +1398,7 @@ export class EventMembersPopupComponent implements OnDestroy {
             pendingSource: null,
             requestKind: null,
             managerGrantedByUserId: actorUserId,
-            actionAtIso: AppUtils.toIsoDateTime(new Date())
+            actionAtIso: UiDateUtils.toIsoDateTime(new Date())
           }
         : member);
     this.applyCommittedMembers(nextMembers, previousMembers);
@@ -1437,7 +1430,7 @@ export class EventMembersPopupComponent implements OnDestroy {
             role: 'Member' as const,
             status: 'accepted' as const,
             managerGrantedByUserId: null,
-            actionAtIso: AppUtils.toIsoDateTime(new Date())
+            actionAtIso: UiDateUtils.toIsoDateTime(new Date())
           }
         : member);
     this.applyCommittedMembers(nextMembers, previousMembers);
@@ -1644,7 +1637,6 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     return 'Delete invitation';
   }
-
 
   private async applyInvites(
     selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]
@@ -2110,7 +2102,6 @@ export class EventMembersPopupComponent implements OnDestroy {
       memberStatusChange: change
     });
   }
-
 
   private syncVisibleMembers(
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
@@ -2644,8 +2635,8 @@ export class EventMembersPopupComponent implements OnDestroy {
       .filter(member => member.userId !== entry.userId)
       .filter(member => member.status === 'accepted' && member.role === 'Admin')
       .sort((left, right) =>
-        AppUtils.toSortableDate(left.actionAtIso)
-        - AppUtils.toSortableDate(right.actionAtIso)
+        UiDateUtils.toSortableDate(left.actionAtIso)
+        - UiDateUtils.toSortableDate(right.actionAtIso)
       )[0] ?? null;
   }
 
@@ -2659,8 +2650,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         && (member.role === 'Admin' || member.role === 'Manager')
       )
       .sort((left, right) =>
-        AppUtils.toSortableDate(left.actionAtIso)
-        - AppUtils.toSortableDate(right.actionAtIso)
+        UiDateUtils.toSortableDate(left.actionAtIso)
+        - UiDateUtils.toSortableDate(right.actionAtIso)
       )[0] ?? null;
   }
 

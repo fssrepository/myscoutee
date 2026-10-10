@@ -22,8 +22,6 @@ import type { ActivityEventRecord } from '../../../contracts/activity.interface'
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';
 
-
-
 import {
   SeedAdminAffinityGraphRepository,
   SeedAdminBootstrapRepository,

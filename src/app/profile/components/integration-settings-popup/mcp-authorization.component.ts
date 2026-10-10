@@ -2,9 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IntegrationService } from '../../../shared/core/base/services/integration.service';
 import type { McpAuthorizationContext, McpAuthorizationRequest } from '../../../shared/core/contracts/integration.interface';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
-import { AppMenuComponent, type AppMenuItem } from '../../../shared/ui/components/core/menu';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import {
+  PopupComponent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  I18nPipe
+} from '@myscoutee/components';
+
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({

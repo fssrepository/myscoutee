@@ -1,12 +1,18 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { FormFlowComponent, type FormFlowModel } from '../core/form/flow';
+import {
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  type AppMenuItem,
+  type AppMenuPalette,
+  ExplanationGuideService
+} from '@myscoutee/components';
+
 import { ServiceFeedbackStore } from '../../context/stores/service-feedback.store';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/rating-snapshot';
-import type { AppMenuItem, AppMenuPalette } from '../core/menu';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
 
 /** Service answers opened from the common Feedback list. */
 @Component({

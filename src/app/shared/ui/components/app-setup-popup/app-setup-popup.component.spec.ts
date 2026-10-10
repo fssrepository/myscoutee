@@ -1,12 +1,10 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
+import { PopupPresenceStore, DialogStore } from '@myscoutee/components';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { AppSetupPopupComponent } from './app-setup-popup.component';
 import { SessionService } from '../../../core/base/services/session.service';
-import { DialogStore } from '../../context/stores/dialog.store';
-
 
 describe('Setup permission help', () => {
   afterEach(() => TestBed.resetTestingModule());

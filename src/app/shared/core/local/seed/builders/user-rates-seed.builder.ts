@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
@@ -148,13 +149,13 @@ export class SeedUserRatesBuilder {
     const seed = AppUtils.hashText(
       `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
     );
-    const happenedAtDate = AppUtils.shiftDate(
+    const happenedAtDate = UiDateUtils.shiftDate(
       new Date('2026-03-01T20:00:00'),
       SEED_SCHEDULE_REFERENCE_DATE,
       environment.bootstrapOffsetInDays
     );
     happenedAtDate.setDate(happenedAtDate.getDate() - ((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)));
-    const happenedAt = AppUtils.toIsoDateTime(happenedAtDate);
+    const happenedAt = UiDateUtils.toIsoDateTime(happenedAtDate);
     let scoreGiven = 0;
     let scoreReceived = 0;
     if (direction === 'given') {

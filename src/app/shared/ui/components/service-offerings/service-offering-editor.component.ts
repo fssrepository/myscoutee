@@ -2,11 +2,17 @@ import { AppUtils } from '../../../app-utils';
 import { ServiceFeedbackService } from '../../../core/base/services/service-feedback.service';
 import type { ServiceFeedbackStats } from '../../../core/contracts/service-feedback.interface';
 import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/rating-snapshot';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowActionEvent
+} from '@myscoutee/components';
 import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent,type PopupModel } from '../core/popup';
-import { FormFlowComponent,type FormFlowModel,type FormFlowActionEvent } from '../core/form/flow';
+
 import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
 import { SERVICE_CATEGORY_STYLE } from '../../converters/service-offering.converter';
 import { I18nService } from '../../../core/base/services/i18n.service';

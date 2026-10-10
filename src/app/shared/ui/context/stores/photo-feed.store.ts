@@ -1,13 +1,12 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { PhotoFeedService } from '../../../core/base/services/photo-feed.service';
 import { UserProfileStore } from './user-profile.store';
-import { ImageGalleryStore } from './image-gallery.store';
+import { ImageGalleryStore, type ListQuery, UiTaskScheduler } from '@myscoutee/components';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+
 import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedCounters } from '../../../core/contracts/photo-feed.interface';
 import type { ImageEventReference } from '../../../core/contracts/image-gallery.interface';
 import { FeedSeenOutboxRepository } from '../../../core/base/repositories/feed-seen-outbox.repository';
-import { UiTaskScheduler } from '../../scheduler/ui-task-scheduler';
 
 @Injectable({ providedIn: 'root' })
 export class PhotoFeedStore {
@@ -124,7 +123,7 @@ export class PhotoFeedStore {
     if (!userId) return;
     const id = crypto.randomUUID();
     this.galleryToken = this.gallery.open({ images: [], imageDetails: {}, slotCount: 5, readOnly: false,
-      detailsConfig: { eventRequired: true, selectEvent: current => new Promise(resolve => {
+      detailsConfig: { eventRequired: true, selectEvent: (current?: ImageEventReference | null) => new Promise<ImageEventReference | null>(resolve => {
         this.pickEvent(null);
         this.eventPicker.set({ initial: current, resolve });
       }) },

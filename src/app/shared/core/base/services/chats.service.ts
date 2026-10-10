@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
+import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ActivitiesFeedFilters } from '../../contracts';
 import type {
   ChatDTO,
   ChatHeaderSyncResponseDTO,

@@ -1,3 +1,5 @@
+import { clampNumber, UiDateUtils } from '@myscoutee/components';
+
 import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type { DtoListMapper, DtoMapper } from './mapper.types';
 import { AppUtils } from '../../../../app-utils';
@@ -361,8 +363,8 @@ export class LocalActivityEventsMapper {
     templates: readonly EventContracts.EventSlotTemplateDTO[],
     query: ActivityEventSubEventsQueryDTO | null | undefined
   ): SubEventsSlotSource[] {
-    const parentStart = AppUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
-    const parentEnd = AppUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
+    const parentStart = UiDateUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
+    const parentEnd = UiDateUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
     if (!parentStart || !parentEnd || parentEnd.getTime() < parentStart.getTime()) {
       return [];
     }
@@ -380,7 +382,7 @@ export class LocalActivityEventsMapper {
       if (template.closed === true || this.slotOverrideDateKey(template.overrideDate)) {
         continue;
       }
-      const templateStart = AppUtils.parseDate(`${template.startAt ?? ''}`.trim());
+      const templateStart = UiDateUtils.parseDate(`${template.startAt ?? ''}`.trim());
       if (!templateStart) {
         continue;
       }
@@ -402,7 +404,7 @@ export class LocalActivityEventsMapper {
       if (template.closed === true || !this.slotOverrideDateKey(template.overrideDate)) {
         continue;
       }
-      const startAt = AppUtils.parseDate(`${template.startAt ?? ''}`.trim());
+      const startAt = UiDateUtils.parseDate(`${template.startAt ?? ''}`.trim());
       if (!startAt) {
         continue;
       }
@@ -461,8 +463,8 @@ export class LocalActivityEventsMapper {
     if (definitionsDuration > 0) {
       return definitionsDuration;
     }
-    const parentStart = AppUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
-    const parentEnd = AppUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
+    const parentStart = UiDateUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
+    const parentEnd = UiDateUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
     if (!parentStart || !parentEnd || parentEnd.getTime() <= parentStart.getTime()) {
       return 0;
     }
@@ -581,7 +583,7 @@ export class LocalActivityEventsMapper {
       if ((utc ? date.getUTCDay() : date.getDay()) !== (utc ? templateStart.getUTCDay() : templateStart.getDay())) {
         return false;
       }
-      const diffDays = Math.floor((date.getTime() - (utc ? Date.UTC(templateStart.getUTCFullYear(),templateStart.getUTCMonth(),templateStart.getUTCDate()) : AppUtils.dateOnly(templateStart).getTime())) / (24 * 60 * 60 * 1000));
+      const diffDays = Math.floor((date.getTime() - (utc ? Date.UTC(templateStart.getUTCFullYear(),templateStart.getUTCMonth(),templateStart.getUTCDate()) : UiDateUtils.dateOnly(templateStart).getTime())) / (24 * 60 * 60 * 1000));
       const diffWeeks = Math.floor(diffDays / 7);
       return diffWeeks >= 0 && diffWeeks % 2 === 0;
     }
@@ -612,17 +614,17 @@ export class LocalActivityEventsMapper {
 
   private static queryRangeStart(query: ActivityEventSubEventsQueryDTO | null | undefined): Date | null {
     const value = `${query?.rangeStart ?? ''}`.trim();
-    const parsed = AppUtils.parseDateOnly(value);
-    return parsed ? AppUtils.dateOnly(parsed) : null;
+    const parsed = UiDateUtils.parseDateOnly(value);
+    return parsed ? UiDateUtils.dateOnly(parsed) : null;
   }
 
   private static queryRangeEnd(query: ActivityEventSubEventsQueryDTO | null | undefined): Date | null {
     const value = `${query?.rangeEnd ?? ''}`.trim();
-    const parsed = AppUtils.parseDateOnly(value);
+    const parsed = UiDateUtils.parseDateOnly(value);
     if (!parsed) {
       return null;
     }
-    const end = AppUtils.dateOnly(parsed);
+    const end = UiDateUtils.dateOnly(parsed);
     end.setHours(23, 59, 59, 999);
     return end;
   }
@@ -632,7 +634,7 @@ export class LocalActivityEventsMapper {
     if (!raw) {
       return null;
     }
-    const parsed = AppUtils.parseDate(raw.includes('T') ? raw : `${raw}T00:00`);
+    const parsed = UiDateUtils.parseDate(raw.includes('T') ? raw : `${raw}T00:00`);
     if (!parsed) {
       return null;
     }
@@ -652,7 +654,7 @@ export class LocalActivityEventsMapper {
   }
 
   private static dateMs(value: string | null | undefined): number {
-    return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
+    return UiDateUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
   private static slotMainEventItem(
@@ -699,7 +701,7 @@ export class LocalActivityEventsMapper {
     definitions: readonly SubEventDefinitionDTO[],
     groupCountsByStageId: ReadonlyMap<string, number>
   ): EventContracts.SubEventDTO[] {
-    const slotStart = AppUtils.parseDate(`${slotStartIso ?? ''}`.trim()) ?? new Date();
+    const slotStart = UiDateUtils.parseDate(`${slotStartIso ?? ''}`.trim()) ?? new Date();
     return this.subEventDefinitionTimeline(definitions)
       .map(({ item, startOffsetMinutes, durationMinutes }, index) => {
         const startAt = new Date(slotStart.getTime() + (startOffsetMinutes * 60 * 1000));
@@ -1286,7 +1288,7 @@ export class LocalActivityEventDetailsMapper {
     ]);
     return (
       this.resolveAffinityTokenScore(tokens, `event:${options.id}`) * 89
-      + Math.round(AppUtils.clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
+      + Math.round(clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
       + Math.max(0, Math.trunc(Number(options.acceptedMembers) || 0)) * 19
       + Math.max(0, Math.trunc(Number(options.capacityTotal) || 0)) * 7
     );

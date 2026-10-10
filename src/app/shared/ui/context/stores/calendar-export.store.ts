@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
 import { EventsService } from '../../../core/base/services/events.service';
 import { UserProfileStore } from './user-profile.store';
-import { DialogStore } from './dialog.store';
+import { DialogStore } from '@myscoutee/components';
 
 @Injectable({ providedIn: 'root' })
 export class CalendarExportStore {

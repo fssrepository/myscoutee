@@ -12,13 +12,7 @@ export interface DeploymentPrivacyContactDto {
   privacyContactEmail: string;
 }
 
-export interface DeploymentBrandingDto {
-  productName: string;
-  homeLabel: string;
-  logoUrl: string;
-  logoCharacterIndex: number | null;
-  revision: number;
-}
+import type { UiBranding as DeploymentBrandingDto } from '@myscoutee/components';
 
 export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
   productName: 'MyScoutee',

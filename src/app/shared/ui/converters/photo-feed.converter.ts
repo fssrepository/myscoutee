@@ -1,7 +1,7 @@
 import { AppUtils } from '../../app-utils';
 import { contentModerationBadge } from './content-moderation-badge';
 import type { PhotoFeedPost } from '../../core/contracts/photo-feed.interface';
-import type { InfoCardData } from '../components/core/smart-list/card';
+import type { InfoCardData } from '@myscoutee/components';
 
 export class PhotoFeedConverter {
   static convert(post: PhotoFeedPost, viewerId?: string | null): InfoCardData<PhotoFeedPost> {

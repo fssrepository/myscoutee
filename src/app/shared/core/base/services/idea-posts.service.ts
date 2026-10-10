@@ -12,8 +12,8 @@ import type {
   IdeaPostPublicPageResultDto,
   IdeaPostSaveRequestDto
 } from '../../contracts/content.interface';
-import type { PageResult } from '../../contracts/list.interface';
-import type { InfoCardData, CardMenuActionId } from '../../../ui';
+import { type PageResult, type InfoCardData, type CardMenuActionId } from '@myscoutee/components';
+
 import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({

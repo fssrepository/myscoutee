@@ -5,8 +5,7 @@ import type {
   EventFeedbackCardDto,
   EventFeedbackDetailDto
 } from '../../core/contracts/activity.interface';
-import type { ImageCardData, InfoCardData } from '../components/core/smart-list/card';
-import type { UiConverter } from './converter.types';
+import { type ImageCardData, type InfoCardData, type UiConverter } from '@myscoutee/components';
 
 export class EventFeedbackDetailConverter {
   static convert(result: EventFeedbackDetailDto): AppTypes.EventFeedbackCard[] {

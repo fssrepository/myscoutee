@@ -1,7 +1,7 @@
+import { UiDateUtils } from '@myscoutee/components';
 import workArticles from '../data/work-articles.json';
 import communityArticles from '../data/community-articles.json';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
@@ -225,7 +225,7 @@ export class SeedIdeaPostsBuilder {
   }
 
   private static rebaseSeedDateTime(value: string): string {
-    return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
+    return UiDateUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
   }
 
   private static seedImageUrl(postId: string): string {

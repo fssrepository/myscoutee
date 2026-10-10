@@ -3,7 +3,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalCommunityGroupsService } from '../../local/source/services/community-groups.service';
 import { HttpCommunityGroupsService } from '../../http/services/community-groups.service';
 import type { ICommunityGroupsService, SaveCommunityGroup, GroupFilters, GroupSyncRequest } from '../../contracts/community-group.interface';
-import type { ListQuery } from '../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsService extends BaseRouteModeService implements ICommunityGroupsService {
   private readonly local = inject(LocalCommunityGroupsService);

@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { EventsService } from '../../../core/base/services/events.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import type { MingleStateDTO } from '../../../core/contracts/event.interface';
-import { UiPollCoordinator } from '../../scheduler/ui-poll-coordinator';
+import { UiPollCoordinator } from '@myscoutee/components';
 import { ActivityStore } from './activity.store';
 import { NotificationCenterStore } from './notification-center.store';
 import { MemberMenuStore } from './member-menu.store';

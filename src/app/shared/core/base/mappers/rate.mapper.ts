@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '../../contracts/rating-snapshot';
+import type { RatingSnapshot } from '@myscoutee/components';
 import type {
   ActivityRateDTO,
   UserRateSyncPayloadDTO

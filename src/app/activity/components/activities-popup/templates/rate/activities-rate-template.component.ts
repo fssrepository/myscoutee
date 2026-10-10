@@ -1,4 +1,19 @@
-import { ratingCriteriaFor, type RatingSnapshot } from '../../../../../shared/core/contracts/rating-snapshot';
+import {
+  type RatingSnapshot,
+  type AppMenuItemSelectEvent,
+  type AppMenuItem,
+  type CardMenuRequestEvent,
+  PairCardComponent,
+  type CardProfileViewData,
+  type AppMenuRateConfig,
+  SingleCardComponent,
+  type CardBadgeConfig,
+  type ImageCardData,
+  type PairCardData,
+  type SmartListItemMenuRequest,
+  type SingleCardData
+} from '@myscoutee/components';
+import { ratingCriteriaFor } from '../../../../../shared/core/contracts/rating-snapshot';
 
 import {
   ChangeDetectionStrategy,
@@ -13,20 +28,7 @@ import {
 
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import {
-  type AppMenuItemSelectEvent,
-  type AppMenuItem,
-  type CardMenuRequestEvent,
-  PairCardComponent,
-  type CardProfileViewData,
-  type AppMenuRateConfig,
-  SingleCardComponent,
-  type CardBadgeConfig,
-  type ImageCardData,
-  type PairCardData,
-  type SmartListItemMenuRequest,
-  type SingleCardData
-} from '../../../../../shared/ui';
+
 import {
   ActivityRatePairCardConverter,
   ActivityRateSingleCardConverter,

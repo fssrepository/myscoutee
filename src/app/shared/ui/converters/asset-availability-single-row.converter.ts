@@ -1,6 +1,5 @@
 import type { AssetOccupancyRowDTO } from '../../core/contracts/asset.interface';
-import type { SingleRowData } from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
+import { type SingleRowData, type UiListConverter } from '@myscoutee/components';
 
 export interface AssetAvailabilitySingleRowConverterOptions {
   groupLabel?: string | null;

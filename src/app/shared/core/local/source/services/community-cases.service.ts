@@ -13,7 +13,7 @@ import { LocalCommunityCaseMapper } from '../mappers/community-case.mapper';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { CASE_TYPES, type ICommunityCasesService, type CommunityCase, type CaseFilters, type CaseListContext, type SaveCommunityCase, type CaseCommand, type SaveCommunityScheduledTask, type ScheduledTaskAction, type ScheduledTaskFilters, type ScheduledTaskCounters } from '../../../contracts/community-case.interface';
 import type { CommunityCaseRecord, CommunityTaskRecord } from '../entity/community-case.entity';
-import type { ListQuery, PageResult } from '../../../contracts/list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 
 @Injectable({ providedIn: 'root' })
 export class LocalCommunityCasesService extends LocalRouteDelayService implements ICommunityCasesService {

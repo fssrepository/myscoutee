@@ -1,3 +1,4 @@
+import type { ListQuery as SharedListQuery } from '@myscoutee/components';
 import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
 import type { StoredContact } from '../../../contracts/contact.interface';
 import { CHATS_TABLE_NAME } from '../entity/chat.entity';
@@ -477,8 +478,8 @@ describe('LocalChatsRepository chat pages', () => {
 });
 
 function pageRequest(
-  overrides: Partial<ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>> = {}
-): ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters> {
+  overrides: Partial<SharedListQuery<ContractTypes.ActivitiesFeedFilters>> = {}
+): SharedListQuery<ContractTypes.ActivitiesFeedFilters> {
   const { filters, ...queryOverrides } = overrides;
   return {
     page: 0,

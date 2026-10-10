@@ -5,7 +5,7 @@ import {
   SessionService,
   type AppSession
 } from '../../../core/base/services/session.service';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import type {
   OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardEntryDto,

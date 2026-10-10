@@ -2,7 +2,7 @@ import { APP_STATIC_DATA } from '../../app-static-data';
 import * as AppConstants from '../../core/common/constants';
 import type { SubEventResourceFilter } from '../../core/common/constants';
 import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
-import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
+import type { AppMenuItem, AppMenuPalette } from '@myscoutee/components';
 
 export type EventSubeventRuntimeStageAction =
   | 'start-tournament'

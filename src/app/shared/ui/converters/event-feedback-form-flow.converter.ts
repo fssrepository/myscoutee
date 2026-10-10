@@ -1,11 +1,13 @@
 import type * as AppTypes from '../models';
 import { EventFeedbackDetailDto } from '../../core/contracts/activity.interface';
-import type {
-  AppMenuItem,
-  AppMenuModel,
-  AppMenuPalette
-} from '../components/core/menu';
-import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/core/form/flow';
+import {
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type FormFlowMenuControlConfig,
+  type FormFlowModel
+} from '@myscoutee/components';
+
 import {
   EventFeedbackDetailConverter,
   EventFeedbackDetailImageCardConverter,

@@ -1,3 +1,4 @@
+import { UiDateUtils } from '@myscoutee/components';
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
@@ -329,8 +330,8 @@ export class LocalActivityMembersBuilder {
       if (priorityComparison !== 0) {
         return priorityComparison;
       }
-      const actionComparison = AppUtils.toSortableDate(right.actionAtIso)
-        - AppUtils.toSortableDate(left.actionAtIso);
+      const actionComparison = UiDateUtils.toSortableDate(right.actionAtIso)
+        - UiDateUtils.toSortableDate(left.actionAtIso);
       return actionComparison !== 0
         ? actionComparison
         : left.userId.localeCompare(right.userId);

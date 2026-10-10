@@ -19,16 +19,7 @@ import {
 import { of } from 'rxjs';
 
 import {
-  ActivityResourceBuilder,
-  ActivityResourcesService,
   ExplanationGuideService,
-  EventsService
-} from '../../../shared/core';
-import type * as AppDTOs from '../../../shared/core/contracts';
-import type * as ContractTypes from '../../../shared/core/contracts';
-import * as AppConstants from '../../../shared/core/common/constants';
-import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
-import {
   AccordionComponent,
   FormFlowComponent,
   IndicatorComponent,
@@ -49,8 +40,15 @@ import {
   type UiAccordionActionMenuSelectEvent,
   type UiAccordionItem,
   type UiAccordionModel,
-  type UiAccordionToggleEvent
-} from '../../../shared/ui';
+  type UiAccordionToggleEvent,
+  DialogStore
+} from '@myscoutee/components';
+import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
+import type * as AppDTOs from '../../../shared/core/contracts';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import * as AppConstants from '../../../shared/core/common/constants';
+import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
+
 import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   EventTournamentGroupsPopupConverter,
@@ -60,9 +58,7 @@ import {
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   EventSubeventGroupFormPopupComponent
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';

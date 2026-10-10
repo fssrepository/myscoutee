@@ -1,3 +1,4 @@
+import { UiDateUtils, type ListQuery } from '@myscoutee/components';
 import {
   HttpClient,
   HttpParams
@@ -27,7 +28,8 @@ import type {
 import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ChatCallEvent, ChatCallRequest } from '../../contracts/chat-call.interface';
-import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
+
+import type { ActivitiesFeedFilters } from '../../contracts';
 import {
   SessionService
 } from '../../base/services/session.service';
@@ -904,7 +906,7 @@ export class HttpChatsService implements IChatsService {
     messages: readonly ContractTypes.ChatMessageDto[]
   ): ContractTypes.ChatMessageDto[] {
     return [...messages].sort((left, right) =>
-      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      UiDateUtils.toSortableDate(right.sentAtIso) - UiDateUtils.toSortableDate(left.sentAtIso)
       || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
     );
   }
@@ -1278,7 +1280,7 @@ export class HttpChatsService implements IChatsService {
       messageIds: (read?.messageIds ?? [])
         .map(messageId => this.normalizeHttpText(messageId))
         .filter(Boolean),
-      readAtIso: this.normalizeHttpText(read?.readAtIso) || AppUtils.toIsoDateTime(new Date()),
+      readAtIso: this.normalizeHttpText(read?.readAtIso) || UiDateUtils.toIsoDateTime(new Date()),
       unread: read?.unread === undefined || read.unread === null
         ? null
         : Math.max(0, Math.trunc(Number(read.unread) || 0))

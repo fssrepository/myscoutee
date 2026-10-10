@@ -1,3 +1,11 @@
+import {
+  UiDateUtils,
+  type CardContextBadgeConfig,
+  type ImageCardData,
+  type ImageCardPerson,
+  type PairCardSlot,
+  type UiListConverter
+} from '@myscoutee/components';
 import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
@@ -5,13 +13,6 @@ import {
   activityRateSortKey,
   type ActivityRateOrder
 } from '../../core/base/activity-rate-order';
-import type {
-  CardContextBadgeConfig,
-  ImageCardData,
-  ImageCardPerson,
-  PairCardSlot
-} from '../components/core/smart-list/card';
-import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
   ratedUsers?: readonly UserDto[];
@@ -264,8 +265,8 @@ export class ActivityRateImageCardConverter {
   }
 
   private static formatMonthDayLabel(isoValue: string | null | undefined): string {
-    const date = AppUtils.parseDate(isoValue);
-    return date ? AppUtils.shortMonthDayLabel(date) : 'Activity date';
+    const date = UiDateUtils.parseDate(isoValue);
+    return date ? UiDateUtils.shortMonthDayLabel(date) : 'Activity date';
   }
 }
 

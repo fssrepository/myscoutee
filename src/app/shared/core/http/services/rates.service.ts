@@ -1,10 +1,11 @@
+import { UiDateUtils, type ListQuery } from '@myscoutee/components';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
-import { AppUtils } from '../../../app-utils';
-import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
+
+import type { ActivitiesFeedFilters } from '../../contracts';
 import type {
   ActivityRateDTO,
   ActivityRatePageResultDTO,
@@ -301,9 +302,9 @@ export class HttpRatesService implements IRatesService {
   }
 
   private matchesRateRange(item: ActivityRateDTO, query: ListQuery<ActivitiesFeedFilters>): boolean {
-    const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
-    const rangeStartMs = query.rangeStart ? AppUtils.toSortableDate(query.rangeStart) : null;
-    const rangeEndMs = query.rangeEnd ? AppUtils.toSortableDate(query.rangeEnd) : null;
+    const happenedAtMs = UiDateUtils.toSortableDate(item.happenedAt ?? '');
+    const rangeStartMs = query.rangeStart ? UiDateUtils.toSortableDate(query.rangeStart) : null;
+    const rangeEndMs = query.rangeEnd ? UiDateUtils.toSortableDate(query.rangeEnd) : null;
     if (rangeStartMs !== null && happenedAtMs < rangeStartMs) {
       return false;
     }

@@ -1,4 +1,14 @@
-import { OnOffToggleComponent } from '../../../on-off-toggle/on-off-toggle.component';
+import {
+  OnOffToggleComponent,
+  I18nPipe,
+  SingleRowComponent,
+  type CardMenuActionEvent,
+  type SingleRowData,
+  PopupComponent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '@myscoutee/components';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -18,28 +28,17 @@ import {
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { I18nPipe } from '../../../../../pipes';
 
 import type * as EventContracts from '../../../../../../core/contracts/event.interface';
 import {
   EventPolicySingleRowConverter
 } from '../../../../../converters';
-import {
-  SingleRowComponent,
-  type CardMenuActionEvent,
-  type SingleRowData
-} from '../../../smart-list/card';
+
 import {
   FormFlowPopupStore,
   type FormFlowPolicyEditorPopupActionRequest,
   type FormFlowPolicyEditorPopupState
 } from '../../flow/form-flow-popup.store';
-import {
-  PopupComponent,
-  type PopupControl,
-  type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../popup';
 
 type PolicyInputModel = EventContracts.EventPolicyDTO;
 type PolicyPopupMenuContext = {

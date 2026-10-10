@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ExplanationLauncherComponent } from './explanation-launcher.component';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import { ExplanationGuideService, PopupPresenceStore, IndicatorComponent } from '@myscoutee/components';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
+
 import { RouteDelayService } from '../../../core/base/services/route-delay.service';
-import { IndicatorComponent } from '../core/indicator';
+
 import { By } from '@angular/platform-browser';
 
 describe('Guide launcher loading indication', () => {

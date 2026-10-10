@@ -3,7 +3,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalServiceOfferingsService } from '../../local/source/services/service-offerings.service';
 import { HttpServiceOfferingsService } from '../../http/services/service-offerings.service';
 import type { IServiceOfferingsService, ServiceOfferingFilters, SaveServiceOffering, ServiceAction } from '../../contracts/service-offering.interface';
-import type { ListQuery } from '../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 @Injectable({providedIn:'root'})
 export class ServiceOfferingsService extends BaseRouteModeService implements IServiceOfferingsService {
   private readonly local=inject(LocalServiceOfferingsService);

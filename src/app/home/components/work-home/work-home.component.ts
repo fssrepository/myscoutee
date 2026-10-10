@@ -1,5 +1,15 @@
 import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  type UiBranding as DeploymentBrandingDto,
+  SmartListComponent,
+  SingleCardComponent,
+  type SingleCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '@myscoutee/components';
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, inject, computed } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
@@ -9,10 +19,8 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/campaign.converter';
 import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignFilters, type CampaignCategory, type CampaignKind } from '../../../shared/core/contracts/campaign.interface';
-import type { DeploymentBrandingDto } from '../../../shared/core/contracts/deployment-configuration.interface';
+
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { SmartListComponent, SingleCardComponent, type SingleCardData, type SmartListConfig, type SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../shared/ui/components/core/menu';
 
 @Component({ selector: 'app-work-home', standalone: true,
   imports: [HomeHeaderComponent, SmartListComponent, SingleCardComponent],

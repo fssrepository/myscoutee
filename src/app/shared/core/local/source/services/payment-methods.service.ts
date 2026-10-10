@@ -2,7 +2,7 @@ import { LocalNotificationsRepository } from '../repositories/notifications.repo
 import { LocalIntegrationRepository } from '../repositories/integration.repository';
 import { Injectable, inject } from '@angular/core';
 
-import type { ListQuery } from '../../../contracts/list.interface';
+import type { ListQuery } from '@myscoutee/components';
 import type {
   PaymentHistoryItemDto,
   PaymentHistoryMutationDto,

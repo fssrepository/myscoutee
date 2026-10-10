@@ -1,3 +1,4 @@
+import type { ListQuery as SharedListQuery } from '@myscoutee/components';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
@@ -221,7 +222,7 @@ describe('LocalEventsRepository event membership pages', () => {
 
 function eventsPage(
   eventScopeFilter: ContractTypes.ActivitiesEventScope
-): ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters> {
+): SharedListQuery<ContractTypes.ActivitiesFeedFilters> {
   return {
     page: 0,
     pageSize: 10,

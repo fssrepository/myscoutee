@@ -5,8 +5,8 @@ import { Injectable, computed, effect, inject, signal, untracked, OnDestroy } fr
 import { EventsService } from '../../../core/base/services/events.service';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import type { MingleStateDTO } from '../../../core/contracts/event.interface';
-import { UiPollCoordinator } from '../../scheduler/ui-poll-coordinator';
-import { UiTaskScheduler } from '../../scheduler/ui-task-scheduler';
+import { UiPollCoordinator, UiTaskScheduler } from '@myscoutee/components';
+
 import { MemberMenuStore } from './member-menu.store';
 
 @Injectable({ providedIn: 'root' })
@@ -50,7 +50,6 @@ export class MingleStore implements OnDestroy {
     this.liveViewEventId.set('');
     this.clock.stop();
   }
-
 
   private readonly scheduler = new UiTaskScheduler<string>({
     intervalMs: () => this.activeUserIdRef() && this.hasLiveState()

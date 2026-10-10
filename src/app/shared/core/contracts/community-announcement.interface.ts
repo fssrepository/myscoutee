@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from './list.interface';
+import type { ListQuery, PageResult } from '@myscoutee/components';
 export const VOTE_CHOICES = ['yes', 'no', 'abstain'] as const;
 export type VoteChoice = typeof VOTE_CHOICES[number];
 export type AnnouncementStatus = 'draft' | 'published' | 'trash';

@@ -3,14 +3,28 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ViewChild, computed, ef
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { from } from 'rxjs';
-import { AppMenuComponent, PopupComponent, SmartListComponent, SingleRowComponent, I18nPipe, type PopupModel, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type SmartListConfig, type SmartListLoadPage, type SingleRowData } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  PopupComponent,
+  SmartListComponent,
+  SingleRowComponent,
+  I18nPipe,
+  type PopupModel,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SingleRowData,
+  DialogStore,
+  ImageGalleryStore
+} from '@myscoutee/components';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
 import { MODERATION_CATEGORIES, GROUP_MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { ContentModerationStore } from '../../../shared/ui/context/stores/content-moderation.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
-import { ImageGalleryStore } from '../../../shared/ui/context/stores/image-gallery.store';
+
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { AssetStore } from '../../../shared/ui/context/stores/asset.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';

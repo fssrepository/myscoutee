@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, NgZone, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import type { UiTranslations } from '@myscoutee/components';
 
 import { environment } from '../../../../../environments/environment';
 import {
@@ -26,7 +27,7 @@ interface I18nRemoteBundleResponse {
 @Injectable({
   providedIn: 'root'
 })
-export class I18nService {
+export class I18nService implements UiTranslations {
   private static readonly DEFAULT_LANGUAGE = 'en';
   private static readonly MISSING_KEY_REFRESH_DELAY_MS = 100;
   private static readonly MISSING_KEY_REFRESH_COOLDOWN_MS = 30_000;

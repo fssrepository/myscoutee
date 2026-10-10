@@ -1,3 +1,4 @@
+import { UiDateUtils, type ListQuery } from '@myscoutee/components';
 import { LocalCommunityAnnouncementsRepository } from '../repositories/community-announcements.repository';
 import { LocalCommunityAccessService } from './community-access.service';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
@@ -11,7 +12,8 @@ import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import * as AppConstants from '../../../common/constants';
 import type { AssetType } from '../../../common/constants';
-import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
+
+import type { ActivitiesFeedFilters } from '../../../contracts';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
@@ -382,7 +384,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       },
       text: trimmedText,
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      sentAtIso: AppUtils.toIsoDateTime(sentAt),
+      sentAtIso: UiDateUtils.toIsoDateTime(sentAt),
       mine: true,
       readBy: [],
       clientId: `${clientId ?? ''}`.trim() || undefined,
