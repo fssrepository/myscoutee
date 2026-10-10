@@ -85,7 +85,7 @@ for their installation scope.
 | User Manual | 1.0.0 | MyScoutee 1.0.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_User_Manual_v1.0.0_EN.pdf) |
 | Integration API Guide | 1.0.1 | 1.0.1 + MSC-119 source extensions | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Integration_API_Guide_v1.0.1_EN.pdf) |
 | MCP User Guide | 1.0.0 | MCP / client 1.6.0 · MSC-119 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_MCP_User_Guide_v1.0.0_EN.pdf) |
-| Microservices Guide | 0.1.1 | MSC-121 implementation preview | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_v0.1.1_EN.pdf) |
+| Microservices Guide | 0.1.1 | MSC-121 implementation preview | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_EN.pdf) |
 
 Document versions are independent of software versions. The MCP guide covers
 MSC-119 source behavior and identifies its pending live-host QA.
