@@ -39,8 +39,8 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
     :host(.group-editor--readonly) {
       --app-menu-disabled-opacity: 1;
       --app-menu-disabled-filter: none;
-      --on-off-toggle-disabled-opacity: 1;
-      --on-off-toggle-disabled-filter: none;
+      --app-menu-on-off-disabled-opacity: 1;
+      --app-menu-on-off-disabled-filter: none;
       --form-flow-disabled-background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%);
       --form-flow-disabled-color: rgba(58, 76, 103, 0.9);
     }

@@ -11,8 +11,9 @@
       }
     </div>
     @if (policiesToggleable() && !locked()) {
-    <app-on-off-toggle [enabled]="effectivePanelEnabled()" [disabled]="locked()" [label]="panelTitle()"
-      (enabledChange)="togglePoliciesEnabled()"></app-on-off-toggle>
+    <app-menu kind="inline" layout="row" [disabled]="locked()"
+      [items]="[{id: 'enabled', kind: 'toggle', toggleStyle: 'on-off', checked: effectivePanelEnabled(), ariaLabel: panelTitle()}]"
+      (itemSelect)="togglePoliciesEnabled()"></app-menu>
     }
   </div>
   @if (effectivePanelEnabled()) {

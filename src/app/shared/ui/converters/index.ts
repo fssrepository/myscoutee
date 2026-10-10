@@ -166,11 +166,6 @@ export {
   type NotificationSingleRowConverterOptions
 } from './notification-single-row.converter';
 export {
-  CalendarCardConverter,
-  calendarCardConverter,
-  type CalendarCardConverterInput
-} from './calendar-card.converter';
-export {
   EventFeedbackInfoCardConverter,
   EventFeedbackOrganizerInfoCardConverter,
   eventFeedbackInfoCardConverter,

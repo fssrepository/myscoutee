@@ -1,5 +1,5 @@
 import {
-  OnOffToggleComponent,
+  AppMenuComponent,
   I18nPipe,
   SingleRowComponent,
   type CardMenuActionEvent,
@@ -78,7 +78,7 @@ export interface PoliciesInputConfig {
   standalone: true,
   imports: [
     CommonModule,
-    OnOffToggleComponent,
+    AppMenuComponent,
     MatIconModule,
     PopupComponent,
     SingleRowComponent,
