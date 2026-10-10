@@ -199,3 +199,6 @@ export {
   type EventFeedbackOrganizerMessageItemData,
   type EventFeedbackOrganizerStatItemData
 } from './event/event-feedback-page.converter';
+
+export * from './event/event-feedback.model';
+export * from './chat/popup-header.model';

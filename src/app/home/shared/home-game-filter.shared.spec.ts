@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UserDto } from '../../shared/core/contracts/user.interface';
-import { APP_STATIC_DATA } from '../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../shared/core/common/app-static-data';
 import { SeedUserBuilder } from '../../shared/core/local/seed/builders/user-seed.builder';
 import { LocalGameService } from '../../shared/core/local/source/services/game.service';
 import { LocalUsersMapper } from '../../shared/core/local/source/mappers/user.mapper';

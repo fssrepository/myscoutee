@@ -1,6 +1,6 @@
 import { UiDateUtils } from '@myscoutee/components';
-import { APP_STATIC_DATA } from '../../../app-static-data';
-import { AppUtils } from '../../../app-utils';
+import { APP_STATIC_DATA } from '../../common/app-static-data';
+import { AppUtils } from '../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
 import type {
   ActivityMemberDTO,

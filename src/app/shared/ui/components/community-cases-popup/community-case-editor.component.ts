@@ -1,4 +1,4 @@
-import { SLOTS_INPUT_LABELS } from '../../slots-input-labels';
+import { SLOTS_INPUT_LABELS } from '../core/form/flow/slots-input-labels';
 import {
   SlotsInputComponent,
   type SlotsInputConfig,
@@ -9,7 +9,7 @@ import {
   type FormFlowModel,
   type FormFlowActionEvent
 } from '@myscoutee/components';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 
 import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';

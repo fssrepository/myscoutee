@@ -78,7 +78,7 @@ import {
 } from '../../context/stores/app/app-context-store.utils';
 import {
   AppUtils
-} from '../../../app-utils';
+} from '../../../core/base/app-utils';
 import {
   AssetPopupStore
 } from '../../context/stores/asset/asset-popup.store';

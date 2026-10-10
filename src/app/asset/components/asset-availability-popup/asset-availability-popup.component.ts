@@ -43,7 +43,7 @@ import {
 } from '@angular/core';
 import { from, map } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import { AssetCardBuilder } from '../../../shared/core/base/builders';
 import {
   AssetsService,

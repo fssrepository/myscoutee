@@ -19,10 +19,10 @@ import {
 } from '@angular/material/icon';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
 
 import {

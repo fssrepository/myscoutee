@@ -63,7 +63,7 @@ import {
 import {
   APP_STATIC_DATA,
   type RateFilterEntry
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityEventDTO,
@@ -77,7 +77,7 @@ import type {
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   type ActivityCounterKey,
   type ActivityCounters,

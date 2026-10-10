@@ -2,7 +2,7 @@ import { EVENT_FEEDBACK_TABLE_NAME } from '../../source/entity/event.entity';
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../../source/entity/activity.entity';
 import type { UserRecord } from '../../source/entity/user.entity';

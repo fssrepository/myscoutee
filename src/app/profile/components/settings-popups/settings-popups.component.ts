@@ -10,10 +10,10 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
 import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
 import {

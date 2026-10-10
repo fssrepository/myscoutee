@@ -17,10 +17,10 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   HelpCenterService,
   I18nService

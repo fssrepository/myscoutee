@@ -54,7 +54,7 @@ import { HomeHeaderComponent } from '../home-header/home-header.component';
 
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 
 import { GameService } from '../../../shared/core/base/services/game.service';
 import { UsersService } from '../../../shared/core/base/services/users.service';

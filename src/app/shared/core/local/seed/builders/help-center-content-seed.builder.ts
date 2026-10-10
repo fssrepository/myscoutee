@@ -1,5 +1,5 @@
 import GUIDE_VERSIONS from '../data/help-center-guide-versions.json';
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 import type {
   GuideDocumentKind as HelpCenterDocumentKind,
   GuideField as HelpCenterGuideFieldDto,

@@ -12,7 +12,7 @@ import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { UserProfileState } from '../../../common/user-profile-state';

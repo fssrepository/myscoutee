@@ -10,7 +10,7 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '@myscoutee/components';
-import { AppUtils } from '../../../shared/app-utils';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { Component, Input, inject, signal, computed, effect, untracked } from '@angular/core';
 import { defer,map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';

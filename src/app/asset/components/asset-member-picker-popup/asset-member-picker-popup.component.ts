@@ -39,7 +39,7 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 
 import {
   ActivityInviteCandidatesService,

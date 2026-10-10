@@ -4,7 +4,7 @@ import {
 } from '../../../core/base/builders';
 import {
   AppUtils
-} from '../../../app-utils';
+} from '../../../core/base/app-utils';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';

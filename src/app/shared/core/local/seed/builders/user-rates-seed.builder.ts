@@ -1,5 +1,5 @@
 import { UiDateUtils } from '@myscoutee/components';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserRateRecord } from '../../source/entity/rate.entity';

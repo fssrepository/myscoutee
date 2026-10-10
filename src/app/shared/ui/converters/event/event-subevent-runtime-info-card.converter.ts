@@ -5,7 +5,7 @@ import {
   type InfoCardOverlayTone,
   type UiListConverter
 } from '@myscoutee/components';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../../core/contracts/event.interface';
 
 import { EventSubeventRuntimeMenuConverter } from './event-subevent-runtime-menu.converter';

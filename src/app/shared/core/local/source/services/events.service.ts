@@ -7,7 +7,7 @@ import { renderCalendarExport } from '../../../common/calendar-export';
 import { LocalMingleRepository } from '../repositories/mingle.repository';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { ActivityPendingReason } from '../../../common/constants';
 import { UserProfileState } from '../../../common/user-profile-state';
 import type {

@@ -5,7 +5,7 @@ import {
   type InfoCardData,
   type UiListConverter
 } from '@myscoutee/components';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import type * as ContractTypes from '../../../core/contracts';
 import type * as AppConstants from '../../../core/common/constants';
 import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';

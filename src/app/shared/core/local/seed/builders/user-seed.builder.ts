@@ -1,7 +1,7 @@
 import { UiDateUtils } from '@myscoutee/components';
 import demoLocations from '../data/demo-locations.json';
-import { APP_STATIC_DATA } from '../../../../app-static-data';
-import { AppUtils } from '../../../../app-utils';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
+import { AppUtils } from '../../../base/app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';

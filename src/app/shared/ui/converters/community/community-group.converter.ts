@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import { canPreviewGroupMembers, communityGroupSummary, groupMembershipBucket, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../../core/contracts/community-group.interface';
 import {
   type InfoCardData,

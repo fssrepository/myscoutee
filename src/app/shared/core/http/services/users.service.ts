@@ -47,7 +47,7 @@ import {
   SessionService
 } from '../../base/services/session.service';
 import { firstValueFrom, timeout } from 'rxjs';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../base/app-utils';
 import { UserProfileStore } from '../../../ui/context/stores/profile/user-profile.store';
 
 @Injectable({

@@ -11,7 +11,7 @@ import {
   type InfoCardData
 } from '@myscoutee/components';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
 import {
   ChangeDetectorRef,
@@ -32,7 +32,7 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   CURRENT_PROFILE_FORM_VERSION,
   type AuthMode

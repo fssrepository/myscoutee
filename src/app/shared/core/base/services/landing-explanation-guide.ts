@@ -1,6 +1,6 @@
 import { InjectionToken, inject } from '@angular/core';
 import { ExplanationGuideService } from '@myscoutee/components';
-import { myScouteeGuideOptions } from '../../../ui/guide-options';
+import { myScouteeGuideOptions } from '../../../ui/components/explanation-popup/guide-options';
 import { LandingContentService } from './landing-content.service';
 import { backendUnavailable } from '../../common/backend-connectivity';
 import { environment } from '../../../../../environments/environment';

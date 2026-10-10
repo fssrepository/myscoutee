@@ -3,7 +3,7 @@ import type {
   NotificationDto
 } from '../../../core/contracts/notification.interface';
 import * as AppConstants from '../../../core/common/constants';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import {
   type SingleRowData,
   type SingleRowSurfaceTone,

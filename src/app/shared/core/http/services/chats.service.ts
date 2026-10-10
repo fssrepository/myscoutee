@@ -15,7 +15,7 @@ import {
 import type * as ContractTypes from '../../contracts';
 import {
   AppUtils
-} from '../../../app-utils';
+} from '../../base/app-utils';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,

@@ -1,6 +1,6 @@
 import type { ImageDetailsAdapter } from '@myscoutee/components';
-import type { ImageDetails, ImageDetailsConfig } from '../core/contracts/image-gallery.interface';
-import { normalizeImageDetails } from '../core/contracts/image-gallery.interface';
+import type { ImageDetails, ImageDetailsConfig } from '../../../core/contracts/image-gallery.interface';
+import { normalizeImageDetails } from '../../../core/contracts/image-gallery.interface';
 
 /** MyScoutee event association stays with the photo-feed domain. */
 export const MYSCOUTEE_IMAGE_DETAILS: ImageDetailsAdapter = {

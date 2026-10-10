@@ -1,4 +1,4 @@
-import { APP_STATIC_DATA } from '../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import * as AppConstants from '../../../core/common/constants';
 import type { SubEventResourceFilter } from '../../../core/common/constants';
 import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../../core/contracts/event.interface';

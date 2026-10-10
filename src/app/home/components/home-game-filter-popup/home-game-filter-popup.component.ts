@@ -15,7 +15,7 @@ import {
   type PopupModel
 } from '@myscoutee/components';
 import { resolveSideMenuPresentation } from '../../../shared/ui/components/side-menu/side-menu-presenters';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import {
   ChangeDetectionStrategy,
   Component,

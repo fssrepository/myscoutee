@@ -1,4 +1,4 @@
-import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../../../../entry/components/entry-landing/landing-guide-surface.directive';
 import {
   ChangeDetectorRef,
   Component,
@@ -25,7 +25,7 @@ import {
   type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState
 } from '../../context/stores/app/demo-bootstrap-selector.store';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import {
   IndicatorComponent,
   type AppMenuItem,

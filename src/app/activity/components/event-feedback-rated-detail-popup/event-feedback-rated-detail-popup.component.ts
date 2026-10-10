@@ -12,7 +12,7 @@ import {
 import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
 
 import { EventFeedbackDetailConverter } from '../../../shared/ui';
-import type { EventFeedbackCard } from '../../../shared/ui/models';
+import type { EventFeedbackCard } from '../../../shared/ui/converters/event/event-feedback.model';
 import {
   ActivitiesPopupStore,
   type EventFeedbackRatedDetailPopupSession

@@ -9,7 +9,7 @@ import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import * as AppConstants from '../../../common/constants';
 import type { AssetType } from '../../../common/constants';
 

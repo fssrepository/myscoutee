@@ -4,7 +4,7 @@ import { AdminWorkspaceStore } from "../admin/admin-workspace.store";
 import { AdminMenuStore } from "../admin/admin-menu.store";
 import { AdminWorkspaceDataService } from "../../../../core/base/services/admin-workspace-data.service";
 import { UsersService } from '../../../../core/base/services/users.service';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../../core/base/app-utils';
 import { ContentModerationStore } from '../content/content-moderation.store';
 import { type AppMenuItem, type AppMenuPalette, UiTaskScheduler, UiPollCoordinator } from '@myscoutee/components';
 import { CommunityGroupChangesStore } from './community-group-changes.store';

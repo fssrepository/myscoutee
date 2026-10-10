@@ -6,7 +6,7 @@ import type {
   ChatThreadRecordCollection
 } from '../../source/entity/chat.entity';
 import { environment } from '../../../../../../environments/environment';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { ChatSupportCase } from '../../../contracts/chat.interface';
 import type { ChatRecord } from '../../source/entity/chat.entity';
 import type { UserDto } from '../../../contracts/user.interface';

@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import { ServiceFeedbackService } from '../../../core/base/services/service-feedback.service';
 import type { ServiceFeedbackStats } from '../../../core/contracts/service-feedback.interface';
 import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/rating-snapshot';

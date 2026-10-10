@@ -6,7 +6,7 @@ import {
   type UiListConverter
 } from '@myscoutee/components';
 import { contentModerationBadge } from '../content/content-moderation-badge';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import { AssetCardBuilder } from '../../../core/base/builders/asset-card.builder';
 import { AssetDefaultsBuilder } from '../../../core/base/builders/asset-defaults.builder';
 import type * as AppDTOs from '../../../core/contracts';

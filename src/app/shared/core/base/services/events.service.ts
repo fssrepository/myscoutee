@@ -6,7 +6,7 @@ import {
 
 import {
   AppUtils
-} from '../../../app-utils';
+} from '../app-utils';
 import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,

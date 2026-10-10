@@ -1,5 +1,5 @@
 import type { UiImageUrls } from '@myscoutee/components';
-import { AppUtils } from '../app-utils';
+import { AppUtils } from '../base/app-utils';
 
 export const MYSCOUTEE_IMAGE_URLS: UiImageUrls = {
   variantUrl: (url, variant) => AppUtils.mediaImageVariantUrl(url, variant),

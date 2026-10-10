@@ -7,8 +7,8 @@ import type {
 } from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { AppUtils } from '../../../base/app-utils';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 import type {
   GuideDocumentKind as HelpCenterDocumentKind,
   GuideRevision as HelpCenterRevisionDto,

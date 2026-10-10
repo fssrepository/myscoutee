@@ -3,7 +3,7 @@ import { LocalNotificationsRepository } from '../repositories/notifications.repo
 import { LocalUsersMapper } from '../mappers/user.mapper';
 import type { UserRecord } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalCommunityGroupsRepository } from '../repositories/community-groups.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';

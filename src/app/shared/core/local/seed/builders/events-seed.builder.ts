@@ -2,13 +2,13 @@ import { clampNumber, UiDateUtils } from '@myscoutee/components';
 
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { environment } from '../../../../../../environments/environment';
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 import { SeedEventBuilder } from './event-seed.builder';
 import { SeedPricingBuilder } from './pricing-seed.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type * as ContractTypes from '../../../contracts';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem, ActivityInvitationSeedItem } from '../entity';
 import type { LocationCoordinates } from '../../../contracts/user.interface';

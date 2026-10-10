@@ -227,7 +227,7 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "buildTarget": "myscoutee:build:local,unit-test",
-            "providersFile": "src/app/shared/ui/ui.providers.ts",
+            "providersFile": "src/app/shared/ui/context/ui.providers.ts",
             "include": [
               "**/*.spec.ts"
             ]

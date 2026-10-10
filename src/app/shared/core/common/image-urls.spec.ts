@@ -5,7 +5,7 @@ import { LazyBgImageDirective, ImageCarouselComponent } from '@myscoutee/compone
 class TestImageDirective { @Input() appLazyBgImage: string | null = null; }
 import { TestBed } from '@angular/core/testing';
 
-import { I18nService, MediaService } from '../core';
+import { I18nService, MediaService } from '..';
 
 describe('ImageCarouselComponent media variants', () => {
   beforeEach(() => {

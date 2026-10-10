@@ -26,7 +26,7 @@ import {
 } from './base-route-mode.service';
 import {
   AppUtils
-} from '../../../app-utils';
+} from '../app-utils';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import type * as AppConstants from '../../common/constants';

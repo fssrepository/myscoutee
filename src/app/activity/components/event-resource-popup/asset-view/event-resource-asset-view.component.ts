@@ -11,7 +11,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../../shared/core/common/app-static-data';
 import { AssetCardBuilder } from '../../../../shared/core/base/builders';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../../../shared/core/common/constants';

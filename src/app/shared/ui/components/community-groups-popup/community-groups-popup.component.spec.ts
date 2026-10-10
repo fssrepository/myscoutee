@@ -1,6 +1,6 @@
 import { CommunityGroupsPopupComponent } from './community-groups-popup.component';
 import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 
 const rows = [
   { groupId: 'a', category: 'friends', role: 'Admin', membershipStatus: 'accepted', activity: 2 },

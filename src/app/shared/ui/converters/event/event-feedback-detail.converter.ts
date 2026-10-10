@@ -1,5 +1,5 @@
-import { APP_STATIC_DATA } from '../../../app-static-data';
-import type * as AppTypes from '../../models';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+import type * as AppTypes from './event-feedback.model';
 import type { ActivityMemberRole } from '../../../core/common/constants';
 import type {
   EventFeedbackCardDto,

@@ -1,7 +1,7 @@
 import { UiDateUtils } from '@myscoutee/components';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { AssetCardBuilder, PricingBuilder } from '../../../base/builders';
 import { UserProfileState } from '../../../common/user-profile-state';
 import type { UserDto } from '../../../contracts/user.interface';

@@ -6,7 +6,7 @@ import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.en
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { EventFeedbackDetailDto } from '../../../contracts/activity.interface';

@@ -49,10 +49,10 @@ import {
   from
 } from 'rxjs';
 
-import type * as AppUiTypes from '../../../shared/ui/models';
+import type * as AppUiTypes from '../../../shared/ui/converters/chat/popup-header.model';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 
 import { ActivityMembersService, ActivityInviteCandidatesService, AssetsService, ChatsService, EventsService, I18nService, UsersService } from '../../../shared/core';

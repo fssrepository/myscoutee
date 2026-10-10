@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import { AppUtils } from '../../../app-utils';
-import { APP_STATIC_DATA } from '../../../app-static-data';
+import { AppUtils } from '../../base/app-utils';
+import { APP_STATIC_DATA } from '../../common/app-static-data';
 import type {
   GuideDocumentKind as HelpCenterDocumentKind,
   GuideRevision as HelpCenterRevisionDto,

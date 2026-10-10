@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../app-utils';
 
 import type * as AssetContracts from '../../contracts/asset.interface';
 

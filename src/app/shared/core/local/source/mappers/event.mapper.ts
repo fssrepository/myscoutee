@@ -2,7 +2,7 @@ import { normalizeScheduleFrequency, clampNumber, UiDateUtils } from '@myscoutee
 
 import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type { DtoListMapper, DtoMapper } from './mapper.types';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { PricingBuilder } from '../../../base/builders';
 import {
   ActivityEventDetailDTO,

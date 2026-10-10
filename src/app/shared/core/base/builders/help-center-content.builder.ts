@@ -1,4 +1,4 @@
-import { APP_STATIC_DATA } from '../../../app-static-data';
+import { APP_STATIC_DATA } from '../../common/app-static-data';
 import type { GuideDocumentKind as HelpCenterDocumentKind } from '@myscoutee/components';
 
 export class HelpCenterContentBuilder {

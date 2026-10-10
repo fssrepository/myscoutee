@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import { AssetTicketBuilder } from '../../../core/base/builders';
 import type * as AssetContracts from '../../../core/contracts/asset.interface';
 import type * as AppConstants from '../../../core/common/constants';

@@ -13,7 +13,7 @@ import type { ActivityMemberDTO } from '../../../../core/contracts/activity.inte
 import type { ChatDTO } from '../../../../core/contracts/chat.interface';
 import type { AssetDTO, AssetMemberStatusChangeDTO } from '../../../../core/contracts';
 import type { EventEditorTarget, SubEventDTO } from '../../../../core/contracts/event.interface';
-import type { PopupHeaderLookup } from '../../../models';
+import type { PopupHeaderLookup } from '../../../converters/chat/popup-header.model';
 import type {
   ResourceAssetDTO,
   SubEventResourcePopupPresentationHeader

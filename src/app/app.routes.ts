@@ -1,7 +1,7 @@
 import { Injector, inject } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 
-import { AppUtils } from './shared/app-utils';
+import { AppUtils } from './shared/core/base/app-utils';
 import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
 import { hasOperatorRole } from './shared/core/common/user-role';
 import { SessionService } from './shared/core/base/services/session.service';

@@ -5,7 +5,7 @@ import {
 
 import {
   AppUtils
-} from '../../../app-utils';
+} from '../app-utils';
 import type * as ContractTypes from '../../contracts';
 import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { ActivitiesFeedFilters, EventExploreFeedFilters } from '../../contracts';

@@ -1,6 +1,6 @@
 import { UiDateUtils } from '@myscoutee/components';
 import { resolvePersonalityTraitId } from '../../../common/game-user-facet';
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 import { environment } from '../../../../../../environments/environment';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto, UserPersonalityTraitDto } from '../../../contracts/user.interface';

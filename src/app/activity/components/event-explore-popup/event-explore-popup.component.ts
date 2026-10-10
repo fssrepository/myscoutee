@@ -65,14 +65,14 @@ import type { EventExploreFilterPreferences, EventExploreFeedFilters } from '../
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   ActivityEventDetailDTO
 } from '../../../shared/core/contracts/activity.interface';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 
 import { ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {

@@ -1,4 +1,4 @@
-import { SLOTS_INPUT_LABELS } from '../../../shared/ui/slots-input-labels';
+import { SLOTS_INPUT_LABELS } from '../../../shared/ui/components/core/form/flow/slots-input-labels';
 import {
   normalizeScheduleFrequency,
   normalizeSlotOverrideDate,
@@ -80,11 +80,11 @@ import {
 
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import { environment } from '../../../../environments/environment';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   PricingBuilder
 } from '../../../shared/core/base/builders';

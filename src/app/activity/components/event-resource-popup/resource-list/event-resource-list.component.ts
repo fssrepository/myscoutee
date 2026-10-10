@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { of } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../../shared/core/common/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';

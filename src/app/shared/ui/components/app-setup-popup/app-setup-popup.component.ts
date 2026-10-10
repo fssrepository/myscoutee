@@ -1,4 +1,4 @@
-import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../../../../entry/components/entry-landing/landing-guide-surface.directive';
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AppSetupStore } from '../../context/stores/app/app-setup.store';

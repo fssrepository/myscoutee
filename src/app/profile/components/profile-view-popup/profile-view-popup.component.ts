@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, input, resource, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/core/base/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import {
   AppMenuComponent,
   I18nPipe,

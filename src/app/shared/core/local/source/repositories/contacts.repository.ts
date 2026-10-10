@@ -6,7 +6,7 @@ import { LocalMemoryDb } from '../../../common/app.db';
 
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { LocalNotificationsRepository } from './notifications.repository';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalContactsMapper } from '../mappers';
 import { LocalUsersRepository } from './users.repository';
 

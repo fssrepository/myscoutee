@@ -1,4 +1,4 @@
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';

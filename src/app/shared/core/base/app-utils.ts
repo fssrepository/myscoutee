@@ -1,8 +1,8 @@
 import { UiDateUtils, clampNumber } from '@myscoutee/components';
 
-import type { ActivitiesView } from './core/contracts';
-import type { AssetMemberRequestDTO } from './core/contracts';
-import type { UserDto } from './core/contracts/user.interface';
+import type { ActivitiesView } from '../contracts';
+import type { AssetMemberRequestDTO } from '../contracts';
+import type { UserDto } from '../contracts/user.interface';
 
 interface ActivityGroupableModel {
   dateIso?: string | null;

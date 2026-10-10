@@ -1,4 +1,4 @@
-import { APP_STATIC_DATA } from '../../app-static-data';
+import { APP_STATIC_DATA } from './app-static-data';
 import type { UserDto } from '../contracts/user.interface';
 
 export interface GameUserFacet {

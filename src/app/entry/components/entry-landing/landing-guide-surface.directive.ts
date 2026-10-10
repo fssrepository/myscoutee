@@ -1,5 +1,5 @@
 import { Directive, Input, OnChanges, OnDestroy, inject } from '@angular/core';
-import { LANDING_EXPLANATION_GUIDE } from '../../core/base/services/landing-explanation-guide';
+import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
 
 @Directive({ selector: '[appLandingGuideSurface]', standalone: true,
   host: { '[attr.data-guide-surface]': 'appLandingGuideSurface' } })

@@ -1,4 +1,4 @@
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';

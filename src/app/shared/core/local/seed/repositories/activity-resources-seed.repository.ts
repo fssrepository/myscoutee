@@ -6,7 +6,7 @@ import {
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,

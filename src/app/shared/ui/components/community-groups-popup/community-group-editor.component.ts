@@ -21,7 +21,7 @@ import { CommunityGroupsStore } from '../../context/stores/community/community-g
 import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup } from '../../../core/contracts/community-group.interface';
 import { GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE, GROUP_VISIBILITY_STYLE } from '../../converters/community/community-group.converter';
 import { ProfileFormFlowConverter } from '../../converters/profile/profile-form-flow.converter';
-import { APP_STATIC_DATA } from '../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 
 interface GroupForm extends SaveCommunityGroup { images: string[]; }
 @Component({ selector: 'app-community-group-editor', standalone: true, imports: [FormsModule, PopupComponent, FormFlowComponent, I18nPipe],

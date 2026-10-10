@@ -11,7 +11,7 @@ import {
 } from '@angular/forms';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
 import {

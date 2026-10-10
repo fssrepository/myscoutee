@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output } from '@angular/core';
 import type { EventExploreFilterPreferences } from '../../../shared/core/contracts/activity.interface';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import {
   AppMenuComponent,
   I18nPipe,

@@ -10,7 +10,7 @@ import {
 } from '@angular/forms';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
 import {
   AppMenuComponent,

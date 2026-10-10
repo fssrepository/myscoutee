@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { DtoRecordMapper } from './mapper.types';
 import type { UserDto, UserSelectorListItemDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../entity/user.entity';

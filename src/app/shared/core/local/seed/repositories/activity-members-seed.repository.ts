@@ -8,7 +8,7 @@ import {
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../../source/entity/user.entity';

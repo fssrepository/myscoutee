@@ -8,7 +8,7 @@ import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalActivityMembersRepository } from './activity-members.repository';
 import { LocalActivitySubEventStageRuntimeMapper } from '../mappers/activity.mapper';

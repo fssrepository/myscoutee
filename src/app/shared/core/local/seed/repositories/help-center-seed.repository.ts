@@ -8,7 +8,7 @@ import type {
 } from '../../source/entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import type {

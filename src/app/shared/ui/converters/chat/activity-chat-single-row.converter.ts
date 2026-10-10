@@ -6,7 +6,7 @@ import type {
   SupportCaseStatus
 } from '../../../core/contracts/chat.interface';
 import type { UserDto } from '../../../core/contracts/user.interface';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 
 export interface ActivityChatSingleRowData extends SingleRowData {
   chatRevision: number;

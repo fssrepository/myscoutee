@@ -14,13 +14,13 @@ import type {
   RateFilterKey,
   EventMode,
   TournamentLeaderboardType
-} from './core/contracts';
+} from '../contracts';
 
-import type { ExplainableSurface } from './core/contracts';
+import type { ExplainableSurface } from '../contracts';
 import type {
   EventFeedbackOption,
   EventFeedbackTraitOption
-} from './ui/models';
+} from '../../ui/converters/event/event-feedback.model';
 import {
   ASSET_CATEGORY_OPTIONS_BY_TYPE as CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE,
   ASSET_FILTER_TYPES,
@@ -32,7 +32,7 @@ import {
   EVENT_FEEDBACK_LIST_FILTERS,
   EVENT_VISIBILITIES,
   SUB_EVENT_RESOURCE_FILTERS
-} from './core/common/constants';
+} from './constants';
 import type {
   AssetCategory,
   AssetFilterType,
@@ -42,14 +42,14 @@ import type {
   EventVisibility,
   ProfileStatus,
   SubEventResourceFilter
-} from './core/common/constants';
-import type { AdminNotificationScheduleFrequency } from './core/contracts/admin.interface';
+} from './constants';
+import type { AdminNotificationScheduleFrequency } from '../contracts/admin.interface';
 import { GDPR_CONTENT } from './gdpr-data';
 import type {
   ExperienceEntry,
   InterestOptionGroup,
   ValuesOptionGroup
-} from './core/contracts/profile.interface';
+} from '../contracts/profile.interface';
 
 export type RateFilterEntry =
   | { kind: 'group'; label: string }

@@ -3,8 +3,8 @@ import { Component, TemplateRef, ViewChild, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { AdminWorkspaceDataService, type AdminDashboardDto, type AdminFeedbackDto } from '../../../shared/core';
 import {

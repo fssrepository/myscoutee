@@ -24,10 +24,10 @@ import {
 } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
 import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community/community-groups.store';

@@ -63,7 +63,7 @@ import {
 } from '../../../../shared/ui/converters/chat/chat-popup-header-context.converter';
 import {
   AppUtils
-} from '../../../../shared/app-utils';
+} from '../../../../shared/core/base/app-utils';
 import {
   AssetCardBuilder
 } from '../../../../shared/core/base/builders/asset-card.builder';

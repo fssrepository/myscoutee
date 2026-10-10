@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 import type {
   ChatDTO,
   ChatMemberSummaryDto
@@ -8,7 +8,7 @@ import type {
   PopupHeaderContext,
   PopupHeaderControl,
   PopupHeaderThumb
-} from '../../models';
+} from './popup-header.model';
 
 export interface ChatPopupHeaderContextConverterOptions {
   includeThumbs?: boolean;

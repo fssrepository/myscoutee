@@ -42,9 +42,9 @@ import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../../../../app-static-data';
+import { APP_STATIC_DATA } from '../../../../../../core/common/app-static-data';
 
-import { AppUtils } from '../../../../../../app-utils';
+import { AppUtils } from '../../../../../../core/base/app-utils';
 import { UserExperiencesService, type UserExperiencesRouteConfig } from '../../../../../../core';
 import type {
   ExperienceEntry,

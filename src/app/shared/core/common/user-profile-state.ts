@@ -1,4 +1,4 @@
-import { AppUtils } from '../../app-utils';
+import { AppUtils } from '../base/app-utils';
 import type { UserDto } from '../contracts/user.interface';
 
 export class UserProfileState {

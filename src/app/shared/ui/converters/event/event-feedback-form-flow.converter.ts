@@ -1,4 +1,4 @@
-import type * as AppTypes from '../../models';
+import type * as AppTypes from './event-feedback.model';
 import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
 import {
   type AppMenuItem,

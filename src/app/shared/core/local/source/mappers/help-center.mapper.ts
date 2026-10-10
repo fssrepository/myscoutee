@@ -12,8 +12,8 @@ import type {
   HelpCenterSectionRecord,
   PrivacyConsentLocalRecord
 } from '../entity/content.entity';
-import { AppUtils } from '../../../../app-utils';
-import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { AppUtils } from '../../../base/app-utils';
+import { APP_STATIC_DATA } from '../../../common/app-static-data';
 
 export class LocalHelpCenterMapper {
   static toDto(record: HelpCenterRevisionRecord): HelpCenterRevisionDto;

@@ -55,12 +55,12 @@ import {
   of
 } from 'rxjs';
 
-import type * as AppUiTypes from '../../../shared/ui/models';
+import type * as AppUiTypes from '../../../shared/ui/converters/chat/popup-header.model';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppUtils,
   type AsciiEmojiConversion
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import type {
   EventChatHeaderState,
   EventChatSession

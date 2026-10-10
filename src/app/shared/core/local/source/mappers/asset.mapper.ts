@@ -1,6 +1,6 @@
 import { UiDateUtils } from '@myscoutee/components';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import { LocalActivityEventsMapper } from './event.mapper';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type * as AssetContracts from '../../../contracts/asset.interface';

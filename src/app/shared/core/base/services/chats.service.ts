@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../contracts';
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../app-utils';
 import type { ListQuery, PageResult } from '@myscoutee/components';
 import type { ActivitiesFeedFilters } from '../../contracts';
 import type {

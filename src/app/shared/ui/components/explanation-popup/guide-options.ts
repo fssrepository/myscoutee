@@ -1,6 +1,6 @@
 import type { ExplanationGuideOptions } from '@myscoutee/components';
-import { APP_STATIC_DATA } from '../app-static-data';
-import { APP_STORAGE_KEYS } from '../core/common/storage-scope';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
 
 /** Product surfaces, consent and persistence stay with the application. */
 export function myScouteeGuideOptions(

@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { ActivityMemberRole, EventFeedbackListFilter } from '../../../common/constants';
 import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import type {

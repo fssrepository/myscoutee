@@ -3,8 +3,8 @@ import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChange
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute } from '@angular/router';
 
-import { AppUtils } from '../../../app-utils';
-import { APP_STATIC_DATA } from '../../../app-static-data';
+import { AppUtils } from '../../../core/base/app-utils';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';

@@ -27,7 +27,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject }
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 
 import { EventsService, type EventCheckoutBasket, type EventCheckoutBasketItem, type EventCheckoutLineItem, type EventCheckoutOptionalSubEvent, type EventCheckoutPricingSummaryRow, type EventCheckoutSlot, type EventCheckoutSlotDay, type EventCheckoutState, type EventCheckoutSlotsResult } from '../../../shared/core';
 

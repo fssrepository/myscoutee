@@ -2,7 +2,7 @@ import { UiDateUtils } from '@myscoutee/components';
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { environment } from '../../../../../../environments/environment';
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { ActivityMemberRole } from '../../../common/constants';
 import type { ActivityEventRecord, SubmittedEventFeedbackAnswer } from '../../../contracts/activity.interface';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';

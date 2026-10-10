@@ -4,7 +4,7 @@ import type { ChatMessageRecord, ChatRecord, ChatThreadRecord } from '../../sour
 import { USERS_TABLE_NAME, type UserChatCountersRecord } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
+import { AppUtils } from '../../../base/app-utils';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { LocalChatMessageMapper, LocalChatThreadMapper } from '../../source/mappers';
 import { LocalMemoryDb } from '../../../common/app.db';
