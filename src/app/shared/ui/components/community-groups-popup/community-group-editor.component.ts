@@ -13,7 +13,7 @@ import {
   AppMenuPalette,
   I18nPipe,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { I18nService } from '../../../core/base/services/i18n.service';
 

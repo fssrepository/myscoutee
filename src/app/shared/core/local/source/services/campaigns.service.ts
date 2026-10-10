@@ -1,7 +1,7 @@
 import { UserProfileState } from '../../../common/user-profile-state';
 import { Injectable, inject } from '@angular/core';
 import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignAction, type CampaignFilters, type CampaignHistoryItem, type ICampaignsService, type SaveCampaign } from '../../../contracts/campaign.interface';
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 import type { UserRecord } from '../entity/user.entity';
 import type { CampaignRecord } from '../entity/campaign.entity';
 import type { UserRateRecord } from '../entity/rate.entity';

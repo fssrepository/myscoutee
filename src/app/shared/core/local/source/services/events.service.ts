@@ -52,7 +52,7 @@ import type {
   EventFeedbackStatQueryDto,
   EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type { ActivitiesFeedFilters } from '../../../contracts';
 import type { UserMenuCounterDeltasDto } from '../../../contracts/user.interface';
 import { PricingBuilder } from '../../../base/builders';

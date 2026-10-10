@@ -1,5 +1,5 @@
 @use 'sass:color';
-@use '@myscoutee/components/styles/contextual-colors' as contextual;
+@use '@fssrepository/myscoutee-components/styles/contextual-colors' as contextual;
 
 @mixin deployment-semantic-theme {
   --deployment-font-family: 'Roboto', 'Segoe UI', sans-serif;

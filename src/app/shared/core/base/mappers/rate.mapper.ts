@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '@myscoutee/components';
+import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import type {
   ActivityRateDTO,
   UserRateSyncPayloadDTO

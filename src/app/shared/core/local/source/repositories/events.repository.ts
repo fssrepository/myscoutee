@@ -1,4 +1,4 @@
-import { type ListQuery as SharedListQuery, clampNumber, UiDateUtils } from '@myscoutee/components';
+import { type ListQuery as SharedListQuery, clampNumber, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import { isCurrentFollowedEvent } from '../builders/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../entity/mingle.entity';

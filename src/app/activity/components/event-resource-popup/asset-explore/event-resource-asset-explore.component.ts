@@ -27,7 +27,7 @@ import {
   type SmartListLoadPage,
   type SmartListStateChange,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ChatShareStore } from '../../../../shared/ui/context/stores/chat/chat-share.store';
 import {

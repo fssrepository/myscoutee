@@ -1,4 +1,4 @@
-import type { SlotsInputLabels } from '@myscoutee/components';
+import type { SlotsInputLabels } from '@fssrepository/myscoutee-components';
 
 /** Existing application translations for the shared schedule editor. */
 export const SLOTS_INPUT_LABELS: SlotsInputLabels = {

@@ -11,7 +11,7 @@ import {
   IndicatorComponent,
   PopupComponent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import * as AppConstants from '../../../core/common/constants';
 
 import { ExplanationGuideOverlayComponent } from './explanation-guide-overlay.component';

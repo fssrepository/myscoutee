@@ -1,4 +1,4 @@
-import type { GuideRevision as HelpCenterRevisionDto } from '@myscoutee/components';
+import type { GuideRevision as HelpCenterRevisionDto } from '@fssrepository/myscoutee-components';
 import type { HelpCenterStateDto } from '../../../../core/contracts';
 import type { UserGameFilterPreferencesDto } from '../../../../core/contracts/activity.interface';
 import type {

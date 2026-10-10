@@ -1,4 +1,4 @@
-import { UiDateUtils, type ListQuery, type PageResult } from '@myscoutee/components';
+import { UiDateUtils, type ListQuery, type PageResult } from '@fssrepository/myscoutee-components';
 import {
   Injectable,
   inject

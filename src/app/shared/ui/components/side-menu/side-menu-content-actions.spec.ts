@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../../core/base/services/i18n.service';
-import { AppMenuComponent } from '@myscoutee/components';
+import { AppMenuComponent } from '@fssrepository/myscoutee-components';
 import { navigatorContentMenuModel, navigatorTableMenuModel } from './side-menu-presenters';
 
 describe('navigator content actions', () => {

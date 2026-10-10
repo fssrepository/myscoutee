@@ -9,7 +9,7 @@ import type {
   FirebaseAuthRequestDto,
   FirebaseEmailAuthMode
 } from '../../../shared/core/contracts/user.interface';
-import { I18nPipe } from '@myscoutee/components';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-entry-firebase-auth-popup',

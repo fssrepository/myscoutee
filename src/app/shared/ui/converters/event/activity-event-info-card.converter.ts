@@ -1,4 +1,4 @@
-import { UiDateUtils, type InfoCardData, type UiListConverter } from '@myscoutee/components';
+import { UiDateUtils, type InfoCardData, type UiListConverter } from '@fssrepository/myscoutee-components';
 import { contentModerationBadge } from '../content/content-moderation-badge';
 import { AppUtils } from '../../../core/base/app-utils';
 import type {

@@ -8,7 +8,7 @@ import type {
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
-import { type LinkInputConfig, type AppMenuItem, type PopupModel } from '@myscoutee/components';
+import { type LinkInputConfig, type AppMenuItem, type PopupModel } from '@fssrepository/myscoutee-components';
 
 import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';
 

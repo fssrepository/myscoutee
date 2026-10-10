@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { PopupComponent, type PopupModel } from '@myscoutee/components';
+import { PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
 
 @Component({

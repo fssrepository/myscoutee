@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ImageGalleryStore, ImageGalleryRequest } from '@myscoutee/components';
+import { ImageGalleryStore, ImageGalleryRequest } from '@fssrepository/myscoutee-components';
 
 describe('MyScoutee gallery event requirement', () => {
   it('requires a saved event on each uploaded image only when configured', async () => {

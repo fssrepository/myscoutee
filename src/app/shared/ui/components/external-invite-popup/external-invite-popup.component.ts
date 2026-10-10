@@ -1,7 +1,7 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { IntegrationService } from '../../../core/base/services/integration.service';
 import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
-import { PopupComponent, type PopupModel, CopyLinkComponent, I18nPipe } from '@myscoutee/components';
+import { PopupComponent, type PopupModel, CopyLinkComponent, I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-external-invite-popup', standalone: true,

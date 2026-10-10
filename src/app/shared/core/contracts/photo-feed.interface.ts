@@ -1,5 +1,5 @@
 import type { ImageDetailsMap, ImageEventReference } from './image-gallery.interface';
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 import type { ModerationStatus } from './content-moderation.interface';
 export type PhotoFeedStatusFilter = 'public' | 'seen' | ModerationStatus;
 export interface PhotoFeedFilters { status: PhotoFeedStatusFilter; }

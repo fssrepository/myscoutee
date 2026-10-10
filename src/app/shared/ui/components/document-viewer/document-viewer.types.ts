@@ -1,4 +1,4 @@
-import type { AppMenuItemProgress, AppMenuPalette } from '@myscoutee/components';
+import type { AppMenuItemProgress, AppMenuPalette } from '@fssrepository/myscoutee-components';
 
 export type DocumentViewerShell = 'page' | 'popup';
 export type DocumentViewerHeaderPalette = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate' | 'teal';

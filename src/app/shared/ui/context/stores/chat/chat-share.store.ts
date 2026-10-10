@@ -7,7 +7,7 @@ import {
   type AppMenuItemSelectEvent,
   type PopupControl,
   type InfoCardData
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 export interface ChatShareItem extends ShareTokenCreateRequest {
   kind: 'event' | 'asset';

@@ -9,7 +9,7 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { EventModeMenuConverter } from '../../../shared/ui/converters/event/event-mode-menu.converter';
 
 @Component({

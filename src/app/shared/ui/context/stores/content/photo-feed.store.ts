@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { PhotoFeedService } from '../../../../core/base/services/photo-feed.service';
 import { UserProfileStore } from '../profile/user-profile.store';
-import { ImageGalleryStore, type ListQuery, UiTaskScheduler } from '@myscoutee/components';
+import { ImageGalleryStore, type ListQuery, UiTaskScheduler } from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../../core/base/services/i18n.service';
 
 import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedCounters } from '../../../../core/contracts/photo-feed.interface';

@@ -1,4 +1,4 @@
-import { clampNumber, ExplanationGuideService, PopupComponent, type PopupModel } from '@myscoutee/components';
+import { clampNumber, ExplanationGuideService, PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
 import {
   CommonModule
 } from '@angular/common';

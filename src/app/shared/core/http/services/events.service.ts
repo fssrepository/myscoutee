@@ -26,7 +26,7 @@ import {
   EventFeedbackPageResultDto,
   type ActivityEventDTO
 } from '../../contracts/activity.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type { ActivitiesFeedFilters } from '../../contracts';
 import type { UserEventCountersDto } from '../../contracts/user.interface';
 import type {

@@ -22,7 +22,7 @@ import {
   type SmartListLoaders,
   type SmartListStateChange,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community/community-group-changes.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
 import { MingleStore } from '../../../shared/ui/context/stores/activity/mingle.store';

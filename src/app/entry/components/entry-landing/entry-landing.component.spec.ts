@@ -12,7 +12,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage,
   type InfoCardData
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { EntryLandingComponent } from './entry-landing.component';
 

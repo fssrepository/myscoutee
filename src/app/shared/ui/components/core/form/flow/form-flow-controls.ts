@@ -1,4 +1,4 @@
-import type { FormFlowControls, FormFlowControlContext } from '@myscoutee/components';
+import type { FormFlowControls, FormFlowControlContext } from '@fssrepository/myscoutee-components';
 import { FormFlowPopupStore } from './form-flow-popup.store';
 
 function inputs(context: FormFlowControlContext) {

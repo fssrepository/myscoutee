@@ -8,7 +8,7 @@ import {
   type PairCardData,
   type RateCardPerson,
   type SingleCardData
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { ActivityRateDTO } from '../../../core/contracts/activity.interface';
 
 export interface ActivityRateCardConverterOptions {

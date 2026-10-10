@@ -4,7 +4,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalCommunityCasesService } from '../../local/source/services/community-cases.service';
 import { HttpCommunityCasesService } from '../../http/services/community-cases.service';
 import type { CaseCommand, CaseFilters, ICommunityCasesService, SaveCommunityCase, SaveCommunityScheduledTask, ScheduledTaskAction, ScheduledTaskFilters, ScheduledTaskCounters } from '../../contracts/community-case.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 
 @Injectable({ providedIn: 'root' })
 export class CommunityCasesService extends BaseRouteModeService implements ICommunityCasesService {

@@ -3,7 +3,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalCommunityAnnouncementsService } from '../../local/source/services/community-announcements.service';
 import { HttpCommunityAnnouncementsService } from '../../http/services/community-announcements.service';
 import type { ICommunityAnnouncementsService, AnnouncementFilters, SaveAnnouncement, AnnouncementCommand } from '../../contracts/community-announcement.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 @Injectable({ providedIn: 'root' })
 export class CommunityAnnouncementsService extends BaseRouteModeService implements ICommunityAnnouncementsService {
   private readonly local = inject(LocalCommunityAnnouncementsService);

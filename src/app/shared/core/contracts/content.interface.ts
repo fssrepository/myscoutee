@@ -6,7 +6,7 @@ import type {
   GuideHeaderColor as HelpCenterHeaderColor,
   GuideRevision as HelpCenterRevisionDto,
   GuideField as HelpCenterGuideFieldDto
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ImageDetailsMap } from './image-gallery.interface';
 import type * as UserContracts from './user.interface';

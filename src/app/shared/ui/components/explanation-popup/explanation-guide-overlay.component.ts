@@ -13,7 +13,7 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuTrigger
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../core';
 
 type GuideRect = { left: number; top: number; width: number; height: number };

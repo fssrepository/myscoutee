@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ExplanationLauncherComponent } from './explanation-launcher.component';
-import { ExplanationGuideService, PopupPresenceStore, IndicatorComponent } from '@myscoutee/components';
+import { ExplanationGuideService, PopupPresenceStore, IndicatorComponent } from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../core/base/services/i18n.service';
 
 import { RouteDelayService } from '../../../core/base/services/route-delay.service';

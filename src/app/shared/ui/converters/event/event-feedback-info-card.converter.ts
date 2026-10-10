@@ -2,7 +2,7 @@ import type {
   EventFeedbackDto,
   EventFeedbackPageStateSnapshotDto,
 } from '../../../core/contracts/activity.interface';
-import { type InfoCardData, type CardMenuActionId, type UiListConverter } from '@myscoutee/components';
+import { type InfoCardData, type CardMenuActionId, type UiListConverter } from '@fssrepository/myscoutee-components';
 
 import type { ServiceFeedbackItem } from '../../../core/contracts/service-feedback.interface';
 

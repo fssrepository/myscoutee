@@ -18,7 +18,7 @@ import {
   type FormFlowControlModel,
   type FormFlowModel,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';

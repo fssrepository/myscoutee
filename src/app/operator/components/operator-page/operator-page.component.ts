@@ -13,7 +13,7 @@ import {
   type SmartListItemSelectEvent,
   type SmartListLoadPage,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { DestroyRef } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import {

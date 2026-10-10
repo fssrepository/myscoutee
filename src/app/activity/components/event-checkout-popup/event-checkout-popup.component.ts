@@ -5,7 +5,7 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';

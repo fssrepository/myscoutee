@@ -1,4 +1,4 @@
-import type { RatingSnapshot } from '@myscoutee/components';
+import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import type { RatingDomain } from '../../../contracts/rating-snapshot';
 import type { EventExploreFilterPreferences } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';

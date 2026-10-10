@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import type { ChatMessageRecord, ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
 import { USERS_TABLE_NAME, type UserChatCountersRecord } from '../../source/entity/user.entity';

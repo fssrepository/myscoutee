@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output
 import { PaymentMethodsService } from '../../../core/base/services/payment-methods.service';
 import { PaymentEuroSummaryDto } from '../../../core/contracts/payment-method.interface';
 import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
-import { PopupComponent, PopupModel, AppMenuComponent, AppMenuItem, I18nPipe } from '@myscoutee/components';
+import { PopupComponent, PopupModel, AppMenuComponent, AppMenuItem, I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-summary-currency-popup', standalone: true,

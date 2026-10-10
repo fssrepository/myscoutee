@@ -20,7 +20,7 @@ import {
   type SmartListLoadPage,
   DialogStore,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   Component,

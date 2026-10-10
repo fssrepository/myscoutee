@@ -2,7 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { FollowingService } from '../../../../core/base/services/following.service';
 import type { FollowingState } from '../../../../core/contracts/following.interface';
 import { UserProfileStore } from '../profile/user-profile.store';
-import { DialogStore } from '@myscoutee/components';
+import { DialogStore } from '@fssrepository/myscoutee-components';
 @Injectable({ providedIn: 'root' })
 export class FollowingStore {
   private readonly service = inject(FollowingService);

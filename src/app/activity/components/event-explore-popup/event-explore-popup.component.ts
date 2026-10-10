@@ -28,7 +28,7 @@ import {
   type SmartListLocalSortKey,
   type SmartListStateChange,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { untracked } from '@angular/core';

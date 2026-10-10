@@ -8,7 +8,7 @@ import {
   type SmartListLoadPage,
   AccordionComponent,
   type UiAccordionModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { Component, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { defer } from 'rxjs';

@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { validRatingSnapshot, type RatingDomain } from '../../../contracts/rating-snapshot';
 import { LocalNotificationsRepository } from './notifications.repository';
 import { CAMPAIGNS_TABLE_NAME } from "../entity/campaign.entity";

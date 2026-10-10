@@ -4,7 +4,7 @@ import {
   type SingleCardData,
   type AppMenuItem,
   type AppMenuPalette
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 export const SERVICE_STATUS_STYLE: Record<ServiceStatus, { icon: string; palette: AppMenuPalette }> = {
   published: { icon: 'public', palette: 'green' }, draft: { icon: 'edit_note', palette: 'gold' }, trash: { icon: 'delete', palette: 'danger' }

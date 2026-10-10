@@ -6,7 +6,7 @@ import { AdminWorkspaceDataService } from "../../../../core/base/services/admin-
 import { UsersService } from '../../../../core/base/services/users.service';
 import { AppUtils } from '../../../../core/base/app-utils';
 import { ContentModerationStore } from '../content/content-moderation.store';
-import { type AppMenuItem, type AppMenuPalette, UiTaskScheduler, UiPollCoordinator } from '@myscoutee/components';
+import { type AppMenuItem, type AppMenuPalette, UiTaskScheduler, UiPollCoordinator } from '@fssrepository/myscoutee-components';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommunityGroupsService } from '../../../../core/base/services/community-groups.service';

@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { IServiceOfferingsService, ServiceOfferingItem, ServiceOfferingFilters, SaveServiceOffering, ServiceAction } from '../../contracts/service-offering.interface';
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 @Injectable({providedIn:'root'})
 export class HttpServiceOfferingsService implements IServiceOfferingsService {
   private readonly http=inject(HttpClient);

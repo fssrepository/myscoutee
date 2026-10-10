@@ -4,7 +4,7 @@ import type { Observable, Subscription } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { RouteDelayService } from '../../base/services/route-delay.service';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type {
   CashReceiptRequestDto,
   PaymentHistoryPageDto,

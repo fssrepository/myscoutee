@@ -1,4 +1,4 @@
-import type { ImageCardData, AppMenuRateConfig } from '@myscoutee/components';
+import type { ImageCardData, AppMenuRateConfig } from '@fssrepository/myscoutee-components';
 
 interface ActivitiesRateEditorPresenterDeps {
   getActivitiesRateFilter: () => string;

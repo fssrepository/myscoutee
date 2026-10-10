@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 
-import { AppMenuComponent, I18nPipe, type AppMenuItem, type AppMenuItemSelectEvent } from '@myscoutee/components';
+import { AppMenuComponent, I18nPipe, type AppMenuItem, type AppMenuItemSelectEvent } from '@fssrepository/myscoutee-components';
 
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 

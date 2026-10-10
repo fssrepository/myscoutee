@@ -7,7 +7,7 @@ import {
   type SmartListLoadPage,
   ExplanationGuideService,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { Component, ViewChild, inject, effect, untracked, input, computed } from '@angular/core';
 import {defer,map} from 'rxjs';
 

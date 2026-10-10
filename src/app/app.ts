@@ -18,7 +18,7 @@ import { DeploymentConfigurationService } from './shared/core/base/services/depl
 import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
 import { SessionService } from './shared/core/base/services/session.service';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent, type AppMenuItem, DialogComponent } from '@myscoutee/components';
+import { AppMenuComponent, type AppMenuItem, DialogComponent } from '@fssrepository/myscoutee-components';
 
 import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
 

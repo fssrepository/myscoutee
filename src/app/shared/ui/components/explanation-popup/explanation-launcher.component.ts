@@ -8,7 +8,7 @@ import {
   PopupPresenceStore,
   type AppMenuDragPosition,
   type AppMenuTrigger
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ExplanationPopupComponent } from './explanation-popup.component';
 
 @Component({ selector: 'app-explanation-launcher', standalone: true,

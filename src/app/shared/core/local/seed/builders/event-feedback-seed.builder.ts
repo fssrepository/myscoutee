@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { environment } from '../../../../../../environments/environment';

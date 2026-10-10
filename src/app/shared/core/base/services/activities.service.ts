@@ -7,7 +7,7 @@ import {
   AppUtils
 } from '../app-utils';
 import type * as ContractTypes from '../../contracts';
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 import type { ActivitiesFeedFilters, EventExploreFeedFilters } from '../../contracts';
 import type { ChatDTO } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';

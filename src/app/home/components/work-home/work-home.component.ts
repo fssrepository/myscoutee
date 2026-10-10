@@ -9,7 +9,7 @@ import {
   type SmartListLoadPage,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, inject, computed } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';

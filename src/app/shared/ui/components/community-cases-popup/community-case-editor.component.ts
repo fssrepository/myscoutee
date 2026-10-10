@@ -8,7 +8,7 @@ import {
   FormFlowComponent,
   type FormFlowModel,
   type FormFlowActionEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
 
 import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input } from '@angular/core';

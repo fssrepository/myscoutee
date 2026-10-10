@@ -2,7 +2,7 @@ import { Component, ElementRef, HostListener, ViewChild, computed, inject } from
 import { DomSanitizer } from '@angular/platform-browser';
 
 import { PaymentAuthorizationService } from '../../../core/base/services/payment-authorization.service';
-import { PopupComponent, type PopupModel, I18nPipe } from '@myscoutee/components';
+import { PopupComponent, type PopupModel, I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-payment-authorization-popup',

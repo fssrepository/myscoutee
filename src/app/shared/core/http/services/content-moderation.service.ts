@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import type { ContentModerationDecision, ContentModerationDecisionResult, ContentModerationPage, ContentModerationSettings, ContentModerationSnapshot, ModerationCategoryFilter, ModerationStatus } from '../../contracts/content-moderation.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 @Injectable({ providedIn: 'root' })
 export class HttpContentModerationService {
   private readonly http = inject(HttpClient);

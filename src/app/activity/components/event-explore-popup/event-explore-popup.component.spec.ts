@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService } from '../../../shared/core';
-import { AppMenuDispatcher, DialogStore } from '@myscoutee/components';
+import { AppMenuDispatcher, DialogStore } from '@fssrepository/myscoutee-components';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import { ProfileStore } from '../../../shared/ui/context/stores/profile/profile.store';
 

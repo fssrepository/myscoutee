@@ -48,7 +48,7 @@ import {
   type PopupModel,
   LazyBgImageDirective,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { ExplainableSurface, HelpCenterStateDto } from '../../../shared/core/contracts';
 
 import {

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { I18nService } from '../..';
-import { AppMenuComponent, type AppMenuDragEvent } from '@myscoutee/components';
+import { AppMenuComponent, type AppMenuDragEvent } from '@fssrepository/myscoutee-components';
 
 describe('MyScoutee menu translation scanning', () => {
   beforeEach(() => {

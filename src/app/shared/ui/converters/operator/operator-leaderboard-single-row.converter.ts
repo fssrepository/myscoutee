@@ -4,7 +4,7 @@ import {
   type SingleRowData,
   type ConverterOptionsArg,
   type UiConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 export interface OperatorLeaderboardSingleRowConverterOptions {
   locale?: string | null;

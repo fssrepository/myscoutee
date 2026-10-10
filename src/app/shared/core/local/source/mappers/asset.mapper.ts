@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { AppUtils } from '../../../base/app-utils';
 import { LocalActivityEventsMapper } from './event.mapper';

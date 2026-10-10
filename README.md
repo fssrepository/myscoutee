@@ -12,13 +12,13 @@ version is **1.6.0**; full execution QA for these extensions is pending.
 
 ### Shared components development
 
-Shared UI source is owned by the `myscoutee-components` Git submodule, kept on
-`master`. Initialize submodules, switch that checkout to `master`, then run
+Shared UI source is owned by the `myscoutee-components` repository, integrated as the
+`components` Git submodule on `master`. Initialize submodules, switch that checkout to `master`, then run
 `npm ci`. Existing `npm run build:*`, `start:*` and `watch:*` scripts build the
 components workspace before the application. The dev stack uses that same path.
 
-Use public imports from `@myscoutee/components` and
-`@myscoutee/components/styles`; do not add forwarding files or source-path imports.
+Use public imports from `@fssrepository/myscoutee-components` and
+`@fssrepository/myscoutee-components/styles`; do not add forwarding files or source-path imports.
 Generic tests live beside the library source and run with `npm test` inside the
 submodule. Application integration tests stay here. The component repository also
 builds independently with `npm ci && npm run build`.

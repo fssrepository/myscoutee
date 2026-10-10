@@ -19,7 +19,7 @@ import {
   type SmartListLoaders,
   type SmartListStateChange,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import {

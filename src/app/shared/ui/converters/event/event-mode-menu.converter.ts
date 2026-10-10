@@ -1,5 +1,5 @@
 import type { EventMode } from '../../../core/contracts/event.interface';
-import type { AppMenuItem, AppMenuTrigger } from '@myscoutee/components';
+import type { AppMenuItem, AppMenuTrigger } from '@fssrepository/myscoutee-components';
 
 const OPTIONS = [
   { id: 'Casual', label: 'event.mode.standard', icon: 'groups', palette: 'slate' },

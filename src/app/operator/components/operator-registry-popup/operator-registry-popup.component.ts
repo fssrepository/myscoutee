@@ -31,7 +31,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { OperatorMeasurementReportDto, OperatorMeasurementReportFilters, OperatorMeasurementSyncState } from '../../../shared/core/contracts';
 
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';

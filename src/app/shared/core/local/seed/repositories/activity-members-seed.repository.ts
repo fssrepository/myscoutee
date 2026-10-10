@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import {

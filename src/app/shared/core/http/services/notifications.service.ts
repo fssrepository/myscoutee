@@ -16,7 +16,7 @@ import type {
   NotificationSyncRequestDto,
   NotificationSyncResponseDto
 } from '../../contracts/notification.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 @Injectable({

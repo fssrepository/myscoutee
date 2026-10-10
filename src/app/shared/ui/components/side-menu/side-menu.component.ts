@@ -30,7 +30,7 @@ import {
   type PopupModel,
   IndicatorComponent,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';

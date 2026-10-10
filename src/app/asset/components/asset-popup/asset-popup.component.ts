@@ -27,7 +27,7 @@ import {
   type SmartListStateChange,
   DialogComponent,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import {
   CommonModule

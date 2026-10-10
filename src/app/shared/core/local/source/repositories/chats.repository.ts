@@ -1,4 +1,4 @@
-import { UiDateUtils, type ListQuery } from '@myscoutee/components';
+import { UiDateUtils, type ListQuery } from '@fssrepository/myscoutee-components';
 import { caseOfferChatParticipantIds, caseChatParticipantIds, COMMUNITY_CASES_TABLE_NAME, type CommunityCaseRecord } from '../entity/community-case.entity';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { LocalUsersRepository } from './users.repository';

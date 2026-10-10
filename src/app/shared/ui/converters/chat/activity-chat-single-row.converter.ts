@@ -1,4 +1,4 @@
-import { UiDateUtils, type SingleRowData, type UiListConverter } from '@myscoutee/components';
+import { UiDateUtils, type SingleRowData, type UiListConverter } from '@fssrepository/myscoutee-components';
 import type {
   ChatChannelType,
   ChatDTO,

@@ -4,7 +4,7 @@
 // in a global stylesheet because Angular Material CDK renders panels outside the
 // component shadow / encapsulation boundary.
 
-@use '@myscoutee/components/styles' as ui;
+@use '@fssrepository/myscoutee-components/styles' as ui;
 
 @include ui.interactive-motion();
 @include ui.form-controls();

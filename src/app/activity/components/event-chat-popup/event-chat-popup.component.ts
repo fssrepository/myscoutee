@@ -21,7 +21,7 @@ import {
   DialogStore,
   UiPollCoordinator,
   UiTaskScheduler
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { CommunityCasesStore } from '../../../shared/ui/context/stores/community/community-cases.store';
 import { ContactsService } from '../../../shared/core/base/services/contacts.service';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';

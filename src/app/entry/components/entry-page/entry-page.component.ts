@@ -9,7 +9,7 @@ import {
   type GuideSection as HelpCenterSectionDto,
   DialogStore,
   type InfoCardData
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
 import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';

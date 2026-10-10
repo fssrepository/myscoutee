@@ -22,7 +22,7 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuTrigger,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 type OperatorRevenueTimelineMetric =
   | 'projectedEventMinor'

@@ -2,7 +2,7 @@ import { AppUtils } from '../../../core/base/app-utils';
 import { AssetTicketBuilder } from '../../../core/base/builders';
 import type * as AssetContracts from '../../../core/contracts/asset.interface';
 import type * as AppConstants from '../../../core/common/constants';
-import { type InfoCardData, type UiListConverter } from '@myscoutee/components';
+import { type InfoCardData, type UiListConverter } from '@fssrepository/myscoutee-components';
 
 export type AssetTicketInfoCardModel = InfoCardData;
 

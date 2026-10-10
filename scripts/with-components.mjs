@@ -50,7 +50,7 @@ function startApplication() {
 
 // One library build owner, then the application. In dev mode the same library
 // process stays alive; ng serve observes its rebuilt output through the workspace dependency.
-const library = run(['run', watching ? 'watch' : 'build', '--workspace', '@myscoutee/components'], watching, true);
+const library = run(['run', watching ? 'watch' : 'build', '--workspace', '@fssrepository/myscoutee-components'], watching, true);
 if (watching) {
   let output = '';
   const observe = (chunk, target) => {

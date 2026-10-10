@@ -10,7 +10,7 @@ import {
   type SmartListLoadPage,
   type InfoCardData,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ServiceProviderCalendarComponent } from './service-provider-calendar.component';
 
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';

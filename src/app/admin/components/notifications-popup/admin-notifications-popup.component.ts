@@ -52,7 +52,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListStateChange
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import {
   AdminMenuStore

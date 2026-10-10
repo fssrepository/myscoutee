@@ -1,4 +1,4 @@
-import { ExplanationGuideService, DeploymentBrandComponent } from '@myscoutee/components';
+import { ExplanationGuideService, DeploymentBrandComponent } from '@fssrepository/myscoutee-components';
 import { DestroyRef } from '@angular/core';
 import { UserProfileStore } from "../../../shared/ui/context/stores/profile/user-profile.store";
 import {

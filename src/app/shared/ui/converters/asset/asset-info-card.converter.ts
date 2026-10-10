@@ -4,7 +4,7 @@ import {
   type InfoCardData,
   type InfoCardOverlayAccessoryTone,
   type UiListConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { contentModerationBadge } from '../content/content-moderation-badge';
 import { AppUtils } from '../../../core/base/app-utils';
 import { AssetCardBuilder } from '../../../core/base/builders/asset-card.builder';

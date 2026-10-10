@@ -20,7 +20,7 @@ import {
   SubEventResourcePopupStore,
   type ResourceAssetViewState
 } from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
-import { PopupComponent, type PopupAction, type PopupActionEvent, type PopupModel } from '@myscoutee/components';
+import { PopupComponent, type PopupAction, type PopupActionEvent, type PopupModel } from '@fssrepository/myscoutee-components';
 
 export type EventResourceAssetViewModel = ResourceAssetViewState;
 

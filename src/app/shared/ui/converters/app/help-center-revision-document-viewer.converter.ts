@@ -5,7 +5,7 @@ import {
   type GuideSection as HelpCenterSectionDto,
   type UiConverter,
   type UiListConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type {
   DocumentViewerAction,
   DocumentViewerConfig,

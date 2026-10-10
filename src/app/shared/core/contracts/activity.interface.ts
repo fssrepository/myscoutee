@@ -4,7 +4,7 @@ import {
   type RatingSnapshot,
   type DateRangeDto,
   type ListQuery
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import type { RatingDomain } from './rating-snapshot';
 import { ImageDetailsMap, normalizeImageDetails } from './image-gallery.interface';

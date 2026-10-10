@@ -12,7 +12,7 @@ import {
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../shared/core';
 
 type MingleNumberField = Exclude<keyof MingleConfigurationDTO, 'requireGenderBalance'>;

@@ -1,5 +1,5 @@
 import { Directive, Input } from '@angular/core';
-import { LazyBgImageDirective, ImageCarouselComponent } from '@myscoutee/components';
+import { LazyBgImageDirective, ImageCarouselComponent } from '@fssrepository/myscoutee-components';
 
 @Directive({selector: '[appLazyBgImage]', standalone: true})
 class TestImageDirective { @Input() appLazyBgImage: string | null = null; }

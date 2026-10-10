@@ -15,7 +15,7 @@ import {
 import {
   HttpHelpCenterService
 } from '../../http/services/help-center.service';
-import type { GuideDocumentKind as HelpCenterDocumentKind } from '@myscoutee/components';
+import type { GuideDocumentKind as HelpCenterDocumentKind } from '@fssrepository/myscoutee-components';
 import type { HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../contracts';
 import {
   BaseRouteModeService

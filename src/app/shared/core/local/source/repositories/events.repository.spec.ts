@@ -1,4 +1,4 @@
-import type { ListQuery as SharedListQuery } from '@myscoutee/components';
+import type { ListQuery as SharedListQuery } from '@fssrepository/myscoutee-components';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 

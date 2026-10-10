@@ -30,7 +30,7 @@
     "watch:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --watch --configuration dev",
     "watch:log": "bash -lc 'mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --watch --configuration dev 2>&1 | tee .agent/logs/ng-watch-dev.log'",
     "test": "node scripts/with-components.mjs test",
-    "build:components": "npm run build --workspace @myscoutee/components"
+    "build:components": "npm run build --workspace @fssrepository/myscoutee-components"
   },
   "prettier": {
     "printWidth": 100,
@@ -61,7 +61,7 @@
     "qrcode": "1.5.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "@myscoutee/components": "0.0.0"
+    "@fssrepository/myscoutee-components": "0.1.0"
   },
   "devDependencies": {
     "@angular/build": "^21.2.12",
@@ -75,6 +75,6 @@
     "vitest": "^4.0.8"
   },
   "workspaces": [
-    "myscoutee-components"
+    "components"
   ]
 }

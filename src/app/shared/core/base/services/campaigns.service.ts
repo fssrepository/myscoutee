@@ -3,7 +3,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { LocalCampaignsService } from '../../local/source/services/campaigns.service';
 import { HttpCampaignsService } from '../../http/services/campaigns.service';
 import type { CampaignAction, CampaignFilters, ICampaignsService, SaveCampaign } from '../../contracts/campaign.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 
 @Injectable({ providedIn: 'root' })
 export class CampaignsService extends BaseRouteModeService implements ICampaignsService {

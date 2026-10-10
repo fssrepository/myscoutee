@@ -10,7 +10,7 @@ import {
   SmartListLoadPage,
   I18nPipe,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { defer, map } from 'rxjs';

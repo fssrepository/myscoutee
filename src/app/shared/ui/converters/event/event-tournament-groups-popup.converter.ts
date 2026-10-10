@@ -7,7 +7,7 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger,
   type UiConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AssetDefaultsBuilder } from '../../../core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../../core/common/constants';
 import type { AssetType } from '../../../core/common/constants';

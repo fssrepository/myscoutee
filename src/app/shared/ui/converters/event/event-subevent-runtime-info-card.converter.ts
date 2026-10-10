@@ -4,7 +4,7 @@ import {
   type InfoCardOverlayAction,
   type InfoCardOverlayTone,
   type UiListConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
 import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../../core/contracts/event.interface';
 

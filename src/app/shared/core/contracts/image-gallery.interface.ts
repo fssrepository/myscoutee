@@ -2,7 +2,7 @@ import {
   normalizeImageDetails as normalizeSharedImageDetails,
   type ImageDetails as SharedImageDetails,
   type ImageDetailsConfig as SharedImageDetailsConfig
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 export interface ImageEventReference {
   id: string;
   title: string;

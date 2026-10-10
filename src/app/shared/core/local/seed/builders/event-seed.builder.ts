@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../base/app-utils';
 import { environment } from '../../../../../../environments/environment';
 import type * as ContractTypes from '../../../contracts';

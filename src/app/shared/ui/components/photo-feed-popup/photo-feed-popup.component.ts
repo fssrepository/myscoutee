@@ -18,7 +18,7 @@ import {
   type AppMenuItem,
   ViewportSeenDirective,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { PhotoFeedConverter } from '../../converters/content/photo-feed.converter';
 import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedStatusFilter } from '../../../core/contracts/photo-feed.interface';

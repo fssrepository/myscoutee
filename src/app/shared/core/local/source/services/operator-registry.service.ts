@@ -5,7 +5,7 @@ import { OperatorConfigurationMapper } from '../../../base/mappers/operator-conf
 import {
   DEFAULT_DEPLOYMENT_BRANDING
 } from '../../../contracts/deployment-configuration.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,

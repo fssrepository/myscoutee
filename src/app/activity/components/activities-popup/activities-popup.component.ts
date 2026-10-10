@@ -32,7 +32,7 @@ import {
   UiPollCoordinator,
   DialogStore,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';

@@ -1,4 +1,4 @@
-import type { InfoCardOverlayAction } from '@myscoutee/components';
+import type { InfoCardOverlayAction } from '@fssrepository/myscoutee-components';
 
 /** Content review is independent of the owner's account lifecycle. */
 export function contentModerationBadge(status?: string | null): InfoCardOverlayAction | null {

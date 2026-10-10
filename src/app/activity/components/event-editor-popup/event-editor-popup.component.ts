@@ -28,7 +28,7 @@ import {
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { groupPriorityEnabled } from '../../../shared/core/contracts/group-type';
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';

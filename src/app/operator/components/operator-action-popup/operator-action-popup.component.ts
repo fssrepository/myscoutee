@@ -35,7 +35,7 @@ import {
   type SmartListLoadPage,
   DialogStore,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { DeploymentSocialLinkDto, OperatorClaimEligibilityStatus, OperatorClaimRequestDto, OperatorDeploymentUpdatePhase, OperatorLeaderboardDeploymentDto, OperatorRevenueReportDto, OperatorRevenueReportFilters, OperatorRevenueSyncState, OperatorSettlementDto, OperatorSettlementFilters, OperatorTlsCertificateMode } from '../../../shared/core/contracts';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 

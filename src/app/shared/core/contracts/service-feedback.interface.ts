@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 export type ServiceFeedbackBucket = 'pending' | 'feedbacked' | 'removed' | 'received';
 export interface ServiceFeedback {
   id:string; baseGroupId:string; caseId:string; caseTitle:string; serviceId:string|null;

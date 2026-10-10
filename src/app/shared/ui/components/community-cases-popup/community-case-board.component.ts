@@ -15,7 +15,7 @@ import {
   I18nPipe,
   ExplanationGuideService,
   type TextCardTone
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { Component, computed, effect, inject, signal, untracked, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';

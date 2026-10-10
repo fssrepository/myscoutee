@@ -4,7 +4,7 @@ import { Injectable, Type, computed, effect, inject, signal } from '@angular/cor
 import { CampaignsService } from '../../../../core/base/services/campaigns.service';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
 import type { Campaign, CampaignAction, CampaignFilters, SaveCampaign } from '../../../../core/contracts/campaign.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { UserProfileStore } from '../profile/user-profile.store';
 
 interface CampaignSession { userId: string; scope: 'own' | 'all'; selectedId?: string | null; select?: (campaign: Campaign | null) => void; }

@@ -1,4 +1,4 @@
-import { UiDateUtils, type ListQuery } from '@myscoutee/components';
+import { UiDateUtils, type ListQuery } from '@fssrepository/myscoutee-components';
 import {
   HttpClient,
   HttpParams

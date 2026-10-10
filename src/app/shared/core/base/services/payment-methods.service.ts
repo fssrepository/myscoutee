@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type {
   CashReceiptRequestDto,
   PaymentHistoryPageDto,

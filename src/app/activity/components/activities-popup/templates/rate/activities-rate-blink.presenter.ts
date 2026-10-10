@@ -1,4 +1,4 @@
-import type { ImageCardData } from '@myscoutee/components';
+import type { ImageCardData } from '@fssrepository/myscoutee-components';
 
 export function isActivitiesRateBlinking(
   row: ImageCardData,

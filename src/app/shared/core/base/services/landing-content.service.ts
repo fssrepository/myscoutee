@@ -5,7 +5,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { LocalLandingContentService } from '../../local/source/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
 import type { HelpCenterStateDto, LandingContentStateDto } from '../../contracts';
-import type { InfoCardData } from '@myscoutee/components';
+import type { InfoCardData } from '@fssrepository/myscoutee-components';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { IdeaPostsService } from './idea-posts.service';
 import { PrivacyPolicyService } from './privacy-policy.service';

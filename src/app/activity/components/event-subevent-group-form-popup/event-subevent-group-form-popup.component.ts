@@ -8,7 +8,7 @@ import {
   type PopupModel,
   FormFlowComponent,
   type FormFlowModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 export interface GroupFormModel {
   name: string;

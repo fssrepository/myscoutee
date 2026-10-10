@@ -12,7 +12,7 @@ import {
   type SmartListLoadPage,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { CommunityCaseQuotationsComponent } from './community-case-quotations.component';
 import { CommunityCaseBoardComponent } from './community-case-board.component';
 

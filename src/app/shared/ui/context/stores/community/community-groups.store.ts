@@ -1,7 +1,7 @@
 import { ActivityInvitePopupStore } from '../activity/activity-invite-popup.store';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { GroupWorkspaceStore } from './group-workspace.store';
-import { DialogStore, type ListQuery } from '@myscoutee/components';
+import { DialogStore, type ListQuery } from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../../core/base/services/i18n.service';
 import { CommunityGroupConverter } from '../../../converters/community/community-group.converter';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';

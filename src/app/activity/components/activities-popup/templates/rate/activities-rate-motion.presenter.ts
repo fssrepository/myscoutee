@@ -1,4 +1,4 @@
-import { clampNumber } from '@myscoutee/components';
+import { clampNumber } from '@fssrepository/myscoutee-components';
 
 export function animateActivitiesRateEditorScrollTo(
   scrollElement: HTMLElement,

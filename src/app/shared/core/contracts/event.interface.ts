@@ -1,4 +1,4 @@
-import type { SlotTemplate } from '@myscoutee/components';
+import type { SlotTemplate } from '@fssrepository/myscoutee-components';
 import type * as PricingContracts from './pricing.interface';
 import type { SubEventDefinitionDTO } from './activity.interface';
 

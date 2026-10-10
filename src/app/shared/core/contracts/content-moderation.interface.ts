@@ -1,4 +1,4 @@
-import type { PageResult } from '@myscoutee/components';
+import type { PageResult } from '@fssrepository/myscoutee-components';
 export type ModerationCategory = 'asset' | 'event' | 'feed' | 'group';
 export type ModerationCategoryFilter = ModerationCategory | 'all';
 export type ModerationStatus = 'under-review' | 'accepted' | 'rejected' | 'blocked';

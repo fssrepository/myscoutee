@@ -1,5 +1,5 @@
 import { GROUP_TYPES, type GroupType } from '../../../core/contracts/group-type';
-import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '@myscoutee/components';
+import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '@fssrepository/myscoutee-components';
 
 export const GROUP_TYPE_STYLES = {
   dating: { icon: 'favorite', palette: 'rose', accentHue: 340 },

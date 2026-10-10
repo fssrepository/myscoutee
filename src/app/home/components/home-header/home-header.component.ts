@@ -5,7 +5,7 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-home-header',

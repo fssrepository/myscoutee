@@ -1,4 +1,4 @@
-import { type RatingSnapshot, type ListQuery, type PageResult } from '@myscoutee/components';
+import { type RatingSnapshot, type ListQuery, type PageResult } from '@fssrepository/myscoutee-components';
 import type { DocumentAttachment } from './document-attachment.interface';
 
 export const CAMPAIGN_KINDS = ['work', 'business', 'both'] as const;

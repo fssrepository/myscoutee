@@ -15,7 +15,7 @@ import {
   type SmartListPollDeltaSnapshot,
   SingleRowComponent,
   type SingleRowData
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { Router } from '@angular/router';
 import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
 import {PaymentMethodsPopupStore} from '../../context/stores/payment/payment-methods-popup.store';

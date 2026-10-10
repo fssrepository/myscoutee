@@ -9,7 +9,7 @@ import {
   appMenuAlertCounter,
   appMenuResolveLiveValue,
   CARD_MENU_ACTIONS
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { contentModerationBadge } from '../content/content-moderation-badge';
 import { ActivityEventInfoCardMenuConverter } from '../event/activity-event-info-card-menu.converter';

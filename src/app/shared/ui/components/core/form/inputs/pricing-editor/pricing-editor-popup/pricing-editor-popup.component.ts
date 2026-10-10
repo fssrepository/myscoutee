@@ -19,7 +19,7 @@ import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { PricingSlotPanelComponent } from '../pricing-slot-panel';
 import {
   FormFlowPopupStore,

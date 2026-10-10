@@ -2,7 +2,7 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../../core/common/constants';
 import type { UserDto } from '../../../../core/contracts/user.interface';
-import { scheduleAfterPaint } from '@myscoutee/components';
+import { scheduleAfterPaint } from '@fssrepository/myscoutee-components';
 
 export type ProfileSettingsPopup =
   | 'help'

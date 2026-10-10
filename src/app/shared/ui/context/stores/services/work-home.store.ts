@@ -1,4 +1,4 @@
-import { type RatingSnapshot, type ListQuery } from '@myscoutee/components';
+import { type RatingSnapshot, type ListQuery } from '@fssrepository/myscoutee-components';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CampaignsService } from '../../../../core/base/services/campaigns.service';
 import { GameService } from '../../../../core/base/services/game.service';

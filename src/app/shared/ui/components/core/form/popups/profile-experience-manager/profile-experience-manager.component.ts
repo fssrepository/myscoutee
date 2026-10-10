@@ -21,7 +21,7 @@ import {
   type SmartListConfig,
   type SmartListFilters,
   type SmartListLoadPage
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,

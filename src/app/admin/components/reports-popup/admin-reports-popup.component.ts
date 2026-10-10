@@ -68,7 +68,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ActivityChatSingleRowConverter } from '../../../shared/ui';
 
 import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';

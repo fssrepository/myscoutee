@@ -21,7 +21,7 @@ import {
   type FormFlowControlModel,
   type FormFlowModel,
   FormFlowComponent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import {
   ProfileStore

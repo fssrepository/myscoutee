@@ -6,7 +6,7 @@ import { NavigationCancel, NavigationCancellationCode, NavigationEnd, Navigation
 import { Subject } from 'rxjs';
 import { App } from './app';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent } from '@myscoutee/components';
+import { AppMenuComponent } from '@fssrepository/myscoutee-components';
 import { SessionService } from './shared/core/base/services/session.service';
 import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
 import { PwaService } from './shared/core/base/services/pwa.service';

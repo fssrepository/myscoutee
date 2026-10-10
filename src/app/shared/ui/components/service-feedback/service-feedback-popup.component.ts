@@ -8,7 +8,7 @@ import {
   type AppMenuItem,
   type AppMenuPalette,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ServiceFeedbackStore } from '../../context/stores/services/service-feedback.store';
 import { I18nService } from '../../../core/base/services/i18n.service';

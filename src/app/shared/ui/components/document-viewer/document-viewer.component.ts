@@ -25,7 +25,7 @@ import {
   DeploymentBrandComponent,
   PopupComponent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import type {
   DocumentViewerAction,

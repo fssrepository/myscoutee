@@ -10,7 +10,7 @@ import {
   type FormFlowActionEvent,
   type FormFlowModel,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../core/contracts/payment-method.interface';
 

@@ -8,7 +8,7 @@ import {
   type AppMenuItem,
   type AppMenuPalette,
   type AppMenuTrigger
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 type Presentation = { icon: string; palette: NonNullable<InfoCardData['leadingIcon']>['palette']; hue: number; tone: InfoCardOverlayTone };
 const TYPES: Record<CaseType, Presentation> = {

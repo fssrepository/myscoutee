@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import workArticles from '../data/work-articles.json';
 import communityArticles from '../data/community-articles.json';
 import { APP_STATIC_DATA } from '../../../common/app-static-data';

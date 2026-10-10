@@ -6,7 +6,7 @@ import { HttpContentModerationService } from '../../http/services/content-modera
 import { LocalContentModerationService } from '../../local/source/services/content-moderation.service';
 import type { ContentModerationDecision, ContentModerationSettings, ModerationCategoryFilter, ModerationStatus } from '../../contracts/content-moderation.interface';
 import type { AdminUserDto } from '../../contracts/admin.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 @Injectable({ providedIn: 'root' })
 export class ContentModerationService extends BaseRouteModeService {
   private readonly jobs = inject(LocalAdminNotificationsService);

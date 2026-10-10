@@ -18,7 +18,7 @@ import {
   type AppMenuModel,
   type AppMenuItemSelectEvent,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
 import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
 import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/community/group-type-menu';

@@ -5,7 +5,7 @@ import { Injectable, computed, effect, inject, signal, untracked, OnDestroy } fr
 import { EventsService } from '../../../../core/base/services/events.service';
 import { I18nService } from '../../../../core/base/services/i18n.service';
 import type { MingleStateDTO } from '../../../../core/contracts/event.interface';
-import { UiPollCoordinator, UiTaskScheduler } from '@myscoutee/components';
+import { UiPollCoordinator, UiTaskScheduler } from '@fssrepository/myscoutee-components';
 
 import { MemberMenuStore } from '../app/member-menu.store';
 

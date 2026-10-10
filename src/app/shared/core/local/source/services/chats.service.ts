@@ -1,4 +1,4 @@
-import { UiDateUtils, type ListQuery } from '@myscoutee/components';
+import { UiDateUtils, type ListQuery } from '@fssrepository/myscoutee-components';
 import { LocalCommunityAnnouncementsRepository } from '../repositories/community-announcements.repository';
 import { LocalCommunityAccessService } from './community-access.service';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';

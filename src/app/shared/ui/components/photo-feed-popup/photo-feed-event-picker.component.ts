@@ -7,7 +7,7 @@ import {
   type InfoCardData,
   type SmartListConfig,
   type SmartListLoadPage
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { defer } from 'rxjs';
 import { PhotoFeedService } from '../../../core/base/services/photo-feed.service';

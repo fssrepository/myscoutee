@@ -38,7 +38,7 @@ import type {
   OperatorRegistryInspectionDto,
   OperatorRegistryStatusDto
 } from '../../contracts/operator.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { HttpOperatorRegistryService } from '../../http/services/operator-registry.service';
 import { LocalOperatorRegistryService } from '../../local/source/services/operator-registry.service';
 import { BaseRouteModeService } from './base-route-mode.service';

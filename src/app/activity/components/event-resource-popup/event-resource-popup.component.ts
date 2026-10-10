@@ -7,7 +7,7 @@ import {
   PopupComponent,
   type PopupModel,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import {
@@ -2491,7 +2491,7 @@ export class EventResourcePopupComponent {
     dialog: AssignedAssetJoinDialogState,
     amount: number,
     hasError: boolean
-  ): readonly import('@myscoutee/components').AppMenuItem<string>[] {
+  ): readonly import('@fssrepository/myscoutee-components').AppMenuItem<string>[] {
     const takeOver = dialog.mode === 'takeover';
     const paymentRequired = takeOver && amount > 0;
     const requiresPaymentMethod = paymentRequired && dialog.paymentStep && !this.cashOnly();

@@ -11,7 +11,7 @@ import {
   PopupComponent,
   type PopupModel,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-mcp-connections', standalone: true,

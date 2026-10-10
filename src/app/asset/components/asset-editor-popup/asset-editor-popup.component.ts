@@ -16,7 +16,7 @@ import {
   type PopupControl,
   type PopupModel,
   type DateInputRangeValue
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { PaymentRefundPolicyComponent } from '../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import {

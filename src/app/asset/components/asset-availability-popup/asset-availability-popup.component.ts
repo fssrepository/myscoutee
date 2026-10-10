@@ -27,7 +27,7 @@ import {
   type SmartListLoadContext,
   type SmartListLoadPage,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { CommonModule } from '@angular/common';
 import {

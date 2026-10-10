@@ -20,7 +20,7 @@ import {
   type SmartListItemSelectEvent,
   type TextCardStatusTone,
   type TextCardTone
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';

@@ -8,7 +8,7 @@ import {
   IndicatorComponent,
   PopupComponent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
 
 import { EventFeedbackDetailConverter } from '../../../shared/ui';

@@ -12,7 +12,7 @@ import type {
   IdeaPostPublicPageResultDto,
   IdeaPostSaveRequestDto
 } from '../../contracts/content.interface';
-import { type PageResult, type InfoCardData, type CardMenuActionId } from '@myscoutee/components';
+import { type PageResult, type InfoCardData, type CardMenuActionId } from '@fssrepository/myscoutee-components';
 
 import { BaseRouteModeService } from './base-route-mode.service';
 

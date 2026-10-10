@@ -1,4 +1,4 @@
-import { type RatingSnapshot, type ListQuery } from '@myscoutee/components';
+import { type RatingSnapshot, type ListQuery } from '@fssrepository/myscoutee-components';
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesFeedFilters } from '../../contracts';

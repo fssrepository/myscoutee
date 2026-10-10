@@ -3,7 +3,7 @@ import {
   type GuideHeaderColor as HelpCenterHeaderColor,
   type GuideRevision as HelpCenterRevisionDto,
   type GuideSection as HelpCenterSectionDto
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type {
   ActivitiesChatContextFilter,
   ActivitiesPrimaryFilter,

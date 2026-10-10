@@ -9,7 +9,7 @@ import {
   type SingleRowSurfaceTone,
   type ConverterOptionsArg,
   type UiConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 export interface NotificationSingleRowConverterOptions {
   locale?: string | null;

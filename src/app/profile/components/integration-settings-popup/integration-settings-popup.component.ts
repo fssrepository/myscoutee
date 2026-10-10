@@ -13,7 +13,7 @@ import {
   type AppMenuModel,
   I18nPipe,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
 import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
 import { CommonModule } from '@angular/common';

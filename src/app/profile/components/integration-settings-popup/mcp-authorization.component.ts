@@ -8,7 +8,7 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { MatIconModule } from '@angular/material/icon';
 

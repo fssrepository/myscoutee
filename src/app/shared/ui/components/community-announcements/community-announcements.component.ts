@@ -13,7 +13,7 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { Component, Input, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { defer, map } from 'rxjs';

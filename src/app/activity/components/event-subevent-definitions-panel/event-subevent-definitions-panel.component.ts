@@ -22,7 +22,7 @@ import {
   type TextCardStatusTone,
   type TextCardTone,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { EventModeMenuConverter } from '../../../shared/ui/converters/event/event-mode-menu.converter';
 import { CommonModule } from '@angular/common';

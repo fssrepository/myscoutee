@@ -37,7 +37,7 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type * as ContractTypes from '../../../../../../core/contracts';
 import { PricingSlotPanelComponent } from './pricing-slot-panel';
 

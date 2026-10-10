@@ -4,7 +4,7 @@ import { createEnvironmentInjector, runInInjectionContext, signal, type Environm
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventsService } from '../../../../core/base/services/events.service';
 import { UserProfileStore } from '../profile/user-profile.store';
-import { DialogStore } from '@myscoutee/components';
+import { DialogStore } from '@fssrepository/myscoutee-components';
 import { CalendarExportStore } from './calendar-export.store';
 
 describe('Calendar download request lifecycle', () => {

@@ -8,7 +8,7 @@ import {
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
-import { type CardMenuActionId, type InfoCardData, type UiListConverter } from '@myscoutee/components';
+import { type CardMenuActionId, type InfoCardData, type UiListConverter } from '@fssrepository/myscoutee-components';
 
 export interface ActivitySubEventResourceInfoCardAssetRef {
   id: string;

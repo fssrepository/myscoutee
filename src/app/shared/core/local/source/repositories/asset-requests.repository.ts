@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { LocalUsersRepository } from './users.repository';
 import { Injectable, inject } from '@angular/core';
 

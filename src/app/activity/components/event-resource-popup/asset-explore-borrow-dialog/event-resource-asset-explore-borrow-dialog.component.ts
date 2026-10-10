@@ -10,7 +10,7 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { PaymentRefundPolicyComponent } from '../../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';

@@ -1,4 +1,4 @@
-import { type AppMenuModel, type AppMenuPalette } from '@myscoutee/components';
+import { type AppMenuModel, type AppMenuPalette } from '@fssrepository/myscoutee-components';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import { AppUtils } from '../../../core/base/app-utils';
 

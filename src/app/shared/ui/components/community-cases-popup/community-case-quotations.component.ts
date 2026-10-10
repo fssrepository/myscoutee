@@ -16,7 +16,7 @@ import {
   type AppMenuItemSelectEvent,
   I18nPipe,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
 import { I18nService } from '../../../core/base/services/i18n.service';

@@ -10,7 +10,7 @@ import {
   type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 interface CallPage {
   id: string;

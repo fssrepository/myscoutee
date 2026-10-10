@@ -1,4 +1,4 @@
-import { normalizeScheduleFrequency, clampNumber, UiDateUtils } from '@myscoutee/components';
+import { normalizeScheduleFrequency, clampNumber, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import { normalizeImageDetails } from '../../../contracts/image-gallery.interface';
 import type { DtoListMapper, DtoMapper } from './mapper.types';

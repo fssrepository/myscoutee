@@ -18,7 +18,7 @@ import {
   type SingleRowData,
   DialogStore,
   ImageGalleryStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
 import { MODERATION_CATEGORIES, GROUP_MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';

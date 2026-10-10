@@ -4,7 +4,7 @@ import {
   type CardRenderState,
   type InfoCardData,
   type UiListConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
 import type * as ContractTypes from '../../../core/contracts';
 import type * as AppConstants from '../../../core/common/constants';

@@ -23,7 +23,7 @@ import {
 import {
   AssetTicketScanConverter
 } from '../../../shared/ui/converters/asset/asset-ticket-scan.converter';
-import { PopupComponent, type PopupModel } from '@myscoutee/components';
+import { PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
 import {
   AssetTicketCodePopupComponent
 } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';

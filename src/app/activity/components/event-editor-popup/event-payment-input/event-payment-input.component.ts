@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject
 import { MatIconModule } from '@angular/material/icon';
 import { DeploymentConfigurationService } from '../../../../shared/core/base/services/deployment-configuration.service';
 import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payment-method.interface';
-import { PaymentCardComponent, type PaymentCardData, I18nPipe } from '@myscoutee/components';
+import { PaymentCardComponent, type PaymentCardData, I18nPipe } from '@fssrepository/myscoutee-components';
 import type {
   EventEditorCheckoutSurfaceTone,
   EventPaymentStatusTone

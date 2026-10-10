@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 
 export type NotificationBucket = 'new' | 'all';
 

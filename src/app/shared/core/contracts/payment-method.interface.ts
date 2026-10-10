@@ -1,4 +1,4 @@
-import type { ListQuery, PageResult } from '@myscoutee/components';
+import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 
 export type PaymentProvider = 'stripe' | 'barion';
 export type PaymentHistoryDirection = 'all' | 'expenses' | 'income';

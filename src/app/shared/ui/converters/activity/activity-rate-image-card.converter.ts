@@ -5,7 +5,7 @@ import {
   type ImageCardPerson,
   type PairCardSlot,
   type UiListConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
 import type { ActivityRateDTO } from '../../../core/contracts/activity.interface';
 import type { UserDto } from '../../../core/contracts/user.interface';

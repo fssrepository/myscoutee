@@ -11,7 +11,7 @@ import {
   PopupComponent,
   type PopupModel,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
 import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile/profile.store';

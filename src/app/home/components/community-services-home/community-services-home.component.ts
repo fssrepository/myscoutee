@@ -9,7 +9,7 @@ import {
   type UiBranding as DeploymentBrandingDto,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../shared/core/base/app-utils';
 import { Component, Input, inject, signal, computed, effect, untracked } from '@angular/core';
 import { defer,map } from 'rxjs';

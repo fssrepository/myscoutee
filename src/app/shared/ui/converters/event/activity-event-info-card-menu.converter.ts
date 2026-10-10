@@ -5,7 +5,7 @@ import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
   type UiConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import type { EventCheckoutState } from '../../../core/contracts/activity.interface';
 

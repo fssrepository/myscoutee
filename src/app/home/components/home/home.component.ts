@@ -21,7 +21,7 @@ import {
   SmartListComponent,
   ExplanationGuideService,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {

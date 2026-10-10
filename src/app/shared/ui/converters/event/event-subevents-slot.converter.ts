@@ -1,4 +1,4 @@
-import { normalizeScheduleFrequency, UiDateUtils } from '@myscoutee/components';
+import { normalizeScheduleFrequency, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import { ActivityEventDetailDTO, type SubEventsSlotDTO } from '../../../core/contracts/activity.interface';
 import type { EventSlotTemplateDTO, SubEventDTO } from '../../../core/contracts/event.interface';

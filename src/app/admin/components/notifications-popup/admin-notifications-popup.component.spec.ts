@@ -9,7 +9,7 @@ import {
   type PageResult,
   type SmartListComponent,
   type SmartListStateChange
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AdminNotificationsSeedBuilder } from '../../../shared/core/local/seed/builders/admin/admin-notifications-seed.builder';
 
 import { AdminNotificationsPopupComponent } from './admin-notifications-popup.component';

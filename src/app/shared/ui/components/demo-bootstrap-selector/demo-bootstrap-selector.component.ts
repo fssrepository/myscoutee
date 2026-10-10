@@ -35,7 +35,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import {
   UsersService,

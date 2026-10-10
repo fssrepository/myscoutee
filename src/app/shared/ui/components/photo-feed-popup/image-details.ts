@@ -1,4 +1,4 @@
-import type { ImageDetailsAdapter } from '@myscoutee/components';
+import type { ImageDetailsAdapter } from '@fssrepository/myscoutee-components';
 import type { ImageDetails, ImageDetailsConfig } from '../../../core/contracts/image-gallery.interface';
 import { normalizeImageDetails } from '../../../core/contracts/image-gallery.interface';
 

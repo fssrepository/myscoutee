@@ -19,7 +19,7 @@ import {
   type FormFlowDraft,
   type FormFlowModel,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
 import {
   CommonModule

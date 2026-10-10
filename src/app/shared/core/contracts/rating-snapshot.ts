@@ -1,4 +1,4 @@
-import { ratingAverage, type RatingCriteriaDefinition, type RatingSnapshot } from '@myscoutee/components';
+import { ratingAverage, type RatingCriteriaDefinition, type RatingSnapshot } from '@fssrepository/myscoutee-components';
 
 export type RatingDomain = 'dating' | 'dating-pair' | 'campaign' | 'work' | 'service-interest' | 'service';
 

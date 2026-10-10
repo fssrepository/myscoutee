@@ -9,7 +9,7 @@ import { activeCaseParticipantIds, type CommunityCaseRecord } from '../entity/co
 import { COMMUNITY_BASE_GROUP_ID } from '../../../contracts/group-type';
 import { SERVICE_RATING_CRITERIA } from '../../../contracts/rating-snapshot';
 import type { IServiceFeedbackService, ServiceFeedback, ServiceFeedbackCommand, ServiceFeedbackBucket } from '../../../contracts/service-feedback.interface';
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 
 @Injectable({providedIn:'root'})
 export class LocalServiceFeedbackService extends LocalRouteDelayService implements IServiceFeedbackService {

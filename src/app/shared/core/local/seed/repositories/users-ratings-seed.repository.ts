@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord } from '../../source/entity/user.entity';

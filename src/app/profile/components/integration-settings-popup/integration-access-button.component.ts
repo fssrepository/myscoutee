@@ -8,7 +8,7 @@ import {
   PopupComponent,
   type PopupModel,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { IntegrationAccessMode } from '../../../shared/core/contracts/integration.interface';
 import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 

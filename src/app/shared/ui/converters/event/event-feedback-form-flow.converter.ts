@@ -6,7 +6,7 @@ import {
   type AppMenuPalette,
   type FormFlowMenuControlConfig,
   type FormFlowModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import {
   EventFeedbackDetailConverter,

@@ -7,7 +7,7 @@ import {
   type CardMenuActionEvent,
   type CardProfileViewData,
   type CardMenuRequestEvent
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type * as ActivityContracts from '../../../../../shared/core/contracts/activity.interface';
 
 import {

@@ -1,4 +1,4 @@
-import { type IndicatorState, type HeaderCardModel } from '@myscoutee/components';
+import { type IndicatorState, type HeaderCardModel } from '@fssrepository/myscoutee-components';
 
 import type { UserDto } from '../../../core/contracts/user.interface';
 

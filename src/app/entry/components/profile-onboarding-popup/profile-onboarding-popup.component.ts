@@ -13,7 +13,7 @@ import {
   PopupComponent,
   type PopupModel,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { UsersService } from '../../../shared/core/base/services/users.service';
 import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';

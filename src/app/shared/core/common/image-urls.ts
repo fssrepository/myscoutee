@@ -1,4 +1,4 @@
-import type { UiImageUrls } from '@myscoutee/components';
+import type { UiImageUrls } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../base/app-utils';
 
 export const MYSCOUTEE_IMAGE_URLS: UiImageUrls = {

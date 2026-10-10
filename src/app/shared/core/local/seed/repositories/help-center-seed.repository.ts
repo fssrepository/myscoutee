@@ -14,7 +14,7 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import type {
   GuideDocumentKind as HelpCenterDocumentKind,
   GuideRevision as HelpCenterRevisionDto
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { HelpCenterAuditEntryDto } from '../../../contracts';
 import { LocalHelpCenterMapper } from '../../source/mappers/help-center.mapper';
 import { SeedHelpCenterContentBuilder } from '../builders/help-center-content-seed.builder';

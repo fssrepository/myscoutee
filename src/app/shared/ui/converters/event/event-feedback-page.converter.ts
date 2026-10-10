@@ -5,7 +5,7 @@ import {
   type AppMenuTrigger,
   type UiConverter,
   type UiListConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import type { EventFeedbackListFilter } from '../../../core/common/constants';

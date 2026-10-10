@@ -4,7 +4,7 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuRateConfig,
   type UiConverter
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 const ACTIVITY_RATE_MENU_RATING_ITEM_ID = 'rating';
 

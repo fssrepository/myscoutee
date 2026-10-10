@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type {
   GuideRevision as HelpCenterRevisionDto,
   GuideSection as HelpCenterSectionDto
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { EntryConsentStateDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../contracts';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';

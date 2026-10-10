@@ -11,7 +11,7 @@ import {
   AppMenuItemSelectEvent,
   I18nPipe,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect, untracked } from '@angular/core';
 import { defer, map } from 'rxjs';
 

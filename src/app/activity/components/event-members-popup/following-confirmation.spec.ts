@@ -1,6 +1,6 @@
 import '@angular/compiler';
 import { describe, expect, it, vi } from 'vitest';
-import { DialogStore } from '@myscoutee/components';
+import { DialogStore } from '@fssrepository/myscoutee-components';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupComponent } from '../activities-popup/activities-popup.component';
 import { EventMembersPopupComponent } from './event-members-popup.component';

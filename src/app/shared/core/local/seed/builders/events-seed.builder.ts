@@ -1,4 +1,4 @@
-import { clampNumber, UiDateUtils } from '@myscoutee/components';
+import { clampNumber, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { environment } from '../../../../../../environments/environment';

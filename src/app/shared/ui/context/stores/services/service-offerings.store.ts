@@ -1,4 +1,4 @@
-import { type RatingSnapshot, DialogStore, type AppMenuItem, type ListQuery } from '@myscoutee/components';
+import { type RatingSnapshot, DialogStore, type AppMenuItem, type ListQuery } from '@fssrepository/myscoutee-components';
 import { CaseAppointmentsService } from '../../../../core/base/services/case-appointments.service';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 import { ServiceOfferingsService } from '../../../../core/base/services/service-offerings.service';

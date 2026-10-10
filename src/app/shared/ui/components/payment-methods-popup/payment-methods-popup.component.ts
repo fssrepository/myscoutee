@@ -23,7 +23,7 @@ import {
   type PaymentCardData,
   type SingleRowData,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { AssetCardBuilder, AssetsService, DeploymentConfigurationService, EventsService, I18nService, PaymentMethodsService, UsersService } from '../../../core';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';

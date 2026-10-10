@@ -1,4 +1,4 @@
-import type { ListQuery as SharedListQuery } from '@myscoutee/components';
+import type { ListQuery as SharedListQuery } from '@fssrepository/myscoutee-components';
 import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
 import type { StoredContact } from '../../../contracts/contact.interface';
 import { CHATS_TABLE_NAME } from '../entity/chat.entity';

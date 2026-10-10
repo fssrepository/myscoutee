@@ -8,7 +8,7 @@ import {
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,

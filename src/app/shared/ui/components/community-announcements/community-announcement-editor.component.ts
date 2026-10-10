@@ -9,7 +9,7 @@ import {
   type FormFlowActionEvent,
   type AppMenuModel,
   ExplanationGuideService
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community/community-announcements.store';
 import { MediaService } from '../../../core/base/services/media.service';

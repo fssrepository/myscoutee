@@ -1,7 +1,7 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { type UiBranding as DeploymentBrandingDto, type PromptModel } from '@myscoutee/components';
+import { type UiBranding as DeploymentBrandingDto, type PromptModel } from '@fssrepository/myscoutee-components';
 import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_PRIVACY_CONTACT, DEFAULT_DEPLOYMENT_SOCIAL_LINKS } from './shared/core/contracts';
 import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
 import { I18nService } from './shared/core/base/services/i18n.service';

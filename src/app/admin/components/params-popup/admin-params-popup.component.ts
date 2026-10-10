@@ -37,7 +37,7 @@ import {
   type PopupActionEvent,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import {
   AdminMenuStore

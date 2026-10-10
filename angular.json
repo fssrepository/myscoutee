@@ -197,7 +197,7 @@
                 "@firebase/util",
                 "@angular/material",
                 "@angular/cdk",
-                "@myscoutee/components"
+                "@fssrepository/myscoutee-components"
               ]
             }
           },

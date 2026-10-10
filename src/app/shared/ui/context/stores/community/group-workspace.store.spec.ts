@@ -10,7 +10,7 @@ import { AppRuntimeStore } from '../app/app-runtime.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
 import { ContentModerationStore } from '../content/content-moderation.store';
-import { UiPollCoordinator } from '@myscoutee/components';
+import { UiPollCoordinator } from '@fssrepository/myscoutee-components';
 import type { GroupWorkspace } from '../../../../core/contracts/community-group.interface';
 import type { UserDto } from '../../../../core/contracts/user.interface';
 import { profileMenuBadgeCount } from '../app/app-context-store.utils';

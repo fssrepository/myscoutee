@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AppLocationService } from './app-location.service';
-import { DialogStore } from '@myscoutee/components';
+import { DialogStore } from '@fssrepository/myscoutee-components';
 
 describe('Explicit location request', () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });

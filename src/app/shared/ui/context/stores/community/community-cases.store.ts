@@ -11,7 +11,7 @@ import { ActivityMembersService } from '../../../../core/base/services/activity-
 import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/group-type';
 import type { CaseCommand, CaseFilters, CaseListContext, CommunityCase, CommunityScheduledTask, SaveCommunityCase, SaveCommunityScheduledTask, ScheduledTaskFilters, ScheduledTaskCounters, ScheduledTaskAction } from '../../../../core/contracts/community-case.interface';
-import { type ListQuery, DialogStore, type AppMenuItem } from '@myscoutee/components';
+import { type ListQuery, DialogStore, type AppMenuItem } from '@fssrepository/myscoutee-components';
 import { ProfileStore } from '../profile/profile.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { GroupWorkspaceStore } from './group-workspace.store';

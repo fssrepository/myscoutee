@@ -10,7 +10,7 @@ import {
   type AppMenuItemSelectEvent,
   PopupComponent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 type AssignedAssetJoinActionId = 'join-cancel' | 'join-confirm';
 

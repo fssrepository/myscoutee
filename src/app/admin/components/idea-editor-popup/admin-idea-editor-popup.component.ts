@@ -27,7 +27,7 @@ import {
   type SmartListLoadPage,
   DialogStore,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import {
   CommonModule
 } from '@angular/common';

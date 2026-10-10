@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, NgZone, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { UiTranslations } from '@myscoutee/components';
+import type { UiTranslations } from '@fssrepository/myscoutee-components';
 
 import { environment } from '../../../../../environments/environment';
 import {

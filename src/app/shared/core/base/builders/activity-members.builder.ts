@@ -1,4 +1,4 @@
-import { UiDateUtils } from '@myscoutee/components';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { APP_STATIC_DATA } from '../../common/app-static-data';
 import { AppUtils } from '../app-utils';
 import type { UserDto } from '../../contracts/user.interface';

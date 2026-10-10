@@ -42,7 +42,7 @@ import {
   type UiAccordionModel,
   type UiAccordionToggleEvent,
   DialogStore
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';

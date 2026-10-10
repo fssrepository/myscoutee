@@ -4,7 +4,7 @@ import type {
   GuideRevision as HelpCenterRevisionDto,
   GuideSection as HelpCenterSectionDto,
   GuideSectionPanelSpan as HelpCenterSectionPanelSpan
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { HelpCenterAuditEntryDto, HelpCenterAuditAction, PrivacyConsentSource, PrivacyConsentDto } from '../../../contracts/content.interface';
 import type {
   HelpCenterAuditRecord,

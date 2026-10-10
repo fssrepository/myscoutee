@@ -33,7 +33,7 @@ import {
   SmartListComponent,
   type SmartListConfig,
   type SmartListLoadPage
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 export interface EventResourceListItem {
   card: AppDTOs.SubEventResourceCardDTO;

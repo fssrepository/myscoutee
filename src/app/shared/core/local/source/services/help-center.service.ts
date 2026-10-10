@@ -13,7 +13,7 @@ import type {
   GuideDocumentKind as HelpCenterDocumentKind,
   GuideRevision as HelpCenterRevisionDto,
   GuideSection as HelpCenterSectionDto
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import type { HelpCenterAuditEntryDto, HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
 import { HelpCenterContentBuilder } from '../../../base/builders';

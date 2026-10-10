@@ -1,4 +1,4 @@
-import type { ListQuery } from '@myscoutee/components';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { OperatorConfigurationMapper } from '../../../base/mappers/operator-configuration.mapper';
 import type {
   OperatorClaimRequestDto,

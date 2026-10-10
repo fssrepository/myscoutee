@@ -30,7 +30,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   type SingleRowData
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import {
   EventPromoCodePopupStore,
   type EventPromoCodeAddPopupActionRequest,

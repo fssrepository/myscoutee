@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AppSetupStore } from '../../context/stores/app/app-setup.store';
-import { PopupPresenceStore, DialogStore } from '@myscoutee/components';
+import { PopupPresenceStore, DialogStore } from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../core/base/services/i18n.service';
 import { AppSetupPopupComponent } from './app-setup-popup.component';
 import { SessionService } from '../../../core/base/services/session.service';

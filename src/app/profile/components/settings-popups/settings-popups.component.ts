@@ -21,7 +21,7 @@ import {
   type GuideSection as HelpCenterSectionDto,
   PopupComponent,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { DocumentViewerComponent } from '../../../shared/ui/components/document-viewer/document-viewer.component';
 import { type DocumentViewerAction, type DocumentViewerActionEvent, type DocumentViewerActionVisibility, type DocumentViewerConfig } from '../../../shared/ui/components/document-viewer';
 

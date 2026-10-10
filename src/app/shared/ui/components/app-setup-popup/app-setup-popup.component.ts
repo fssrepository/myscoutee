@@ -10,7 +10,7 @@ import {
   type AppMenuModel,
   type AppMenuItemSelectEvent,
   I18nPipe
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
 import { I18nService } from '../../../core/base/services/i18n.service';

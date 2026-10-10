@@ -1,4 +1,4 @@
-import { UiDateUtils, clampNumber } from '@myscoutee/components';
+import { UiDateUtils, clampNumber } from '@fssrepository/myscoutee-components';
 
 import type { ActivitiesView } from '../contracts';
 import type { AssetMemberRequestDTO } from '../contracts';

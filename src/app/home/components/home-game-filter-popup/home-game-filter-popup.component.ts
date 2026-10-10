@@ -13,7 +13,7 @@ import {
   type AppMenuTrigger,
   type PopupControl,
   type PopupModel
-} from '@myscoutee/components';
+} from '@fssrepository/myscoutee-components';
 import { resolveSideMenuPresentation } from '../../../shared/ui/components/side-menu/side-menu-presenters';
 import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import {
