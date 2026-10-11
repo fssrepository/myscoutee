@@ -1,5 +1,5 @@
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
-import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/common/activity.interface';
 import { type AppMenuPalette, type ImageCardData, type UiListConverter } from '@fssrepository/myscoutee-components';
 
 export interface ActivityMemberImageCardConverterOptions {

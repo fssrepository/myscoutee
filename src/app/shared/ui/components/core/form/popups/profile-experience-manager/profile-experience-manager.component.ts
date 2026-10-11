@@ -52,7 +52,7 @@ import type {
   ExperienceImportProgressState,
   ExperienceImportStatistics,
   UserExperienceImportDraft
-} from '../../../../../../core/contracts/profile.interface';
+} from '../../../../../../core/contracts/accounts/profile.interface';
 
 type ProfileExperienceManagerMenuId = string;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ActivityEventDTO } from '../../../../../shared/core/contracts/activity.interface';
+import type { ActivityEventDTO } from '../../../../../shared/core/contracts/common/activity.interface';
 import type { InfoCardData } from '@fssrepository/myscoutee-components';
 
 import { ActivitiesEventsController } from './activities-event-template.component';

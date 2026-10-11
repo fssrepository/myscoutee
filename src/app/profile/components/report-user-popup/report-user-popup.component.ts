@@ -11,7 +11,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/core/common/app-static-data';
-import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
+import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/accounts/users.service';
 import {
   AppMenuComponent,
   I18nPipe,

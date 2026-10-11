@@ -13,7 +13,7 @@ import {
   type SmartListItemMenuRequest,
   type SingleCardData
 } from '@fssrepository/myscoutee-components';
-import { ratingCriteriaFor } from '../../../../../shared/core/contracts/rating-snapshot';
+import { ratingCriteriaFor } from '../../../../../shared/core/contracts/affinity/rating-snapshot';
 
 import {
   ChangeDetectionStrategy,
@@ -26,7 +26,7 @@ import {
   ViewEncapsulation
 } from '@angular/core';
 
-import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../../../shared/core/contracts/common/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 
 import {

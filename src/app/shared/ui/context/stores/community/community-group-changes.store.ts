@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import type { CommunityGroup } from '../../../../core/contracts/community-group.interface';
+import type { CommunityGroup } from '../../../../core/contracts/groups/community-group.interface';
 
 /** Canonical mutation result shared by member, editor and list surfaces. */
 @Injectable({ providedIn: 'root' })

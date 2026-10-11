@@ -1,19 +1,19 @@
 import { type RatingSnapshot, DialogStore, type AppMenuItem, type ListQuery } from '@fssrepository/myscoutee-components';
-import { CaseAppointmentsService } from '../../../../core/base/services/case-appointments.service';
+import { CaseAppointmentsService } from '../../../../core/base/services/community/case-appointments.service';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
-import { ServiceOfferingsService } from '../../../../core/base/services/service-offerings.service';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import { GameService } from '../../../../core/base/services/game.service';
-import { ActivityMembersService } from '../../../../core/base/services/activity-members.service';
+import { ServiceOfferingsService } from '../../../../core/base/services/community/service-offerings.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import { GameService } from '../../../../core/base/services/accounts/game.service';
+import { ActivityMembersService } from '../../../../core/base/services/events/activity-members.service';
 import { ActivityInvitePopupStore } from '../activity/activity-invite-popup.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ProfileStore } from '../profile/profile.store';
 
-import type { CaseAppointmentCalendarEntry } from '../../../../core/contracts/case-appointment.interface';
-import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/group-type';
-import type { ServiceOfferingItem, ServiceOfferingFilters, SaveServiceOffering, ServiceAction } from '../../../../core/contracts/service-offering.interface';
+import type { CaseAppointmentCalendarEntry } from '../../../../core/contracts/community/case-appointment.interface';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/groups/group-type';
+import type { ServiceOfferingItem, ServiceOfferingFilters, SaveServiceOffering, ServiceAction } from '../../../../core/contracts/community/service-offering.interface';
 
-import type { ActivityMemberDTO } from '../../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
 @Injectable({providedIn:'root'})
 export class ServiceOfferingsStore {
   private readonly appointments=inject(CaseAppointmentsService);

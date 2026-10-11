@@ -1,4 +1,4 @@
-import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/group-type';
+import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
@@ -10,9 +10,9 @@ import {
   DialogStore,
   type InfoCardData
 } from '@fssrepository/myscoutee-components';
-import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
+import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/help/landing-explanation-guide';
 import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
-import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
+import { AffiliateReferralService } from '../../../shared/core/base/services/integrations/affiliate-referral.service';
 import {
   ChangeDetectorRef,
   Component,
@@ -47,7 +47,7 @@ import {
   hasOperatorRole
 } from '../../../shared/core/common/user-role';
 
-import type { SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
+import type { SupportedCountryDto } from '../../../shared/core/contracts/content/content.interface';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
@@ -57,38 +57,38 @@ import type {
   UserDto,
   UserSelectorListItemDto,
   UserLocationEligibilityResponseDto
-} from '../../../shared/core/contracts/user.interface';
+} from '../../../shared/core/contracts/accounts/user.interface';
 import {
   AdminWorkspaceDataService
-} from '../../../shared/core/base/services/admin-workspace-data.service';
+} from '../../../shared/core/base/services/administration/admin-workspace-data.service';
 import {
   HelpCenterService
-} from '../../../shared/core/base/services/help-center.service';
+} from '../../../shared/core/base/services/help/help-center.service';
 import {
   FirebaseAppService
-} from '../../../shared/core/base/services/firebase-app.service';
-import { FirebaseMessagingService } from '../../../shared/core/base/services/firebase-messaging.service';
-import { AppLocationService } from '../../../shared/core/base/services/app-location.service';
+} from '../../../shared/core/base/services/accounts/firebase-app.service';
+import { FirebaseMessagingService } from '../../../shared/core/base/services/notifications/firebase-messaging.service';
+import { AppLocationService } from '../../../shared/core/base/services/accounts/app-location.service';
 import { AppSetupStore } from '../../../shared/ui/context/stores/app/app-setup.store';
 import {
   I18nService
-} from '../../../shared/core/base/services/i18n.service';
+} from '../../../shared/core/base/services/localization/i18n.service';
 import {
   LandingContentService
-} from '../../../shared/core/base/services/landing-content.service';
+} from '../../../shared/core/base/services/content/landing-content.service';
 import {
   PrivacyPolicyService, canonicalEntryConsentVersion
-} from '../../../shared/core/base/services/privacy-policy.service';
+} from '../../../shared/core/base/services/help/privacy-policy.service';
 import {
   SessionService,
   type AppSession
-} from '../../../shared/core/base/services/session.service';
+} from '../../../shared/core/base/services/accounts/session.service';
 import {
   TermsPolicyService
-} from '../../../shared/core/base/services/terms-policy.service';
+} from '../../../shared/core/base/services/help/terms-policy.service';
 import {
   UsersService
-} from '../../../shared/core/base/services/users.service';
+} from '../../../shared/core/base/services/accounts/users.service';
 
 import {
   AdminWorkspaceStore

@@ -19,8 +19,8 @@ import {
   type AppMenuItemSelectEvent,
   I18nPipe
 } from '@fssrepository/myscoutee-components';
-import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
-import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
+import { LandingContentService } from '../../../shared/core/base/services/content/landing-content.service';
+import { baseGroupId, type GroupType } from '../../../shared/core/contracts/groups/group-type';
 import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/community/group-type-menu';
 import { LandingGuideSurfaceDirective } from './landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
@@ -31,13 +31,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
 
 import type { AuthMode } from '../../../shared/core/common/constants';
-import type { IdeaArticleDetailDto, SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
-import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
+import type { IdeaArticleDetailDto, SupportedCountryDto } from '../../../shared/core/contracts/content/content.interface';
+import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/accounts/user.interface';
 import { AppUtils } from '../../../shared/core/base/app-utils';
-import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { PwaService } from '../../../shared/core/base/services/pwa.service';
+import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { PwaService } from '../../../shared/core/base/services/platform/pwa.service';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 type EntryHeroCtaId = 'explore' | 'join';

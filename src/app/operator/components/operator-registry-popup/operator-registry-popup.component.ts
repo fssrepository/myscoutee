@@ -15,7 +15,7 @@ import {
   normalizeOperatorRegistryBaseUrl,
   validateOperatorRegistryBaseUrl
 } from '../../../shared/core/base/operator-registry-candidate';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   type ListQuery,
   LinkInputComponent,

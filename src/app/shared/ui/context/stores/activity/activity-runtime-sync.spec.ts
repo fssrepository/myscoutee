@@ -1,4 +1,4 @@
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActivityStore } from './activity.store';

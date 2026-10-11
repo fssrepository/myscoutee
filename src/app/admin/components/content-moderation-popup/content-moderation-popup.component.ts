@@ -1,7 +1,7 @@
-import { GroupWorkspaceContextService } from "../../../shared/core/base/services/group-workspace-context.service";
+import { GroupWorkspaceContextService } from "../../../shared/core/base/services/groups/group-workspace-context.service";
 import { ChangeDetectionStrategy, Component, DestroyRef, ViewChild, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { from } from 'rxjs';
 import {
   AppMenuComponent,
@@ -19,8 +19,8 @@ import {
   DialogStore,
   ImageGalleryStore
 } from '@fssrepository/myscoutee-components';
-import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
-import { MODERATION_CATEGORIES, GROUP_MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content-moderation.interface';
+import { ContentModerationService } from '../../../shared/core/base/services/content/content-moderation.service';
+import { MODERATION_CATEGORIES, GROUP_MODERATION_CATEGORIES, MODERATION_STATUSES, moderationCount, moderationDecisionAllowed, type ContentModerationItem, type ContentModerationSettings, type ModerationCategory, type ModerationCategoryFilter, type ModerationStatus } from '../../../shared/core/contracts/content/content-moderation.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 import { ContentModerationStore } from '../../../shared/ui/context/stores/content/content-moderation.store';
@@ -28,15 +28,15 @@ import { ContentModerationStore } from '../../../shared/ui/context/stores/conten
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event/event-editor-popup.store';
 import { AssetStore } from '../../../shared/ui/context/stores/asset/asset.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset/asset-popup.store';
-import { AssetCardBuilder } from '../../../shared/core/base/builders/asset-card.builder';
-import type { AssetDetailDTO } from '../../../shared/core/contracts/asset.interface';
-import type { PhotoFeedPost } from '../../../shared/core/contracts/photo-feed.interface';
-import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
+import { AssetCardBuilder } from '../../../shared/core/base/builders/assets/asset-card.builder';
+import type { AssetDetailDTO } from '../../../shared/core/contracts/assets/asset.interface';
+import type { PhotoFeedPost } from '../../../shared/core/contracts/content/photo-feed.interface';
+import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/common/activity.interface';
 import { MODERATION_STATUS_STYLE as STATUS_STYLE } from '../../../shared/ui/converters/content/content-moderation-presentation';
 import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
 import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community/community-groups.store';
-import type { AdminUserDto } from '../../../shared/core/contracts/admin.interface';
-import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
+import type { AdminUserDto } from '../../../shared/core/contracts/administration/admin.interface';
+import type { CommunityGroup } from '../../../shared/core/contracts/groups/community-group.interface';
 
 const CATEGORY_FILTERS: readonly ModerationCategoryFilter[] = ['all', 'event', 'asset', 'feed', 'group'];
 const CATEGORY_STYLE: Record<ModerationCategoryFilter, { icon: string; palette: AppMenuPalette }> = {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
 
 import { ActivitiesPopupComponent } from './activities-popup.component';
 

@@ -1,8 +1,8 @@
 import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
 import type * as ContractTypes from '../../../../core/contracts';
-import type { ActivityEventDTO } from '../../../../core/contracts/activity.interface';
-import type { ChatDTO } from '../../../../core/contracts/chat.interface';
+import type { ActivityEventDTO } from '../../../../core/contracts/common/activity.interface';
+import type { ChatDTO } from '../../../../core/contracts/chat/chat.interface';
 import { ActivityStore } from './activity.store';
 import { cloneSupportCaseCounters } from '../app/app-context-store.utils';
 import { UserProfileStore } from '../profile/user-profile.store';

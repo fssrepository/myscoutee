@@ -1,4 +1,4 @@
-import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
+import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/media/image-gallery.interface';
 import {
   ImageGalleryStore,
   CARD_MENU_ACTIONS,

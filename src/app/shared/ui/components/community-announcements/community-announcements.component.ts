@@ -20,11 +20,11 @@ import { defer, map } from 'rxjs';
 import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
 
 import { HomeHeaderComponent } from '../../../../home/components/home-header/home-header.component';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { CommunityAnnouncementEditorComponent } from './community-announcement-editor.component';
 
-import type { CommunityAnnouncement, AnnouncementFilters, AnnouncementStatus, AnnouncementAction } from '../../../core/contracts/community-announcement.interface';
+import type { CommunityAnnouncement, AnnouncementFilters, AnnouncementStatus, AnnouncementAction } from '../../../core/contracts/community/community-announcement.interface';
 
 const ANNOUNCEMENT_STATUS_STYLE:Record<AnnouncementStatus,{icon:string;palette:AppMenuPalette}>={published:{icon:'public',palette:'green'},draft:{icon:'edit_note',palette:'gold'},trash:{icon:'delete',palette:'danger'}};
 @Component({ selector: 'app-community-announcements', standalone: true,

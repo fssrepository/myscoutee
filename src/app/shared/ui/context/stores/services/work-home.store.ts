@@ -1,9 +1,9 @@
 import { type RatingSnapshot, type ListQuery } from '@fssrepository/myscoutee-components';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { CampaignsService } from '../../../../core/base/services/campaigns.service';
-import { GameService } from '../../../../core/base/services/game.service';
+import { CampaignsService } from '../../../../core/base/services/campaigns/campaigns.service';
+import { GameService } from '../../../../core/base/services/accounts/game.service';
 import { UserProfileStore } from '../profile/user-profile.store';
-import type { Campaign, CampaignFilters } from '../../../../core/contracts/campaign.interface';
+import type { Campaign, CampaignFilters } from '../../../../core/contracts/campaigns/campaign.interface';
 
 @Injectable({ providedIn: 'root' })
 export class WorkHomeStore {

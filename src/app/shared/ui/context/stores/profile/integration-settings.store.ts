@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { IntegrationService } from '../../../../core/base/services/integration.service';
-import { SessionService } from '../../../../core/base/services/session.service';
-import type { IntegrationAccessMode, IntegrationSettingsDto, IntegrationSettingsUpdateDto, IntegrationTokenCreatedDto, McpClientRequest } from '../../../../core/contracts/integration.interface';
+import { IntegrationService } from '../../../../core/base/services/integrations/integration.service';
+import { SessionService } from '../../../../core/base/services/accounts/session.service';
+import type { IntegrationAccessMode, IntegrationSettingsDto, IntegrationSettingsUpdateDto, IntegrationTokenCreatedDto, McpClientRequest } from '../../../../core/contracts/integrations/integration.interface';
 import { UserProfileStore } from './user-profile.store';
 
 /** API/MCP settings share one load, draft and save. Key mutations reconcile returned rows. */

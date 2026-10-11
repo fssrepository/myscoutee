@@ -1,4 +1,4 @@
-import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
+import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
 import {
   ExplanationGuideService,
   SmartListComponent,
@@ -20,8 +20,8 @@ import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity
 import { SERVICE_CATEGORY_STYLE, ServiceOfferingConverter } from '../../../shared/ui/converters/services/service-offering.converter';
 import { ServiceOfferingEditorComponent } from '../../../shared/ui/components/service-offerings/service-offering-editor.component';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { SERVICE_CATEGORIES,type ServiceOfferingFilters,type ServiceCategory,type ServiceOfferingItem } from '../../../shared/core/contracts/service-offering.interface';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { SERVICE_CATEGORIES,type ServiceOfferingFilters,type ServiceCategory,type ServiceOfferingItem } from '../../../shared/core/contracts/community/service-offering.interface';
 
 type ServiceHomeCard = SingleCardData & { id: string; eagerDetail: ServiceOfferingItem };
 @Component({selector:'app-community-services-home',standalone:true,imports:[HomeHeaderComponent,SmartListComponent,SingleCardComponent,ServiceOfferingEditorComponent],

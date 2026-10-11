@@ -28,46 +28,46 @@ import {
 } from '@angular/forms';
 import {
   ActivityResourceBuilder
-} from '../../../shared/core/base/builders/activity-resource.builder';
+} from '../../../shared/core/base/builders/events/activity-resource.builder';
 import {
   AssetCardBuilder
-} from '../../../shared/core/base/builders/asset-card.builder';
+} from '../../../shared/core/base/builders/assets/asset-card.builder';
 import {
   AssetDefaultsBuilder
-} from '../../../shared/core/base/builders/asset-defaults.builder';
+} from '../../../shared/core/base/builders/assets/asset-defaults.builder';
 import {
   PricingBuilder
-} from '../../../shared/core/base/builders/pricing.builder';
+} from '../../../shared/core/base/builders/payments/pricing.builder';
 import {
   ActivityResourcesService
-} from '../../../shared/core/base/services/activity-resources.service';
+} from '../../../shared/core/base/services/events/activity-resources.service';
 import {
   ChatsService
-} from '../../../shared/core/base/services/chats.service';
+} from '../../../shared/core/base/services/chat/chats.service';
 import {
   AssetsService as SharedAssetsService
-} from '../../../shared/core/base/services/assets.service';
+} from '../../../shared/core/base/services/assets/assets.service';
 import {
   EventsService
-} from '../../../shared/core/base/services/events.service';
+} from '../../../shared/core/base/services/events/events.service';
 import {
   DeploymentConfigurationService
-} from '../../../shared/core/base/services/deployment-configuration.service';
+} from '../../../shared/core/base/services/platform/deployment-configuration.service';
 
 import {
   PaymentAuthorizationService
-} from '../../../shared/core/base/services/payment-authorization.service';
+} from '../../../shared/core/base/services/payments/payment-authorization.service';
 import {
-} from '../../../shared/core/base/services/share-tokens.service';
+} from '../../../shared/core/base/services/content/share-tokens.service';
 import {
   UsersService
-} from '../../../shared/core/base/services/users.service';
+} from '../../../shared/core/base/services/accounts/users.service';
 import {
   I18nService
-} from '../../../shared/core/base/services/i18n.service';
+} from '../../../shared/core/base/services/localization/i18n.service';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 import {
   AppUtils
 } from '../../../shared/core/base/app-utils';
@@ -120,7 +120,7 @@ import type {
   SubEventResourcePopupPresentationHeader,
   SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
 import {
   EventResourceListComponent,
   type EventResourceListModel

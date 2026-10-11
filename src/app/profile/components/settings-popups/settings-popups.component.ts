@@ -1,4 +1,4 @@
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   ChangeDetectorRef,
   computed,
@@ -14,8 +14,8 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/core/common/app-static-data';
-import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
-import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
+import { HelpCenterService } from '../../../shared/core/base/services/help/help-center.service';
+import { PrivacyPolicyService } from '../../../shared/core/base/services/help/privacy-policy.service';
 import {
   type GuideRevision as HelpCenterRevisionDto,
   type GuideSection as HelpCenterSectionDto,

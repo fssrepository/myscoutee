@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import type { ContentModerationSnapshot } from '../../../../core/contracts/content-moderation.interface';
+import type { ContentModerationSnapshot } from '../../../../core/contracts/content/content-moderation.interface';
 @Injectable({ providedIn: 'root' })
 export class ContentModerationStore {
   readonly snapshot = signal<ContentModerationSnapshot | null>(null);

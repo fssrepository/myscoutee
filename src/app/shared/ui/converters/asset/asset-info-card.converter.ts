@@ -7,8 +7,8 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { contentModerationBadge } from '../content/content-moderation-badge';
 import { AppUtils } from '../../../core/base/app-utils';
-import { AssetCardBuilder } from '../../../core/base/builders/asset-card.builder';
-import { AssetDefaultsBuilder } from '../../../core/base/builders/asset-defaults.builder';
+import { AssetCardBuilder } from '../../../core/base/builders/assets/asset-card.builder';
+import { AssetDefaultsBuilder } from '../../../core/base/builders/assets/asset-defaults.builder';
 import type * as AppDTOs from '../../../core/contracts';
 import * as AppConstants from '../../../core/common/constants';
 

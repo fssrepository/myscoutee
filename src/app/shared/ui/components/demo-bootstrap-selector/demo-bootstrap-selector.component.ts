@@ -592,7 +592,7 @@ export class DemoBootstrapSelectorComponent {
 
   private async localSeedBootstrap() {
     const { SeedDemoBootstrapService } = await import(
-      '../../../core/local/seed/services/demo-bootstrap.service'
+      '../../../core/local/seed/services/platform/demo-bootstrap.service'
     );
     return this.injector.get(SeedDemoBootstrapService);
   }

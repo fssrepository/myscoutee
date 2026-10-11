@@ -1,10 +1,10 @@
 import { Injectable, OnDestroy, computed, effect, inject, signal } from '@angular/core';
-import { AppLocationService } from '../../../../core/base/services/app-location.service';
-import { FirebaseMessagingService } from '../../../../core/base/services/firebase-messaging.service';
-import { I18nService } from '../../../../core/base/services/i18n.service';
-import { PwaService } from '../../../../core/base/services/pwa.service';
+import { AppLocationService } from '../../../../core/base/services/accounts/app-location.service';
+import { FirebaseMessagingService } from '../../../../core/base/services/notifications/firebase-messaging.service';
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
+import { PwaService } from '../../../../core/base/services/platform/pwa.service';
 import { UserProfileStore } from '../profile/user-profile.store';
-import type { LocationCoordinates } from '../../../../core/contracts/user.interface';
+import type { LocationCoordinates } from '../../../../core/contracts/accounts/user.interface';
 import { APP_SETUP_CONFIG } from '../../../../core/base/config';
 
 @Injectable({ providedIn: 'root' })

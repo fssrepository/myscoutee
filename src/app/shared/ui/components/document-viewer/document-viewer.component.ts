@@ -7,7 +7,7 @@ import { AppUtils } from '../../../core/base/app-utils';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
-import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
+import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import {
   type GuideDocumentKind as HelpCenterDocumentKind,
   type GuideRevision as HelpCenterRevisionDto,

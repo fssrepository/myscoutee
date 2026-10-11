@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../core/base/app-utils';
 import { contentModerationBadge } from './content-moderation-badge';
-import type { PhotoFeedPost } from '../../../core/contracts/photo-feed.interface';
+import type { PhotoFeedPost } from '../../../core/contracts/content/photo-feed.interface';
 import type { InfoCardData } from '@fssrepository/myscoutee-components';
 
 export class PhotoFeedConverter {

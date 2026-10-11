@@ -13,7 +13,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 @Component({
   selector: 'app-setup-popup',

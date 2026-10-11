@@ -8,7 +8,7 @@ import type {
   FirebaseAuthProvider,
   FirebaseAuthRequestDto,
   FirebaseEmailAuthMode
-} from '../../../shared/core/contracts/user.interface';
+} from '../../../shared/core/contracts/accounts/user.interface';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({

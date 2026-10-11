@@ -1,12 +1,12 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
-import { PhotoFeedService } from '../../../../core/base/services/photo-feed.service';
+import { PhotoFeedService } from '../../../../core/base/services/content/photo-feed.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ImageGalleryStore, type ListQuery, UiTaskScheduler } from '@fssrepository/myscoutee-components';
-import { I18nService } from '../../../../core/base/services/i18n.service';
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
 
-import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedCounters } from '../../../../core/contracts/photo-feed.interface';
-import type { ImageEventReference } from '../../../../core/contracts/image-gallery.interface';
-import { FeedSeenOutboxRepository } from '../../../../core/base/repositories/feed-seen-outbox.repository';
+import type { PhotoFeedPost, PhotoFeedFilters, PhotoFeedCounters } from '../../../../core/contracts/content/photo-feed.interface';
+import type { ImageEventReference } from '../../../../core/contracts/media/image-gallery.interface';
+import { FeedSeenOutboxRepository } from '../../../../core/base/repositories/content/feed-seen-outbox.repository';
 
 @Injectable({ providedIn: 'root' })
 export class PhotoFeedStore {

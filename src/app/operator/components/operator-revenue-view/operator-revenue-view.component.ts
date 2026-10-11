@@ -8,14 +8,14 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import type {
   OperatorRevenueAssetCategoryDto,
   OperatorRevenueCurrencyDto,
   OperatorRevenueDto,
   OperatorRevenueTimelinePointDto,
   OperatorRevenueTone
-} from '../../../shared/core/contracts/operator.interface';
+} from '../../../shared/core/contracts/operator/operator.interface';
 import {
   AppMenuComponent,
   type AppMenuItem,

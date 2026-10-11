@@ -4,7 +4,7 @@ import type {
   AssetAvailabilityFilter,
   AssetAvailabilityView,
   AssetRequestMetricsDTO
-} from '../../../../core/contracts/asset.interface';
+} from '../../../../core/contracts/assets/asset.interface';
 
 export interface AssetAvailabilityPopupRequest {
   updatedMs: number;

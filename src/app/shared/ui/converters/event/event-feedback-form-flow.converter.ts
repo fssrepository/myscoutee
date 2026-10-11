@@ -1,5 +1,5 @@
 import type * as AppTypes from './event-feedback.model';
-import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
+import { EventFeedbackDetailDto } from '../../../core/contracts/common/activity.interface';
 import {
   type AppMenuItem,
   type AppMenuModel,

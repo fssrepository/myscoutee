@@ -1,4 +1,4 @@
-import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
+import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
 import {
   ExplanationGuideService,
   type UiBranding as DeploymentBrandingDto,
@@ -18,9 +18,9 @@ import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campa
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/activity/campaign.converter';
-import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignFilters, type CampaignCategory, type CampaignKind } from '../../../shared/core/contracts/campaign.interface';
+import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignFilters, type CampaignCategory, type CampaignKind } from '../../../shared/core/contracts/campaigns/campaign.interface';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 
 @Component({ selector: 'app-work-home', standalone: true,
   imports: [HomeHeaderComponent, SmartListComponent, SingleCardComponent],

@@ -1,8 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 
 import { APP_STORAGE_KEYS } from '../../../../core/common/storage-scope';
-import type { SavedPaymentMethodDto } from '../../../../core/contracts/payment-method.interface';
-import type { EventCheckoutResultState } from '../../../../core/contracts/activity.interface';
+import type { SavedPaymentMethodDto } from '../../../../core/contracts/payments/payment-method.interface';
+import type { EventCheckoutResultState } from '../../../../core/contracts/common/activity.interface';
 
 export interface AssetBorrowDraft {
   userId: string;

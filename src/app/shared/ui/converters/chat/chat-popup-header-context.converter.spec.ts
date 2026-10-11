@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ChatDTO } from '../../../core/contracts/chat.interface';
+import type { ChatDTO } from '../../../core/contracts/chat/chat.interface';
 import { ChatPopupHeaderContextConverter } from './chat-popup-header-context.converter';
 
 describe('ChatPopupHeaderContextConverter event lifecycle', () => {

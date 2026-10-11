@@ -1,5 +1,5 @@
 import { AppUtils } from '../base/app-utils';
-import type { UserDto } from '../contracts/user.interface';
+import type { UserDto } from '../contracts/accounts/user.interface';
 
 export class UserProfileState {
   private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);

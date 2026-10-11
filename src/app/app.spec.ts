@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { type UiBranding as DeploymentBrandingDto } from '@fssrepository/myscoutee-components';
 import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_PRIVACY_CONTACT, DEFAULT_DEPLOYMENT_SOCIAL_LINKS } from './shared/core/contracts';
-import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 
 import { App } from './app';
 import { routes } from './app.routes';

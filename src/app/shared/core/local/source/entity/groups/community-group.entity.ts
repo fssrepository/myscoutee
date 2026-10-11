@@ -1,0 +1,7 @@
+import type { CommunityGroup } from '../../../../contracts/groups/community-group.interface';
+export const COMMUNITY_GROUPS_TABLE_NAME = 'communityGroups' as const;
+export type CommunityGroupRecord = Pick<CommunityGroup, 'id' | 'ownerUserId' | 'name' | 'description' | 'imageUrl'
+  | 'groupType' | 'category' | 'visibility' | 'hideMembers' | 'policy' | 'createdAtIso' | 'updatedAtIso' | 'version' | 'moderationStatus' | 'moderationPending' | 'moderationQueueRevision'> & { pendingMembers?: number; lifecycleStatus?: 'active' | 'under-review' | 'deleted' | null; ownerReleasedAtIso?: string | null; takeoverCandidates?: string[] | null };
+export interface CommunityGroupsMemorySchema {
+  [COMMUNITY_GROUPS_TABLE_NAME]: { byId: Record<string, CommunityGroupRecord>; ids: string[] };
+}

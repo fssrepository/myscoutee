@@ -35,7 +35,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
@@ -64,17 +64,17 @@ import {
   APP_STATIC_DATA,
   type RateFilterEntry
 } from '../../../shared/core/common/app-static-data';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
 import {
   type ActivityEventDTO,
   type EventCheckoutBasket,
   type EventCheckoutResultState,
   type ActivityMembersSummaryDto
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 import type {
   ActivityRateDTO
-} from '../../../shared/core/contracts/activity.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 import {
   AppUtils
 } from '../../../shared/core/base/app-utils';
@@ -142,7 +142,7 @@ import { ActivityMembersBuilder, ActivitiesService, ActivityMembersService, Acti
 import {
   I18nService
 } from '../../../shared/core';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';

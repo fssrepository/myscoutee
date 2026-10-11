@@ -1,6 +1,6 @@
 import type { AdminSeedHelpTarget } from './admin-seed.models';
 import * as AppConstants from '../../../../common/constants';
-import { demoAssetPlaceholderUrl, demoEventPlaceholderUrl } from '../demo-image-pool';
+import { demoAssetPlaceholderUrl, demoEventPlaceholderUrl } from '../media/demo-image-pool';
 
 export class AdminHelpSeedBuilder {
   static demoAdminHelpTargets(): AdminSeedHelpTarget[] {

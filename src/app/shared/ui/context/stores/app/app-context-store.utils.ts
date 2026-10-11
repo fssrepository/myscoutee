@@ -1,13 +1,13 @@
 import type { GuideRevision as HelpCenterRevisionDto } from '@fssrepository/myscoutee-components';
 import type { HelpCenterStateDto } from '../../../../core/contracts';
-import type { UserGameFilterPreferencesDto } from '../../../../core/contracts/activity.interface';
+import type { UserGameFilterPreferencesDto } from '../../../../core/contracts/common/activity.interface';
 import type {
   ProfileExtDto,
   UserDto,
   UserImpressionsDto,
   UserImpressionsSectionDto,
   UserSupportCaseCountersDto
-} from '../../../../core/contracts/user.interface';
+} from '../../../../core/contracts/accounts/user.interface';
 import type {
   ActivityCounters,
   ActivityAssetCounters,

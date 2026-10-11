@@ -6,7 +6,7 @@ import { createInitialGameFilter, GameFilterMenuKind } from '../../shared/home-g
 import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile/profile-form-flow.converter';
 import type { FormFlowMenuControlConfig } from '@fssrepository/myscoutee-components';
-import { UserDto } from '../../../shared/core/contracts/user.interface';
+import { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 
 class Filter extends HomeGameFilterPopupComponent {
   model = this.filterMenuModel.bind(this);

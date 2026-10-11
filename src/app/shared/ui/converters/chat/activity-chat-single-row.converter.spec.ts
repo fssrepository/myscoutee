@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ChatDTO } from '../../../core/contracts/chat.interface';
-import type { SubEventDTO } from '../../../core/contracts/event.interface';
-import type { UserDto } from '../../../core/contracts/user.interface';
+import type { ChatDTO } from '../../../core/contracts/chat/chat.interface';
+import type { SubEventDTO } from '../../../core/contracts/events/event.interface';
+import type { UserDto } from '../../../core/contracts/accounts/user.interface';
 import { ActivityChatSingleRowConverter } from './activity-chat-single-row.converter';
 
 describe('ActivityChatSingleRowConverter group context', () => {

@@ -5,8 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { ExplanationGuideService, AppMenuDispatcher, DialogStore } from '@fssrepository/myscoutee-components';
 import { ActivityResourcesService, AssetTicketsService, AssetsService, I18nService, ShareTokensService } from '../../../shared/core';
 import * as AppConstants from '../../../shared/core/common/constants';
-import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+import type * as AssetContracts from '../../../shared/core/contracts/assets/asset.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 
 import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';

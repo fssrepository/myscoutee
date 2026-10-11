@@ -9,10 +9,10 @@ import type {
   AssetType,
   SubEventResourceFilter
 } from '../../../../core/common/constants';
-import type { ActivityMemberDTO } from '../../../../core/contracts/activity.interface';
-import type { ChatDTO } from '../../../../core/contracts/chat.interface';
+import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
+import type { ChatDTO } from '../../../../core/contracts/chat/chat.interface';
 import type { AssetDTO, AssetMemberStatusChangeDTO } from '../../../../core/contracts';
-import type { EventEditorTarget, SubEventDTO } from '../../../../core/contracts/event.interface';
+import type { EventEditorTarget, SubEventDTO } from '../../../../core/contracts/events/event.interface';
 import type { PopupHeaderLookup } from '../../../converters/chat/popup-header.model';
 import type {
   ResourceAssetDTO,

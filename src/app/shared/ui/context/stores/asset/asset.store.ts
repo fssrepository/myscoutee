@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { AssetDto } from '../../../../core/contracts';
 import { PricingBuilder } from '../../../../core/base/builders';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import * as AppConstants from '../../../../core/common/constants';
 import type * as AppDTOs from '../../../../core/contracts';
 import { type AppMenuItem, type DateInputModel, type DateInputRangeValue } from '@fssrepository/myscoutee-components';
@@ -10,7 +10,7 @@ import { type AppMenuItem, type DateInputModel, type DateInputRangeValue } from 
 import type {
   PricingEditorRuntimePreview
 } from '../../../components/core/form/inputs/pricing-editor';
-import type { SavedPaymentMethodDto } from '../../../../core/contracts/payment-method.interface';
+import type { SavedPaymentMethodDto } from '../../../../core/contracts/payments/payment-method.interface';
 import type { EventPaymentStatusTone } from '../event/event-editor-popup.store';
 
 export interface AssetVisibleListState {
@@ -73,7 +73,7 @@ export interface AssetEditorCheckoutState {
   availableQuantity: number;
   pricingPreview: PricingEditorRuntimePreview;
   cancellationPolicy?: AppDTOs.PricingCancellationPolicy | null;
-  refundPreview?: import('../../../../core/contracts/payment-method.interface').PaymentRefundPreviewDto | null;
+  refundPreview?: import('../../../../core/contracts/payments/payment-method.interface').PaymentRefundPreviewDto | null;
   refundPolicyUnavailable?: boolean;
   acceptedPolicyIds: string[];
   footerItems: readonly AppMenuItem<string>[];

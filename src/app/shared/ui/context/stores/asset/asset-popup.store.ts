@@ -1,6 +1,6 @@
 import { Injectable, Type, computed, signal } from '@angular/core';
 
-import type * as AssetContracts from '../../../../core/contracts/asset.interface';
+import type * as AssetContracts from '../../../../core/contracts/assets/asset.interface';
 
 export type AssetTicketScanMode = 'ticketCode' | 'ticketScanner';
 export type AssetTicketScannerState = 'idle' | 'reading' | 'validating' | 'valid' | 'invalid' | 'error';

@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { I18nService } from '../../../shared/core';
-import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import type * as AssetContracts from '../../../shared/core/contracts/assets/asset.interface';
 import { AssetTicketCodePopupComponent } from './asset-ticket-code-popup.component';
 
 describe('AssetTicketCodePopupComponent', () => {

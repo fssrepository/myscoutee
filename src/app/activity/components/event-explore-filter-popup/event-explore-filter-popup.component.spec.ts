@@ -1,6 +1,6 @@
 import { EventExploreFilterPopupComponent } from './event-explore-filter-popup.component';
 import type { AppMenuItemSelectEvent } from '@fssrepository/myscoutee-components';
-import type { EventExploreFilterPreferences } from '../../../shared/core/contracts/activity.interface';
+import type { EventExploreFilterPreferences } from '../../../shared/core/contracts/common/activity.interface';
 
 class FilterHarness extends EventExploreFilterPopupComponent {
   changeMode(mode: string) { this.selectMode({ id: mode } as AppMenuItemSelectEvent); }

@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { FormFlowComponent, ExplanationGuideService } from '@fssrepository/myscoutee-components';
 import { TestBed } from '@angular/core/testing';
 import { ProfileEditorComponent } from './profile-editor.component';
-import { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
+import { ProfileExtDto } from '../../../shared/core/contracts/accounts/user.interface';
 
 import { UsersService } from '../../../shared/core';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';

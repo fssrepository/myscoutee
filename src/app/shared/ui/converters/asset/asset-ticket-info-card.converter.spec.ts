@@ -1,6 +1,6 @@
 import { AssetTicketInfoCardConverter } from './asset-ticket-info-card.converter';
 
-import type * as AssetContracts from '../../../core/contracts/asset.interface';
+import type * as AssetContracts from '../../../core/contracts/assets/asset.interface';
 
 describe('AssetTicketInfoCardConverter', () => {
   it('renders the light organizer monogram even when an image exists', () => {

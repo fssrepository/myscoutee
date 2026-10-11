@@ -7,9 +7,9 @@ export {
   type ActivityMemberProfileResolver,
   type LocalActivityInviteCandidateRecord,
   type LocalActivityMembersOwnerSnapshot
-} from './activity.mapper';
-export { LocalContactsMapper } from './contacts.mapper';
-export { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
+} from './common/activity.mapper';
+export { LocalContactsMapper } from './accounts/contacts.mapper';
+export { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './events/event.mapper';
 export {
   LocalEventCheckoutBasketsMapper,
   type LocalEventCheckoutBasketItemRecord,
@@ -19,20 +19,20 @@ export {
   type LocalEventCheckoutBasketStatus,
   type LocalEventCheckoutLineItemRecord,
   type LocalEventCheckoutPricingSummaryRowRecord
-} from './event-checkout-basket.mapper';
-export { LocalEventFeedbackMapper } from './event-feedback.mapper';
-export { LocalEventParticipationActionMapper } from './event-participation-action.mapper';
-export { LocalHelpCenterMapper } from './help-center.mapper';
+} from './events/event-checkout-basket.mapper';
+export { LocalEventFeedbackMapper } from './events/event-feedback.mapper';
+export { LocalEventParticipationActionMapper } from './events/event-participation-action.mapper';
+export { LocalHelpCenterMapper } from './help/help-center.mapper';
 export {
   LocalIdeaPostsMapper,
   type LocalIdeaPostAdminRecordPage,
   type LocalIdeaPostRecordPage
-} from './idea-post.mapper';
-export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
-export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';
-export { LocalChatMessageMapper } from './chat-message.mapper';
-export { LocalChatThreadMapper } from './chat-thread.mapper';
-export { LocalNotificationMapper } from './notification.mapper';
-export { LocalOperatorRegistryMapper } from './operator-registry.mapper';
-export { LocalUserFilterPreferencesMapper, LocalUserRatesMapper } from './rate.mapper';
-export { LocalUsersMapper } from './user.mapper';
+} from './content/idea-post.mapper';
+export { LocalProfileExperiencesMapper } from './accounts/profile-experiences.mapper';
+export { LocalAssetsMapper, LocalAssetTicketsMapper } from './assets/asset.mapper';
+export { LocalChatMessageMapper } from './chat/chat-message.mapper';
+export { LocalChatThreadMapper } from './chat/chat-thread.mapper';
+export { LocalNotificationMapper } from './notifications/notification.mapper';
+export { LocalOperatorRegistryMapper } from './operator/operator-registry.mapper';
+export { LocalUserFilterPreferencesMapper, LocalUserRatesMapper } from './affinity/rate.mapper';
+export { LocalUsersMapper } from './accounts/user.mapper';

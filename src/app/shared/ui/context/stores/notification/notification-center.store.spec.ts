@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { NotificationsService } from '../../../../core/base/services/notifications.service';
+import { NotificationsService } from '../../../../core/base/services/notifications/notifications.service';
 import { ActivityStore } from '../activity/activity.store';
 import { NotificationCenterStore } from './notification-center.store';
 import { UserProfileStore } from '../profile/user-profile.store';

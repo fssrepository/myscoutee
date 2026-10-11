@@ -20,7 +20,7 @@ import {
   type FormFlowModel,
   DialogStore
 } from '@fssrepository/myscoutee-components';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   CommonModule
 } from '@angular/common';
@@ -55,7 +55,7 @@ import { USER_PROFILE_SAVE_CONTEXT_KEY, UsersService } from '../../../shared/cor
 import {
   ProfileExtDto,
   UserDto
-} from '../../../shared/core/contracts/user.interface';
+} from '../../../shared/core/contracts/accounts/user.interface';
 
 import { ProfileExperienceManagerComponent } from '../../../shared/ui';
 
@@ -69,7 +69,7 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile/profile.store';
-import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
+import type * as ProfileContracts from '../../../shared/core/contracts/accounts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';

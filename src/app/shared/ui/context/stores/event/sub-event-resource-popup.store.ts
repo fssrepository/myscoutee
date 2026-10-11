@@ -3,11 +3,11 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 import * as AppConstants from '../../../../core/common/constants';
 import type {
   AssetBorrowPricingPreview
-} from '../../../../core/base/builders/pricing.builder';
-import { ActivityResourceBuilder } from '../../../../core/base/builders/activity-resource.builder';
+} from '../../../../core/base/builders/payments/pricing.builder';
+import { ActivityResourceBuilder } from '../../../../core/base/builders/events/activity-resource.builder';
 import type * as AppDTOs from '../../../../core/contracts';
 import type * as ContractTypes from '../../../../core/contracts';
-import type { ActivityMemberDTO } from '../../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
 
 export type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
   description?: string;
@@ -166,7 +166,7 @@ export interface AssetExploreBorrowDialogState {
   availableQuantity: number;
   acceptedPolicyIds: string[];
   checkoutSessionId: string | null;
-  paymentMethod: import('../../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
+  paymentMethod: import('../../../../core/contracts/payments/payment-method.interface').SavedPaymentMethodDto | null;
   paymentStep: boolean;
   confirmedSelectionSignature: string | null;
   expiresAtIso: string | null;
@@ -184,7 +184,7 @@ export interface AssignedAssetJoinDialogState {
   takeOverCurrency?: string;
   acceptedPolicyIds: string[];
   checkoutSessionId?: string | null;
-  paymentMethod?: import('../../../../core/contracts/payment-method.interface').SavedPaymentMethodDto | null;
+  paymentMethod?: import('../../../../core/contracts/payments/payment-method.interface').SavedPaymentMethodDto | null;
   paymentStep?: boolean;
   busy: boolean;
   error: string | null;

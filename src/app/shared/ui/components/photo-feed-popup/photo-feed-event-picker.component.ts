@@ -10,10 +10,10 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { defer } from 'rxjs';
-import { PhotoFeedService } from '../../../core/base/services/photo-feed.service';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import type { ImageEventReference } from '../../../core/contracts/image-gallery.interface';
-import type { PhotoFeedEventOption } from '../../../core/contracts/photo-feed.interface';
+import { PhotoFeedService } from '../../../core/base/services/content/photo-feed.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+import type { ImageEventReference } from '../../../core/contracts/media/image-gallery.interface';
+import type { PhotoFeedEventOption } from '../../../core/contracts/content/photo-feed.interface';
 
 @Component({
   selector: 'app-photo-feed-event-picker', standalone: true,

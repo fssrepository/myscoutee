@@ -3,7 +3,7 @@ import { Component, Input, inject } from '@angular/core';
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 
-import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import type * as AssetContracts from '../../../shared/core/contracts/assets/asset.interface';
 
 @Component({
   selector: 'app-asset-ticket-code-popup',

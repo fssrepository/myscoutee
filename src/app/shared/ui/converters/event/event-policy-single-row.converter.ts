@@ -1,4 +1,4 @@
-import type * as EventContracts from '../../../core/contracts/event.interface';
+import type * as EventContracts from '../../../core/contracts/events/event.interface';
 import { type SingleRowData, type UiListConverter } from '@fssrepository/myscoutee-components';
 
 export interface EventPolicySingleRowConverterOptions {

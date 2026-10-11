@@ -1,11 +1,11 @@
 import {Injectable,inject,effect,signal} from '@angular/core';
-import {CaseAppointmentsService} from '../../../../core/base/services/case-appointments.service';
-import {GroupWorkspaceContextService} from '../../../../core/base/services/group-workspace-context.service';
+import {CaseAppointmentsService} from '../../../../core/base/services/community/case-appointments.service';
+import {GroupWorkspaceContextService} from '../../../../core/base/services/groups/group-workspace-context.service';
 import {UserProfileStore} from '../profile/user-profile.store';
 import {EventCheckoutSlotPickerStore} from '../event/event-checkout-slot-picker.store';
-import type {CaseAppointment} from '../../../../core/contracts/case-appointment.interface';
-import type {CommunityCase,CaseSupport} from '../../../../core/contracts/community-case.interface';
-import type {EventCheckoutBasket,EventCheckoutSlot} from '../../../../core/contracts/activity.interface';
+import type {CaseAppointment} from '../../../../core/contracts/community/case-appointment.interface';
+import type {CommunityCase,CaseSupport} from '../../../../core/contracts/community/community-case.interface';
+import type {EventCheckoutBasket,EventCheckoutSlot} from '../../../../core/contracts/common/activity.interface';
 @Injectable({providedIn:'root'})
 export class CaseAppointmentsStore {
  private readonly service=inject(CaseAppointmentsService);

@@ -1,6 +1,6 @@
 import { AssetPopupStore } from './asset-popup.store';
 
-import type * as AssetContracts from '../../../../core/contracts/asset.interface';
+import type * as AssetContracts from '../../../../core/contracts/assets/asset.interface';
 
 describe('AssetPopupStore ticket validation state', () => {
   it('only keeps attendee details for a valid server response without changing the organizer ticket list', () => {

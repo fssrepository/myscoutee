@@ -1,9 +1,9 @@
-import { ChatsService } from '../../../../core/base/services/chats.service';
+import { ChatsService } from '../../../../core/base/services/chat/chats.service';
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from './activities-popup.store';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
-import { CampaignsService } from '../../../../core/base/services/campaigns.service';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import type { Campaign, CampaignAction, CampaignFilters, SaveCampaign } from '../../../../core/contracts/campaign.interface';
+import { CampaignsService } from '../../../../core/base/services/campaigns/campaigns.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import type { Campaign, CampaignAction, CampaignFilters, SaveCampaign } from '../../../../core/contracts/campaigns/campaign.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { UserProfileStore } from '../profile/user-profile.store';
 

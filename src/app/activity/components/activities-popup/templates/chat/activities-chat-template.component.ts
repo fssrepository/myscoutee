@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
-import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
-import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../../../shared/core/contracts/accounts/user.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   eventChatHeaderStateFromChat,

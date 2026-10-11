@@ -4,7 +4,7 @@ import {
   EventFeedbackDetailDto,
   type EventFeedbackDto,
   type EventFeedbackStateDto
-} from '../../../core/contracts/activity.interface';
+} from '../../../core/contracts/common/activity.interface';
 import { EventFeedbackDetailConverter } from './event-feedback-detail.converter';
 import { EventFeedbackInfoCardConverter } from './event-feedback-info-card.converter';
 

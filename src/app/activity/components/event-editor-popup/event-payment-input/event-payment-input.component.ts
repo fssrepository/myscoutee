@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { DeploymentConfigurationService } from '../../../../shared/core/base/services/deployment-configuration.service';
-import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payment-method.interface';
+import { DeploymentConfigurationService } from '../../../../shared/core/base/services/platform/deployment-configuration.service';
+import type { SavedPaymentMethodDto } from '../../../../shared/core/contracts/payments/payment-method.interface';
 import { PaymentCardComponent, type PaymentCardData, I18nPipe } from '@fssrepository/myscoutee-components';
 import type {
   EventEditorCheckoutSurfaceTone,

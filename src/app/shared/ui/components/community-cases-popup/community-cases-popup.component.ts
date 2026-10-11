@@ -20,8 +20,8 @@ import { Component, ViewChild, effect, inject, untracked, computed, signal } fro
 import { defer, map } from 'rxjs';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { CASE_TYPES, type CommunityCase, type CommunityScheduledTask, type CaseFilters, type CaseType, type CaseAction, type ScheduledTaskFilters, type ScheduledTaskAction, type ScheduledTaskStatus } from '../../../core/contracts/community-case.interface';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+import { CASE_TYPES, type CommunityCase, type CommunityScheduledTask, type CaseFilters, type CaseType, type CaseAction, type ScheduledTaskFilters, type ScheduledTaskAction, type ScheduledTaskStatus } from '../../../core/contracts/community/community-case.interface';
 
 import { CommunityCaseEditorComponent } from './community-case-editor.component';
 import { CommunityCaseConverter } from '../../converters/community/community-case.converter';

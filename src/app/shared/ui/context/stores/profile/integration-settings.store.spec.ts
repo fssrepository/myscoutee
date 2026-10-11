@@ -2,8 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { IntegrationSettingsStore } from './integration-settings.store';
-import { SessionService } from '../../../../core/base/services/session.service';
-import { IntegrationService } from '../../../../core/base/services/integration.service';
+import { SessionService } from '../../../../core/base/services/accounts/session.service';
+import { IntegrationService } from '../../../../core/base/services/integrations/integration.service';
 import { UserProfileStore } from './user-profile.store';
 
 describe('Integration settings draft and connection mutations', () => {

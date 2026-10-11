@@ -5,7 +5,7 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import { AppUtils } from '../../../shared/core/base/app-utils';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { AdminWorkspaceDataService, type AdminDashboardDto, type AdminFeedbackDto } from '../../../shared/core';
 import {
   SingleRowComponent,
@@ -28,9 +28,9 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { ActivityChatSingleRowConverter } from '../../../shared/ui';
 
-import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/administration/admin-workspace-data.service';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 

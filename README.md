@@ -10,6 +10,13 @@ It includes domain-specific ratings, document attachments, contextual EN/HU
 guides and API/MCP permission controls. The Java client and MCP development
 version is **1.6.0**; full execution QA for these extensions is pending.
 
+### Core organization
+
+Services, repositories, contracts, mappers, builders and local entities are grouped
+by backend domain inside their existing base/HTTP/local layers. See the
+[core domain map](src/app/shared/core/README.md). UI stores and converters retain
+their existing presentation folders; shared components remain in their submodule.
+
 ### Shared components development
 
 Shared UI source is owned by the `myscoutee-components` repository, integrated as the

@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
+import { ActivityEventDetailDTO } from '../../../shared/core/contracts/common/activity.interface';
 import { EventEditorPopupComponent } from './event-editor-popup.component';
 
 describe('Event editor mode isolation', () => {

@@ -1,7 +1,7 @@
 import { Component, ElementRef, HostListener, ViewChild, computed, inject } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 
-import { PaymentAuthorizationService } from '../../../core/base/services/payment-authorization.service';
+import { PaymentAuthorizationService } from '../../../core/base/services/payments/payment-authorization.service';
 import { PopupComponent, type PopupModel, I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({

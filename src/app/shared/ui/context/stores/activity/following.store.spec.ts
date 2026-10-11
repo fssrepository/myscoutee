@@ -2,7 +2,7 @@ import '@angular/compiler';
 import { signal } from '@angular/core';
 import { describe, expect, it, vi } from 'vitest';
 import { FollowingStore } from './following.store';
-import type { FollowingChangeResult, FollowingState } from '../../../../core/contracts/following.interface';
+import type { FollowingChangeResult, FollowingState } from '../../../../core/contracts/accounts/following.interface';
 
 function setup(count: number) {
   const stateRef = signal<FollowingState>({ organizerIds: ['organizer'], eventCount: count });

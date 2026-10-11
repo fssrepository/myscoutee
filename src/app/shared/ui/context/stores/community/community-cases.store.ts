@@ -2,15 +2,15 @@ import { CommunityCaseChangesStore } from './community-case-changes.store';
 import { CommunityCaseConverter } from '../../../converters/community/community-case.converter';
 import { CaseAppointmentsStore } from './case-appointments.store';
 import { ServiceOfferingsStore } from '../services/service-offerings.store';
-import { ChatsService } from '../../../../core/base/services/chats.service';
+import { ChatsService } from '../../../../core/base/services/chat/chats.service';
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../activity/activities-popup.store';
 import { ActivityStore } from '../activity/activity.store';
 import { Injectable, Type, computed, effect, inject, signal, untracked } from '@angular/core';
-import { CommunityCasesService } from '../../../../core/base/services/community-cases.service';
-import { ActivityMembersService } from '../../../../core/base/services/activity-members.service';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/group-type';
-import type { CaseCommand, CaseFilters, CaseListContext, CommunityCase, CommunityScheduledTask, SaveCommunityCase, SaveCommunityScheduledTask, ScheduledTaskFilters, ScheduledTaskCounters, ScheduledTaskAction } from '../../../../core/contracts/community-case.interface';
+import { CommunityCasesService } from '../../../../core/base/services/community/community-cases.service';
+import { ActivityMembersService } from '../../../../core/base/services/events/activity-members.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/groups/group-type';
+import type { CaseCommand, CaseFilters, CaseListContext, CommunityCase, CommunityScheduledTask, SaveCommunityCase, SaveCommunityScheduledTask, ScheduledTaskFilters, ScheduledTaskCounters, ScheduledTaskAction } from '../../../../core/contracts/community/community-case.interface';
 import { type ListQuery, DialogStore, type AppMenuItem } from '@fssrepository/myscoutee-components';
 import { ProfileStore } from '../profile/profile.store';
 import { UserProfileStore } from '../profile/user-profile.store';
@@ -18,8 +18,8 @@ import { GroupWorkspaceStore } from './group-workspace.store';
 import { ActivityInvitePopupStore } from '../activity/activity-invite-popup.store';
 import { MemberMenuStore } from '../app/member-menu.store';
 
-import type { ChatMessageAttachment } from '../../../../core/contracts/chat.interface';
-import type { ActivityMemberDTO } from '../../../../core/contracts/activity.interface';
+import type { ChatMessageAttachment } from '../../../../core/contracts/chat/chat.interface';
+import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
 
 export type CaseEditorState = { kind: 'case'; value: CommunityCase | null; readOnly: boolean } | { kind: 'task'; value: CommunityScheduledTask | null; readOnly: boolean };
 @Injectable({ providedIn: 'root' })

@@ -1,4 +1,4 @@
 export {
   LocalUserRealtimeSnapshotBuilder,
   type LocalUserRealtimeSnapshotState
-} from './user-realtime-snapshot.builder';
+} from './accounts/user-realtime-snapshot.builder';

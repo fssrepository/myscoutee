@@ -1,38 +1,38 @@
-export { SeedBootstrapRegistryService } from './services/bootstrap-registry.service';
+export { SeedBootstrapRegistryService } from './services/platform/bootstrap-registry.service';
 export {
   SeedAdminBootstrapRepository
-} from './repositories/admin-bootstrap-seed.repository';
+} from './repositories/administration/admin-bootstrap-seed.repository';
 export {
   SeedAdminStoreRepository,
   type SeedAdminMenuCounterState,
   type SeedAdminStores
-} from './repositories/admin-store-seed.repository';
-export { SeedActivityMembersRepository } from './repositories/activity-members-seed.repository';
-export { SeedActivityResourcesRepository } from './repositories/activity-resources-seed.repository';
-export { SeedAdminAffinityGraphRepository } from './repositories/admin-affinity-graph-seed.repository';
-export { SeedAssetsRepository } from './repositories/assets-seed.repository';
-export { SeedChatsRepository } from './repositories/chats-seed.repository';
-export { SeedCleanupService } from './services/cleanup.service';
-export { SeedContactsRepository } from './repositories/contacts-seed.repository';
-export { SeedEventFeedbackRepository } from './repositories/event-feedback-seed.repository';
-export { SeedEventTicketsRepository } from './repositories/event-tickets-seed.repository';
-export { SeedEventsRepository } from './repositories/events-seed.repository';
-export { SeedHelpCenterRepository } from './repositories/help-center-seed.repository';
-export { SeedIdeaPostsRepository } from './repositories/idea-posts-seed.repository';
-export { SeedNotificationsRepository } from './repositories/notifications-seed.repository';
+} from './repositories/administration/admin-store-seed.repository';
+export { SeedActivityMembersRepository } from './repositories/events/activity-members-seed.repository';
+export { SeedActivityResourcesRepository } from './repositories/events/activity-resources-seed.repository';
+export { SeedAdminAffinityGraphRepository } from './repositories/affinity/admin-affinity-graph-seed.repository';
+export { SeedAssetsRepository } from './repositories/assets/assets-seed.repository';
+export { SeedChatsRepository } from './repositories/chat/chats-seed.repository';
+export { SeedCleanupService } from './services/platform/cleanup.service';
+export { SeedContactsRepository } from './repositories/accounts/contacts-seed.repository';
+export { SeedEventFeedbackRepository } from './repositories/events/event-feedback-seed.repository';
+export { SeedEventTicketsRepository } from './repositories/events/event-tickets-seed.repository';
+export { SeedEventsRepository } from './repositories/events/events-seed.repository';
+export { SeedHelpCenterRepository } from './repositories/help/help-center-seed.repository';
+export { SeedIdeaPostsRepository } from './repositories/content/idea-posts-seed.repository';
+export { SeedNotificationsRepository } from './repositories/notifications/notifications-seed.repository';
 export {
   SeedOperatorRegistryRepository,
   type OperatorBootstrapSeedContext
-} from './repositories/operator-registry-seed.repository';
-export { SeedProfileExperiencesRepository } from './repositories/profile-experiences-seed.repository';
-export { SeedShareTokensRepository } from './repositories/share-tokens-seed.repository';
-export { SeedUsersRatingsRepository } from './repositories/users-ratings-seed.repository';
-export { SeedUsersRepository } from './repositories/users-seed.repository';
+} from './repositories/operator/operator-registry-seed.repository';
+export { SeedProfileExperiencesRepository } from './repositories/accounts/profile-experiences-seed.repository';
+export { SeedShareTokensRepository } from './repositories/content/share-tokens-seed.repository';
+export { SeedUsersRatingsRepository } from './repositories/affinity/users-ratings-seed.repository';
+export { SeedUsersRepository } from './repositories/accounts/users-seed.repository';
 export {
   SeedDemoBootstrapService,
   type SeedDemoBootstrapMode
-} from './services/demo-bootstrap.service';
-export { SeedStaticContentService } from './services/static-content.service';
+} from './services/platform/demo-bootstrap.service';
+export { SeedStaticContentService } from './services/platform/static-content.service';
 export type {
   ActivityEventSeedItem,
   ActivityHostingSeedItem,

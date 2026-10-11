@@ -1,8 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { EventsService } from '../../../../core/base/services/events.service';
-import { I18nService } from '../../../../core/base/services/i18n.service';
-import type { MingleStateDTO } from '../../../../core/contracts/event.interface';
+import { EventsService } from '../../../../core/base/services/events/events.service';
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
+import type { MingleStateDTO } from '../../../../core/contracts/events/event.interface';
 import { UiPollCoordinator } from '@fssrepository/myscoutee-components';
 import { ActivityStore } from './activity.store';
 import { NotificationCenterStore } from '../notification/notification-center.store';

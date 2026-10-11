@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 
-import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../../shared/core/contracts/common/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import {

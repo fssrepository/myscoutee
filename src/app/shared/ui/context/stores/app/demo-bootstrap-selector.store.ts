@@ -4,8 +4,8 @@ import {
   signal
 } from '@angular/core';
 
-import type { UserSelectorListItemDto } from '../../../../core/contracts/user.interface';
-import type { GroupType } from '../../../../core/contracts/group-type';
+import type { UserSelectorListItemDto } from '../../../../core/contracts/accounts/user.interface';
+import type { GroupType } from '../../../../core/contracts/groups/group-type';
 
 export type DemoBootstrapSelectorMode = 'member' | 'operator' | 'admin';
 

@@ -1,4 +1,4 @@
-import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../../../shared/core/contracts/common/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import type { ImageCardData } from '@fssrepository/myscoutee-components';
 

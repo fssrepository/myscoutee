@@ -1,4 +1,4 @@
-import type { ActivityEventDTO } from '../contracts/activity.interface';
+import type { ActivityEventDTO } from '../contracts/common/activity.interface';
 
 /** Same private snapshot contract as CalendarExportService (HTTP); local/demo adapter only. */
 export function renderCalendarExport(actorId: string, records: readonly ActivityEventDTO[], now = new Date()): string {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SubEventDTO } from '../../../core/contracts/event.interface';
+import type { SubEventDTO } from '../../../core/contracts/events/event.interface';
 import { EventSubeventRuntimeInfoCardConverter } from './event-subevent-runtime-info-card.converter';
 
 describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {

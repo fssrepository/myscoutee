@@ -31,13 +31,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../../shared/core';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
 
 import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup
-} from '../../../shared/core/contracts/operator.interface';
+} from '../../../shared/core/contracts/operator/operator.interface';
 
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {

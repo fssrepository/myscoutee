@@ -2,7 +2,7 @@ import '@angular/compiler';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import type { IdeaPostDto } from '../../../shared/core/contracts/content.interface';
+import type { IdeaPostDto } from '../../../shared/core/contracts/content/content.interface';
 import { AdminIdeaEditorPopupComponent } from './admin-idea-editor-popup.component';
 
 describe('AdminIdeaEditorPopupComponent SmartList actions', () => {

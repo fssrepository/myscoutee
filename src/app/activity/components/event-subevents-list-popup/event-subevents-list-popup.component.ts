@@ -52,8 +52,8 @@ import {
   type ActivityEventStageActionResultDTO,
   type ActivityEventSubEventsQueryDTO,
   type SubEventsSlotDTO
-} from '../../../shared/core/contracts/activity.interface';
-import type { EventMode, EventSlotTemplateDTO, EventTournamentStageDTO, SubEventDTO } from '../../../shared/core/contracts/event.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
+import type { EventMode, EventSlotTemplateDTO, EventTournamentStageDTO, SubEventDTO } from '../../../shared/core/contracts/events/event.interface';
 
 import {
   ActivityChatSingleRowConverter,

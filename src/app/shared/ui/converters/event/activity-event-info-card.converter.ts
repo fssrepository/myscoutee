@@ -5,7 +5,7 @@ import type {
   ActivityEventDTO,
   ActivityMemberOwnerRef,
   ActivityMembersSummaryDto
-} from '../../../core/contracts/activity.interface';
+} from '../../../core/contracts/common/activity.interface';
 import type {
   EventVisibility
 } from '../../../core/common/constants';

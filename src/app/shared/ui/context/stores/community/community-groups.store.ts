@@ -2,18 +2,18 @@ import { ActivityInvitePopupStore } from '../activity/activity-invite-popup.stor
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { GroupWorkspaceStore } from './group-workspace.store';
 import { DialogStore, type ListQuery } from '@fssrepository/myscoutee-components';
-import { I18nService } from '../../../../core/base/services/i18n.service';
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
 import { CommunityGroupConverter } from '../../../converters/community/community-group.converter';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { Injectable, inject, signal, effect, computed, type Type } from '@angular/core';
-import type { AdminUserDto } from '../../../../core/contracts/admin.interface';
-import { CommunityGroupsService } from '../../../../core/base/services/community-groups.service';
-import { ActivityMembersService } from '../../../../core/base/services/activity-members.service';
+import type { AdminUserDto } from '../../../../core/contracts/administration/admin.interface';
+import { CommunityGroupsService } from '../../../../core/base/services/groups/community-groups.service';
+import { ActivityMembersService } from '../../../../core/base/services/events/activity-members.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { MemberMenuStore } from '../app/member-menu.store';
-import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupCategory, GroupSyncRequest } from '../../../../core/contracts/community-group.interface';
+import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupCategory, GroupSyncRequest } from '../../../../core/contracts/groups/community-group.interface';
 
-import { canPreviewGroupMembers } from '../../../../core/contracts/community-group.interface';
+import { canPreviewGroupMembers } from '../../../../core/contracts/groups/community-group.interface';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
   private readonly invites = inject(ActivityInvitePopupStore);

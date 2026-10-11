@@ -1,4 +1,4 @@
-import { groupType } from '../../../core/contracts/group-type';
+import { groupType } from '../../../core/contracts/groups/group-type';
 import { groupTypeTrigger, groupTypeMenuItems } from '../../converters/community/group-type-menu';
 import { Component, Input, OnChanges, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -15,10 +15,10 @@ import {
   ExplanationGuideService
 } from '@fssrepository/myscoutee-components';
 
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
-import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup } from '../../../core/contracts/community-group.interface';
+import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup } from '../../../core/contracts/groups/community-group.interface';
 import { GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE, GROUP_VISIBILITY_STYLE } from '../../converters/community/community-group.converter';
 import { ProfileFormFlowConverter } from '../../converters/profile/profile-form-flow.converter';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';

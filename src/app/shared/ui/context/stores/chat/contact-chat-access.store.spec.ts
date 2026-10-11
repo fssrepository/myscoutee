@@ -1,12 +1,12 @@
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ContactChatAccessStore } from './contact-chat-access.store';
-import { ContactsService } from '../../../../core/base/services/contacts.service';
+import { ContactsService } from '../../../../core/base/services/accounts/contacts.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
 import { ProfileStore } from '../profile/profile.store';
-import type { ContactChatAccessSnapshot } from '../../../../core/contracts/contact.interface';
+import type { ContactChatAccessSnapshot } from '../../../../core/contracts/accounts/contact.interface';
 
 describe('Contact chat live store', () => {
   const actor = signal('recipient');

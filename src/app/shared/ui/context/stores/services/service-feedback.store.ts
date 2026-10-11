@@ -1,8 +1,8 @@
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import { ServiceFeedbackService } from '../../../../core/base/services/service-feedback.service';
-import type { EventFeedbackPageQueryDto } from '../../../../core/contracts/activity.interface';
-import type { ServiceFeedbackBucket, ServiceFeedbackCommand, ServiceFeedbackItem } from '../../../../core/contracts/service-feedback.interface';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import { ServiceFeedbackService } from '../../../../core/base/services/community/service-feedback.service';
+import type { EventFeedbackPageQueryDto } from '../../../../core/contracts/common/activity.interface';
+import type { ServiceFeedbackBucket, ServiceFeedbackCommand, ServiceFeedbackItem } from '../../../../core/contracts/community/service-feedback.interface';
 import { MemberMenuStore } from '../app/member-menu.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 

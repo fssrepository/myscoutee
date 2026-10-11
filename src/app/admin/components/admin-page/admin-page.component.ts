@@ -27,17 +27,17 @@ import {
 
 import {
   AdminWorkspaceDataService
-} from '../../../shared/core/base/services/admin-workspace-data.service';
+} from '../../../shared/core/base/services/administration/admin-workspace-data.service';
 import {
   HelpCenterService
-} from '../../../shared/core/base/services/help-center.service';
+} from '../../../shared/core/base/services/help/help-center.service';
 import {
   SessionService
-} from '../../../shared/core/base/services/session.service';
+} from '../../../shared/core/base/services/accounts/session.service';
 import {
   DeploymentConfigurationService
-} from '../../../shared/core/base/services/deployment-configuration.service';
-import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
+} from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/administration/admin.interface';
 
 import {
   AdminMenuStore

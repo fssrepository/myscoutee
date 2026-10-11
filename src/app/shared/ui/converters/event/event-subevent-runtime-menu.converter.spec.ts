@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SubEventDTO } from '../../../core/contracts/event.interface';
+import type { SubEventDTO } from '../../../core/contracts/events/event.interface';
 import { EventSubeventRuntimeMenuConverter } from './event-subevent-runtime-menu.converter';
 
 describe('EventSubeventRuntimeMenuConverter casual members', () => {

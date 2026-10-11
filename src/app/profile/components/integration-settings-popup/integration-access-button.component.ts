@@ -9,7 +9,7 @@ import {
   type PopupModel,
   I18nPipe
 } from '@fssrepository/myscoutee-components';
-import type { IntegrationAccessMode } from '../../../shared/core/contracts/integration.interface';
+import type { IntegrationAccessMode } from '../../../shared/core/contracts/integrations/integration.interface';
 import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 
 const MODES: readonly IntegrationAccessMode[] = ['blocked', 'write', 'read', 'full'];

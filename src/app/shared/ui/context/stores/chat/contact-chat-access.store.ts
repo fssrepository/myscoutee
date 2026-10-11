@@ -1,7 +1,7 @@
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { ContactsService } from '../../../../core/base/services/contacts.service';
-import type { ContactChatAccess, ContactChatAccessAction, ContactChatAccessSnapshot, StoredContact } from '../../../../core/contracts/contact.interface';
+import { ContactsService } from '../../../../core/base/services/accounts/contacts.service';
+import type { ContactChatAccess, ContactChatAccessAction, ContactChatAccessSnapshot, StoredContact } from '../../../../core/contracts/accounts/contact.interface';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
 import { ProfileStore } from '../profile/profile.store';

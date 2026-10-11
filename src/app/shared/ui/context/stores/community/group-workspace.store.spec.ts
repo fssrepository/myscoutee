@@ -2,17 +2,17 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { GroupWorkspaceStore } from './group-workspace.store';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import { CommunityGroupsService } from '../../../../core/base/services/community-groups.service';
-import { UsersService } from '../../../../core/base/services/users.service';
-import { SessionService } from '../../../../core/base/services/session.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import { CommunityGroupsService } from '../../../../core/base/services/groups/community-groups.service';
+import { UsersService } from '../../../../core/base/services/accounts/users.service';
+import { SessionService } from '../../../../core/base/services/accounts/session.service';
 import { AppRuntimeStore } from '../app/app-runtime.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
 import { ContentModerationStore } from '../content/content-moderation.store';
 import { UiPollCoordinator } from '@fssrepository/myscoutee-components';
-import type { GroupWorkspace } from '../../../../core/contracts/community-group.interface';
-import type { UserDto } from '../../../../core/contracts/user.interface';
+import type { GroupWorkspace } from '../../../../core/contracts/groups/community-group.interface';
+import type { UserDto } from '../../../../core/contracts/accounts/user.interface';
 import { profileMenuBadgeCount } from '../app/app-context-store.utils';
 
 describe('Group workspace attention scope and live updates', () => {

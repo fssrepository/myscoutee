@@ -24,7 +24,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { ServiceFeedbackStore } from '../../../shared/ui/context/stores/services/service-feedback.store';
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   Component,
   OnDestroy,
@@ -49,7 +49,7 @@ import {
 } from 'rxjs';
 
 import { EventFeedbackFormFlowConverter, EventFeedbackFilterMenuConverter, EventFeedbackInfoCardConverter, EventFeedbackListPresentationConverter, EventFeedbackOrganizerCarouselSectionConverter, EventFeedbackOrganizerInfoCardConverter, EventFeedbackOrganizerItemConverter, EventFeedbackOrganizerMessageGroupConverter, type EventFeedbackFilterMenuContext, type EventFeedbackOrganizerCarouselSectionData, type EventFeedbackOrganizerItemData } from '../../../shared/ui';
-import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
 import {
   EventsService

@@ -7,7 +7,7 @@ import {
   type UiConverter
 } from '@fssrepository/myscoutee-components';
 
-import type { EventCheckoutState } from '../../../core/contracts/activity.interface';
+import type { EventCheckoutState } from '../../../core/contracts/common/activity.interface';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   menu: 'activity-event-card';

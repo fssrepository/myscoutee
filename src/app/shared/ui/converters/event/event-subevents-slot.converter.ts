@@ -1,7 +1,7 @@
 import { normalizeScheduleFrequency, UiDateUtils } from '@fssrepository/myscoutee-components';
 
-import { ActivityEventDetailDTO, type SubEventsSlotDTO } from '../../../core/contracts/activity.interface';
-import type { EventSlotTemplateDTO, SubEventDTO } from '../../../core/contracts/event.interface';
+import { ActivityEventDetailDTO, type SubEventsSlotDTO } from '../../../core/contracts/common/activity.interface';
+import type { EventSlotTemplateDTO, SubEventDTO } from '../../../core/contracts/events/event.interface';
 
 export type EventSubeventsSlotTone = 'blue' | 'green' | 'cyan' | 'violet' | 'amber' | 'gold';
 

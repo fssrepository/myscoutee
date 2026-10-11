@@ -1,0 +1,2506 @@
+import {
+  normalizeScheduleFrequency,
+  normalizeSlotTemplates,
+  type RatingSnapshot,
+  type DateRangeDto,
+  type ListQuery
+} from '@fssrepository/myscoutee-components';
+
+import type { RatingDomain } from '../affinity/rating-snapshot';
+import { ImageDetailsMap, normalizeImageDetails } from '../media/image-gallery.interface';
+import * as AppConstants from '../../common/constants';
+import type * as AssetContracts from '../assets/asset.interface';
+import type * as ChatContracts from '../chat/chat.interface';
+
+import type * as EventContracts from '../events/event.interface';
+
+import type * as PricingContracts from '../payments/pricing.interface';
+import type * as UserContracts from '../accounts/user.interface';
+
+export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
+export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'watchlist' | 'trash';
+export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
+export type HostingPublicationFilter = 'all' | 'drafts';
+export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+export type EventExploreView = 'day' | 'distance';
+export type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
+export type RateFilterKey =
+  | 'individual-given'
+  | 'individual-received'
+  | 'individual-mutual'
+  | 'individual-met'
+  | 'pair-given'
+  | 'pair-received';
+
+export type ActivityRateDTOMode = 'individual' | 'pair';
+export type ActivityRateDTODirection = 'given' | 'received' | 'mutual' | 'met';
+export type ActivityRateDTOSocialContext = 'separated-friends' | 'friends-in-common';
+
+export interface ActivityRateDTO {
+  ratingDomain?: RatingDomain;
+  campaignId?: string | null;
+  ratingSnapshot?: RatingSnapshot;
+  id: string;
+  userId: string;
+  secondaryUserId?: string;
+  mode: ActivityRateDTOMode;
+  direction: ActivityRateDTODirection;
+  socialContext?: ActivityRateDTOSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven: number;
+  scoreReceived: number;
+  eventName: string;
+  happenedAt: string;
+  distanceMetersExact?: number;
+  met?: boolean;
+}
+
+export interface ActivityRatePageResultDTO {
+  items: ActivityRateDTO[];
+  total: number;
+  nextCursor?: string | null;
+  users?: UserContracts.UserDto[];
+  gameCounter?: number;
+}
+
+export interface UserRateSyncPayloadDTO {
+  campaignId?: string | null;
+  ratingSnapshot?: RatingSnapshot;
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  rate: number;
+  mode: 'single' | 'pair';
+  createdAtIso: string;
+  updatedAtIso: string;
+  ownerUserId?: string;
+  displayId?: string;
+  displayDirection?: ActivityRateDTODirection;
+  socialContext?: ActivityRateDTOSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven?: number;
+  scoreReceived?: number;
+  eventName?: string;
+  happenedAtIso?: string;
+  distanceMetersExact?: number;
+}
+
+export interface UserRatesSyncRequestDTO {
+  rates: UserRateSyncPayloadDTO[];
+}
+
+export interface UserRatesSyncResponseDTO {
+  syncedRateIds?: string[] | null;
+  failedRateIds?: string[] | null;
+}
+
+export interface IEventsService {
+  queryActivitiesEventDTOPage(
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO>;
+  loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null>;
+  loadInvitationContext(userId: string, eventId: string): Promise<EventInvitationContextDTO | null>;
+  loadSubEventsById(
+    userId: string,
+    eventId: string,
+    query?: ActivityEventSubEventsQueryDTO
+  ): Promise<ActivityEventSubEventsResultDTO | null>;
+  loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null>;
+  loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
+  loadCheckoutPaymentAudit(
+    userId: string,
+    sourceId: string,
+    paymentSessionId: string
+  ): Promise<EventCheckoutPaymentAudit | null>;
+  validateCheckoutPromoCode(
+    request: EventCheckoutPromoCodeValidationRequest
+  ): Promise<EventCheckoutPromoCodeValidationResult | null>;
+  saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
+  updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
+  payEventCheckout(
+    request: EventCheckoutStateChangeRequest,
+    provider?: string | null
+  ): Promise<EventParticipationActionResultDTO | null>;
+  authorizeCheckout(request: EventCheckoutRequest): Promise<EventCheckoutSession | null>;
+  loadEventFeedbackPage(
+    query: EventFeedbackPageQueryDto
+  ): Promise<EventFeedbackPageResultDto>;
+  loadEventFeedbackStatById(
+    query: EventFeedbackStatQueryDto
+  ): Promise<EventFeedbackStatDto>;
+  loadEventFeedback(
+    query: EventFeedbackQueryDto
+  ): Promise<EventFeedbackDetailDto>;
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto>;
+  saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void>;
+  removeEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
+  restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
+  saveActivityEvent(
+    payload: ActivityEventDetailDTO
+  ): Promise<ActivityEventDTO | null>;
+  cancelItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  trashItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  publishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  unpublishItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  restoreItem(userId: string, sourceId: string): Promise<EventParticipationActionResultDTO | null>;
+  watchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null>;
+  unwatchEvent(userId: string, sourceId: string): Promise<EventWatchActionResultDTO | null>;
+  applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
+  queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
+  queryTournamentStageSnapshot(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentStageSnapshotDTO>;
+  queryMingleState(userId: string, eventId?: string | null, roundNumber?: number | null): Promise<EventContracts.MingleStateDTO | null>;
+  applyMingleAction(eventId: string, actorUserId: string, action: string, expectedRevision?: number): Promise<EventContracts.MingleStateDTO | null>;
+  saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
+  requestJoin(
+    userId: string,
+    sourceId: string,
+    options?: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      appliedPromoCodes?: string[];
+      paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
+      pendingReason?: AppConstants.ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
+      skipLocalRouteDelay?: boolean;
+    }
+  ): Promise<EventParticipationActionResultDTO | null>;
+  leaveEvent(
+    userId: string,
+    sourceId: string,
+    options?: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
+    }
+  ): Promise<EventParticipationActionResultDTO | null>;
+}
+
+export interface IChatsService {
+  ensureContactChat(targetUserId: string): Promise<ChatContracts.ChatDTO>;
+  addContactChatMembers(chatId: string, userIds: readonly string[]): Promise<ChatContracts.ChatDTO>;
+  queryChatById(chatId: string): Promise<ChatContracts.ChatDTO | null>;
+  queryActivitiesChatPage(
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
+  ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
+  queryChatSharedMessages(chat: ChatContracts.ChatDTO, kind: 'event' | 'asset'): Promise<ChatContracts.ChatMessageDto[]>;
+
+  queryChatMessagesPage(
+    chat: ChatContracts.ChatDTO,
+    query: ListQuery
+  ): Promise<ChatContracts.ChatMessagesPageResultDTO>;
+  syncChatHeader(
+    chatId: string,
+    knownRevision: number,
+    signal?: AbortSignal
+  ): Promise<ChatContracts.ChatHeaderSyncResponseDTO>;
+}
+
+export interface IRatesService {
+  queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]>;
+  queryActivitiesRatePage(
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
+    signal?: AbortSignal
+  ): Promise<ActivityRatePageResultDTO>;
+}
+
+export interface ActivitiesFeedFilters {
+  campaignId?: string | null;
+  primaryFilter?: ActivitiesPrimaryFilter;
+  eventScopeFilter?: ActivitiesEventScope;
+  secondaryFilter?: ActivitiesSecondaryFilter;
+  chatContextFilter?: ChatContracts.ActivitiesChatContextFilter;
+  hostingPublicationFilter?: HostingPublicationFilter;
+  rateFilter?: RateFilterKey;
+  rateSocialBadgeEnabled?: boolean;
+  adminServiceOnly?: boolean;
+  supportCaseFilter?: ChatContracts.SupportCaseFilter;
+}
+
+export interface EventExploreFilterPreferences {
+  followedOnly?: boolean;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  mode: EventContracts.EventMode | '';
+}
+
+export interface EventExploreFeedFilters {
+  followedOnly?: boolean;
+  userId: string;
+  order: EventExploreOrder;
+  view: EventExploreView;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  excludedSourceIds?: string[];
+  mode?: EventContracts.EventMode | '';
+}
+
+export type ActivityEventScopeFilter = ActivitiesEventScope;
+export type ActivityEventRepositoryItemType = 'events' | 'hosting' | 'invitations';
+export type ActivityEventActivitiesSort = 'date' | 'distance' | 'relevance';
+export type ActivityEventStatus =
+  | 'A'
+  | 'DR'
+  | 'T'
+  | 'UR'
+  | 'B'
+  | 'D'
+  | 'I';
+
+export type ActivityCurrentUserMembershipStatus =
+  | 'none'
+  | 'accepted'
+  | 'pending'
+  | 'invited'
+  | 'trashed'
+  | 'suppressed'
+  | 'deleted'
+  | 'unchanged';
+
+export interface ActivityEventRecord {
+  campaignId?: string | null;
+  cancelled?: boolean;
+  cancellationRefundsPending?: boolean;
+  canCancelForFullRefund?: boolean;
+  id: string;
+  /** Query-only Explore ordering; not a persisted Event field. */
+  exploreSortKey?: readonly number[];
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  moderationStatus?: string | null;
+  statusBeforeSuppression?: ActivityEventStatus | null;
+  adminIds?: string[];
+  avatar: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  unread: number;
+  activity: number;
+  trashedAtIso: string | null;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorAvatarUrl?: string | null;
+  creatorGender: AppConstants.UserGender;
+  creatorCity: string;
+  organizerUserId?: string | null;
+  visibility: AppConstants.EventVisibility;
+  blindMode: EventContracts.EventBlindMode;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  imageUrls?: string[];
+  imageDetails?: ImageDetailsMap;
+  sourceLink: string;
+  location: string;
+  locationCoordinates: UserContracts.LocationCoordinates | null;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  full?: boolean;
+  autoInviter?: boolean;
+  frequency?: string;
+  ticketing: boolean;
+  ticketCheckInsByHolderUserId?: Record<string, string>;
+  approvalRequired?: boolean;
+  paymentDeadlineHours?: number;
+  paymentDeadlineEnabled?: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
+  policies?: EventContracts.EventPolicyDTO[];
+  slotsEnabled?: boolean;
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
+  checkoutBasket?: EventCheckoutBasket | null;
+  checkoutResultState?: EventCheckoutResultState | null;
+  watched?: boolean;
+  watchingUserIds?: string[];
+  acceptedMembers: number;
+  pendingMembers: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  invitedMemberUserIds?: string[];
+  pendingRequestMemberUserIds?: string[];
+  pendingReason?: AppConstants.ActivityPendingReason;
+  currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
+  topics: string[];
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+  subEvents?: EventContracts.SubEventDTO[];
+  mode?: EventContracts.EventMode;
+  mingleConfiguration?: MingleConfigurationDTO | null;
+  currentStage?: EventContracts.TournamentCurrentStageDTO | null;
+  rating: number;
+  boost: number;
+  affinity: number;
+}
+
+export interface EventInvitationContextDTO {
+  vipPricingOffer?: PricingContracts.PricingConfig | null;
+  record: ActivityEventRecord | null;
+  members: ActivityMemberDTO[];
+  checkoutBasket: EventCheckoutBasket | null;
+}
+
+export interface ActivityEventStageActionRequestDTO {
+  userId: string;
+  sourceId: string;
+  slotSourceId?: string | null;
+  subEventId?: string | null;
+  subEventIndex?: number | null;
+  action: string;
+  reason?: string | null;
+}
+
+export interface ActivityEventStageActionResultDTO {
+  sourceId: string;
+  subEventId: string | null;
+  subEventIndex: number;
+  action: string;
+  stageStatus: EventContracts.TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
+  autoInviter?: boolean | null;
+}
+
+export interface EventParticipationActionResultDTO {
+  sourceId: string;
+  slotSourceId?: string | null;
+  action: 'join' | string;
+  membershipStatus: 'accepted' | 'pending' | 'unchanged' | string;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  full: boolean;
+  paymentSessionId?: string | null;
+  changed?: boolean;
+  reason?: string | null;
+  /** Operation-owned unit directions (-1/+1), never a global before/after counter diff. */
+  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
+  paymentStatus?: string | null;
+  paymentUrl?: string | null;
+}
+
+export interface EventWatchActionResultDTO {
+  sourceId: string;
+  watched: boolean;
+  changed: boolean;
+  eventCounters?: UserContracts.UserEventCountersDto | null;
+}
+
+export interface SubEventResourceCardDTO {
+  id: string;
+  type: AppConstants.SubEventResourceFilter;
+  sourceAssetId: string | null;
+  sourceRequestId?: string | null;
+  bookingStartAtIso?: string | null;
+  bookingEndAtIso?: string | null;
+  bookingQuantity?: number | null;
+  assetOwnerUserId?: string | null;
+  assetManagerUserId?: string | null;
+  title: string;
+  subtitle: string;
+  city: string;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  routes: string[];
+  capacityTotal: number;
+  accepted: number;
+  pending: number;
+  isMembers: boolean;
+}
+
+export interface SubEventAssignedAssetSettingsDTO {
+  capacityMin: number;
+  capacityMax: number;
+  quantity: number;
+  addedByUserId: string;
+  routeEnabled: boolean;
+  routes: string[];
+}
+
+export interface SubEventAssetMembersContextDTO {
+  subEventId: string;
+  assetId: string;
+  type: typeof AppConstants.ASSET_TYPE_TRANSPORT | typeof AppConstants.ASSET_TYPE_ACCOMMODATION;
+  ownerUserId: string | null;
+}
+
+export interface SubEventSupplyContributionEntryDTO {
+  id: string;
+  userId: string;
+  quantity: number;
+  addedAtIso: string;
+  name?: string;
+  initials?: string;
+  gender?: AppConstants.UserGender;
+  age?: number;
+  city?: string;
+}
+
+export interface SubEventSupplyContributionPageDTO {
+  items: SubEventSupplyContributionEntryDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface SubEventSupplyContributionRowDTO {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: AppConstants.UserGender;
+  age: number;
+  city: string;
+  addedAtIso: string;
+  quantity: number;
+}
+
+export type ActivitySubEventAssetAssignmentIdsDTO = Partial<Record<AppConstants.AssetType, string[]>>;
+export type ActivitySubEventAssetSettingsByTypeDTO = Partial<
+  Record<AppConstants.AssetType, Record<string, SubEventAssignedAssetSettingsDTO>>
+>;
+export type ActivitySubEventSupplyContributionsByAssetIdDTO = Record<string, SubEventSupplyContributionEntryDTO[]>;
+
+export interface ActivitySubEventResourceStateRefDTO {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
+export interface ActivitySubEventResourceReadRequestDTO {
+  ownerId: string;
+  subEventId: string;
+  resourceType: AppConstants.AssetType;
+  userId: string;
+}
+
+export interface ActivitySubEventResourceReadReceiptDTO extends ActivitySubEventResourceReadRequestDTO {
+  groupId: string;
+  readAtIso: string;
+}
+
+export interface ActivitySubEventAssetRemovalRequestDTO extends ActivitySubEventResourceStateRefDTO {
+  assetId: string;
+  userId: string;
+}
+
+export interface SubEventResourceMetricDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface ActivitySubEventResourceStateDTO {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+  assetAssignmentIds: ActivitySubEventAssetAssignmentIdsDTO;
+  assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
+  supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
+  fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
+  resourceMetricsByType?: Partial<Record<AppConstants.AssetType, SubEventResourceMetricDTO>>;
+}
+
+export interface ActivitySubEventResourceScopeDTO {
+  viewerState: ActivitySubEventResourceStateDTO;
+  visibleStates: ActivitySubEventResourceStateDTO[];
+}
+
+export interface ActivitySubEventStageRuntimeStateRefDTO {
+  ownerId: string;
+  subEventId: string;
+}
+
+export interface ActivitySubEventStageRuntimeStateDTO {
+  ownerId: string;
+  subEventId: string;
+  stageStatus?: EventContracts.TournamentStageStatus | string | null;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
+  groupsCount?: number | null;
+  groupsResourcePendingRead?: number | null;
+}
+
+export interface ActivityEventDTO {
+  campaignId?: string | null;
+  cancelled?: boolean;
+  cancellationRefundsPending?: boolean;
+  canCancelForFullRefund?: boolean;
+  sourceLink?: string;
+  id: string;
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  moderationStatus?: string | null;
+  statusBeforeSuppression?: ActivityEventStatus | null;
+  trashedAtIso?: string | null;
+  adminIds: string[];
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  activity: number;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorAvatarUrl?: string | null;
+  creatorCity: string;
+  organizerUserId?: string | null;
+  visibility: AppConstants.EventVisibility;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  location: string;
+  capacityTotal: number;
+  full?: boolean;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  eventType?: EventContracts.EventRecordKind;
+  mode?: EventContracts.EventMode;
+  currentStage?: EventContracts.TournamentCurrentStageDTO | null;
+  ticketing?: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
+  policies?: EventContracts.EventPolicyDTO[];
+  slotsEnabled?: boolean;
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+  subEvents?: EventContracts.SubEventDTO[];
+  acceptedMembers: number;
+  pendingMembers: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  invitedMemberUserIds?: string[];
+  pendingRequestMemberUserIds?: string[];
+  pendingReason?: AppConstants.ActivityPendingReason;
+  currentUserMembershipStatus?: ActivityCurrentUserMembershipStatus;
+  approvalRequired?: boolean;
+  paymentDeadlineHours?: number;
+  paymentDeadlineEnabled?: boolean;
+  checkoutResultState?: EventCheckoutResultState | null;
+  watched?: boolean;
+  boost: number;
+}
+
+export interface ActivityEventSubEventsQueryDTO {
+  userId: string;
+  eventId: string;
+  order?: 'upcoming' | 'past' | string;
+  view?: ActivitiesView | 'day' | 'week' | 'month' | string;
+  anchorDate?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+  participantOnly?: boolean | null;
+  page?: number | null;
+  pageSize?: number | null;
+  cursor?: string | null;
+}
+
+export interface SubEventsSlotDTO {
+  id: string;
+  parentEventId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  title?: string | null;
+  timeframe?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  subEventItems: EventContracts.SubEventDTO[];
+}
+
+export interface ActivityEventSubEventsResultDTO {
+  mode: EventContracts.EventMode;
+  canAccessResources?: boolean;
+  slots: SubEventsSlotDTO[];
+  total?: number | null;
+  nextCursor?: string | null;
+}
+
+export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';
+
+export interface SubEventDefinitionDTO {
+  id: string;
+  name: string;
+  description: string;
+  timing: SubEventDefinitionTiming;
+  offsetMinutes: number;
+  durationMinutes: number;
+  location?: string;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: EventContracts.TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
+  optional: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  capacityMin: number;
+  capacityMax: number;
+  icon?: string | null;
+}
+
+export interface MingleConfigurationDTO {
+  groupSize: number;
+  plannedRounds: number;
+  roundDurationMinutes: number;
+  breakDurationMinutes: number;
+  requireGenderBalance: boolean;
+}
+
+export class ActivityEventDetailDTO {
+  campaignId: string | null = null;
+  id = '';
+  userId = '';
+  type: ActivityEventRepositoryItemType = 'events';
+  status?: ActivityEventStatus = 'DR';
+  moderationStatus?: string | null;
+  statusBeforeSuppression?: ActivityEventStatus | null = null;
+  adminIds: string[] = [];
+  avatar = '';
+  title = '';
+  subtitle = '';
+  timeframe = '';
+  inviter: string | null = null;
+  unread = 0;
+  activity = 0;
+  trashedAtIso?: string | null = null;
+  creatorUserId = '';
+  creatorName = '';
+  creatorInitials = '';
+  creatorGender?: AppConstants.UserGender;
+  creatorCity = '';
+  visibility: AppConstants.EventVisibility = 'Public';
+  blindMode: EventContracts.EventBlindMode = 'Open Event';
+  startAtIso = '';
+  endAtIso = '';
+  dateRange: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
+  distanceKm = 0;
+  imageUrl = '';
+  imageUrls?: string[];
+  imageDetails?: ImageDetailsMap;
+  sourceLink = '';
+  location = '';
+  locationCoordinates: UserContracts.LocationCoordinates | null = null;
+  capacityMin: number | null = 0;
+  capacityMax: number | null = 0;
+  capacityTotal = 0;
+  full = false;
+  autoInviter = false;
+  frequency = 'One-time';
+  ticketing = false;
+  approvalRequired = false;
+  paymentDeadlineHours = 4;
+  paymentDeadlineEnabled = true;
+  pricing: PricingContracts.PricingConfig | null = null;
+  policiesEnabled = false;
+  policies: EventContracts.EventPolicyDTO[] = [];
+  slotsEnabled = false;
+  slotTemplates: EventContracts.EventSlotTemplateDTO[] = [];
+  parentEventId: string | null = null;
+  slotTemplateId: string | null = null;
+  generated = false;
+  eventType: EventContracts.EventRecordKind = 'main';
+  nextSlot: EventContracts.EventSlotOccurrenceDTO | null = null;
+  upcomingSlots: EventContracts.EventSlotOccurrenceDTO[] = [];
+  checkoutBasket: EventCheckoutBasket | null = null;
+  acceptedMembers = 0;
+  pendingMembers = 0;
+  acceptedMemberUserIds: string[] = [];
+  pendingMemberUserIds: string[] = [];
+  invitedMemberUserIds: string[] = [];
+  pendingRequestMemberUserIds: string[] = [];
+  pendingReason?: AppConstants.ActivityPendingReason;
+  topics: string[] = [];
+  subEventsEnabled = true;
+  subEventDefinitions: SubEventDefinitionDTO[] = [];
+  subEvents: EventContracts.SubEventDTO[] = [];
+  mode: EventContracts.EventMode = 'Casual';
+  mingleConfiguration: MingleConfigurationDTO | null = null;
+  currentStage: EventContracts.TournamentCurrentStageDTO | null = null;
+  rating = 0;
+  boost = 0;
+  affinity = 0;
+  paymentSessionId: string | null = null;
+
+  apply(update: Partial<ActivityEventDetailDTO> | null | undefined): this {
+    if (!update) {
+      return this;
+    }
+
+    this.id = update.id ?? this.id;
+    this.userId = update.userId ?? this.userId;
+    this.type = update.type ?? this.type;
+    this.status = update.status ?? this.status;
+    this.moderationStatus = update.moderationStatus ?? this.moderationStatus;
+    this.statusBeforeSuppression = update.statusBeforeSuppression ?? this.statusBeforeSuppression;
+    this.adminIds = [...(update.adminIds ?? this.adminIds)];
+    this.avatar = update.avatar ?? this.avatar;
+    this.title = update.title ?? this.title;
+    this.subtitle = update.subtitle ?? this.subtitle;
+    this.timeframe = update.timeframe ?? this.timeframe;
+    this.inviter = update.inviter ?? this.inviter;
+    this.unread = ActivityEventDetailDTO.nonNegativeInteger(update.unread ?? this.unread);
+    this.activity = ActivityEventDetailDTO.nonNegativeInteger(update.activity ?? this.activity);
+    this.trashedAtIso = update.trashedAtIso ?? this.trashedAtIso;
+    this.creatorUserId = update.creatorUserId ?? this.creatorUserId;
+    this.creatorName = update.creatorName ?? this.creatorName;
+    this.creatorInitials = update.creatorInitials ?? this.creatorInitials;
+    this.creatorGender = update.creatorGender ?? this.creatorGender;
+    this.creatorCity = update.creatorCity ?? this.creatorCity;
+    this.visibility = update.visibility ?? this.visibility;
+    this.blindMode = update.blindMode ?? this.blindMode;
+    this.dateRange = ActivityEventDetailDTO.normalizeDateRange(update.dateRange ?? {
+      startAt: update.startAtIso ?? this.dateRange.startAt ?? this.startAtIso,
+      endAt: update.endAtIso ?? this.dateRange.endAt ?? this.endAtIso,
+      precision: 'minute'
+    });
+    this.startAtIso = this.dateRange.startAt;
+    this.endAtIso = this.dateRange.endAt;
+    if (update.campaignId !== undefined) this.campaignId = update.campaignId?.trim() || null;
+    this.distanceKm = Number.isFinite(update.distanceKm) ? Number(update.distanceKm) : this.distanceKm;
+    if (update.imageUrls !== undefined || update.imageUrl !== undefined) {
+      this.imageUrls = ActivityEventDetailDTO.normalizeImageUrls(update.imageUrls, update.imageUrl ?? this.imageUrl);
+      this.imageUrl = this.imageUrls[0] ?? '';
+    }
+    this.imageDetails = normalizeImageDetails(update.imageDetails ?? this.imageDetails, this.imageUrls ?? []);
+    this.sourceLink = update.sourceLink ?? this.sourceLink;
+    this.location = update.location ?? this.location;
+    this.locationCoordinates = update.locationCoordinates ? { ...update.locationCoordinates } : update.locationCoordinates === null ? null : this.locationCoordinates;
+    this.capacityMin = update.capacityMin ?? this.capacityMin;
+    this.capacityMax = update.capacityMax ?? this.capacityMax;
+    this.capacityTotal = ActivityEventDetailDTO.nonNegativeInteger(update.capacityTotal ?? this.capacityTotal);
+    this.full = update.full === undefined ? this.full : update.full === true;
+    this.autoInviter = update.autoInviter ?? this.autoInviter;
+    this.frequency = update.frequency ?? this.frequency;
+    this.ticketing = update.ticketing ?? this.ticketing;
+    this.approvalRequired = update.approvalRequired ?? this.approvalRequired;
+    this.paymentDeadlineHours = update.paymentDeadlineHours ?? this.paymentDeadlineHours;
+    this.paymentDeadlineEnabled = update.paymentDeadlineEnabled ?? this.paymentDeadlineEnabled;
+    this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
+    this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
+    this.applyPolicies(update.policies ?? this.policies);
+    this.slotsEnabled = update.slotsEnabled ?? this.slotsEnabled;
+    this.applySlotTemplates(update.slotTemplates ?? this.slotTemplates);
+    this.parentEventId = update.parentEventId ?? this.parentEventId;
+    this.slotTemplateId = update.slotTemplateId ?? this.slotTemplateId;
+    this.generated = update.generated ?? this.generated;
+    this.eventType = update.eventType ?? this.eventType;
+    this.nextSlot = update.nextSlot ? { ...update.nextSlot } : update.nextSlot === null ? null : this.nextSlot;
+    this.upcomingSlots = (update.upcomingSlots ?? this.upcomingSlots).map(item => ({ ...item }));
+    this.checkoutBasket = update.checkoutBasket ? ActivityEventDetailDTO.cloneCheckoutBasket(update.checkoutBasket) : update.checkoutBasket === null ? null : this.checkoutBasket;
+    this.acceptedMembers = ActivityEventDetailDTO.nonNegativeInteger(update.acceptedMembers ?? this.acceptedMembers);
+    this.pendingMembers = ActivityEventDetailDTO.nonNegativeInteger(update.pendingMembers ?? this.pendingMembers);
+    this.acceptedMemberUserIds = [...(update.acceptedMemberUserIds ?? this.acceptedMemberUserIds)];
+    this.pendingMemberUserIds = [...(update.pendingMemberUserIds ?? this.pendingMemberUserIds)];
+    this.invitedMemberUserIds = [...(update.invitedMemberUserIds ?? this.invitedMemberUserIds)];
+    this.pendingRequestMemberUserIds = [...(update.pendingRequestMemberUserIds ?? this.pendingRequestMemberUserIds)];
+    this.pendingReason = update.pendingReason ?? this.pendingReason;
+    this.topics = [...(update.topics ?? this.topics)];
+    this.subEventsEnabled = update.subEventsEnabled ?? this.subEventsEnabled;
+    this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
+    this.applySubEvents(update.subEvents ?? this.subEvents);
+    this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
+    if (update.mingleConfiguration !== undefined) {
+      this.mingleConfiguration = update.mingleConfiguration === null
+        ? null
+        : ActivityEventDetailDTO.normalizeMingleConfiguration(update.mingleConfiguration);
+    }
+    this.currentStage = update.currentStage ? { ...update.currentStage } : update.currentStage === null ? null : this.currentStage;
+    this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
+    this.boost = ActivityEventDetailDTO.nonNegativeInteger(update.boost ?? this.boost);
+    this.affinity = ActivityEventDetailDTO.nonNegativeInteger(update.affinity ?? this.affinity);
+    this.paymentSessionId = update.paymentSessionId ?? this.paymentSessionId;
+    return this;
+  }
+
+  static cloneCheckoutBasket(value: EventCheckoutBasket | null | undefined): EventCheckoutBasket | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      userId: `${value.userId ?? ''}`.trim(),
+      sourceId: `${value.sourceId ?? ''}`.trim(),
+      status: ActivityEventDetailDTO.normalizeCheckoutState(value.status),
+      slotSourceId: value.slotSourceId?.trim() || null,
+      selectedDateKey: value.selectedDateKey?.trim() || null,
+      checkoutSessionId: value.checkoutSessionId?.trim() || null,
+      expiresAtIso: value.expiresAtIso?.trim() || null,
+      appliedPromoCodes: ActivityEventDetailDTO.normalizeAppliedPromoCodes(value.appliedPromoCodes),
+      items: (value.items ?? []).map(item => ActivityEventDetailDTO.cloneCheckoutBasketItem(item)).filter(Boolean) as EventCheckoutBasketItem[],
+      pricingSummaryRows: ActivityEventDetailDTO.cloneCheckoutPricingSummaryRows(
+        (value.pricingSummaryRows ?? []).length > 0
+          ? value.pricingSummaryRows
+          : (value.items ?? []).flatMap(item => item.pricingSummaryRows ?? []),
+        value.currency
+      ),
+      lineItems: (value.lineItems ?? []).map(item => ({
+        id: item.id?.trim() ?? '',
+        kind: item.kind,
+        label: item.label?.trim() ?? '',
+        detail: item.detail?.trim() ?? '',
+        amount: Number(item.amount) || 0,
+        currency: item.currency?.trim() || value.currency?.trim() || 'USD'
+      })).filter(item => item.id && item.label),
+      totalAmount: Math.max(0, Number(value.totalAmount) || 0),
+      currency: value.currency?.trim() || 'USD'
+    };
+  }
+
+  static cloneCheckoutBasketItem(value: EventCheckoutBasketItem | null | undefined): EventCheckoutBasketItem | null {
+    const id = value?.id?.trim() ?? '';
+    const sourceId = value?.sourceId?.trim() ?? '';
+    const label = value?.label?.trim() ?? '';
+    if (!id || !sourceId || !label) {
+      return null;
+    }
+    const currency = value?.currency?.trim() || 'USD';
+    return {
+      id,
+      kind: value?.kind === 'sub_event' || value?.kind === 'resource' ? value.kind : 'event',
+      sourceId,
+      slotSourceId: value?.slotSourceId?.trim() || null,
+      slotTemplateId: value?.slotTemplateId?.trim() || null,
+      selectedDateKey: value?.selectedDateKey?.trim() || null,
+      subEventId: value?.subEventId?.trim() || null,
+      resourceType: value?.resourceType ?? null,
+      label,
+      detail: value?.detail?.trim() || '',
+      amount: Number(value?.amount) || 0,
+      currency,
+      quantity: Math.max(1, Math.trunc(Number(value?.quantity) || 1)),
+      status: ActivityEventDetailDTO.normalizeCheckoutState(value?.status),
+      resultState: ActivityEventDetailDTO.normalizeCheckoutResultState(value?.resultState),
+      pricingSummaryRows: (value?.pricingSummaryRows ?? []).map(row => ({
+        key: row.key?.trim() || row.label?.trim() || 'pricing',
+        label: row.label?.trim() || 'Pricing',
+        detail: row.detail?.trim() || null,
+        amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+        currency: row.currency?.trim() || currency,
+        multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+      })).filter(row => row.label),
+      checkoutSessionId: value?.checkoutSessionId?.trim() || null,
+      createdAtIso: value?.createdAtIso?.trim() || null,
+      updatedAtIso: value?.updatedAtIso?.trim() || null,
+      expiresAtIso: value?.expiresAtIso?.trim() || null
+    };
+  }
+
+  private static cloneCheckoutPricingSummaryRows(
+    value: readonly EventCheckoutPricingSummaryRow[] | null | undefined,
+    fallbackCurrency?: string | null
+  ): EventCheckoutPricingSummaryRow[] {
+    const currency = fallbackCurrency?.trim() || 'USD';
+    return (value ?? []).map(row => ({
+      key: row.key?.trim() || row.label?.trim() || 'pricing',
+      label: row.label?.trim() || 'Pricing',
+      detail: row.detail?.trim() || null,
+      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+      currency: row.currency?.trim() || currency,
+      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+    })).filter(row => row.label);
+  }
+
+  private static normalizeAppliedPromoCodes(value: readonly string[] | null | undefined): string[] {
+    return [...new Set((value ?? [])
+      .map(code => `${code ?? ''}`.trim().toUpperCase())
+      .filter(Boolean))];
+  }
+
+  static normalizeCheckoutState(value: unknown): EventCheckoutState {
+    return value === 'confirmed'
+      || value === 'waiting'
+      || value === 'approval-pending'
+      || value === 'approved'
+      || value === 'pay'
+      || value === 'cancelled'
+      || value === 'rejected'
+        ? value
+        : 'draft';
+  }
+
+  static normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
+    return value === 'deleted' || value === 'succeeded' || value === 'failed'
+      ? value
+      : 'pending';
+  }
+
+  clone(): ActivityEventDetailDTO {
+    return new ActivityEventDetailDTO().apply(this);
+  }
+
+  toPersistencePayload(): ActivityEventDetailDTO {
+    const payload = this.clone();
+    payload.startAtIso = ActivityEventDetailDTO.toIsoInstant(this.startAtIso);
+    payload.endAtIso = ActivityEventDetailDTO.toIsoInstant(this.endAtIso);
+    payload.slotTemplates = payload.slotTemplates.map(template => template.closed === true
+      ? { ...template }
+      : {
+          ...template,
+          startAt: ActivityEventDetailDTO.toIsoInstant(template.startAt)
+        });
+    payload.dateRange = {
+      ...payload.dateRange,
+      startAt: payload.startAtIso,
+      endAt: payload.endAtIso
+    };
+    return payload;
+  }
+
+  applyPolicies(items: readonly EventContracts.EventPolicyDTO[]): this {
+    this.policies = ActivityEventDetailDTO.normalizePolicies(items);
+    return this;
+  }
+
+  applySlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): this {
+    this.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(items);
+    return this;
+  }
+
+  applySubEventDefinitions(items: readonly SubEventDefinitionDTO[]): this {
+    this.subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(items);
+    return this;
+  }
+
+  applySubEvents(items: readonly EventContracts.SubEventDTO[]): this {
+    this.subEvents = ActivityEventDetailDTO.normalizeSubEvents(items);
+    return this;
+  }
+
+  normalizeCapacityRange(): EventContracts.EventCapacityRange {
+    const min = ActivityEventDetailDTO.nonNegativeIntegerOrNull(this.capacityMin);
+    const maxCandidate = ActivityEventDetailDTO.nonNegativeIntegerOrNull(this.capacityMax);
+    const max = min !== null && maxCandidate !== null
+      ? Math.max(min, maxCandidate)
+      : (maxCandidate ?? min);
+    this.capacityMin = min;
+    this.capacityMax = max;
+    return { min, max };
+  }
+
+  syncFirstSubEventLocation(location: string): this {
+    if (this.subEvents.length === 0) {
+      return this;
+    }
+    const first = ActivityEventDetailDTO.firstSubEventByOrder(this.subEvents);
+    if (!first?.id) {
+      return this;
+    }
+    const normalizedLocation = ActivityEventDetailDTO.normalizeLocation(location);
+    this.subEvents = this.subEvents.map(item => item.id === first.id
+      ? { ...item, location: normalizedLocation }
+      : { ...item });
+    return this;
+  }
+
+  static normalizeImageUrls(images: readonly string[] | null | undefined, cover = ''): string[] {
+    const urls = [...new Set((images ?? (cover ? [cover] : [])).map(url => `${url ?? ''}`.trim()).filter(Boolean))];
+    if (urls.length > 5) throw new Error('An event gallery supports at most five images.');
+    return urls;
+  }
+
+  static normalizePolicies(items: readonly EventContracts.EventPolicyDTO[]): EventContracts.EventPolicyDTO[] {
+    return items.map((item, index) => ({
+      id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
+      title: `${item.title ?? ''}`.trim() || `Policy ${index + 1}`,
+      description: `${item.description ?? ''}`.trim(),
+      required: item.required !== false
+    })).filter(item => item.id || item.title || item.description);
+  }
+
+  static normalizeSlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): EventContracts.EventSlotTemplateDTO[] {
+    return normalizeSlotTemplates(items).map(({id, startAt, overrideDate, closed, subEventDefinitions}) => ({
+      id, startAt, overrideDate, closed,
+      subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(subEventDefinitions ?? [])
+    }));
+  }
+
+  static normalizeSubEventDefinitions(items: readonly SubEventDefinitionDTO[]): SubEventDefinitionDTO[] {
+    return items.map((item, index) => {
+      const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
+      const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
+      const durationMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.durationMinutes);
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const offsetMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.offsetMinutes);
+      return {
+        id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
+        description: `${item.description ?? ''}`.trim(),
+        timing,
+        offsetMinutes,
+        durationMinutes,
+        location: ActivityEventDetailDTO.normalizeLocation(item.location),
+        tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
+        tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
+        tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+        tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        optional: item.optional === true,
+        pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
+        capacityMin,
+        capacityMax,
+        icon: `${item.icon ?? ''}`.trim() || null
+      };
+    });
+  }
+
+  static normalizeSubEventDefinitionTiming(value: unknown): SubEventDefinitionTiming {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'before') {
+      return 'Before';
+    }
+    if (normalized === 'after') {
+      return 'After';
+    }
+    return 'During';
+  }
+
+  static normalizeDateRange(value: Partial<DateRangeDto> | null | undefined): DateRangeDto {
+    return {
+      startAt: `${value?.startAt ?? ''}`.trim(),
+      endAt: `${value?.endAt ?? ''}`.trim(),
+      precision: value?.precision === 'date' ? 'date' : 'minute'
+    };
+  }
+
+  static normalizeSubEvents(items: readonly EventContracts.SubEventDTO[]): EventContracts.SubEventDTO[] {
+    return items.map((item, index) => {
+      const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
+      const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
+      return {
+        id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        startAt: `${item.startAt ?? ''}`.trim(),
+        endAt: `${item.endAt ?? ''}`.trim(),
+        location: ActivityEventDetailDTO.normalizeLocation(item.location),
+        createdByUserId: item.createdByUserId?.trim() || undefined,
+        optional: item.optional === true,
+        pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
+        capacityMin,
+        capacityMax,
+        tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
+        tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
+        tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+        tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        groupsCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.groupsCount),
+        membersAccepted: ActivityEventDetailDTO.nonNegativeInteger(item.membersAccepted),
+        membersPending: ActivityEventDetailDTO.nonNegativeInteger(item.membersPending),
+        carsPending: ActivityEventDetailDTO.nonNegativeInteger(item.carsPending),
+        accommodationPending: ActivityEventDetailDTO.nonNegativeInteger(item.accommodationPending),
+        suppliesPending: ActivityEventDetailDTO.nonNegativeInteger(item.suppliesPending),
+        carsAccepted: ActivityEventDetailDTO.optionalNonNegativeInteger(item.carsAccepted),
+        accommodationAccepted: ActivityEventDetailDTO.optionalNonNegativeInteger(item.accommodationAccepted),
+        suppliesAccepted: ActivityEventDetailDTO.optionalNonNegativeInteger(item.suppliesAccepted),
+        carsCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.carsCapacityMin),
+        carsCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.carsCapacityMax),
+        accommodationCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.accommodationCapacityMin),
+        accommodationCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.accommodationCapacityMax),
+        suppliesCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.suppliesCapacityMin),
+        suppliesCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.suppliesCapacityMax),
+        slotStartOffsetMinutes: ActivityEventDetailDTO.optionalNonNegativeInteger(item.slotStartOffsetMinutes),
+        slotDurationMinutes: ActivityEventDetailDTO.optionalNonNegativeInteger(item.slotDurationMinutes),
+        stageStatus: `${item.stageStatus ?? ''}`.trim() || undefined,
+        stageStatusReason: `${item.stageStatusReason ?? ''}`.trim() || undefined,
+        stageStatusUpdatedAt: `${item.stageStatusUpdatedAt ?? ''}`.trim() || undefined,
+        stageFinalizedAt: `${item.stageFinalizedAt ?? ''}`.trim() || undefined,
+        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined,
+        stageResultRevision: ActivityEventDetailDTO.optionalNonNegativeInteger(item.stageResultRevision)
+      };
+    });
+  }
+
+  static sortSubEventsByStartAsc<T extends Pick<EventContracts.SubEventDTO, 'startAt'>>(items: readonly T[]): T[] {
+    return [...items]
+      .map((item, index) => ({ item, index, startMs: ActivityEventDetailDTO.parseDate(item.startAt)?.getTime() ?? Number.POSITIVE_INFINITY }))
+      .sort((left, right) => left.startMs - right.startMs || left.index - right.index)
+      .map(entry => entry.item);
+  }
+
+  static firstSubEventByOrder<T extends Pick<EventContracts.SubEventDTO, 'startAt'>>(items: readonly T[]): T | null {
+    return ActivityEventDetailDTO.sortSubEventsByStartAsc(items)[0] ?? null;
+  }
+
+  static normalizeVisibility(value: unknown): AppConstants.EventVisibility {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'private' || normalized.includes('friend')) {
+      return 'Friends only';
+    }
+    if (normalized.includes('invitation')) {
+      return 'Invitation only';
+    }
+    return 'Public';
+  }
+
+  static normalizeBlindMode(value: unknown): EventContracts.EventBlindMode {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
+  }
+
+  static normalizeMode(value: unknown): EventContracts.EventMode {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'tournament') {
+      return 'Tournament';
+    }
+    return normalized === 'mingle' ? 'Mingle' : 'Casual';
+  }
+
+  static normalizeMingleConfiguration(value: Partial<MingleConfigurationDTO> | null | undefined): MingleConfigurationDTO {
+    return {
+      groupSize: ActivityEventDetailDTO.boundedInteger(value?.groupSize, 2, 20, 4),
+      plannedRounds: ActivityEventDetailDTO.boundedInteger(value?.plannedRounds, 1, 100, 4),
+      roundDurationMinutes: ActivityEventDetailDTO.boundedInteger(value?.roundDurationMinutes, 1, 240, 20),
+      breakDurationMinutes: ActivityEventDetailDTO.boundedInteger(value?.breakDurationMinutes, 0, 60, 5),
+      requireGenderBalance: value?.requireGenderBalance !== false
+    };
+  }
+
+  private static boundedInteger(value: unknown, min: number, max: number, fallback: number): number {
+    const parsed = Number(value);
+    const normalized = Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+    return Math.max(min, Math.min(max, normalized));
+  }
+
+  static normalizeTopics(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
+      .filter(item => item.length > 0)
+      .slice(0, 5);
+  }
+
+  static normalizeTopicToken(value: unknown): string {
+    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  static normalizeLocation(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  static buildTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
+    const start = ActivityEventDetailDTO.parseDate(startAt);
+    const end = ActivityEventDetailDTO.parseDate(endAt);
+    if (!start || !end) {
+      return startAt || endAt || '';
+    }
+
+    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const normalizedFrequency = normalizeScheduleFrequency(frequency);
+
+    if (normalizedFrequency === 'One-time') {
+      return `${dateLabel} · ${startTime} - ${endTime}`;
+    }
+
+    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
+  }
+
+  private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      ...value,
+      demandRules: (value.demandRules ?? []).map(rule => ({ ...rule, action: { ...rule.action }, slotIds: [...(rule.slotIds ?? [])] })),
+      timeRules: (value.timeRules ?? []).map(rule => ({ ...rule, action: { ...rule.action }, slotIds: [...(rule.slotIds ?? [])] })),
+      cancellationPolicy: {
+        ...value.cancellationPolicy,
+        rules: (value.cancellationPolicy?.rules ?? []).map(rule => ({ ...rule }))
+      },
+      slotOverrides: (value.slotOverrides ?? []).map(slot => ({ ...slot })),
+      audience: {
+        ...value.audience,
+        promoCodes: (value.audience?.promoCodes ?? []).map(code => ({ ...code, action: { ...code.action } }))
+      }
+    };
+  }
+
+  private static nonNegativeInteger(value: unknown): number {
+    return ActivityEventDetailDTO.nonNegativeIntegerOrNull(value) ?? 0;
+  }
+
+  private static optionalNonNegativeInteger(value: unknown): number | undefined {
+    return ActivityEventDetailDTO.nonNegativeIntegerOrNull(value) ?? undefined;
+  }
+
+  private static nonNegativeIntegerOrNull(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : null;
+  }
+
+  private static parseDate(value: unknown): Date | null {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value);
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const parsedNumber = new Date(value);
+      return Number.isNaN(parsedNumber.getTime()) ? null : parsedNumber;
+    }
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const parsed = new Date(raw.replace(/\//g, '-'));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private static parseDateOnly(value: unknown): Date | null {
+    const parsed = ActivityEventDetailDTO.parseDate(value);
+    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : null;
+  }
+
+  private static toIsoDate(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private static toIsoDateTimeLocal(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private static toIsoInstant(value: unknown): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    const parsed = ActivityEventDetailDTO.parseDate(normalized);
+    return parsed ? parsed.toISOString() : normalized;
+  }
+}
+
+export interface ActivityEventPageResultDTO {
+  items: ActivityEventDTO[];
+  total: number;
+  nextCursor?: string | null;
+  eventCounters?: UserContracts.UserEventCountersDto | null;
+}
+
+export interface ActivityEventExploreQuery {
+  followedOnly?: boolean;
+  userId: string;
+  order: EventExploreOrder;
+  view: EventExploreView;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  limit: number;
+  cursor?: string | null;
+  excludedSourceIds?: string[];
+  mode?: EventContracts.EventMode | '';
+}
+
+export interface ActivityEventExploreQueryResult {
+  records: ActivityEventRecord[];
+  total: number;
+  nextCursor: string | null;
+  sortKeys?: Record<string, number[]>;
+}
+
+export interface ActivityMemberInvolvementDTO {
+  id: string;
+  ownerType: AppConstants.ActivityMemberOwnerType;
+  ownerId: string;
+  label: string;
+  detail: string;
+  status: AppConstants.ActivityMemberStatus;
+  role: AppConstants.ActivityMemberRole;
+  actionAtIso: string;
+}
+
+export interface ActivityMemberDTO {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: AppConstants.UserGender;
+  city: string;
+  statusText: string;
+  role: AppConstants.ActivityMemberRole;
+  status: AppConstants.ActivityMemberStatus;
+  pendingSource: AppConstants.ActivityPendingSource;
+  requestKind: AppConstants.ActivityMemberRequestKind;
+  invitedByActiveUser: boolean;
+  invitedByUserId?: string | null;
+  metAtIso: string;
+  actionAtIso: string;
+  metWhere: string;
+  avatarUrl: string;
+  profile?: UserContracts.UserDto | null;
+  involvements?: ActivityMemberInvolvementDTO[];
+  revision?: string | null;
+  attendanceStatus?: 'checked-in' | null;
+  checkedInAtIso?: string | null;
+  checkedInByUserId?: string | null;
+  checkedInTicketId?: string | null;
+  managerGrantedByUserId?: string | null;
+  organizerOnly?: boolean;
+  votingEligible?: boolean;
+}
+
+export interface ActivityMemberOwnerRef {
+  ownerType: AppConstants.ActivityMemberOwnerType;
+  ownerId: string;
+}
+
+export interface ActivityMembersQueryOptions {
+  pendingOnly?: boolean;
+  eventId?: string;
+  subEventId?: string;
+  /** Limits the list to one persisted Borrow request within the Asset's stage. */
+  assetRequestId?: string;
+  /** Targets one independently submitted scoped Asset Borrow request. */
+  targetMemberId?: string;
+}
+
+export interface ActivityMemberSyncKnownItemDTO {
+  id: string;
+  revision: string;
+}
+
+export interface ActivityMembersSyncResultDTO {
+  upserts: ActivityMemberDTO[];
+  removedIds: string[];
+  total: number;
+}
+
+export interface ActivityMemberActionResultDTO {
+  group?: import('../groups/community-group.interface').CommunityGroup | null;
+  members: ActivityMemberDTO[];
+  counterOverrides: UserContracts.UserMenuCountersDto | null;
+}
+
+export type ActivityMemberInviteRejectionReason = 'capacity-full' | 'already-member' | 'unknown';
+
+export interface ActivityMemberInviteRejectionDTO {
+  userId: string;
+  reason: ActivityMemberInviteRejectionReason;
+}
+
+export interface ActivityMembersInviteResultDTO {
+  group?: import('../groups/community-group.interface').CommunityGroup | null;
+  members: ActivityMemberDTO[];
+  invitedUserIds: string[];
+  rejections: ActivityMemberInviteRejectionDTO[];
+}
+
+export interface ActivityMembersPageResultDTO {
+  items: ActivityMemberDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
+export interface ActivityMembersSummaryDto {
+  ownerType: AppConstants.ActivityMemberOwnerType;
+  ownerId: string;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  acceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+}
+
+export interface ActivityInviteOwnerContext {
+  ownerId: string;
+  ownerType: AppConstants.ActivityMemberOwnerType;
+  title: string;
+  subtitle: string;
+  detail: string;
+  dateIso: string;
+  distanceKm: number;
+  sourceType: 'events' | 'hosting';
+  isAdmin: boolean;
+}
+
+export interface ActivityInviteCandidatesQuery {
+  purpose?:'payment';
+  activeUserId: string;
+  owner: ActivityInviteOwnerContext;
+  parentOwner: ActivityMemberOwnerRef | null;
+  existingMemberUserIds: readonly string[];
+  pendingInviteUserIds: readonly string[];
+  sort: AppConstants.ActivityInviteSort;
+  page: number;
+  pageSize: number;
+}
+
+export interface ActivityInviteCandidatesPage {
+  items: ActivityMemberDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface IActivityInviteCandidatesService {
+  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityInviteCandidatesPage>;
+}
+
+export interface UserGameCardsStackSnapshot {
+  filterCount: number | null;
+  cardUserIds: string[];
+  socialCards: UserGameSocialCard[];
+  nextCursor: string | null;
+  requestInFlight: boolean;
+}
+
+export type UserGameMode = 'single' | 'outside-network' | 'separated-friends' | 'friends-in-common';
+export type UserGameSocialContext = 'separated-friends' | 'friends-in-common';
+
+export interface UserGameSocialCard {
+  id: string;
+  userId: string;
+  secondaryUserId?: string;
+  socialContext?: UserGameSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  eventName?: string;
+}
+
+export interface UserGameFilterPreferencesDto {
+  ageMin?: number;
+  ageMax?: number;
+  heightMinCm?: number;
+  heightMaxCm?: number;
+  interests?: string[];
+  values?: string[];
+  physiques?: string[];
+  languages?: string[];
+  genders?: string[];
+  horoscopes?: string[];
+  traitLabels?: string[];
+  smoking?: string[];
+  drinking?: string[];
+  workout?: string[];
+  pets?: string[];
+  familyPlans?: string[];
+  children?: string[];
+  loveStyles?: string[];
+  communicationStyles?: string[];
+  sexualOrientations?: string[];
+  religions?: string[];
+}
+
+export function defaultUserGameFilterPreferences(gender?: AppConstants.UserGender): UserGameFilterPreferencesDto {
+  return {
+    ageMin: 18,
+    ageMax: 120,
+    heightMinCm: 40,
+    heightMaxCm: 250,
+    interests: [],
+    values: [],
+    physiques: [],
+    languages: [],
+    genders: gender === 'man' ? ['woman'] : gender === 'woman' ? ['man'] : [],
+    horoscopes: [],
+    traitLabels: [],
+    smoking: [],
+    drinking: [],
+    workout: [],
+    pets: [],
+    familyPlans: [],
+    children: [],
+    loveStyles: [],
+    communicationStyles: [],
+    sexualOrientations: [],
+    religions: []
+  };
+}
+
+export interface UserGameCardsQueryRequest {
+  userId: string;
+  mode?: UserGameMode;
+  leftQuery?: string | null;
+  rightQuery?: string | null;
+  filterPreferences?: UserGameFilterPreferencesDto | null;
+  cursor?: string | null;
+  pageSize?: number;
+  excludedCardUserIds?: string[];
+  excludedSocialCardIds?: string[];
+}
+
+export interface UserGameCardsDto {
+  filterCount: number;
+  cardUserIds: string[];
+  socialCards?: UserGameSocialCard[];
+  nextCursor: string | null;
+}
+
+export interface UserGameCardsQueryResponse {
+  cards: UserGameCardsDto | null;
+}
+
+export interface EventCheckoutAssetSelection {
+  subEventId: string;
+  resourceType: AppConstants.AssetType;
+}
+
+export interface EventCheckoutLineItem {
+  id: string;
+  kind: 'event' | 'sub_event' | 'resource';
+  label: string;
+  detail: string;
+  amount: number;
+  currency: string;
+}
+
+export type EventCheckoutState =
+  | 'draft'
+  | 'confirmed'
+  | 'waiting'
+  | 'approval-pending'
+  | 'approved'
+  | 'pay'
+  | 'cancelled'
+  | 'rejected';
+
+export type EventCheckoutResultState = 'pending' | 'deleted' | 'succeeded' | 'failed';
+
+export interface EventCheckoutPricingSummaryRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  multiplier?: number | null;
+}
+
+export interface EventCheckoutSlotsQuery {
+  userId: string;
+  eventId: string;
+  view?: 'day' | 'basket' | string | null;
+  order?: 'upcoming' | 'past' | string | null;
+  anchorDate?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+  limit?: number | null;
+  cursor?: string | null;
+}
+
+export interface EventCheckoutSlotDay {
+  dateKey: string;
+  slotCount: number;
+  availableSlots: number;
+  bookedByViewer?: boolean | null;
+  lowestAmount: number;
+  currency: string;
+}
+
+export interface EventCheckoutSlot {
+  id: string;
+  parentEventId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  title?: string | null;
+  timeframe?: string | null;
+  startAtIso: string;
+  endAtIso: string;
+  capacityTotal: number;
+  acceptedMembers: number;
+  pendingMembers: number;
+  availableSlots: number;
+  bookedByViewer?: boolean | null;
+  amount: number;
+  currency: string;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+}
+
+export interface EventCheckoutOptionalSubEvent {
+  id: string;
+  name: string;
+  description?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  capacityTotal: number;
+  reservedCount: number;
+  availableCount: number;
+  amount: number;
+  currency: string;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+}
+
+export interface EventCheckoutSlotsResult {
+  eventId: string;
+  mode?: EventContracts.EventMode | string | null;
+  days: EventCheckoutSlotDay[];
+  slots: EventCheckoutSlot[];
+  total: number;
+  nextCursor?: string | null;
+  currency: string;
+  optionalSubEvents?: EventCheckoutOptionalSubEvent[];
+  checkoutBasket?: EventCheckoutBasket | null;
+}
+
+export interface EventCheckoutBasketItem {
+  id: string;
+  kind: 'event' | 'sub_event' | 'resource';
+  sourceId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  selectedDateKey?: string | null;
+  subEventId?: string | null;
+  resourceType?: AppConstants.AssetType | null;
+  label: string;
+  detail: string;
+  amount: number;
+  currency: string;
+  quantity: number;
+  status: EventCheckoutState;
+  resultState?: EventCheckoutResultState | null;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  checkoutSessionId?: string | null;
+  createdAtIso?: string | null;
+  updatedAtIso?: string | null;
+  expiresAtIso?: string | null;
+}
+
+export interface EventCheckoutBasket {
+  userId: string;
+  sourceId: string;
+  status: EventCheckoutState;
+  items: EventCheckoutBasketItem[];
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  lineItems: EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  slotSourceId?: string | null;
+  selectedDateKey?: string | null;
+  checkoutSessionId?: string | null;
+  expiresAtIso?: string | null;
+  appliedPromoCodes: string[];
+}
+
+export interface EventCheckoutPaymentAudit {
+  bookingStartAtIso?: string | null;
+  bookingEndAtIso?: string | null;
+  cancellationPolicy?: PricingContracts.PricingCancellationPolicy | null;
+  refundPreview?: import('../payments/payment-method.interface').PaymentRefundPreviewDto | null;
+  id: string;
+  userId: string;
+  sourceId: string;
+  checkoutSessionId: string;
+  provider: string;
+  status: string;
+  bookingStatus: string;
+  auditKind: string;
+  revisionNumber: number;
+  adjustmentAmount?: number | null;
+  bookingQuantity?: number | null;
+  supersedesPaymentId?: string | null;
+  amount: number;
+  currency: string;
+  basketItems: EventCheckoutBasketItem[];
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  lineItems: EventCheckoutLineItem[];
+  joinedAtIso?: string | null;
+  createdAtIso?: string | null;
+}
+
+export interface EventCheckoutPromoCodeValidationRequest {
+  sourceId: string;
+  code: string;
+}
+
+export const EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY = 'event.checkout.promo.invalid';
+
+export interface EventCheckoutPromoCodeValidationResult {
+  valid: boolean;
+  code: string;
+  promoCode: PricingContracts.PricingPromoCode | null;
+  effect: string | null;
+  messageKey?: string | null;
+  message: string | null;
+}
+
+export interface EventCheckoutSelection {
+  sourceId: string;
+  slotSourceId?: string | null;
+  optionalSubEventIds: string[];
+  assetSelections: EventCheckoutAssetSelection[];
+  acceptedPolicyIds: string[];
+  appliedPromoCodes: string[];
+  basketItems?: EventCheckoutBasketItem[];
+  pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+  checkoutState?: EventCheckoutState;
+  lineItems: EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  paymentSessionId?: string | null;
+  bookingConfirmed?: boolean;
+  pendingReason?: AppConstants.ActivityPendingReason;
+}
+
+export interface EventCheckoutRequest {
+  userId: string;
+  sourceId: string;
+  slotSourceId?: string | null;
+  optionalSubEventIds: string[];
+  assetSelections: EventCheckoutAssetSelection[];
+  acceptedPolicyIds: string[];
+  appliedPromoCodes: string[];
+  basketItems?: EventCheckoutBasketItem[];
+  pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+  checkoutState?: EventCheckoutState;
+  lineItems: EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  paymentMethodId?: string | null;
+}
+
+export interface EventCheckoutStateChangeRequest {
+  userId: string;
+  sourceId: string;
+  slotSourceId?: string | null;
+  checkoutState: EventCheckoutState;
+  resultState?: EventCheckoutResultState | null;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  checkoutSessionId?: string | null;
+  checkoutRequest?: EventCheckoutRequest | null;
+}
+
+export interface EventCheckoutSession {
+  id: string;
+  provider: string;
+  mode: 'dummy' | 'gateway';
+  status: 'pending' | 'approved' | 'requires_action';
+  amount: number;
+  currency: string;
+  paymentUrl?: string | null;
+}
+
+export interface SubmittedEventFeedbackAnswer {
+  cardId: string;
+  eventId: string;
+  kind: 'event' | 'attendee';
+  targetUserId: string | null;
+  targetRole: AppConstants.ActivityMemberRole;
+  primaryValue: string;
+  secondaryValue: string;
+  eventComment: string;
+  personalityTraitIds: string[];
+  tags: string[];
+  submittedAtIso: string;
+}
+
+export interface EventFeedbackStateDto {
+  eventId: string;
+  removed: boolean;
+  submittedAtIso: string;
+  removedAtIso?: string;
+  organizerNote: string;
+  answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
+}
+
+export interface EventFeedbackPageQueryDto {
+  campaignId?: string | null;
+  userId: string;
+  filter: AppConstants.EventFeedbackListFilter;
+  page: number;
+  pageSize: number;
+}
+
+export interface EventFeedbackQueryDto {
+  userId: string;
+  eventId: string;
+}
+
+export type EventFeedbackStatSectionKey = 'overall' | 'improve' | 'traits';
+
+export interface EventFeedbackStatQueryDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventFeedbackStatOptionDto {
+  key: string;
+  count: number;
+}
+
+export interface EventFeedbackStatSectionDto {
+  key: EventFeedbackStatSectionKey;
+  responseCount: number;
+  options: EventFeedbackStatOptionDto[];
+}
+
+export interface EventFeedbackStatDto {
+  eventId: string;
+  totalResponses: number;
+  sections: EventFeedbackStatSectionDto[];
+}
+
+export interface EventFeedbackPageCountsDto {
+  ownEvents: number;
+  pending: number;
+  feedbacked: number;
+  removed: number;
+}
+
+export interface EventFeedbackPageStateSnapshotDto {
+  submittedCardsById: Record<string, true>;
+  submittedAnswersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
+  submittedEventsById: Record<string, string>;
+  removedEventsById: Record<string, true>;
+  removedEventDatesById: Record<string, string>;
+  organizerNotesByEventId: Record<string, string>;
+}
+
+export interface EventFeedbackDto {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  startAtMs: number;
+  pendingCards: number;
+  totalCards: number;
+  isRemoved: boolean;
+  isFeedbacked: boolean;
+  feedbackedAtMs: number | null;
+  removedAtMs?: number | null;
+  isOwnEvent?: boolean;
+}
+
+export interface EventFeedbackCardDto {
+  id: string;
+  eventId: string;
+  kind: 'event' | 'attendee';
+  attendeeUserId?: string;
+  targetUserId?: string;
+  targetRole?: AppConstants.ActivityMemberRole;
+  eventTitle: string;
+  eventSubtitle: string;
+  eventImageUrl: string;
+  eventTimeframe: string;
+  eventStartAtIso: string;
+  eventLabel: string;
+  targetName: string;
+  targetAge?: number;
+  targetCity?: string;
+  targetGender?: AppConstants.UserGender;
+  targetTraitLabel?: string;
+  targetImageUrl?: string;
+  answerPrimary?: string;
+  answerSecondary?: string;
+  eventComment?: string;
+  selectedTraitIds?: string[];
+}
+
+export interface EventFeedbackReceivedEntryDto {
+  viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: AppConstants.UserGender;
+  viewerImageUrl: string;
+  eventId: string;
+  submittedAtIso: string;
+  updatedAtIso: string;
+  organizerNote: string;
+  answers: SubmittedEventFeedbackAnswer[];
+}
+
+export interface EventFeedbackReceivedEventDto {
+  eventId: string;
+  entries: EventFeedbackReceivedEntryDto[];
+}
+
+export type EventFeedbackFilterCountDelta = Partial<Record<AppConstants.EventFeedbackListFilter, number>>;
+
+export class EventFeedbackPageResultDto {
+  readonly items: EventFeedbackDto[];
+  readonly total: number;
+  readonly allItems: EventFeedbackDto[];
+  readonly organizerItems: EventFeedbackDto[];
+  readonly receivedEvents: EventFeedbackReceivedEventDto[];
+  readonly state: EventFeedbackPageStateSnapshotDto;
+  readonly counts: EventFeedbackPageCountsDto;
+
+  constructor(result: Partial<EventFeedbackPageResultDto> | null | undefined = null) {
+    const allItems = EventFeedbackPageResultDto.clonePageItems(result?.allItems);
+    const organizerItems = EventFeedbackPageResultDto.clonePageItems(result?.organizerItems);
+    this.items = EventFeedbackPageResultDto.clonePageItems(result?.items);
+    this.total = Math.max(0, Math.trunc(Number(result?.total) || 0));
+    this.allItems = allItems;
+    this.organizerItems = organizerItems;
+    this.receivedEvents = EventFeedbackPageResultDto.cloneReceivedEvents(result?.receivedEvents);
+    this.state = EventFeedbackPageResultDto.cloneStateSnapshot(result?.state);
+    this.counts = {
+      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents) || 0)),
+      pending: Math.max(0, Math.trunc(Number(result?.counts?.pending) || 0)),
+      feedbacked: Math.max(0, Math.trunc(Number(result?.counts?.feedbacked) || 0)),
+      removed: Math.max(0, Math.trunc(Number(result?.counts?.removed) || 0))
+    };
+  }
+
+  itemById(eventId: string): EventFeedbackDto | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    return [
+      ...this.items,
+      ...this.allItems,
+      ...this.organizerItems
+    ].find(item => item.eventId === normalizedEventId) ?? null;
+  }
+
+  eventTitleById(eventId: string): string {
+    return this.itemById(eventId)?.title?.trim() || 'this event';
+  }
+
+  filterCount(filter: AppConstants.EventFeedbackListFilter): number {
+    switch (filter) {
+      case 'own-events':
+        return Math.max(0, Math.trunc(Number(this.counts.ownEvents) || 0));
+      case 'feedbacked':
+        return Math.max(0, Math.trunc(Number(this.counts.feedbacked) || 0));
+      case 'removed':
+        return Math.max(0, Math.trunc(Number(this.counts.removed) || 0));
+      case 'pending':
+      default:
+        return Math.max(0, Math.trunc(Number(this.counts.pending) || 0));
+    }
+  }
+
+  filterCountWithDelta(
+    filter: AppConstants.EventFeedbackListFilter,
+    delta: EventFeedbackFilterCountDelta = {}
+  ): number {
+    return Math.max(0, this.filterCount(filter) + (delta[filter] ?? 0));
+  }
+
+  itemMatchesFilter(item: EventFeedbackDto, filter: AppConstants.EventFeedbackListFilter): boolean {
+    switch (filter) {
+      case 'own-events':
+        return item.isOwnEvent === true;
+      case 'feedbacked':
+        return item.isFeedbacked === true;
+      case 'removed':
+        return item.isRemoved === true;
+      case 'pending':
+      default:
+        return !item.isRemoved && item.pendingCards > 0;
+    }
+  }
+
+  applySubmitToItem(
+    item: EventFeedbackDto,
+    dto: EventFeedbackDetailDto
+  ): EventFeedbackDto {
+    const submittedAtMs = this.submitTimestampMs(dto);
+    const pendingCards = Math.max(0, item.pendingCards - dto.cards.length);
+    return {
+      ...item,
+      pendingCards,
+      isRemoved: false,
+      isFeedbacked: pendingCards === 0,
+      feedbackedAtMs: pendingCards === 0 ? submittedAtMs : item.feedbackedAtMs,
+      removedAtMs: null
+    };
+  }
+
+  removeItem(item: EventFeedbackDto, removedAtMs = Date.now()): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: true,
+      isFeedbacked: false,
+      removedAtMs
+    };
+  }
+
+  restoreItem(item: EventFeedbackDto): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: false,
+      isFeedbacked: item.pendingCards === 0,
+      removedAtMs: null
+    };
+  }
+
+  filterCountDelta(
+    before: EventFeedbackDto,
+    after: EventFeedbackDto
+  ): EventFeedbackFilterCountDelta {
+    return {
+      pending: this.filterMembershipDelta(before, after, 'pending'),
+      feedbacked: this.filterMembershipDelta(before, after, 'feedbacked'),
+      removed: this.filterMembershipDelta(before, after, 'removed'),
+      'own-events': this.filterMembershipDelta(before, after, 'own-events')
+    };
+  }
+
+  patchItem(item: EventFeedbackDto): EventFeedbackPageResultDto {
+    const patchList = (items: readonly EventFeedbackDto[]) =>
+      items.map(current => current.eventId === item.eventId ? { ...item } : { ...current });
+    return new EventFeedbackPageResultDto({
+      ...this,
+      items: patchList(this.items),
+      allItems: patchList(this.allItems),
+      organizerItems: patchList(this.organizerItems)
+    });
+  }
+
+  patchOrganizerNote(eventId: string, text: string): EventFeedbackPageResultDto {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return this;
+    }
+    const organizerNotesByEventId = { ...this.state.organizerNotesByEventId };
+    const trimmedText = text.trim();
+    if (trimmedText) {
+      organizerNotesByEventId[normalizedEventId] = trimmedText;
+    } else {
+      delete organizerNotesByEventId[normalizedEventId];
+    }
+    return new EventFeedbackPageResultDto({
+      ...this,
+      state: {
+        ...this.state,
+        organizerNotesByEventId
+      }
+    });
+  }
+
+  receivedEntries(eventId: string): readonly EventFeedbackReceivedEntryDto[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    return this.receivedEvents.find(item => item.eventId === normalizedEventId)?.entries ?? [];
+  }
+
+  organizerEntries(eventId: string): EventFeedbackReceivedEntryDto[] {
+    return [...this.receivedEntries(eventId)]
+      .sort((left, right) => this.entryTimestampMs(right) - this.entryTimestampMs(left));
+  }
+
+  entriesLatestAtMs(entries: readonly EventFeedbackReceivedEntryDto[]): number | null {
+    let latestAtMs: number | null = null;
+    for (const entry of entries) {
+      const candidateMs = this.entryTimestampMs(entry);
+      if (candidateMs <= 0) {
+        continue;
+      }
+      latestAtMs = latestAtMs === null ? candidateMs : Math.max(latestAtMs, candidateMs);
+    }
+    return latestAtMs;
+  }
+
+  groupTimestampMs(item: EventFeedbackDto, filter: AppConstants.EventFeedbackListFilter): number | null {
+    switch (filter) {
+      case 'feedbacked':
+        return this.numberOrNull(item.feedbackedAtMs ?? item.startAtMs);
+      case 'removed':
+        return this.numberOrNull(item.removedAtMs ?? item.feedbackedAtMs ?? item.startAtMs);
+      case 'own-events':
+      case 'pending':
+      default:
+        return this.numberOrNull(item.startAtMs);
+    }
+  }
+
+  private static clonePageItems(items: readonly EventFeedbackDto[] | undefined): EventFeedbackDto[] {
+    return (items ?? []).map(item => ({
+      eventId: item.eventId?.trim() ?? '',
+      title: item.title?.trim() ?? '',
+      subtitle: item.subtitle?.trim() ?? '',
+      timeframe: item.timeframe?.trim() ?? '',
+      imageUrl: item.imageUrl?.trim() ?? '',
+      startAtMs: Math.max(0, Math.trunc(Number(item.startAtMs) || 0)),
+      pendingCards: Math.max(0, Math.trunc(Number(item.pendingCards) || 0)),
+      totalCards: Math.max(0, Math.trunc(Number(item.totalCards) || 0)),
+      isRemoved: item.isRemoved === true,
+      isFeedbacked: item.isFeedbacked === true,
+      feedbackedAtMs: EventFeedbackPageResultDto.numberOrNullStatic(item.feedbackedAtMs),
+      removedAtMs: EventFeedbackPageResultDto.numberOrNullStatic(item.removedAtMs),
+      isOwnEvent: item.isOwnEvent === true
+    })).filter(item => item.eventId.length > 0);
+  }
+
+  private static cloneReceivedEvents(
+    events: readonly EventFeedbackReceivedEventDto[] | undefined
+  ): EventFeedbackReceivedEventDto[] {
+    return (events ?? [])
+      .map(item => {
+        const eventId = item.eventId?.trim() ?? '';
+        return {
+          eventId,
+          entries: (item.entries ?? []).map(entry => ({
+            viewerUserId: entry.viewerUserId?.trim() ?? '',
+            viewerName: entry.viewerName?.trim() ?? '',
+            viewerInitials: entry.viewerInitials?.trim() ?? '',
+            viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as AppConstants.UserGender,
+            viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
+            eventId: entry.eventId?.trim() || eventId,
+            submittedAtIso: entry.submittedAtIso?.trim() ?? '',
+            updatedAtIso: entry.updatedAtIso?.trim() ?? '',
+            organizerNote: entry.organizerNote?.trim() ?? '',
+            answers: (entry.answers ?? []).map(answer => EventFeedbackPageResultDto.cloneSubmittedAnswer(answer))
+          })).filter(entry => entry.viewerUserId.length > 0)
+        };
+      })
+      .filter(item => item.eventId.length > 0);
+  }
+
+  private static cloneStateSnapshot(
+    state: Partial<EventFeedbackPageStateSnapshotDto> | null | undefined
+  ): EventFeedbackPageStateSnapshotDto {
+    const next: EventFeedbackPageStateSnapshotDto = {
+      submittedCardsById: {},
+      submittedAnswersByCardId: {},
+      submittedEventsById: {},
+      removedEventsById: {},
+      removedEventDatesById: {},
+      organizerNotesByEventId: {}
+    };
+    for (const [key, value] of Object.entries(state?.submittedCardsById ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.submittedCardsById[normalizedKey] = true;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.submittedAnswersByCardId ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.submittedAnswersByCardId[normalizedKey] = EventFeedbackPageResultDto.cloneSubmittedAnswer(value);
+      }
+    }
+    for (const [key, value] of Object.entries(state?.submittedEventsById ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.submittedEventsById[normalizedKey] = normalizedValue;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.removedEventsById ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.removedEventsById[normalizedKey] = true;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.removedEventDatesById ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.removedEventDatesById[normalizedKey] = normalizedValue;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.organizerNotesByEventId ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.organizerNotesByEventId[normalizedKey] = normalizedValue;
+      }
+    }
+    return next;
+  }
+
+  private static cloneSubmittedAnswer(answer: SubmittedEventFeedbackAnswer): SubmittedEventFeedbackAnswer {
+    return {
+      ...answer,
+      cardId: answer.cardId?.trim() ?? '',
+      eventId: answer.eventId?.trim() ?? '',
+      kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+      targetUserId: answer.targetUserId?.trim() || null,
+      targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
+      primaryValue: answer.primaryValue?.trim() ?? '',
+      secondaryValue: answer.secondaryValue?.trim() ?? '',
+      eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
+      personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
+      tags: [...(answer.tags ?? [])],
+      submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+    };
+  }
+
+  private static numberOrNullStatic(value: number | null | undefined): number | null {
+    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
+  }
+
+  private submitTimestampMs(dto: EventFeedbackDetailDto): number {
+    const submittedAtIso = dto.submittedAtIso.trim();
+    const submittedAtMs = submittedAtIso ? new Date(submittedAtIso).getTime() : Date.now();
+    return Number.isNaN(submittedAtMs) ? Date.now() : submittedAtMs;
+  }
+
+  private filterMembershipDelta(
+    before: EventFeedbackDto,
+    after: EventFeedbackDto,
+    filter: AppConstants.EventFeedbackListFilter
+  ): number {
+    const wasVisible = this.itemMatchesFilter(before, filter);
+    const isVisible = this.itemMatchesFilter(after, filter);
+    return wasVisible === isVisible ? 0 : wasVisible ? -1 : 1;
+  }
+
+  private entryTimestampMs(entry: EventFeedbackReceivedEntryDto): number {
+    const iso = entry.updatedAtIso?.trim()
+      || entry.submittedAtIso?.trim()
+      || (entry.answers ?? []).map(answer => answer.submittedAtIso?.trim() ?? '').find(Boolean)
+      || '';
+    const value = iso ? new Date(iso).getTime() : 0;
+    return Number.isNaN(value) ? 0 : value;
+  }
+
+  private numberOrNull(value: number | null | undefined): number | null {
+    return EventFeedbackPageResultDto.numberOrNullStatic(value);
+  }
+}
+
+export interface EventFeedbackDetailPendingOptions {
+  activeUserId?: string | null;
+  fallbackTitle?: string | null;
+}
+
+export class EventFeedbackDetailDto {
+  readonly eventId: string;
+  readonly title: string;
+  readonly submittedAtIso: string;
+  readonly organizerNote: string;
+  readonly cards: EventFeedbackCardDto[];
+
+  constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
+    this.eventId = result?.eventId?.trim() ?? '';
+    this.title = result?.title?.trim() ?? '';
+    this.submittedAtIso = result?.submittedAtIso?.trim() ?? '';
+    this.organizerNote = result?.organizerNote?.trim() ?? '';
+    this.cards = EventFeedbackDetailDto.cloneCards(result?.cards);
+  }
+
+  pending(options: EventFeedbackDetailPendingOptions = {}): EventFeedbackDetailDto {
+    const activeUserId = options.activeUserId?.trim() ?? '';
+    return new EventFeedbackDetailDto({
+      ...this,
+      title: this.title || options.fallbackTitle?.trim() || '',
+      cards: this.cards.filter(card =>
+        card.eventId === this.eventId
+        && !(card.kind === 'attendee' && card.attendeeUserId === activeUserId)
+      )
+    });
+  }
+
+  submitted(options: { submittedAtIso: string }): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
+      ...this,
+      submittedAtIso: options.submittedAtIso
+    });
+  }
+
+  withPersistedState(state: EventFeedbackStateDto | null | undefined): EventFeedbackDetailDto {
+    const answersByCardId = state?.answersByCardId ?? {};
+    const answers = Object.values(answersByCardId);
+    return new EventFeedbackDetailDto({
+      ...this,
+      submittedAtIso: state?.submittedAtIso?.trim() || this.submittedAtIso,
+      organizerNote: state ? state.organizerNote?.trim() ?? '' : this.organizerNote,
+      cards: this.cards.map(card => {
+        const answer = answersByCardId[card.id]
+          ?? answers.find(item =>
+            item.kind === card.kind
+            && (card.kind === 'event' || item.targetUserId === (card.targetUserId ?? null))
+          );
+        if (!answer) {
+          return card;
+        }
+        return {
+          ...card,
+          answerPrimary: answer.primaryValue?.trim() ?? '',
+          answerSecondary: answer.secondaryValue?.trim() ?? '',
+          eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
+          selectedTraitIds: [...(answer.personalityTraitIds ?? [])]
+            .map(traitId => traitId.trim())
+            .filter(Boolean)
+        };
+      })
+    });
+  }
+
+  withEmptyAnswers(): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
+      ...this,
+      cards: this.cards.map(card => ({
+        ...card,
+        answerPrimary: '',
+        answerSecondary: '',
+        eventComment: '',
+        selectedTraitIds: []
+      }))
+    });
+  }
+
+  withFormValue(value: unknown): EventFeedbackDetailDto {
+    const record = EventFeedbackDetailDto.isRecord(value) ? value : {};
+    const inputCards = Array.isArray(record['cards']) ? record['cards'] : [];
+    const cardInputById = new Map<string, Record<string, unknown>>();
+    for (const item of inputCards) {
+      if (!EventFeedbackDetailDto.isRecord(item)) {
+        continue;
+      }
+      const cardId = `${item['id'] ?? ''}`.trim();
+      if (cardId) {
+        cardInputById.set(cardId, item);
+      }
+    }
+    return new EventFeedbackDetailDto({
+      ...this,
+      cards: this.cards.map(card => {
+        const inputCard = cardInputById.get(card.id) ?? {};
+        return {
+          ...card,
+          answerPrimary: EventFeedbackDetailDto.stringValue(inputCard['answerPrimary']),
+          answerSecondary: EventFeedbackDetailDto.stringValue(inputCard['answerSecondary']),
+          eventComment: card.kind === 'event'
+            ? EventFeedbackDetailDto.stringValue(inputCard['eventComment'])
+            : '',
+          selectedTraitIds: EventFeedbackDetailDto.normalizeSelectedTraitIds(inputCard['selectedTraitIds'])
+        };
+      })
+    });
+  }
+
+  private static cloneCards(cards: readonly EventFeedbackCardDto[] | undefined): EventFeedbackCardDto[] {
+    return (cards ?? []).map(card => ({
+      id: card.id?.trim() ?? '',
+      eventId: card.eventId?.trim() ?? '',
+      kind: card.kind === 'attendee' ? 'attendee' as const : 'event' as const,
+      attendeeUserId: card.attendeeUserId?.trim() || undefined,
+      targetUserId: card.targetUserId?.trim() || undefined,
+      targetRole: EventFeedbackDetailDto.normalizeRole(card.targetRole),
+      eventTitle: card.eventTitle?.trim() ?? '',
+      eventSubtitle: card.eventSubtitle?.trim() ?? '',
+      eventImageUrl: card.eventImageUrl?.trim() ?? '',
+      eventTimeframe: card.eventTimeframe?.trim() ?? '',
+      eventStartAtIso: card.eventStartAtIso?.trim() ?? '',
+      eventLabel: card.eventLabel?.trim() ?? '',
+      targetName: card.targetName?.trim() ?? '',
+      targetAge: EventFeedbackDetailDto.numberOrUndefined(card.targetAge),
+      targetCity: card.targetCity?.trim() || undefined,
+      targetGender: card.targetGender === 'woman' ? 'woman' as const : 'man' as const,
+      targetTraitLabel: card.targetTraitLabel?.trim() || undefined,
+      targetImageUrl: card.targetImageUrl?.trim() || undefined,
+      answerPrimary: card.answerPrimary?.trim() ?? '',
+      answerSecondary: card.answerSecondary?.trim() ?? '',
+      eventComment: card.kind === 'event' ? card.eventComment?.trim() ?? '' : '',
+      selectedTraitIds: [...(card.selectedTraitIds ?? [])]
+        .map(traitId => traitId.trim())
+        .filter(Boolean)
+    })).filter(card => card.id.length > 0 && card.eventId.length > 0);
+  }
+
+  private static normalizeRole(role: AppConstants.ActivityMemberRole | undefined): AppConstants.ActivityMemberRole | undefined {
+    if (role === 'Admin' || role === 'Manager' || role === 'Member') {
+      return role;
+    }
+    return undefined;
+  }
+
+  private static numberOrUndefined(value: number | null | undefined): number | undefined {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
+  }
+
+  private static stringValue(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private static normalizeSelectedTraitIds(value: unknown): string[] {
+    const requestedValues = Array.isArray(value)
+      ? value
+      : value === null || value === undefined || value === ''
+        ? []
+        : [value];
+    const selectedTraitIds: string[] = [];
+    for (const requestedValue of requestedValues) {
+      const traitId = `${requestedValue ?? ''}`.trim();
+      if (!traitId || selectedTraitIds.includes(traitId)) {
+        continue;
+      }
+      selectedTraitIds.push(traitId);
+      if (selectedTraitIds.length >= 3) {
+        break;
+      }
+    }
+    return selectedTraitIds;
+  }
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+}
+
+export interface EventFeedbackNoteRequestDto {
+  userId: string;
+  eventId: string;
+  text: string;
+}
+
+export interface EventFeedbackToggleRequestDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface UserGameDataService {
+  queryGameCardsUsersSnapshot(): UserContracts.UserDto[];
+  queryUserGameCardsByFilter(
+    request: UserGameCardsQueryRequest,
+    requestTimeoutMs?: number
+  ): Promise<UserGameCardsQueryResponse>;
+}
+
+export type UserGameService = UserGameDataService;
+
+export interface UserRatesSyncResult {
+  syncedRateIds: string[];
+  failedRateIds: string[];
+  error: string | null;
+}

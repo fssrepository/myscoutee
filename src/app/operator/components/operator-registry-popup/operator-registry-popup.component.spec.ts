@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import type {
   OperatorMeasurementSyncDto,
   OperatorRegistryStatusDto
-} from '../../../shared/core/contracts/operator.interface';
+} from '../../../shared/core/contracts/operator/operator.interface';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';

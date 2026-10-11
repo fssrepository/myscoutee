@@ -1,11 +1,11 @@
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-import { HttpPaymentSimulatorAdminService } from '../../../shared/core/http/services/payment-simulator-admin.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { HttpPaymentSimulatorAdminService } from '../../../shared/core/http/services/payments/payment-simulator-admin.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
 import { IndicatorComponent, PopupComponent, type PopupModel, I18nPipe } from '@fssrepository/myscoutee-components';
 
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-menu.store';

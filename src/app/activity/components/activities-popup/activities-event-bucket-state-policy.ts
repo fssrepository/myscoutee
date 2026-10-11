@@ -1,7 +1,7 @@
 import type {
   ActivitiesEventScope,
   ActivitiesPrimaryFilter
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 
 export interface ActivitiesEventBucketLoadContext {
   currentPrimaryFilter: ActivitiesPrimaryFilter;

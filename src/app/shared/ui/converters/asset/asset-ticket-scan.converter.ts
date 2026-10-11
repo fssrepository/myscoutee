@@ -2,7 +2,7 @@ import * as QRCode from 'qrcode';
 
 import { AppUtils } from '../../../core/base/app-utils';
 import type { UserDto } from '../../../core';
-import type * as AssetContracts from '../../../core/contracts/asset.interface';
+import type * as AssetContracts from '../../../core/contracts/assets/asset.interface';
 
 type TicketPerson = Pick<UserDto, 'initials' | 'images'> | null;
 

@@ -17,7 +17,7 @@ import type {
   EventFeedbackStatDto,
   EventFeedbackStatSectionDto,
   SubmittedEventFeedbackAnswer
-} from '../../../core/contracts/activity.interface';
+} from '../../../core/contracts/common/activity.interface';
 
 export interface EventFeedbackFilterOption {
   key: EventFeedbackListFilter;

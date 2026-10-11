@@ -4,11 +4,11 @@ import { environment } from '../../../../../../environments/environment';
 import {
   OperatorRegistryService,
   type OperatorRegistryDataSource
-} from '../../../../core/base/services/operator-registry.service';
+} from '../../../../core/base/services/operator/operator-registry.service';
 import {
   SessionService,
   type AppSession
-} from '../../../../core/base/services/session.service';
+} from '../../../../core/base/services/accounts/session.service';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type {
   OperatorMeasurementReportDto,
@@ -20,7 +20,7 @@ import type {
   OperatorRegistryMutationResultDto,
   OperatorRegistryOptionDto,
   OperatorRegistryStatusDto
-} from '../../../../core/contracts/operator.interface';
+} from '../../../../core/contracts/operator/operator.interface';
 import { normalizeOperatorRegistryBaseUrl } from '../../../../core/base/operator-registry-candidate';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 

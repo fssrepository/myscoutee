@@ -1,5 +1,5 @@
-import type { ActivityRateDTO } from '../contracts/activity.interface';
-import type { UserRateRecord } from '../local/source/entity/rate.entity';
+import type { ActivityRateDTO } from '../contracts/common/activity.interface';
+import type { UserRateRecord } from '../local/source/entity/affinity/rate.entity';
 
 /** Materialized at the memory/IndexedDB write boundary, never while reading a list. */
 export function projectCampaignRateRecords(records: readonly UserRateRecord[]): Record<string, UserRateRecord[]> {

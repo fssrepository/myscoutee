@@ -1,10 +1,10 @@
 import type {
   EventFeedbackDto,
   EventFeedbackPageStateSnapshotDto,
-} from '../../../core/contracts/activity.interface';
+} from '../../../core/contracts/common/activity.interface';
 import { type InfoCardData, type CardMenuActionId, type UiListConverter } from '@fssrepository/myscoutee-components';
 
-import type { ServiceFeedbackItem } from '../../../core/contracts/service-feedback.interface';
+import type { ServiceFeedbackItem } from '../../../core/contracts/community/service-feedback.interface';
 
 export interface ServiceFeedbackCardDetail {
   kind: 'service-feedback';

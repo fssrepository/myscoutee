@@ -4,8 +4,8 @@ import { CanActivateFn, Router, Routes } from '@angular/router';
 import { AppUtils } from './shared/core/base/app-utils';
 import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
 import { hasOperatorRole } from './shared/core/common/user-role';
-import { SessionService } from './shared/core/base/services/session.service';
-import type { UserDto } from './shared/core/contracts/user.interface';
+import { SessionService } from './shared/core/base/services/accounts/session.service';
+import type { UserDto } from './shared/core/contracts/accounts/user.interface';
 
 const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
 
@@ -24,7 +24,7 @@ const entryAreaGuard: CanActivateFn = async () => {
     return router.createUrlTree(['/operator']);
   }
 
-  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
   const usersService = injector.get(UsersService);
   const user = usersService.peekCachedUserById(
     session.kind === 'demo' ? session.userId : session.profile.id
@@ -44,7 +44,7 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   const router = inject(Router);
   const session = await sessionService.ensureSession();
   if (session) {
-    const { UsersService } = await import('./shared/core/base/services/users.service');
+    const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
     const usersService = injector.get(UsersService);
     if (!usersService.localModeEnabled) {
       if (isBrowserOffline()) {
@@ -102,7 +102,7 @@ const operatorAreaGuard: CanActivateFn = async (_route, state) => {
     return entryRedirect(router, state.url);
   }
 
-  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
   const usersService = injector.get(UsersService);
   const user = await usersService
     .loadUserById(session.kind === 'demo' ? session.userId : undefined)
@@ -128,7 +128,7 @@ const adminAreaGuard: CanActivateFn = async (_route, state) => {
     return entryRedirect(router, state.url);
   }
 
-  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
   const usersService = injector.get(UsersService);
   if (session.kind === 'demo' && usersService.localModeEnabled) {
     const { AdminWorkspaceStore } = await import('./shared/ui/context/stores/admin/admin-workspace.store');

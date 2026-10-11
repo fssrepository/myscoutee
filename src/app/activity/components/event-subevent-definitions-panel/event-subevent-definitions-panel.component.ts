@@ -37,9 +37,9 @@ import {
   ActivityEventDetailDTO,
   type MingleConfigurationDTO,
   type SubEventDefinitionDTO
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 
-import type * as EventContracts from '../../../shared/core/contracts/event.interface';
+import type * as EventContracts from '../../../shared/core/contracts/events/event.interface';
 
 import { EventMingleConfigurationPopupComponent } from '../event-mingle-configuration-popup/event-mingle-configuration-popup.component';
 import {

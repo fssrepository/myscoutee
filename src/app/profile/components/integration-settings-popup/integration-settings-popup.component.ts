@@ -15,17 +15,17 @@ import {
   DialogStore
 } from '@fssrepository/myscoutee-components';
 import { SummaryCurrencyPopupComponent } from '../../../shared/ui/components/summary-currency-popup/summary-currency-popup.component';
-import { PaymentMethodsService } from '../../../shared/core/base/services/payment-methods.service';
+import { PaymentMethodsService } from '../../../shared/core/base/services/payments/payment-methods.service';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, computed, effect, untracked, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { IntegrationService } from '../../../shared/core/base/services/integration.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { IntegrationService } from '../../../shared/core/base/services/integrations/integration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 
 import type {
   IntegrationTokenDto
-} from '../../../shared/core/contracts/integration.interface';
+} from '../../../shared/core/contracts/integrations/integration.interface';
 
 type IntegrationActionContext =
   | { action: 'copy'; value: string }

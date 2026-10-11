@@ -1,4 +1,4 @@
-import type { ServiceCategory, ServiceStatus, ServiceOfferingItem } from '../../../core/contracts/service-offering.interface';
+import type { ServiceCategory, ServiceStatus, ServiceOfferingItem } from '../../../core/contracts/community/service-offering.interface';
 import {
   type InfoCardData,
   type SingleCardData,

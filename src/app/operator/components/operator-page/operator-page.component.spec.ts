@@ -1,14 +1,14 @@
 import { signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
 import { type ListQuery, type AppMenuItem } from '@fssrepository/myscoutee-components';
 import type {
   OperatorClaimStatusDto,
   OperatorLeaderboardEntryDto,
   OperatorRegistryStatusDto
-} from '../../../shared/core/contracts/operator.interface';
+} from '../../../shared/core/contracts/operator/operator.interface';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   OperatorLeaderboardStore,

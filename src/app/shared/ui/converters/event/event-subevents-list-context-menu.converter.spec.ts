@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityEventDTO } from '../../../core/contracts/activity.interface';
+import type { ActivityEventDTO } from '../../../core/contracts/common/activity.interface';
 import { ActivityEventInfoCardConverter } from './activity-event-info-card.converter';
 import { EventSubeventsListContextMenuConverter } from './event-subevents-list-context-menu.converter';
 

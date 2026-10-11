@@ -8,7 +8,7 @@ import {
   type CardProfileViewData,
   type CardMenuRequestEvent
 } from '@fssrepository/myscoutee-components';
-import type * as ActivityContracts from '../../../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../../../shared/core/contracts/common/activity.interface';
 
 import {
   ChangeDetectionStrategy,
@@ -23,12 +23,12 @@ import {
 import {
   AppUtils
 } from '../../../../../shared/core/base/app-utils';
-import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat/chat.interface';
 import {
   ActivityEventDetailDTO
-} from '../../../../../shared/core/contracts/activity.interface';
+} from '../../../../../shared/core/contracts/common/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
+import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/accounts/user.interface';
 
 import { type ActivityCounterKey, type ActivityCounters } from '../../../../../shared/ui';
 import {

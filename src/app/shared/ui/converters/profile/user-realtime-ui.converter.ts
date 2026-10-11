@@ -2,7 +2,7 @@ import type {
   UserImpressionsDto,
   UserPaymentTotalsDto,
   UserRealtimeLongPollResponseDto
-} from '../../../core/contracts/user.interface';
+} from '../../../core/contracts/accounts/user.interface';
 import type {
   ActivityCounters
 } from '../../context/stores/activity/activity.store';

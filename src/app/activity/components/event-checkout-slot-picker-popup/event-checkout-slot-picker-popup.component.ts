@@ -33,7 +33,7 @@ import { EventsService, type EventCheckoutBasket, type EventCheckoutBasketItem, 
 
 import { EventCheckoutDraftStore, EventCheckoutSlotPickerStore } from '../../../shared/ui';
 import type { SlotPickerRecord } from '../../../shared/ui/context/stores/event/event-checkout-slot-picker.store';
-import type { EventCheckoutSlotsQuery } from '../../../shared/core/contracts/activity.interface';
+import type { EventCheckoutSlotsQuery } from '../../../shared/core/contracts/common/activity.interface';
 import {
   EventBasketInputComponent,
   type EventBasketInputConfig,

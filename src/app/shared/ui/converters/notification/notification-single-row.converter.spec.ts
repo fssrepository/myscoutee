@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { NotificationDto } from '../../../core/contracts/notification.interface';
+import type { NotificationDto } from '../../../core/contracts/notifications/notification.interface';
 import { NotificationSingleRowConverter } from './notification-single-row.converter';
 
 describe('NotificationSingleRowConverter badges', () => {

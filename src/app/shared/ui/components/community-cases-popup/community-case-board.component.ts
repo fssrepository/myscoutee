@@ -21,10 +21,10 @@ import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
-import type { CaseBoardTask, CaseOffer } from '../../../core/contracts/community-case.interface';
+import type { CaseBoardTask, CaseOffer } from '../../../core/contracts/community/community-case.interface';
 
 const STAGES = [
   { id: 'todo', icon: 'checklist', palette: 'blue', tone: 'blue' },

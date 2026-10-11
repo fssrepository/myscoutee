@@ -1,7 +1,7 @@
 import { CommunityServicesHomeComponent } from '../community-services-home/community-services-home.component';
 import { CommunityAnnouncementsComponent } from '../../../shared/ui/components/community-announcements/community-announcements.component';
 import { WorkHomeComponent } from '../work-home/work-home.component';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   type RatingSnapshot,
   type AppMenuItem,
@@ -22,7 +22,7 @@ import {
   ExplanationGuideService,
   I18nPipe
 } from '@fssrepository/myscoutee-components';
-import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
+import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {
   ChangeDetectionStrategy,
@@ -56,8 +56,8 @@ import {
   APP_STATIC_DATA
 } from '../../../shared/core/common/app-static-data';
 
-import { GameService } from '../../../shared/core/base/services/game.service';
-import { UsersService } from '../../../shared/core/base/services/users.service';
+import { GameService } from '../../../shared/core/base/services/accounts/game.service';
+import { UsersService } from '../../../shared/core/base/services/accounts/users.service';
 import type { UserDto, UserGameMode, UserGameSocialCard } from '../../../shared/core';
 import {
   HomeGameFilterPopupComponent
@@ -82,7 +82,7 @@ import {
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
 
 type LocalPopup = 'filter' | null;
 

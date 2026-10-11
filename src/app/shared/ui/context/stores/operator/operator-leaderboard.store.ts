@@ -1,10 +1,10 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 
-import { OperatorRegistryService } from '../../../../core/base/services/operator-registry.service';
+import { OperatorRegistryService } from '../../../../core/base/services/operator/operator-registry.service';
 import {
   SessionService,
   type AppSession
-} from '../../../../core/base/services/session.service';
+} from '../../../../core/base/services/accounts/session.service';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type {
   OperatorLeaderboardDeploymentPageDto,
@@ -12,7 +12,7 @@ import type {
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto
-} from '../../../../core/contracts/operator.interface';
+} from '../../../../core/contracts/operator/operator.interface';
 
 export interface OperatorLeaderboardFilters {
   revision: number;

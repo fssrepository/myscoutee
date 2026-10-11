@@ -94,7 +94,7 @@ import {
 } from '../../../shared/core/contracts';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
-import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import type * as AssetContracts from '../../../shared/core/contracts/assets/asset.interface';
 import * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';

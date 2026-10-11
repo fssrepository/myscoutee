@@ -1,19 +1,19 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
-import { DeploymentConfigurationService } from '../../../../core/base/services/deployment-configuration.service';
-import { FirebaseAppService } from '../../../../core/base/services/firebase-app.service';
+import { DeploymentConfigurationService } from '../../../../core/base/services/platform/deployment-configuration.service';
+import { FirebaseAppService } from '../../../../core/base/services/accounts/firebase-app.service';
 import {
   FirebaseMessagingService,
   type FirebaseMessagingReadinessLease
-} from '../../../../core/base/services/firebase-messaging.service';
-import { OperatorRegistryService } from '../../../../core/base/services/operator-registry.service';
-import { PwaService } from '../../../../core/base/services/pwa.service';
-import { OperatorConfigurationMapper } from '../../../../core/base/mappers/operator-configuration.mapper';
+} from '../../../../core/base/services/notifications/firebase-messaging.service';
+import { OperatorRegistryService } from '../../../../core/base/services/operator/operator-registry.service';
+import { PwaService } from '../../../../core/base/services/platform/pwa.service';
+import { OperatorConfigurationMapper } from '../../../../core/base/mappers/operator/operator-configuration.mapper';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import {
   SessionService,
   type AppSession
-} from '../../../../core/base/services/session.service';
+} from '../../../../core/base/services/accounts/session.service';
 import type {
   OperatorGroupingTokenDto,
   OperatorClaimRequestDto,
@@ -36,7 +36,7 @@ import type {
   OperatorTlsConfigurationUpdateDto,
   OperatorTlsJobDto,
   OperatorTlsTestKind
-} from '../../../../core/contracts/operator.interface';
+} from '../../../../core/contracts/operator/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 

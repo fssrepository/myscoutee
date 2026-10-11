@@ -20,7 +20,7 @@ import { Router } from '@angular/router';
 import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
 import {PaymentMethodsPopupStore} from '../../context/stores/payment/payment-methods-popup.store';
 import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
-import { ChatsService } from '../../../core/base/services/chats.service';
+import { ChatsService } from '../../../core/base/services/chat/chats.service';
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
 import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
 import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
@@ -48,7 +48,7 @@ import type {
   NotificationDto,
   NotificationListFilters,
   NotificationSyncRequestDto
-} from '../../../core/contracts/notification.interface';
+} from '../../../core/contracts/notifications/notification.interface';
 
 import {
   NotificationSingleRowConverter

@@ -1,4 +1,4 @@
-import type { OperatorLeaderboardEntryDto } from '../../../core/contracts/operator.interface';
+import type { OperatorLeaderboardEntryDto } from '../../../core/contracts/operator/operator.interface';
 import {
   type SingleRowBadge,
   type SingleRowData,

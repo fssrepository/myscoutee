@@ -1,0 +1,34 @@
+import { Injectable, inject } from '@angular/core';
+
+import type { UserExperiencesPersistenceService } from '../../../../contracts/accounts/profile.interface';
+import type { ExperienceEntry } from '../../../../contracts/accounts/profile.interface';
+import { LocalProfileExperiencesMapper } from '../../mappers';
+import { LocalProfileExperiencesRepository } from '../../repositories/accounts/profile-experiences.repository';
+import { LocalRouteDelayService } from '../platform/route-delay.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LocalUserExperiencesService extends LocalRouteDelayService implements UserExperiencesPersistenceService {
+  private static readonly EXPERIENCES_ROUTE = '/auth/me/experiences';
+  private readonly repository = inject(LocalProfileExperiencesRepository);
+
+  async queryUserExperiences(userId: string): Promise<ExperienceEntry[]> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE),
+      (async (): Promise<ExperienceEntry[]> => {
+        return LocalProfileExperiencesMapper.cloneEntries(this.repository.queryUserExperienceRecords(userId));
+      })()
+    ]);
+    return response;
+  }
+
+  async saveUserExperiences(userId: string, entries: readonly ExperienceEntry[]): Promise<ExperienceEntry[]> {
+    await this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE);
+    const savedEntries = this.repository.replaceUserExperienceRecords(
+      userId,
+      LocalProfileExperiencesMapper.toEntries(entries)
+    );
+    return LocalProfileExperiencesMapper.cloneEntries(savedEntries);
+  }
+}

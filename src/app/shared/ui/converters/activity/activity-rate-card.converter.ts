@@ -9,7 +9,7 @@ import {
   type RateCardPerson,
   type SingleCardData
 } from '@fssrepository/myscoutee-components';
-import type { ActivityRateDTO } from '../../../core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../core/contracts/common/activity.interface';
 
 export interface ActivityRateCardConverterOptions {
   groupLabel?: string | null;

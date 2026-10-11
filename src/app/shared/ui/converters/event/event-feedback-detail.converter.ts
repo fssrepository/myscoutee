@@ -4,7 +4,7 @@ import type { ActivityMemberRole } from '../../../core/common/constants';
 import type {
   EventFeedbackCardDto,
   EventFeedbackDetailDto
-} from '../../../core/contracts/activity.interface';
+} from '../../../core/contracts/common/activity.interface';
 import { type ImageCardData, type InfoCardData, type UiConverter } from '@fssrepository/myscoutee-components';
 
 export class EventFeedbackDetailConverter {

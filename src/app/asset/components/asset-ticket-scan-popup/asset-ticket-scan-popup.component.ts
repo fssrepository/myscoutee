@@ -31,7 +31,7 @@ import {
   AssetTicketScannerPopupComponent
 } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 
-import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import type * as AssetContracts from '../../../shared/core/contracts/assets/asset.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;

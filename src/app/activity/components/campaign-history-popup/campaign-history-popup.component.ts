@@ -12,8 +12,8 @@ import {
 
 import { Component, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
 import { defer } from 'rxjs';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import type { CampaignHistoryItem } from '../../../shared/core/contracts/campaign.interface';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import type { CampaignHistoryItem } from '../../../shared/core/contracts/campaigns/campaign.interface';
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
 import { CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/activity/campaign.converter';
 

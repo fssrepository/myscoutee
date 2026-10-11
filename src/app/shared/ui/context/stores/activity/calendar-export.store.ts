@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
-import { EventsService } from '../../../../core/base/services/events.service';
+import { EventsService } from '../../../../core/base/services/events/events.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { DialogStore } from '@fssrepository/myscoutee-components';
 

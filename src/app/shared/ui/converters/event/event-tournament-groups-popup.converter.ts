@@ -8,7 +8,7 @@ import {
   type AppMenuTrigger,
   type UiConverter
 } from '@fssrepository/myscoutee-components';
-import { AssetDefaultsBuilder } from '../../../core/base/builders/asset-defaults.builder';
+import { AssetDefaultsBuilder } from '../../../core/base/builders/assets/asset-defaults.builder';
 import * as AppConstants from '../../../core/common/constants';
 import type { AssetType } from '../../../core/common/constants';
 import type {
@@ -16,7 +16,7 @@ import type {
   EventTournamentGroupDTO,
   EventTournamentGroupsStateDTO,
   EventTournamentStageDTO
-} from '../../../core/contracts/event.interface';
+} from '../../../core/contracts/events/event.interface';
 
 export interface EventTournamentGroupsPopupConverterInput {
   state: EventTournamentGroupsStateDTO | null;

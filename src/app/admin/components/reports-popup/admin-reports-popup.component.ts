@@ -28,11 +28,11 @@ import {
 import {
   AppUtils
 } from '../../../shared/core/base/app-utils';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { ContentModerationService } from '../../../shared/core/base/services/content/content-moderation.service';
 import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community/community-groups.store';
 import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
-import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
+import type { CommunityGroup } from '../../../shared/core/contracts/groups/community-group.interface';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
@@ -71,9 +71,9 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { ActivityChatSingleRowConverter } from '../../../shared/ui';
 
-import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/administration/admin-workspace-data.service';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 
 import {
   AdminMenuStore

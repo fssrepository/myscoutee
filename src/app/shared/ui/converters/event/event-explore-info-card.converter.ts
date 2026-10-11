@@ -8,7 +8,7 @@ import {
 import { AppUtils } from '../../../core/base/app-utils';
 import type * as ContractTypes from '../../../core/contracts';
 import type * as AppConstants from '../../../core/common/constants';
-import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
+import type { ActivityEventRecord } from '../../../core/contracts/common/activity.interface';
 
 export type EventExploreTopicToneGroup = {
   toneClass: string;

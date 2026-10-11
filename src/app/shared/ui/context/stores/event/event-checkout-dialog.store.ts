@@ -1,9 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutBasket, EventCheckoutSelection } from '../../../../core/contracts/activity.interface';
-import type { ActivityEventRecord } from '../../../../core/contracts/activity.interface';
+import type { EventCheckoutBasket, EventCheckoutSelection } from '../../../../core/contracts/common/activity.interface';
+import type { ActivityEventRecord } from '../../../../core/contracts/common/activity.interface';
 import type { ActivityPendingReason } from '../../../../core/common/constants';
-import type { SavedPaymentMethodDto } from '../../../../core/contracts/payment-method.interface';
+import type { SavedPaymentMethodDto } from '../../../../core/contracts/payments/payment-method.interface';
 import type { EventPaymentStatusTone } from './event-editor-popup.store';
 
 export interface EventCheckoutDialogConfig {

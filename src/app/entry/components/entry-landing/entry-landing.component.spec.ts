@@ -2,11 +2,11 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
-import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
-import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
+import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content/content.interface';
 import {
   provideUiTranslations,
   type PageResult,

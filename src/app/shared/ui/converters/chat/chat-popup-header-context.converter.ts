@@ -2,8 +2,8 @@ import { AppUtils } from '../../../core/base/app-utils';
 import type {
   ChatDTO,
   ChatMemberSummaryDto
-} from '../../../core/contracts/chat.interface';
-import type { UserDto } from '../../../core/contracts/user.interface';
+} from '../../../core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../core/contracts/accounts/user.interface';
 import type {
   PopupHeaderContext,
   PopupHeaderControl,

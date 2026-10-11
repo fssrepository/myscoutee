@@ -16,9 +16,9 @@ import { FormsModule } from '@angular/forms';
 
 import { CommunityCasesStore, type CaseEditorState } from '../../context/stores/community/community-cases.store';
 import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
-import { CASE_TYPES, type SaveCommunityScheduledTask, type CommunityCase, type TaskFrequency } from '../../../core/contracts/community-case.interface';
+import { CASE_TYPES, type SaveCommunityScheduledTask, type CommunityCase, type TaskFrequency } from '../../../core/contracts/community/community-case.interface';
 
 @Component({ selector: 'app-community-case-editor', standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent, SlotsInputComponent],

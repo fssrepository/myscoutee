@@ -1,6 +1,6 @@
 import { type IndicatorState, type HeaderCardModel } from '@fssrepository/myscoutee-components';
 
-import type { UserDto } from '../../../core/contracts/user.interface';
+import type { UserDto } from '../../../core/contracts/accounts/user.interface';
 
 export interface ProfileHeaderCardConverterOptions {
   admin?: boolean;

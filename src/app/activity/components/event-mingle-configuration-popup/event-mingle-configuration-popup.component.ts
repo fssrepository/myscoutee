@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import {
   ActivityEventDetailDTO,
   type MingleConfigurationDTO
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 import {
   ExplanationGuideService,
   I18nPipe,

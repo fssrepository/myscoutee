@@ -2,9 +2,9 @@ import { NotificationCenterStore } from '../notification/notification-center.sto
 import { ActivityStore } from './activity.store';
 import { Injectable, computed, effect, inject, signal, untracked, OnDestroy } from '@angular/core';
 
-import { EventsService } from '../../../../core/base/services/events.service';
-import { I18nService } from '../../../../core/base/services/i18n.service';
-import type { MingleStateDTO } from '../../../../core/contracts/event.interface';
+import { EventsService } from '../../../../core/base/services/events/events.service';
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
+import type { MingleStateDTO } from '../../../../core/contracts/events/event.interface';
 import { UiPollCoordinator, UiTaskScheduler } from '@fssrepository/myscoutee-components';
 
 import { MemberMenuStore } from '../app/member-menu.store';

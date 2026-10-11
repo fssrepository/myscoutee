@@ -3,12 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 
 import { HelpCenterService } from '../../../core';
-import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
   type DeploymentPrivacyContactDto
-} from '../../../core/contracts/deployment-configuration.interface';
+} from '../../../core/contracts/platform/deployment-configuration.interface';
 import { DocumentViewerComponent } from './document-viewer.component';
 import type { DocumentViewerConfig } from './document-viewer.types';
 

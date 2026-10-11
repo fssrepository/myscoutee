@@ -18,10 +18,10 @@ import { defer,map } from 'rxjs';
 
 import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
 import { ProfileStore } from '../../context/stores/profile/profile.store';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import { type ServiceImageCard, ServiceOfferingConverter, SERVICE_STATUS_STYLE, SERVICE_CATEGORY_STYLE } from '../../converters/services/service-offering.converter';
 import { ServiceOfferingEditorComponent } from './service-offering-editor.component';
-import { SERVICE_CATEGORIES,type ServiceOfferingItem,type ServiceOfferingFilters,type ServiceCategory,type ServiceStatus,type ServiceAction } from '../../../core/contracts/service-offering.interface';
+import { SERVICE_CATEGORIES,type ServiceOfferingItem,type ServiceOfferingFilters,type ServiceCategory,type ServiceStatus,type ServiceAction } from '../../../core/contracts/community/service-offering.interface';
 
 @Component({selector:'app-service-offerings-popup',standalone:true,imports:[ServiceProviderCalendarComponent,PopupComponent,SmartListComponent,InfoCardComponent,SingleCardComponent,ServiceOfferingEditorComponent],template:`
  @if(store.session()){

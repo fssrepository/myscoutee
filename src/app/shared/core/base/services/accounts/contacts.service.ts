@@ -1,0 +1,51 @@
+import type { ContactChatAccessAction, ContactChatAccessSnapshot } from '../../../contracts/accounts/contact.interface';
+import { Injectable, inject } from '@angular/core';
+
+import type { ProfileViewData } from '../../../contracts/accounts/profile.interface';
+import { LocalContactsService } from '../../../local/source/services/accounts/contacts.service';
+import { HttpContactsService } from '../../../http/services/accounts/contacts.service';
+import { BaseRouteModeService } from '../platform/base-route-mode.service';
+import type * as ContactContracts from '../../../contracts/accounts/contact.interface';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ContactsService extends BaseRouteModeService {
+  private readonly localContactsService = inject(LocalContactsService);
+  private readonly httpContactsService = inject(HttpContactsService);
+
+  private get contactsService(): LocalContactsService | HttpContactsService {
+    return this.resolveRouteService(
+      '/navigator/contacts',
+      this.localContactsService,
+      this.httpContactsService
+    );
+  }
+
+  loadChatAccess(): Promise<ContactChatAccessSnapshot> {
+    return this.contactsService.loadChatAccess();
+  }
+
+  changeChatAccess(userId: string, action: ContactChatAccessAction, version?: number): Promise<ContactChatAccessSnapshot> {
+    return this.contactsService.changeChatAccess(userId, action, version);
+  }
+
+  loadContacts(userId: string): Promise<ContactContracts.StoredContact[]> {
+    return this.contactsService.loadContacts(userId);
+  }
+
+  loadContactProfile(userId: string): Promise<ProfileViewData> {
+    return this.contactsService.loadContactProfile(userId);
+  }
+
+  saveContacts(
+    userId: string,
+    contacts: readonly ContactContracts.StoredContact[]
+  ): Promise<ContactContracts.StoredContact[]> {
+    return this.contactsService.saveContacts(userId, contacts);
+  }
+
+  deleteContact(userId: string, contactId: string): Promise<ContactContracts.StoredContact[]> {
+    return this.contactsService.deleteContact(userId, contactId);
+  }
+}

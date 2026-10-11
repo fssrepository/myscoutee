@@ -1,7 +1,7 @@
 import { Injectable, Type, signal } from '@angular/core';
 
-import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../../core/contracts/activity.interface';
-import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../../core/contracts/event.interface';
+import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../../core/contracts/common/activity.interface';
+import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../../core/contracts/events/event.interface';
 
 export type EventSubeventsEditorAction = 'edit' | 'manage' | 'view';
 

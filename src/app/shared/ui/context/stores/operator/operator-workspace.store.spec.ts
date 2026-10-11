@@ -1,12 +1,12 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { OperatorRegistryService } from '../../../../core/base/services/operator-registry.service';
-import { DeploymentConfigurationService } from '../../../../core/base/services/deployment-configuration.service';
-import { FirebaseAppService } from '../../../../core/base/services/firebase-app.service';
-import { FirebaseMessagingService } from '../../../../core/base/services/firebase-messaging.service';
-import { PwaService } from '../../../../core/base/services/pwa.service';
-import { SessionService } from '../../../../core/base/services/session.service';
+import { OperatorRegistryService } from '../../../../core/base/services/operator/operator-registry.service';
+import { DeploymentConfigurationService } from '../../../../core/base/services/platform/deployment-configuration.service';
+import { FirebaseAppService } from '../../../../core/base/services/accounts/firebase-app.service';
+import { FirebaseMessagingService } from '../../../../core/base/services/notifications/firebase-messaging.service';
+import { PwaService } from '../../../../core/base/services/platform/pwa.service';
+import { SessionService } from '../../../../core/base/services/accounts/session.service';
 import type {
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
@@ -15,7 +15,7 @@ import type {
   OperatorConfigurationTestResultDto,
   OperatorDeploymentUpdateDto,
   OperatorRevenueDto
-} from '../../../../core/contracts/operator.interface';
+} from '../../../../core/contracts/operator/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { OperatorWorkspaceStore } from './operator-workspace.store';
 import { UserProfileStore } from '../profile/user-profile.store';

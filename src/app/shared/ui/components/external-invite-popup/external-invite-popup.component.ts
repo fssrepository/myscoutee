@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
-import { IntegrationService } from '../../../core/base/services/integration.service';
+import { IntegrationService } from '../../../core/base/services/integrations/integration.service';
 import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
 import { PopupComponent, type PopupModel, CopyLinkComponent, I18nPipe } from '@fssrepository/myscoutee-components';
 

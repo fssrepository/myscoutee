@@ -1,4 +1,4 @@
-import type { Campaign, CampaignCategory, CampaignKind, CampaignStatus } from '../../../core/contracts/campaign.interface';
+import type { Campaign, CampaignCategory, CampaignKind, CampaignStatus } from '../../../core/contracts/campaigns/campaign.interface';
 import {
   type ImageCardData,
   type SingleCardData,

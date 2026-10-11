@@ -15,9 +15,9 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import { AppUtils } from '../../../core/base/app-utils';
-import type { ProfileExtDto, UserDto } from '../../../core/contracts/user.interface';
+import type { ProfileExtDto, UserDto } from '../../../core/contracts/accounts/user.interface';
 import { CURRENT_PROFILE_FORM_VERSION, type DetailPrivacy, type ProfileStatus } from '../../../core/common/constants';
-import type { ExperienceEntry, ProfileDetailFormGroup } from '../../../core/contracts/profile.interface';
+import type { ExperienceEntry, ProfileDetailFormGroup } from '../../../core/contracts/accounts/profile.interface';
 
 export interface ProfileFormFlowPrivacyOptions {
   lockedFields?: readonly string[];

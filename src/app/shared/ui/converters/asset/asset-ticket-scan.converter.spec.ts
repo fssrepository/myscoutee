@@ -1,6 +1,6 @@
 import { AssetTicketScanConverter } from './asset-ticket-scan.converter';
 
-import type * as AssetContracts from '../../../core/contracts/asset.interface';
+import type * as AssetContracts from '../../../core/contracts/assets/asset.interface';
 
 describe('AssetTicketScanConverter', () => {
   it('keeps the ordinary Member role in a separate contextual badge', () => {

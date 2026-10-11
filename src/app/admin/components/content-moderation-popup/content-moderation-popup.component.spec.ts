@@ -1,6 +1,6 @@
 import { ContentModerationPopupComponent } from './content-moderation-popup.component';
 import { signal } from '@angular/core';
-import type { ContentModerationItem } from '../../../shared/core/contracts/content-moderation.interface';
+import type { ContentModerationItem } from '../../../shared/core/contracts/content/content-moderation.interface';
 
 describe('Content moderation dual filters', () => {
   const original: ContentModerationItem = { id: 'feed:post', category: 'feed', sourceId: 'post', ownerUserId: 'owner',

@@ -15,12 +15,12 @@ import {
   I18nPipe
 } from '@fssrepository/myscoutee-components';
 
-import { UsersService } from '../../../shared/core/base/services/users.service';
-import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
+import { UsersService } from '../../../shared/core/base/services/accounts/users.service';
+import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 import type {
   ExperienceEntry,
   ExperienceFilter
-} from '../../../shared/core/contracts/profile.interface';
+} from '../../../shared/core/contracts/accounts/profile.interface';
 import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,

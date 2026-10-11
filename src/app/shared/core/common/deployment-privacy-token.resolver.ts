@@ -1,6 +1,6 @@
 import type {
   DeploymentPrivacyContactDto
-} from '../contracts/deployment-configuration.interface';
+} from '../contracts/platform/deployment-configuration.interface';
 
 export interface DeploymentPrivacyTokenText {
   dataControllerLabel: string;

@@ -1,0 +1,254 @@
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
+
+import type {
+  IActivityInviteCandidatesService,
+  ActivityInviteOwnerContext,
+  ActivityEventRecord
+} from '../../../contracts/common/activity.interface';
+import {
+  LocalActivityInviteCandidatesService
+} from '../../../local/source/services/events/activity-invite-candidates.service';
+import {
+  HttpActivityInviteCandidatesService
+} from '../../../http/services/events/activity-invite-candidates.service';
+import {
+  ActivityMembersService
+} from './activity-members.service';
+import {
+  EventsService
+} from './events.service';
+import {
+  BaseRouteModeService
+} from '../platform/base-route-mode.service';
+import {
+  AppUtils
+} from '../../app-utils';
+import type * as ActivityContracts from '../../../contracts/common/activity.interface';
+
+import type * as AppConstants from '../../../common/constants';
+import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
+import { partitionEventInvitesByCapacity } from './activity-invite-capacity.policy';
+import { GroupWorkspaceContextService } from '../groups/group-workspace-context.service';
+const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ActivityInviteCandidatesService extends BaseRouteModeService implements IActivityInviteCandidatesService {
+  private readonly localActivityInviteCandidatesService = inject(LocalActivityInviteCandidatesService);
+  private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
+  private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly eventsService = inject(EventsService);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly workspace = inject(GroupWorkspaceContextService);
+  private get inviteCandidatesService(): IActivityInviteCandidatesService {
+    return this.resolveRouteService(
+      ACTIVITY_INVITE_CANDIDATES_ROUTE,
+      this.localActivityInviteCandidatesService,
+      this.httpActivityInviteCandidatesService
+    );
+  }
+
+  async queryCandidates(
+    query: ActivityContracts.ActivityInviteCandidatesQuery
+  ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
+    const accountUserId = this.workspace.accountId(query.activeUserId);
+    // The Contacts picker uses the account itself as its asset-owner context.
+    const isContactPicker = query.purpose !== 'payment' && query.owner.ownerType === 'asset'
+      && query.owner.ownerId === accountUserId;
+    return this.inviteCandidatesService.queryCandidates(query.owner.ownerType === 'community' || isContactPicker
+      ? { ...query, activeUserId: accountUserId }
+      : query);
+  }
+
+  async queryCandidatesByOwner(
+    ownerId: string,
+    sort: AppConstants.ActivityInviteSort,
+    fallbackTitle = 'Event',
+    ownerType: AppConstants.ActivityMemberOwnerType = 'event',
+    existingMemberUserIds: readonly string[] = [],
+    pendingInviteUserIds: readonly string[] = [],
+    parentOwner: ActivityContracts.ActivityMemberOwnerRef | null = null,
+    page = 0,
+    pageSize = 16,
+    purpose?:'payment'
+  ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
+    const activeUserId = this.activeUserId();
+    const normalizedOwnerId = ownerId.trim();
+    if (!activeUserId || !normalizedOwnerId) {
+      return { items: [], total: 0, page: 0, pageSize: Math.max(1, pageSize) };
+    }
+    const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
+      ownerType,
+      ownerId: normalizedOwnerId
+    };
+    const owner = this.resolveOwnerContext(activeUserId, ownerRef, fallbackTitle);
+    const resolvedExistingMemberUserIds = existingMemberUserIds.length > 0
+      ? [...new Set(existingMemberUserIds.map(userId => userId.trim()).filter(Boolean))]
+      : [...new Set(this.activityMembersService.peekMembersByOwner(ownerRef).map(member => member.userId.trim()).filter(Boolean))];
+    return this.queryCandidates({
+      activeUserId, purpose,
+      owner,
+      parentOwner,
+      existingMemberUserIds: resolvedExistingMemberUserIds,
+      pendingInviteUserIds: [...new Set(pendingInviteUserIds.map(userId => userId.trim()).filter(Boolean))],
+      sort,
+      page,
+      pageSize
+    });
+  }
+
+  async applyInvites(
+    ownerId: string,
+    selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[],
+    ownerType: AppConstants.ActivityMemberOwnerType = 'event',
+    options?: ActivityContracts.ActivityMembersQueryOptions
+  ): Promise<ActivityContracts.ActivityMembersInviteResultDTO> {
+    const normalizedOwnerId = ownerId.trim();
+    const activeUserId = this.activeUserId();
+    if (!normalizedOwnerId || !activeUserId || selectedCandidates.length === 0) {
+      return { members: [], invitedUserIds: [], rejections: [] };
+    }
+    const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
+      ownerType,
+      ownerId: normalizedOwnerId
+    };
+    const currentMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
+    const existingUserIds = new Set(currentMembers.map(member => member.userId));
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
+    const additions = selectedCandidates
+      .filter(candidate => !existingUserIds.has(candidate.userId))
+      .map(candidate => ({
+        ...candidate,
+        status: 'pending' as const,
+        pendingSource: 'admin' as const,
+        requestKind: 'invite' as const,
+        invitedByActiveUser: true,
+        actionAtIso: nowIso
+      }));
+    if (additions.length === 0) {
+      return { members: currentMembers, invitedUserIds: [], rejections: [] };
+    }
+    if (ownerType === 'community' || ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
+      return this.activityMembersService.inviteEventMembers(
+        ownerRef,
+        additions.map(candidate => candidate.userId)
+      );
+    }
+    const summary = this.activityMembersService.peekSummaryByOwner(ownerRef);
+    const ownerRecord = ownerType === 'event'
+      ? (this.eventsService.peekKnownRecordById(activeUserId, normalizedOwnerId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedOwnerId))
+      : null;
+    const capacityTotal = summary?.capacityTotal
+      ?? ownerRecord?.capacityTotal
+      ?? 0;
+    const capacityPartition = ownerType === 'event'
+      ? partitionEventInvitesByCapacity(currentMembers, additions, capacityTotal)
+      : { acceptedAdditions: additions, rejections: [] };
+    const { acceptedAdditions, rejections } = capacityPartition;
+    if (acceptedAdditions.length === 0) {
+      return {
+        members: currentMembers,
+        invitedUserIds: [],
+        rejections
+      };
+    }
+    const nextMembers = [...currentMembers, ...acceptedAdditions];
+    await this.activityMembersService.replaceMembersByOwner(
+      ownerRef,
+      nextMembers,
+      capacityTotal > 0
+        ? capacityTotal
+        : Math.max(nextMembers.filter(member => member.status === 'accepted').length, 0),
+      options
+    );
+    return {
+      members: this.activityMembersService.peekMembersByOwner(ownerRef),
+      invitedUserIds: acceptedAdditions.map(candidate => candidate.userId),
+      rejections
+    };
+  }
+
+  private resolveOwnerContext(
+    activeUserId: string,
+    owner: ActivityContracts.ActivityMemberOwnerRef,
+    fallbackTitle: string
+  ): ActivityInviteOwnerContext {
+    if (owner.ownerType !== 'event') {
+      return {
+        ownerId: owner.ownerId,
+        ownerType: owner.ownerType,
+        title: fallbackTitle,
+        subtitle: this.ownerTypeLabel(owner.ownerType),
+        detail: 'Members',
+        dateIso: new Date().toISOString(),
+        distanceKm: 0,
+        sourceType: 'events',
+        isAdmin: true
+      };
+    }
+    const record = this.eventsService.peekKnownRecordById(activeUserId, owner.ownerId);
+    if (!record) {
+      return {
+        ownerId: owner.ownerId,
+        ownerType: owner.ownerType,
+        title: fallbackTitle,
+        subtitle: 'Event',
+        detail: 'Members',
+        dateIso: new Date().toISOString(),
+        distanceKm: 0,
+        sourceType: 'events',
+        isAdmin: true
+      };
+    }
+    return {
+      ownerId: record.id,
+      ownerType: 'event',
+      title: record.title,
+      subtitle: record.subtitle,
+      detail: record.timeframe,
+      dateIso: record.startAtIso,
+      distanceKm: record.distanceKm,
+      sourceType: record.type === 'hosting' ? 'hosting' : 'events',
+      isAdmin: this.isEventAdminRecord(record)
+    };
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord): boolean {
+    const userId = `${record.userId ?? ''}`.trim();
+    return !!userId && (
+      record.creatorUserId === userId
+      || (record.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+    );
+  }
+
+  private ownerTypeLabel(ownerType: AppConstants.ActivityMemberOwnerType): string {
+    if (ownerType === 'asset') {
+      return 'Asset';
+    }
+    if (ownerType === 'subEvent') {
+      return 'Sub Event';
+    }
+    if (ownerType === 'group') {
+      return 'Group';
+    }
+    return 'Event';
+  }
+
+  private activeUserId(): string {
+    const activeUserId = this.userProfileStore.getActiveUserId().trim();
+    if (activeUserId) {
+      return activeUserId;
+    }
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'demo') {
+      return session.userId.trim();
+    }
+    return '';
+  }
+}

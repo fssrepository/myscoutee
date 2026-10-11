@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { DocumentAttachments } from '../core/form/flow/document-attachments';
-import { MediaService } from '../../../core/base/services/media.service';
+import { MediaService } from '../../../core/base/services/media/media.service';
 import { ProfileViewPopupComponent } from '../../../../profile/components/profile-view-popup/profile-view-popup.component';
 import {
   ExplanationGuideService,
@@ -15,10 +15,10 @@ import {
 import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
-import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type SaveCampaign } from '../../../core/contracts/campaign.interface';
+import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type SaveCampaign } from '../../../core/contracts/campaigns/campaign.interface';
 import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../converters/activity/campaign.converter';
 
 export type CampaignView = 'details' | 'organizer';

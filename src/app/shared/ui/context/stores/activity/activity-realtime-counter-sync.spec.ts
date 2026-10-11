@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type {
   UserMenuCountersDto,
   UserRealtimeLongPollResponseDto
-} from '../../../../core/contracts/user.interface';
+} from '../../../../core/contracts/accounts/user.interface';
 import { ActivityStore } from './activity.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 

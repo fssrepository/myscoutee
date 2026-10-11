@@ -23,7 +23,7 @@ import {
   UiTaskScheduler
 } from '@fssrepository/myscoutee-components';
 import { CommunityCasesStore } from '../../../shared/ui/context/stores/community/community-cases.store';
-import { ContactsService } from '../../../shared/core/base/services/contacts.service';
+import { ContactsService } from '../../../shared/core/base/services/accounts/contacts.service';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { ChatShareStore, type ChatShareApplyRequest } from '../../../shared/ui/context/stores/chat/chat-share.store';
 import {
@@ -71,8 +71,8 @@ import {
 } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 import { ActivityResourceBuilder, AdminWorkspaceDataService, AssetDefaultsBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, DeploymentConfigurationService, EventsService, I18nService, MediaService, ShareTokensService } from '../../../shared/core';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/common/activity.interface';
 import {
   ASSET_TYPES,
   type ActivityMemberOwnerType,
@@ -110,7 +110,7 @@ import {
 } from '../../../shared/ui/converters';
 import { mergeChatReadAvatars } from './chat-message-read-state';
 import { ChatCallPopupComponent } from './chat-call-popup.component';
-import { ChatCallService } from '../../../shared/core/base/services/chat-call.service';
+import { ChatCallService } from '../../../shared/core/base/services/chat/chat-call.service';
 
 interface ChatThreadFilters {
   targetMessageId?: string | null;

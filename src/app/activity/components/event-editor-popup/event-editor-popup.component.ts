@@ -30,10 +30,10 @@ import {
   type PopupModel
 } from '@fssrepository/myscoutee-components';
 
-import { groupPriorityEnabled } from '../../../shared/core/contracts/group-type';
+import { groupPriorityEnabled } from '../../../shared/core/contracts/groups/group-type';
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
-import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
+import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/media/image-gallery.interface';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -93,7 +93,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import { ActivityMembersService, EventsService, RouteDelayService } from '../../../shared/core';
 import {
   ActivityEventDetailDTO
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 
 import { PricingEditorInputComponent, PoliciesInputComponent, type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
 import {
@@ -110,7 +110,7 @@ import {
 import {
   EventSubeventDefinitionsPanelComponent
 } from '../event-subevent-definitions-panel';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import {

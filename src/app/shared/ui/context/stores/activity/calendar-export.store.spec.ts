@@ -2,7 +2,7 @@ import '@angular/compiler';
 import { DOCUMENT } from '@angular/common';
 import { createEnvironmentInjector, runInInjectionContext, signal, type EnvironmentInjector } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EventsService } from '../../../../core/base/services/events.service';
+import { EventsService } from '../../../../core/base/services/events/events.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { DialogStore } from '@fssrepository/myscoutee-components';
 import { CalendarExportStore } from './calendar-export.store';

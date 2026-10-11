@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import type { GroupWorkspace } from '../../../../core/contracts/community-group.interface';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import type { GroupWorkspace } from '../../../../core/contracts/groups/community-group.interface';
 import { AssetStore } from './asset.store';
 import { ActivityStore } from '../activity/activity.store';
 

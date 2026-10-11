@@ -5,7 +5,7 @@ import type {
   EventCheckoutBasket,
   EventCheckoutSlotsQuery, EventCheckoutSlotsResult,
   EventCheckoutBasketItem
-} from '../../../../core/contracts/activity.interface';
+} from '../../../../core/contracts/common/activity.interface';
 
 export type SlotPickerRecord = Pick<ActivityEventRecord, 'id' | 'title' | 'timeframe' | 'startAtIso' | 'endAtIso' | 'pricing' | 'upcomingSlots'>;
 export interface EventCheckoutSlotPickerRequest {

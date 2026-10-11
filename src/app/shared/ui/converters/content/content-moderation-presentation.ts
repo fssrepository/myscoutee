@@ -1,4 +1,4 @@
-import type { ModerationStatus } from '../../../core/contracts/content-moderation.interface';
+import type { ModerationStatus } from '../../../core/contracts/content/content-moderation.interface';
 import type { AppMenuPalette } from '@fssrepository/myscoutee-components';
 
 export const MODERATION_STATUS_STYLE: Record<ModerationStatus, { icon: string; palette: AppMenuPalette }> = {

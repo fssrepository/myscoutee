@@ -1,4 +1,4 @@
-import type { EventMode } from '../../../core/contracts/event.interface';
+import type { EventMode } from '../../../core/contracts/events/event.interface';
 import type { AppMenuItem, AppMenuTrigger } from '@fssrepository/myscoutee-components';
 
 const OPTIONS = [

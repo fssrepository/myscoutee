@@ -9,7 +9,7 @@ import {
   PopupComponent,
   type PopupModel
 } from '@fssrepository/myscoutee-components';
-import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
+import { EventFeedbackDetailDto } from '../../../shared/core/contracts/common/activity.interface';
 
 import { EventFeedbackDetailConverter } from '../../../shared/ui';
 import type { EventFeedbackCard } from '../../../shared/ui/converters/event/event-feedback.model';

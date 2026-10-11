@@ -1,4 +1,4 @@
-import { GROUP_TYPES, type GroupType } from '../../../core/contracts/group-type';
+import { GROUP_TYPES, type GroupType } from '../../../core/contracts/groups/group-type';
 import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '@fssrepository/myscoutee-components';
 
 export const GROUP_TYPE_STYLES = {

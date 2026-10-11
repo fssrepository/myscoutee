@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/common/activity.interface';
 import { ActivityMemberImageCardConverter } from './activity-member-image-card.converter';
 
 describe('ActivityMemberImageCardConverter', () => {

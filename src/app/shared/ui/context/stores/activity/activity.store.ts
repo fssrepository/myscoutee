@@ -1,5 +1,5 @@
 import { Injectable, signal, untracked } from '@angular/core';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 
 import {
   EventFeedbackDetailDto,
@@ -7,7 +7,7 @@ import {
   type ActivitiesEventScope,
   type EventCheckoutResultState,
   type ActivityCurrentUserMembershipStatus
-} from '../../../../core/contracts/activity.interface';
+} from '../../../../core/contracts/common/activity.interface';
 import type * as AppDTOs from '../../../../core/contracts';
 import {
   ASSET_TYPE_ACCOMMODATION,
@@ -15,13 +15,13 @@ import {
   ASSET_TYPE_TRANSPORT,
   type AssetType
 } from '../../../../core/common/constants';
-import type { ChatMetricBucketDTO } from '../../../../core/contracts/chat.interface';
-import type { SupportCaseStatus } from '../../../../core/contracts/chat.interface';
+import type { ChatMetricBucketDTO } from '../../../../core/contracts/chat/chat.interface';
+import type { SupportCaseStatus } from '../../../../core/contracts/chat/chat.interface';
 import type {
   UserMenuCounterDeltasDto,
   UserMenuCountersDto,
   UserEventCountersDto
-} from '../../../../core/contracts/user.interface';
+} from '../../../../core/contracts/accounts/user.interface';
 import {
   cloneAssetCounters,
   cloneChatCounters,

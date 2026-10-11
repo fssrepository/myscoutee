@@ -1,13 +1,13 @@
-import { ChatsService } from '../../../../core/base/services/chats.service';
+import { ChatsService } from '../../../../core/base/services/chat/chats.service';
 import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../activity/activities-popup.store';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
-import { CommunityAnnouncementsService } from '../../../../core/base/services/community-announcements.service';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
+import { CommunityAnnouncementsService } from '../../../../core/base/services/community/community-announcements.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { DialogStore, type AppMenuPalette, type ListQuery } from '@fssrepository/myscoutee-components';
 
-import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/group-type';
-import type { CommunityAnnouncement, AnnouncementAction, AnnouncementFilters, SaveAnnouncement, VoteChoice } from '../../../../core/contracts/community-announcement.interface';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../../core/contracts/groups/group-type';
+import type { CommunityAnnouncement, AnnouncementAction, AnnouncementFilters, SaveAnnouncement, VoteChoice } from '../../../../core/contracts/community/community-announcement.interface';
 
 export type AnnouncementEditor = { value: CommunityAnnouncement | null; readOnly: boolean; defaultVoting?: boolean; view?: 'details' | 'voting' };
 @Injectable({ providedIn: 'root' })

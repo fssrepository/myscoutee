@@ -5,14 +5,14 @@ import {
   signal
 } from '@angular/core';
 
-import type { UserGameFilterPreferencesDto } from '../../../../core/contracts/activity.interface';
+import type { UserGameFilterPreferencesDto } from '../../../../core/contracts/common/activity.interface';
 import type {
   ProfileExtDto,
   UserDto,
   UserImpressionsDto,
   UserPaymentTotalsDto,
   UserRealtimeLongPollResponseDto
-} from '../../../../core/contracts/user.interface';
+} from '../../../../core/contracts/accounts/user.interface';
 import {
   UserRealtimeUiConverter
 } from '../../../converters/profile/user-realtime-ui.converter';

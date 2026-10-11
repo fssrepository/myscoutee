@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { IntegrationService } from '../../../shared/core/base/services/integration.service';
-import type { McpAuthorizationContext, McpAuthorizationRequest } from '../../../shared/core/contracts/integration.interface';
+import { IntegrationService } from '../../../shared/core/base/services/integrations/integration.service';
+import type { McpAuthorizationContext, McpAuthorizationRequest } from '../../../shared/core/contracts/integrations/integration.interface';
 import {
   PopupComponent,
   type PopupModel,

@@ -32,14 +32,14 @@ import {
   I18nPipe
 } from '@fssrepository/myscoutee-components';
 
-import { ShareTokensService } from '../../../core/base/services/share-tokens.service';
+import { ShareTokensService } from '../../../core/base/services/content/share-tokens.service';
 import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
 
 import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
 import { CommunityGroupsPopupComponent } from '../community-groups-popup/community-groups-popup.component';
 import { ContentModerationStore } from '../../context/stores/content/content-moderation.store';
-import { AdminNotificationsService } from '../../../core/base/services/admin-notifications.service';
-import { ContentModerationService } from '../../../core/base/services/content-moderation.service';
+import { AdminNotificationsService } from '../../../core/base/services/administration/admin-notifications.service';
+import { ContentModerationService } from '../../../core/base/services/content/content-moderation.service';
 import { PhotoFeedStore } from '../../context/stores/content/photo-feed.store';
 import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
 
@@ -97,23 +97,23 @@ import {
   SubEventResourcePopupStore
 } from '../../context/stores/event/sub-event-resource-popup.store';
 
-import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
-import { HelpCenterService } from '../../../core/base/services/help-center.service';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { PrivacyPolicyService } from '../../../core/base/services/privacy-policy.service';
-import { SessionService } from '../../../core/base/services/session.service';
-import { ChatsService } from '../../../core/base/services/chats.service';
-import { TermsPolicyService } from '../../../core/base/services/terms-policy.service';
+import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
+import { HelpCenterService } from '../../../core/base/services/help/help-center.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+import { PrivacyPolicyService } from '../../../core/base/services/help/privacy-policy.service';
+import { SessionService } from '../../../core/base/services/accounts/session.service';
+import { ChatsService } from '../../../core/base/services/chat/chats.service';
+import { TermsPolicyService } from '../../../core/base/services/help/terms-policy.service';
 import {
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY
-} from '../../../core/base/services/users.service';
+} from '../../../core/base/services/accounts/users.service';
 
 import type { PrivacyConsentDto, UserDto } from '../../../core';
 import {
   USER_LOGOUT_CONTEXT_KEY
-} from '../../../core/base/services/users.service';
+} from '../../../core/base/services/accounts/users.service';
 import * as AppConstants from '../../../core/common/constants';
 import {
   ProfileSettingsPopupsComponent
@@ -147,7 +147,7 @@ import { shouldApplyUserRealtimeDomainSnapshot } from './user-realtime-popup-pol
 import { NotificationCenterStore } from '../../context/stores/notification/notification-center.store';
 
 import { PaymentMethodsPopupStore } from '../../context/stores/payment/payment-methods-popup.store';
-import { PwaService } from '../../../core/base/services/pwa.service';
+import { PwaService } from '../../../core/base/services/platform/pwa.service';
 
 import { installSessionActiveUserSync } from './session-active-user-sync';
 import { MingleStore } from '../../context/stores/activity/mingle.store';

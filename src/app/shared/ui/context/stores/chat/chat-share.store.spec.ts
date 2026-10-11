@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { ChatsService } from '../../../../core/base/services/chats.service';
-import type { ChatDTO, ChatMessageDto } from '../../../../core/contracts/chat.interface';
+import { ChatsService } from '../../../../core/base/services/chat/chats.service';
+import type { ChatDTO, ChatMessageDto } from '../../../../core/contracts/chat/chat.interface';
 import { ChatShareStore } from './chat-share.store';
 
 describe('ChatShareStore', () => {

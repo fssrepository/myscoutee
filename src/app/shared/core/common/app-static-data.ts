@@ -43,13 +43,13 @@ import type {
   ProfileStatus,
   SubEventResourceFilter
 } from './constants';
-import type { AdminNotificationScheduleFrequency } from '../contracts/admin.interface';
+import type { AdminNotificationScheduleFrequency } from '../contracts/administration/admin.interface';
 import { GDPR_CONTENT } from './gdpr-data';
 import type {
   ExperienceEntry,
   InterestOptionGroup,
   ValuesOptionGroup
-} from '../contracts/profile.interface';
+} from '../contracts/accounts/profile.interface';
 
 export type RateFilterEntry =
   | { kind: 'group'; label: string }

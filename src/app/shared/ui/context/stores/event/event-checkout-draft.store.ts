@@ -7,7 +7,7 @@ import type {
   EventCheckoutPricingSummaryRow,
   EventCheckoutResultState,
   EventCheckoutState
-} from '../../../../core/contracts/activity.interface';
+} from '../../../../core/contracts/common/activity.interface';
 import type { ActivityPendingReason } from '../../../../core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../../core/common/storage-scope';
 

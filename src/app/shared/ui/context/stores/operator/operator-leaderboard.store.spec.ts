@@ -1,11 +1,11 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { OperatorRegistryService } from '../../../../core/base/services/operator-registry.service';
+import { OperatorRegistryService } from '../../../../core/base/services/operator/operator-registry.service';
 import {
   SessionService,
   type AppSession
-} from '../../../../core/base/services/session.service';
+} from '../../../../core/base/services/accounts/session.service';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 
 describe('OperatorLeaderboardStore deployment drilldown', () => {

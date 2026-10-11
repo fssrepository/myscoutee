@@ -1,12 +1,12 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { OperatorRegistryService } from '../../../../core/base/services/operator-registry.service';
+import { OperatorRegistryService } from '../../../../core/base/services/operator/operator-registry.service';
 import {
   SessionService,
   type AppSession
-} from '../../../../core/base/services/session.service';
-import type { OperatorRegistryStatusDto } from '../../../../core/contracts/operator.interface';
+} from '../../../../core/base/services/accounts/session.service';
+import type { OperatorRegistryStatusDto } from '../../../../core/contracts/operator/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import {
   OperatorRegistryStore,

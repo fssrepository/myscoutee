@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { OperatorLeaderboardEntryDto } from '../../../../core/contracts/operator.interface';
+import type { OperatorLeaderboardEntryDto } from '../../../../core/contracts/operator/operator.interface';
 
 export type OperatorMenuKind =
   | 'updates'

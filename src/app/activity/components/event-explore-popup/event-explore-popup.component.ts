@@ -69,7 +69,7 @@ import {
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   ActivityEventDetailDTO
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 import {
   AppUtils
 } from '../../../shared/core/base/app-utils';
@@ -93,11 +93,11 @@ import {
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile/profile.store';
-import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
-import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/common/activity.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/accounts/user.interface';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/common/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';

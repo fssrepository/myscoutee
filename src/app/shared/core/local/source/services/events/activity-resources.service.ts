@@ -1,0 +1,977 @@
+import { Injectable, inject } from '@angular/core';
+
+import { LocalRouteDelayService } from '../platform/route-delay.service';
+import type { ActivityMemberRecord, ActivitySubEventResourceRecord } from '../../entity/common/activity.entity';
+import type { NotificationRecord } from '../../entity/notifications/notification.entity';
+import { LocalActivityResourcesMapper } from '../../mappers';
+import { LocalActivityResourcesRepository } from '../../repositories/events/activity-resources.repository';
+import { LocalActivitySubEventStageRuntimeMapper } from '../../mappers/common/activity.mapper';
+import { LocalActivitySubEventStageRuntimeRepository } from '../../repositories/events/activity-sub-event-stage-runtime.repository';
+import { LocalAssetsRepository } from '../../repositories/assets/assets.repository';
+import { LocalEventsRepository } from '../../repositories/events/events.repository';
+import { LocalActivityMembersRepository } from '../../repositories/events/activity-members.repository';
+import { LocalNotificationsRepository } from '../../repositories/notifications/notifications.repository';
+import { LocalUsersRepository } from '../../repositories/accounts/users.repository';
+import { ActivityResourceBuilder } from '../../../../base/builders/events/activity-resource.builder';
+import * as AppConstants from '../../../../common/constants';
+
+import type * as AppDTOs from '../../../../contracts';
+
+interface SupplyContributionAddition {
+  assetId: string;
+  entryId: string;
+  contributorUserId: string;
+  quantity: number;
+}
+
+interface SupplyContributionRemoval {
+  assetId: string;
+  entryId: string;
+  contributorUserId: string;
+  quantity: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LocalActivityResourcesService extends LocalRouteDelayService {
+  private static readonly ROUTE = '/activities/events/subevent-resources';
+  private readonly repository = inject(LocalActivityResourcesRepository);
+  private readonly stageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
+  private readonly assetsRepository = inject(LocalAssetsRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly notificationsRepository = inject(LocalNotificationsRepository);
+  private readonly usersRepository = inject(LocalUsersRepository);
+
+  peekSubEventResourceState(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const record = this.repository.peekSubEventResourceRecord(ref);
+    return record ? this.toState(record) : null;
+  }
+
+  async querySubEventResourceState(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE),
+      (async (): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> => {
+        const record = await this.repository.querySubEventResourceRecord(ref);
+        return record ? this.toState(record) : null;
+      })()
+    ]);
+    return response;
+  }
+
+  async querySubEventResourceScope(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE),
+      (async (): Promise<AppDTOs.ActivitySubEventResourceScopeDTO | null> => {
+        return this.peekSubEventResourceScope(ref);
+      })()
+    ]);
+    return response;
+  }
+
+  peekSubEventResourceScope(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceScopeDTO | null {
+    const viewerRef = LocalActivityResourcesMapper.normalizeRef(ref);
+    if (!viewerRef) {
+      return null;
+    }
+    const visibleStates = this.repository
+      .peekSubEventResourceRecords(viewerRef.ownerId, viewerRef.subEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state));
+    const viewerState = visibleStates.find(state => state.assetOwnerUserId === viewerRef.assetOwnerUserId)
+      ?? ActivityResourceBuilder.createEmptyState(viewerRef);
+    return ActivityResourceBuilder.normalizeScope({ viewerState, visibleStates }, viewerRef);
+  }
+
+  peekAssignedAssetManagerUserId(ownerId: string, subEventId: string, assetId: string): string | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetId) {
+      return null;
+    }
+    const states = this.repository
+      .peekSubEventResourceRecords(normalizedOwnerId, normalizedSubEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state));
+    for (const state of states) {
+      for (const settingsByAssetId of Object.values(state.assetSettingsByType ?? {})) {
+        const managerUserId = `${settingsByAssetId?.[normalizedAssetId]?.addedByUserId ?? ''}`.trim();
+        if (managerUserId) {
+          return managerUserId;
+        }
+      }
+      const assigned = Object.values(state.assetAssignmentIds ?? {})
+        .some(ids => (ids ?? []).some(id => id.trim() === normalizedAssetId));
+      if (assigned) {
+        const fallbackManagerUserId = state.assetOwnerUserId.trim();
+        if (fallbackManagerUserId) {
+          return fallbackManagerUserId;
+        }
+      }
+    }
+    return null;
+  }
+
+  async transferAssignedAssetManager(
+    ownerId: string,
+    subEventId: string,
+    assetId: string,
+    expectedManagerUserId: string,
+    successorUserId: string
+  ): Promise<boolean> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedExpectedManagerUserId = expectedManagerUserId.trim();
+    const normalizedSuccessorUserId = successorUserId.trim();
+    const state = this.assignedAssetState(ownerId, subEventId, normalizedAssetId);
+    if (
+      !state
+      || !normalizedExpectedManagerUserId
+      || !normalizedSuccessorUserId
+      || normalizedExpectedManagerUserId === normalizedSuccessorUserId
+    ) {
+      return false;
+    }
+    let changed = false;
+    const nextSettingsByType = { ...state.assetSettingsByType };
+    for (const type of AppConstants.ASSET_TYPES) {
+      const settingsByAssetId = { ...(nextSettingsByType[type] ?? {}) };
+      const settings = settingsByAssetId[normalizedAssetId];
+      if (`${settings?.addedByUserId ?? ''}`.trim() !== normalizedExpectedManagerUserId) {
+        continue;
+      }
+      settingsByAssetId[normalizedAssetId] = {
+        ...settings,
+        addedByUserId: normalizedSuccessorUserId
+      };
+      nextSettingsByType[type] = settingsByAssetId;
+      changed = true;
+    }
+    if (!changed) {
+      return false;
+    }
+    return Boolean(await this.writeSubEventResourceState({
+      ...state,
+      assetSettingsByType: nextSettingsByType
+    }, undefined, normalizedSuccessorUserId));
+  }
+
+  async removeAssignedAsset(
+    ownerId: string,
+    subEventId: string,
+    assetId: string,
+    expectedManagerUserId: string
+  ): Promise<boolean> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedExpectedManagerUserId = expectedManagerUserId.trim();
+    const state = this.assignedAssetState(ownerId, subEventId, normalizedAssetId);
+    if (
+      !state
+      || !normalizedExpectedManagerUserId
+      || this.peekAssignedAssetManagerUserId(ownerId, subEventId, normalizedAssetId) !== normalizedExpectedManagerUserId
+    ) {
+      return false;
+    }
+    const nextAssignmentIds = { ...state.assetAssignmentIds };
+    const nextSettingsByType = { ...state.assetSettingsByType };
+    for (const type of AppConstants.ASSET_TYPES) {
+      nextAssignmentIds[type] = (nextAssignmentIds[type] ?? [])
+        .filter(id => id.trim() !== normalizedAssetId);
+      const settingsByAssetId = { ...(nextSettingsByType[type] ?? {}) };
+      delete settingsByAssetId[normalizedAssetId];
+      nextSettingsByType[type] = settingsByAssetId;
+    }
+    const nextSupplyEntries = { ...state.supplyContributionEntriesByAssetId };
+    delete nextSupplyEntries[normalizedAssetId];
+    return Boolean(await this.writeSubEventResourceState({
+      ...state,
+      assetAssignmentIds: nextAssignmentIds,
+      assetSettingsByType: nextSettingsByType,
+      supplyContributionEntriesByAssetId: nextSupplyEntries
+    }, undefined, normalizedExpectedManagerUserId));
+  }
+
+  private assignedAssetState(
+    ownerId: string,
+    subEventId: string,
+    assetId: string
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId || !normalizedAssetId) {
+      return null;
+    }
+    return this.repository
+      .peekSubEventResourceRecords(normalizedOwnerId, normalizedSubEventId)
+      .map(record => this.toVisibleState(record))
+      .filter((state): state is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(state))
+      .find(state => Object.values(state.assetAssignmentIds ?? {})
+        .some(ids => (ids ?? []).some(id => id.trim() === normalizedAssetId))) ?? null;
+  }
+
+  async markResourceTypeRead(
+    request: AppDTOs.ActivitySubEventResourceReadRequestDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceReadReceiptDTO | null> {
+    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
+    const scope = this.groupRuntimeScope(request.ownerId, request.subEventId);
+    const userId = request.userId.trim();
+    if (!scope || !userId || !AppConstants.ASSET_TYPES.includes(request.resourceType)) {
+      return null;
+    }
+    const readAtIso = this.stageRuntimeRepository.markResourceTypeRead(
+      { ownerId: scope.runtimeOwnerId, subEventId: scope.subEventId },
+      scope.groupId,
+      userId,
+      request.resourceType
+    );
+    if (!readAtIso) {
+      return null;
+    }
+    await this.stageRuntimeRepository.flushToIndexedDb();
+    return {
+      ownerId: request.ownerId.trim(),
+      subEventId: scope.subEventId,
+      groupId: scope.groupId,
+      resourceType: request.resourceType,
+      userId,
+      readAtIso
+    };
+  }
+
+  async querySupplyContributionPage(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
+    assetId: string,
+    page: number,
+    pageSize: number
+  ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE),
+      (async (): Promise<AppDTOs.SubEventSupplyContributionPageDTO> => {
+        const result = await this.repository.querySupplyContributionPage(ref, assetId, page, pageSize);
+        return {
+          ...result,
+          items: result.items.map(entry => {
+            const contributor = this.usersRepository.queryUserById(entry.userId);
+            return {
+              ...entry,
+              name: contributor?.name,
+              initials: contributor?.initials,
+              gender: contributor?.gender,
+              age: contributor?.age,
+              city: contributor?.city
+            };
+          })
+        };
+      })()
+    ]);
+    return response;
+  }
+
+  async replaceSubEventResourceState(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    signal?: AbortSignal,
+    actorUserId?: string | null
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const [, response] = await Promise.all([
+      this.waitForRouteDelay(LocalActivityResourcesService.ROUTE, signal, 'Activity resources request aborted.'),
+      this.writeSubEventResourceState(state, signal, actorUserId)
+    ]);
+    return response;
+  }
+
+  /** Undelayed owner operation for an aggregate local request. */
+  async writeSubEventResourceState(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    signal?: AbortSignal,
+    actorUserId?: string | null
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+
+    signal?.throwIfAborted();
+    const normalizedState = LocalActivityResourcesMapper.normalizeState(state, state);
+    if (!normalizedState) {
+      return null;
+    }
+    const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedState.assetOwnerUserId);
+    normalizedState.resourceMetricsByType = ActivityResourceBuilder.buildPersistedResourceMetrics(
+      normalizedState,
+      assets
+    );
+    const existing = this.repository.peekSubEventResourceRecord(normalizedState);
+    const addedSupplyAssetIds = this.addedSupplyAssignmentIds(existing, normalizedState);
+    const addedSupplyContributions = this.addedSupplyContributions(existing, normalizedState);
+    const removedSupplyContributions = this.removedSupplyContributions(existing, normalizedState);
+    const removedAssetIds = this.removedAssignmentIds(existing, normalizedState);
+    const resourceBecameEmpty = Boolean(existing) && !ActivityResourceBuilder.hasResourceData(normalizedState);
+    const savedRecord = await this.repository.replaceSubEventResourceRecord(
+      LocalActivityResourcesMapper.toRecord(normalizedState, existing, resourceBecameEmpty ? 'D' : 'A')
+    );
+    const groupScope = this.groupRuntimeScope(normalizedState.ownerId, normalizedState.subEventId);
+    const groupMetricsByType = this.persistGroupRuntimeMetrics(normalizedState, actorUserId);
+    const commonMetricsByType = groupScope
+      ? groupMetricsByType
+      : this.buildCommonResourceMetrics(
+          this.repository.peekSubEventResourceRecords(normalizedState.ownerId, normalizedState.subEventId)
+            .map(record => this.toVisibleState(record))
+            .filter((item): item is AppDTOs.ActivitySubEventResourceStateDTO => Boolean(item))
+        );
+    if (!groupScope) {
+      this.eventsRepository.updateSubEventResourceMetrics(
+        normalizedState.ownerId,
+        normalizedState.subEventId,
+        commonMetricsByType
+      );
+    }
+    this.appendSupplyContributionOpenNotifications(
+      normalizedState,
+      actorUserId,
+      addedSupplyAssetIds
+    );
+    this.appendSupplyContributionAddedNotifications(
+      normalizedState,
+      actorUserId,
+      addedSupplyContributions
+    );
+    this.appendSupplyContributionRemovedNotifications(
+      normalizedState,
+      actorUserId,
+      removedSupplyContributions
+    );
+    this.appendAssetAssignmentRemovedNotifications(
+      normalizedState,
+      actorUserId,
+      removedAssetIds
+    );
+    this.assetsRepository.statusDeleteAssignmentScopeRequests(
+      normalizedState.assetOwnerUserId,
+      removedAssetIds,
+      normalizedState.ownerId,
+      ActivityResourceBuilder.authorizationEventId(normalizedState.ownerId, normalizedState.subEventId),
+      normalizedState.subEventId
+    );
+    await this.repository.flushToIndexedDb();
+    const savedState = savedRecord ? this.toState(savedRecord) : null;
+    return {
+      ...(savedState ?? normalizedState),
+      resourceMetricsByType: commonMetricsByType
+    };
+  }
+
+  async removeSubEventResourceAssignment(
+    request: AppDTOs.ActivitySubEventAssetRemovalRequestDTO,
+    signal?: AbortSignal
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
+    const actorUserId = request.userId.trim();
+    const assetId = request.assetId.trim();
+    const state = this.assignedAssetState(request.ownerId, request.subEventId, assetId);
+    if (!state || !actorUserId || !assetId) {
+      return null;
+    }
+    const managedType = AppConstants.ASSET_TYPES.find(type =>
+      (state.assetAssignmentIds[type] ?? []).includes(assetId)
+      && `${state.assetSettingsByType[type]?.[assetId]?.addedByUserId ?? ''}`.trim() === actorUserId
+    );
+    if (!managedType) {
+      return null;
+    }
+    state.assetAssignmentIds[managedType] = (state.assetAssignmentIds[managedType] ?? [])
+      .filter(id => id !== assetId);
+    delete state.assetSettingsByType[managedType]?.[assetId];
+    delete state.supplyContributionEntriesByAssetId[assetId];
+    return this.replaceSubEventResourceState(state, signal, actorUserId);
+  }
+
+  async removeManagedResourcesForRemovedEventMember(
+    eventId: string,
+    removedUserId: string,
+    actorUserId: string
+  ): Promise<void> {
+    const normalizedEventId = eventId.trim();
+    const normalizedRemovedUserId = removedUserId.trim();
+    if (!normalizedEventId || !normalizedRemovedUserId) {
+      return;
+    }
+    const records = this.repository.peekActiveRecordsByEventScope(normalizedEventId);
+    for (const record of records) {
+      const state = LocalActivityResourcesMapper.toState(record);
+      if (!state) {
+        continue;
+      }
+      let changed = false;
+      for (const type of AppConstants.ASSET_TYPES) {
+        const assignmentIds = [...(state.assetAssignmentIds[type] ?? [])];
+        const settingsByAssetId = { ...(state.assetSettingsByType[type] ?? {}) };
+        const retainedIds: string[] = [];
+        for (const assetId of assignmentIds) {
+          const managerUserId = `${settingsByAssetId[assetId]?.addedByUserId ?? record.assetOwnerUserId}`.trim();
+          if (managerUserId !== normalizedRemovedUserId) {
+            retainedIds.push(assetId);
+            continue;
+          }
+          if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
+            const remainingEntries = (state.supplyContributionEntriesByAssetId[assetId] ?? [])
+              .filter(entry => entry.userId.trim() !== normalizedRemovedUserId);
+            if (remainingEntries.length > 0) {
+              retainedIds.push(assetId);
+              state.supplyContributionEntriesByAssetId[assetId] = remainingEntries;
+              settingsByAssetId[assetId] = {
+                ...settingsByAssetId[assetId],
+                addedByUserId: remainingEntries[0].userId
+              };
+              changed = true;
+              continue;
+            }
+            delete state.supplyContributionEntriesByAssetId[assetId];
+          }
+          delete settingsByAssetId[assetId];
+          changed = true;
+        }
+        state.assetAssignmentIds[type] = retainedIds;
+        state.assetSettingsByType[type] = settingsByAssetId;
+      }
+      if (changed) {
+        await this.writeSubEventResourceState(state, undefined, actorUserId);
+      }
+    }
+  }
+
+  private removedAssignmentIds(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): string[] {
+    const removed = new Set<string>();
+    for (const type of AppConstants.ASSET_TYPES) {
+      const nextIds = new Set(next.assetAssignmentIds[type] ?? []);
+      for (const assetId of previous?.assetAssignmentIds[type] ?? []) {
+        if (!nextIds.has(assetId)) {
+          removed.add(assetId);
+        }
+      }
+    }
+    return [...removed];
+  }
+
+  private addedSupplyAssignmentIds(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): string[] {
+    const previousIds = new Set(previous?.assetAssignmentIds?.[AppConstants.ASSET_TYPE_SUPPLIES] ?? []);
+    return [...new Set(next.assetAssignmentIds[AppConstants.ASSET_TYPE_SUPPLIES] ?? [])]
+      .map(assetId => assetId.trim())
+      .filter(assetId => assetId.length > 0 && !previousIds.has(assetId));
+  }
+
+  private addedSupplyContributions(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): SupplyContributionAddition[] {
+    const previousEntryIdsByAsset = new Map<string, Set<string>>(
+      Object.entries(previous?.supplyContributionEntriesByAssetId ?? {}).map(([assetId, entries]) => [
+        assetId,
+        new Set(entries.map(entry => entry.id.trim()).filter(Boolean))
+      ] as const)
+    );
+    return Object.entries(next.supplyContributionEntriesByAssetId ?? {}).flatMap(([assetId, entries]) => {
+      const normalizedAssetId = assetId.trim();
+      const previousEntryIds = previousEntryIdsByAsset.get(normalizedAssetId) ?? new Set<string>();
+      return entries
+        .map(entry => ({
+          assetId: normalizedAssetId,
+          entryId: entry.id.trim(),
+          contributorUserId: entry.userId.trim(),
+          quantity: Math.max(0, Math.trunc(Number(entry.quantity) || 0))
+        }))
+        .filter(entry => entry.assetId.length > 0
+          && entry.entryId.length > 0
+          && entry.quantity > 0
+          && !previousEntryIds.has(entry.entryId));
+    });
+  }
+
+  private removedSupplyContributions(
+    previous: ActivitySubEventResourceRecord | null,
+    next: AppDTOs.ActivitySubEventResourceStateDTO
+  ): SupplyContributionRemoval[] {
+    const nextEntryIdsByAsset = new Map<string, Set<string>>(
+      Object.entries(next.supplyContributionEntriesByAssetId ?? {}).map(([assetId, entries]) => [
+        assetId.trim(),
+        new Set(entries.map(entry => entry.id.trim()).filter(Boolean))
+      ] as const)
+    );
+    return Object.entries(previous?.supplyContributionEntriesByAssetId ?? {}).flatMap(([assetId, entries]) => {
+      const normalizedAssetId = assetId.trim();
+      const nextEntryIds = nextEntryIdsByAsset.get(normalizedAssetId) ?? new Set<string>();
+      return entries
+        .map(entry => ({
+          assetId: normalizedAssetId,
+          entryId: entry.id.trim(),
+          contributorUserId: entry.userId.trim(),
+          quantity: Math.max(0, Math.trunc(Number(entry.quantity) || 0))
+        }))
+        .filter(entry => entry.assetId.length > 0
+          && entry.entryId.length > 0
+          && entry.quantity > 0
+          && !nextEntryIds.has(entry.entryId));
+    });
+  }
+
+  private appendSupplyContributionOpenNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    assetIds: readonly string[]
+  ): void {
+    if (assetIds.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0 && userId !== actorId))];
+    if (recipients.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const notificationRevision = Date.parse(createdAtIso);
+    const notifications: NotificationRecord[] = assetIds.flatMap(assetId => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
+      const assetTitle = `${asset?.title ?? 'Supplies'}`.trim() || 'Supplies';
+      return recipients.map(recipientUserId => ({
+        id: `event-supplies-open:${state.ownerId}:${state.subEventId}:${assetId}:${recipientUserId}:${notificationRevision}`,
+        recipientUserId,
+        kind: 'event-supplies-open',
+        category: 'event' as const,
+        title: 'Supplies requested',
+        message: `Contributions open · ${assetTitle}`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId,
+          assetTitle,
+          resourceType: AppConstants.ASSET_TYPE_SUPPLIES,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
+  private appendSupplyContributionAddedNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    additions: readonly SupplyContributionAddition[]
+  ): void {
+    if (additions.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0 && userId !== actorId))];
+    if (recipients.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const notifications: NotificationRecord[] = additions.flatMap(addition => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(addition.assetId);
+      const assetTitle = `${asset?.title ?? 'Supplies'}`.trim() || 'Supplies';
+      return recipients.map(recipientUserId => ({
+        id: `event-supplies-contribution-added:${state.ownerId}:${state.subEventId}:${addition.assetId}:${addition.entryId}:${recipientUserId}`,
+        recipientUserId,
+        kind: 'event-supplies-contribution-added',
+        category: 'event' as const,
+        title: 'Supplies contribution added',
+        message: `${addition.quantity} added · ${assetTitle}`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId: addition.assetId,
+          assetTitle,
+          contributionEntryId: addition.entryId,
+          contributorUserId: addition.contributorUserId || actorId,
+          quantity: `${addition.quantity}`,
+          resourceType: AppConstants.ASSET_TYPE_SUPPLIES,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
+  private appendSupplyContributionRemovedNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    removals: readonly SupplyContributionRemoval[]
+  ): void {
+    if (removals.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0 && userId !== actorId))];
+    if (recipients.length === 0) {
+      return;
+    }
+    const createdAtIso = new Date().toISOString();
+    const notifications: NotificationRecord[] = removals.flatMap(removal => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(removal.assetId);
+      const assetTitle = `${asset?.title ?? 'Supplies'}`.trim() || 'Supplies';
+      return recipients.map(recipientUserId => ({
+        id: `event-supplies-contribution-removed:${state.ownerId}:${state.subEventId}:${removal.assetId}:${removal.entryId}:${recipientUserId}`,
+        recipientUserId,
+        kind: 'event-supplies-contribution-removed',
+        category: 'event' as const,
+        title: 'Supplies contribution removed',
+        message: `${removal.quantity} removed · ${assetTitle}`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId: removal.assetId,
+          assetTitle,
+          contributionEntryId: removal.entryId,
+          contributorUserId: removal.contributorUserId || actorId,
+          quantity: `${removal.quantity}`,
+          resourceType: AppConstants.ASSET_TYPE_SUPPLIES,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
+  private appendAssetAssignmentRemovedNotifications(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId: string | null | undefined,
+    assetIds: readonly string[]
+  ): void {
+    if (assetIds.length === 0) {
+      return;
+    }
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const participantUserIds = this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim());
+    const createdAtIso = new Date().toISOString();
+    const occurrenceId = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const notifications: NotificationRecord[] = assetIds.flatMap(assetId => {
+      const asset = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
+      const assetTitle = `${asset?.title ?? 'Asset'}`.trim() || 'Asset';
+      const scopedAssetMemberUserIds = (asset?.requests ?? [])
+        .filter(request => ['accepted', 'pending'].includes(`${request.status ?? ''}`.trim()))
+        .filter(request => {
+          const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+          return `${request.booking?.subEventId ?? ''}`.trim() === state.subEventId
+            && (bookingEventId === state.ownerId || bookingEventId === eventId);
+        })
+        .map(request => `${request.userId ?? ''}`.trim());
+      const recipients = [...new Set([
+        ...participantUserIds,
+        state.assetOwnerUserId.trim(),
+        ...scopedAssetMemberUserIds
+      ].filter(userId => userId.length > 0 && userId !== actorId))];
+      return recipients.map(recipientUserId => ({
+        id: `event-asset-assignment-removed:${state.ownerId}:${state.subEventId}:${assetId}:${occurrenceId}:${recipientUserId}`,
+        recipientUserId,
+        kind: 'event-asset-assignment-removed',
+        category: 'event' as const,
+        title: 'Asset assignment removed',
+        message: `Assignment ended · ${assetTitle}`,
+        createdAtIso,
+        readAtIso: null,
+        senderUserId: actorId || null,
+        actionPath: '/game',
+        sourceType: 'event',
+        sourceId: eventId,
+        payload: {
+          eventId,
+          ownerId: state.ownerId,
+          subEventId: state.subEventId,
+          assetId,
+          assetTitle,
+          notification_tone: 'info'
+        },
+        revision: 1
+      }));
+    });
+    this.notificationsRepository.append(notifications);
+  }
+
+  private resourceNotificationMembers(
+    state: AppDTOs.ActivitySubEventResourceStateDTO
+  ): ActivityMemberRecord[] {
+    const scope = this.groupRuntimeScope(state.ownerId, state.subEventId);
+    if (!scope) {
+      return this.activityMembersRepository.peekRecordsByOwner({
+        ownerType: 'event',
+        ownerId: ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId)
+      }).filter(member => member.status === 'accepted');
+    }
+    const candidates = [
+      {
+        ownerType: 'event' as const,
+        ownerId: `random-room:${scope.runtimeOwnerId}:${scope.subEventId}:${scope.groupId}`
+      },
+      { ownerType: 'group' as const, ownerId: state.ownerId },
+      { ownerType: 'group' as const, ownerId: scope.groupId }
+    ];
+    for (const owner of candidates) {
+      const members = this.activityMembersRepository.peekRecordsByOwner(owner)
+        .filter(member => member.status === 'accepted');
+      if (members.length > 0) {
+        return members;
+      }
+    }
+    return [];
+  }
+
+  private buildCommonResourceMetrics(
+    states: readonly AppDTOs.ActivitySubEventResourceStateDTO[]
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    const totals = new Map<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>();
+    const capacityByAsset = new Map<string, { type: AppConstants.AssetType; min: number; max: number }>();
+    const supplyQuantityByEntry = new Map<string, number>();
+    for (const state of states) {
+      for (const [assetId, entries] of Object.entries(state.supplyContributionEntriesByAssetId ?? {})) {
+        for (const [index, entry] of entries.entries()) {
+          const entryId = entry.id.trim() || `${ActivityResourceBuilder.recordId(state)}:${index}`;
+          supplyQuantityByEntry.set(
+            `${assetId}:${entryId}`,
+            Math.max(0, Math.trunc(Number(entry.quantity) || 0))
+          );
+        }
+      }
+      for (const type of AppConstants.ASSET_TYPES) {
+        const metric = state.resourceMetricsByType?.[type];
+        const total = totals.get(type) ?? { accepted: 0, pending: 0, capacityMin: 0, capacityMax: 0 };
+        total.accepted += Math.max(0, Math.trunc(Number(metric?.accepted) || 0));
+        total.pending += Math.max(0, Math.trunc(Number(metric?.pending) || 0));
+        total.capacityMin += Math.max(0, Math.trunc(Number(metric?.capacityMin) || 0));
+        total.capacityMax += Math.max(0, Math.trunc(Number(metric?.capacityMax) || 0));
+        totals.set(type, total);
+
+        const assetIds = new Set([
+          ...(state.assetAssignmentIds[type] ?? []),
+          ...Object.keys(state.assetSettingsByType[type] ?? {})
+        ]);
+        for (const assetId of assetIds) {
+          const settings = state.assetSettingsByType[type]?.[assetId];
+          const card = (state.fallbackAssetCardsByType?.[type] ?? []).find(item => item.id === assetId);
+          const quantity = Math.max(1, Math.trunc(Number(settings?.quantity) || 1));
+          const key = `${type}:${assetId}`;
+          const current = capacityByAsset.get(key) ?? { type, min: 0, max: 0 };
+          current.min = Math.max(current.min, Math.max(0, Math.trunc(Number(settings?.capacityMin) || 0)));
+          current.max = Math.max(
+            current.max,
+            Math.max(0, Math.trunc(Number(settings?.capacityMax ?? card?.capacityTotal) || 0)) * quantity
+          );
+          capacityByAsset.set(key, current);
+        }
+      }
+    }
+    for (const type of AppConstants.ASSET_TYPES) {
+      const total = totals.get(type) ?? { accepted: 0, pending: 0, capacityMin: 0, capacityMax: 0 };
+      const capacities = [...capacityByAsset.values()].filter(item => item.type === type);
+      if (capacities.length > 0) {
+        total.capacityMin = capacities.reduce((sum, item) => sum + item.min, 0);
+        total.capacityMax = capacities.reduce((sum, item) => sum + item.max, 0);
+      }
+      if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
+        total.accepted = [...supplyQuantityByEntry.values()].reduce((sum, quantity) => sum + quantity, 0);
+        total.pending = 0;
+      }
+      total.capacityMax = Math.max(total.capacityMin, total.capacityMax);
+      totals.set(type, total);
+    }
+    return Object.fromEntries(totals);
+  }
+
+  private persistGroupRuntimeMetrics(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    actorUserId?: string | null
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    const scope = this.groupRuntimeScope(state.ownerId, state.subEventId);
+    if (!scope || !state.assetOwnerUserId.trim()) {
+      return ActivityResourceBuilder.cloneResourceMetricsByType(state.resourceMetricsByType);
+    }
+    const ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO = {
+      ownerId: scope.runtimeOwnerId,
+      subEventId: scope.subEventId
+    };
+    const existing = this.stageRuntimeRepository.peekRecord(ref);
+    let runtime = existing
+      ? LocalActivitySubEventStageRuntimeMapper.cloneRecord(existing)
+      : LocalActivitySubEventStageRuntimeMapper.toRecord({
+          ...ref,
+          stageStatus: null,
+          stageStatusReason: null,
+          stageStatusUpdatedAt: null,
+          stageFinalizedAt: null,
+          stageFinalizedByUserId: null,
+          groupsCount: null
+        });
+    const existingMetricsByType = runtime.groupResourceMetricsByAssetOwnerId?.[scope.groupId]?.[state.assetOwnerUserId] ?? {};
+    const nextMetricsByType = ActivityResourceBuilder.cloneResourceMetricsByType(
+      state.resourceMetricsByType
+    );
+    const changedTypes = AppConstants.ASSET_TYPES.filter(type => !this.sameResourceMetric(
+      existingMetricsByType[type],
+      nextMetricsByType[type]
+    ));
+    if (changedTypes.length > 0 && existing) {
+      runtime = this.stageRuntimeRepository.clearResourceTypeReads(
+        ref,
+        scope.groupId,
+        changedTypes
+      ) ?? runtime;
+    }
+    const normalizedActorUserId = `${actorUserId ?? ''}`.trim();
+    const byGroup = LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceMetrics(
+      runtime.groupResourceMetricsByAssetOwnerId
+    );
+    const byAssetOwner = { ...(byGroup[scope.groupId] ?? {}) };
+    if (ActivityResourceBuilder.hasResourceData(state)) {
+      byAssetOwner[state.assetOwnerUserId] = nextMetricsByType;
+    } else {
+      delete byAssetOwner[state.assetOwnerUserId];
+    }
+    if (Object.keys(byAssetOwner).length > 0) {
+      byGroup[scope.groupId] = byAssetOwner;
+    } else {
+      delete byGroup[scope.groupId];
+    }
+    runtime.groupResourceMetricsByAssetOwnerId = byGroup;
+    this.stageRuntimeRepository.replaceRecord(runtime);
+    if (changedTypes.length > 0 && normalizedActorUserId) {
+      this.stageRuntimeRepository.markResourceTypesRead(
+        ref,
+        scope.groupId,
+        normalizedActorUserId,
+        changedTypes
+      );
+      runtime = this.stageRuntimeRepository.peekRecord(ref) ?? runtime;
+    }
+    this.eventsRepository.syncTournamentStagePending(scope.runtimeOwnerId, scope.subEventId);
+    return this.aggregateGroupRuntimeMetrics(byAssetOwner);
+  }
+
+  private aggregateGroupRuntimeMetrics(
+    byAssetOwner: Record<string, Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>>>
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    const result: Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> = {};
+    for (const type of AppConstants.ASSET_TYPES) {
+      let accepted = 0;
+      let pending = 0;
+      let capacityMin = 0;
+      let capacityMax = 0;
+      for (const metricsByType of Object.values(byAssetOwner)) {
+        const metric = metricsByType?.[type];
+        accepted += Math.max(0, Math.trunc(Number(metric?.accepted) || 0));
+        pending += Math.max(0, Math.trunc(Number(metric?.pending) || 0));
+        capacityMin += Math.max(0, Math.trunc(Number(metric?.capacityMin) || 0));
+        capacityMax += Math.max(0, Math.trunc(Number(metric?.capacityMax) || 0));
+      }
+      result[type] = {
+        accepted,
+        pending,
+        capacityMin,
+        capacityMax: Math.max(capacityMin, capacityMax)
+      };
+    }
+    return result;
+  }
+
+  private groupRuntimeScope(
+    ownerId: string,
+    subEventId: string
+  ): { runtimeOwnerId: string; subEventId: string; groupId: string } | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    const marker = `:${normalizedSubEventId}:`;
+    const markerIndex = normalizedOwnerId.indexOf(marker);
+    if (!normalizedOwnerId || !normalizedSubEventId || markerIndex <= 0) {
+      return null;
+    }
+    const runtimeOwnerId = normalizedOwnerId.slice(0, markerIndex).trim();
+    const groupId = normalizedOwnerId.slice(markerIndex + marker.length).trim();
+    return runtimeOwnerId && groupId
+      ? { runtimeOwnerId, subEventId: normalizedSubEventId, groupId }
+      : null;
+  }
+
+  private sameResourceMetric(
+    left: AppDTOs.SubEventResourceMetricDTO | null | undefined,
+    right: AppDTOs.SubEventResourceMetricDTO | null | undefined
+  ): boolean {
+    return Math.max(0, Math.trunc(Number(left?.accepted) || 0)) === Math.max(0, Math.trunc(Number(right?.accepted) || 0))
+      && Math.max(0, Math.trunc(Number(left?.pending) || 0)) === Math.max(0, Math.trunc(Number(right?.pending) || 0))
+      && Math.max(0, Math.trunc(Number(left?.capacityMin) || 0)) === Math.max(0, Math.trunc(Number(right?.capacityMin) || 0))
+      && Math.max(0, Math.trunc(Number(left?.capacityMax) || 0)) === Math.max(0, Math.trunc(Number(right?.capacityMax) || 0));
+  }
+
+  private toState(record: ActivitySubEventResourceRecord): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    return LocalActivityResourcesMapper.toState(record);
+  }
+
+  private toVisibleState(record: ActivitySubEventResourceRecord): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const state = this.toState(record);
+    if (!state) {
+      return null;
+    }
+    const fallbackAssetCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+      state.fallbackAssetCardsByType
+    );
+    for (const type of AppConstants.ASSET_TYPES) {
+      const cardsById = new Map((fallbackAssetCardsByType[type] ?? []).map(card => [card.id, card] as const));
+      for (const assetId of state.assetAssignmentIds[type] ?? []) {
+        const detail = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
+        if (detail?.type === type) {
+          cardsById.set(detail.id, detail);
+        }
+      }
+      if (cardsById.size > 0) {
+        fallbackAssetCardsByType[type] = [...cardsById.values()];
+      }
+    }
+    return {
+      ...state,
+      fallbackAssetCardsByType
+    };
+  }
+}

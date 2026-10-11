@@ -37,7 +37,7 @@ import {
   I18nPipe
 } from '@fssrepository/myscoutee-components';
 import type { DeploymentSocialLinkDto, OperatorClaimEligibilityStatus, OperatorClaimRequestDto, OperatorDeploymentUpdatePhase, OperatorLeaderboardDeploymentDto, OperatorRevenueReportDto, OperatorRevenueReportFilters, OperatorRevenueSyncState, OperatorSettlementDto, OperatorSettlementFilters, OperatorTlsCertificateMode } from '../../../shared/core/contracts';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 
 import {
   OperatorLeaderboardStore,

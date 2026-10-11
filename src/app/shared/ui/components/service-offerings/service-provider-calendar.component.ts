@@ -14,7 +14,7 @@ import {defer,map} from 'rxjs';
 import {ServiceOfferingsStore} from '../../context/stores/services/service-offerings.store';
 import {CommunityCasesStore} from '../../context/stores/community/community-cases.store';
 
-import type {CaseAppointmentCalendarEntry} from '../../../core/contracts/case-appointment.interface';
+import type {CaseAppointmentCalendarEntry} from '../../../core/contracts/community/case-appointment.interface';
 
 @Component({selector:'app-service-provider-calendar',standalone:true,host:{style:'display: contents'},imports:[SmartListComponent,SingleRowComponent],template:`
  <app-smart-list #list data-guide-field="provider-calendar" [config]="config" [query]="query()" [loadPage]="load" [itemTemplate]="row" (menuItemSelect)="action($event)"></app-smart-list>

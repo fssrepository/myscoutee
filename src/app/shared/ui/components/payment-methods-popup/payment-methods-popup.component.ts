@@ -34,7 +34,7 @@ import type {
   PaymentMethodRegistrationDto,
   PaymentProvider,
   SavedPaymentMethodDto
-} from '../../../core/contracts/payment-method.interface';
+} from '../../../core/contracts/payments/payment-method.interface';
 import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
 import { PaymentMethodsPopupStore } from '../../context/stores/payment/payment-methods-popup.store';
 import {

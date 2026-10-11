@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CommunityGroupSummary } from '../../../core/contracts/community-group.interface';
+import type { CommunityGroupSummary } from '../../../core/contracts/groups/community-group.interface';
 import { CommunityGroupConverter } from './community-group.converter';
 import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
 

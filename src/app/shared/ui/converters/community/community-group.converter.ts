@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../core/base/app-utils';
-import { canPreviewGroupMembers, communityGroupSummary, groupMembershipBucket, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../../core/contracts/community-group.interface';
+import { canPreviewGroupMembers, communityGroupSummary, groupMembershipBucket, type CommunityGroupSummary, type GroupBucket, type GroupVisibility, type GroupCategory } from '../../../core/contracts/groups/community-group.interface';
 import {
   type InfoCardData,
   type InfoCardOverlayAction,
@@ -14,7 +14,7 @@ import {
 import { contentModerationBadge } from '../content/content-moderation-badge';
 import { ActivityEventInfoCardMenuConverter } from '../event/activity-event-info-card-menu.converter';
 
-import { baseGroupType } from '../../../core/contracts/group-type';
+import { baseGroupType } from '../../../core/contracts/groups/group-type';
 import { GROUP_TYPE_STYLES, groupTypeTrigger } from './group-type-menu';
 export const GROUP_BUCKET_STYLE: Record<GroupBucket, { icon: string; palette: AppMenuPalette; tone: InfoCardOverlayTone }> = {
   hosting: { icon: 'event_seat', palette: 'green', tone: 'stage-finalized' }, participation: { icon: 'groups', palette: 'orange', tone: 'orange' },

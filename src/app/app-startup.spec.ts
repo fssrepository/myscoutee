@@ -7,12 +7,12 @@ import { Subject } from 'rxjs';
 import { App } from './app';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
 import { AppMenuComponent } from '@fssrepository/myscoutee-components';
-import { SessionService } from './shared/core/base/services/session.service';
-import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
-import { PwaService } from './shared/core/base/services/pwa.service';
-import { I18nService } from './shared/core/base/services/i18n.service';
-import { AppLocationService } from './shared/core/base/services/app-location.service';
-import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
+import { SessionService } from './shared/core/base/services/accounts/session.service';
+import { OfflineCacheService } from './shared/core/base/services/platform/offline-cache.service';
+import { PwaService } from './shared/core/base/services/platform/pwa.service';
+import { I18nService } from './shared/core/base/services/localization/i18n.service';
+import { AppLocationService } from './shared/core/base/services/accounts/app-location.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 
 @Component({ selector: 'router-outlet', template: '' })
 class TestOutlet { @Output() activate = new EventEmitter<void>(); }

@@ -1,6 +1,6 @@
-import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/common/activity.interface';
 import { AppUtils } from '../../../core/base/app-utils';
-import { CASE_TYPES, type CaseOffer, type CaseFilters, type CaseListContext, type CaseStatus, type CaseType, type CommunityCase } from '../../../core/contracts/community-case.interface';
+import { CASE_TYPES, type CaseOffer, type CaseFilters, type CaseListContext, type CaseStatus, type CaseType, type CommunityCase } from '../../../core/contracts/community/community-case.interface';
 import {
   type InfoCardData,
   type InfoCardOverlayTone,

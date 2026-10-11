@@ -4,13 +4,13 @@ import type {
   ChatDTO,
   ChatMemberSummaryDto,
   SupportCaseStatus
-} from '../../../core/contracts/chat.interface';
-import type { UserDto } from '../../../core/contracts/user.interface';
+} from '../../../core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../core/contracts/accounts/user.interface';
 import { AppUtils } from '../../../core/base/app-utils';
 
 export interface ActivityChatSingleRowData extends SingleRowData {
   chatRevision: number;
-  chatOwnerStatus?: import('../../../core/contracts/activity.interface').ActivityEventStatus | null;
+  chatOwnerStatus?: import('../../../core/contracts/common/activity.interface').ActivityEventStatus | null;
 }
 
 export interface ActivityChatSingleRowConverterOptions {

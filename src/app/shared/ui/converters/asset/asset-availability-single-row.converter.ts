@@ -1,4 +1,4 @@
-import type { AssetOccupancyRowDTO } from '../../../core/contracts/asset.interface';
+import type { AssetOccupancyRowDTO } from '../../../core/contracts/assets/asset.interface';
 import { type SingleRowData, type UiListConverter } from '@fssrepository/myscoutee-components';
 
 export interface AssetAvailabilitySingleRowConverterOptions {

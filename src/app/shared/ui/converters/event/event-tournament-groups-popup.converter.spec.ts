@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EventTournamentGroupsStateDTO } from '../../../core/contracts/event.interface';
+import type { EventTournamentGroupsStateDTO } from '../../../core/contracts/events/event.interface';
 import { EventTournamentGroupsPopupConverter } from './event-tournament-groups-popup.converter';
 
 describe('EventTournamentGroupsPopupConverter metrics', () => {

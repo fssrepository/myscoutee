@@ -7,7 +7,7 @@ import type {
   AdminMonitoringNodeKind,
   AdminMonitoringStateDto,
   AdminMonitoringTone
-} from '../../../../contracts/admin.interface';
+} from '../../../../contracts/administration/admin.interface';
 
 export class AdminMonitoringSeedBuilder {
   static buildScopedMonitoringState(): AdminMonitoringStateDto & { baseGroups: Record<string, AdminMonitoringStateDto> } {

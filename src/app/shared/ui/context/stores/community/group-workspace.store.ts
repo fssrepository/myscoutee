@@ -1,23 +1,23 @@
-import { baseGroupType, isBaseGroupId } from '../../../../core/contracts/group-type';
+import { baseGroupType, isBaseGroupId } from '../../../../core/contracts/groups/group-type';
 import { groupTypeTrigger } from '../../../converters/community/group-type-menu';
 import { AdminWorkspaceStore } from "../admin/admin-workspace.store";
 import { AdminMenuStore } from "../admin/admin-menu.store";
-import { AdminWorkspaceDataService } from "../../../../core/base/services/admin-workspace-data.service";
-import { UsersService } from '../../../../core/base/services/users.service';
+import { AdminWorkspaceDataService } from "../../../../core/base/services/administration/admin-workspace-data.service";
+import { UsersService } from '../../../../core/base/services/accounts/users.service';
 import { AppUtils } from '../../../../core/base/app-utils';
 import { ContentModerationStore } from '../content/content-moderation.store';
 import { type AppMenuItem, type AppMenuPalette, UiTaskScheduler, UiPollCoordinator } from '@fssrepository/myscoutee-components';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { CommunityGroupsService } from '../../../../core/base/services/community-groups.service';
-import { GroupWorkspaceContextService } from '../../../../core/base/services/group-workspace-context.service';
-import { SessionService } from '../../../../core/base/services/session.service';
+import { CommunityGroupsService } from '../../../../core/base/services/groups/community-groups.service';
+import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import { SessionService } from '../../../../core/base/services/accounts/session.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
 import { profileMenuBadgeCount } from '../app/app-context-store.utils';
 
-import type { GroupCategory, GroupBucket, GroupWorkspace } from '../../../../core/contracts/community-group.interface';
-import { groupMembershipBucket } from '../../../../core/contracts/community-group.interface';
+import type { GroupCategory, GroupBucket, GroupWorkspace } from '../../../../core/contracts/groups/community-group.interface';
+import { groupMembershipBucket } from '../../../../core/contracts/groups/community-group.interface';
 
 @Injectable({ providedIn: 'root' })
 export class GroupWorkspaceStore {

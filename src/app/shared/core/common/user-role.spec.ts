@@ -1,4 +1,4 @@
-import type { UserDto } from '../contracts/user.interface';
+import type { UserDto } from '../contracts/accounts/user.interface';
 import { hasOperatorRole } from './user-role';
 
 describe('hasOperatorRole', () => {

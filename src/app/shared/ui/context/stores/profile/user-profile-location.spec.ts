@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { UserDto } from '../../../../core/contracts/user.interface';
+import type { UserDto } from '../../../../core/contracts/accounts/user.interface';
 import { UserProfileStore } from './user-profile.store';
 import { AppRuntimeStore } from '../app/app-runtime.store';
 

@@ -26,7 +26,7 @@ import {
 import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community/community-group-changes.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
 import { MingleStore } from '../../../shared/ui/context/stores/activity/mingle.store';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   CommonModule
 } from '@angular/common';
@@ -56,7 +56,7 @@ import {
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 
 import { ActivityMembersService, ActivityInviteCandidatesService, AssetsService, ChatsService, EventsService, I18nService, UsersService } from '../../../shared/core';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/common/activity.interface';
 import { tournamentParticipationLocked } from '../../../shared/core/common/tournament-group-count';
 
 import {
@@ -66,10 +66,10 @@ import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile/profile.store';
 import type { ActivityMemberOwnerType, AssetType } from '../../../shared/core/common/constants';
-import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/asset.interface';
-import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/common/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
+import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/assets/asset.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/accounts/user.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {

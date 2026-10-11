@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { ChatsService } from '../../../../core/base/services/chats.service';
-import type { ChatDTO, ChatMessageDto } from '../../../../core/contracts/chat.interface';
-import type { ShareTokenCreateRequest } from '../../../../core/contracts/share.interface';
+import { ChatsService } from '../../../../core/base/services/chat/chats.service';
+import type { ChatDTO, ChatMessageDto } from '../../../../core/contracts/chat/chat.interface';
+import type { ShareTokenCreateRequest } from '../../../../core/contracts/content/share.interface';
 import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,

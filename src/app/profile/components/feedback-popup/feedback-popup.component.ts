@@ -1,4 +1,4 @@
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 
 import {
   Component,
@@ -12,8 +12,8 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/core/common/app-static-data';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/accounts/users.service';
 import {
   AppMenuComponent,
   type AppMenuItem,

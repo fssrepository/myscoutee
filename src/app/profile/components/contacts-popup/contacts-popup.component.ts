@@ -1,7 +1,7 @@
 import { ContactChatAccessStore } from '../../../shared/ui/context/stores/chat/contact-chat-access.store';
-import type { ContactChatAccessAction } from '../../../shared/core/contracts/contact.interface';
-import { ChatsService } from '../../../shared/core/base/services/chats.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import type { ContactChatAccessAction } from '../../../shared/core/contracts/accounts/contact.interface';
+import { ChatsService } from '../../../shared/core/base/services/chat/chats.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   I18nPipe,
   AppMenuComponent,

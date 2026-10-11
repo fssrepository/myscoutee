@@ -29,7 +29,7 @@ import {
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import type * as EventContracts from '../../../../../../core/contracts/event.interface';
+import type * as EventContracts from '../../../../../../core/contracts/events/event.interface';
 import {
   EventPolicySingleRowConverter
 } from '../../../../../converters';

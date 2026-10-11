@@ -7,8 +7,8 @@ import {
   type UiListConverter
 } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
-import type { ActivityRateDTO } from '../../../core/contracts/activity.interface';
-import type { UserDto } from '../../../core/contracts/user.interface';
+import type { ActivityRateDTO } from '../../../core/contracts/common/activity.interface';
+import type { UserDto } from '../../../core/contracts/accounts/user.interface';
 import {
   activityRateSortKey,
   type ActivityRateOrder

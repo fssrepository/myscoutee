@@ -12,10 +12,10 @@ import {
 } from '@fssrepository/myscoutee-components';
 
 import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community/community-announcements.store';
-import { MediaService } from '../../../core/base/services/media.service';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { MediaService } from '../../../core/base/services/media/media.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
-import { VOTE_CHOICES, type VoteChoice, type SaveAnnouncement } from '../../../core/contracts/community-announcement.interface';
+import { VOTE_CHOICES, type VoteChoice, type SaveAnnouncement } from '../../../core/contracts/community/community-announcement.interface';
 @Component({selector:'app-community-announcement-editor',standalone:true,imports:[FormsModule,PopupComponent,FormFlowComponent],
  template:`<app-popup [model]="popup()" [zIndex]="15000" data-guide-context="community-announcement-editor">
    @if (editor().readOnly && editor().view !== 'voting') {

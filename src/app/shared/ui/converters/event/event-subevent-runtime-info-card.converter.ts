@@ -6,7 +6,7 @@ import {
   type UiListConverter
 } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
-import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../../core/contracts/event.interface';
+import type { EventMode, MingleStateDTO, SubEventDTO, TournamentStageStatus } from '../../../core/contracts/events/event.interface';
 
 import { EventSubeventRuntimeMenuConverter } from './event-subevent-runtime-menu.converter';
 

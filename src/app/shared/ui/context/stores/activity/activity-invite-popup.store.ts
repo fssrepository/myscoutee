@@ -5,8 +5,8 @@ import {
 } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../../core/common/constants';
-import type { ActivityMemberDTO } from '../../../../core/contracts/activity.interface';
-import type { ActivityMembersInviteResultDTO } from '../../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
+import type { ActivityMembersInviteResultDTO } from '../../../../core/contracts/common/activity.interface';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;

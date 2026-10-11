@@ -1,8 +1,8 @@
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 
 import {ActivityInvitePopupStore} from '../activity/activity-invite-popup.store';
-import type {ActivityMemberDTO} from '../../../../core/contracts/activity.interface';
-import type { PaymentHistoryPageDto, SavedPaymentMethodDto } from '../../../../core/contracts/payment-method.interface';
+import type {ActivityMemberDTO} from '../../../../core/contracts/common/activity.interface';
+import type { PaymentHistoryPageDto, SavedPaymentMethodDto } from '../../../../core/contracts/payments/payment-method.interface';
 import { ActivityStore } from '../activity/activity.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 

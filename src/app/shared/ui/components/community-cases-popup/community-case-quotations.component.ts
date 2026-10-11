@@ -19,11 +19,11 @@ import {
 } from '@fssrepository/myscoutee-components';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
-import type { EventPolicyDTO } from '../../../core/contracts/event.interface';
-import type { CaseOffer } from '../../../core/contracts/community-case.interface';
+import type { EventPolicyDTO } from '../../../core/contracts/events/event.interface';
+import type { CaseOffer } from '../../../core/contracts/community/community-case.interface';
 type Row = SingleRowData<CaseOffer>;
 const emptyOffer = () => ({amount:0,currency:'EUR',note:'',workPolicies:[] as EventPolicyDTO[],refundPolicies:[] as EventPolicyDTO[]});
 @Component({selector:'app-community-case-quotations',standalone:true,

@@ -1,4 +1,4 @@
-import type { UserDto } from '../../shared/core/contracts/user.interface';
+import type { UserDto } from '../../shared/core/contracts/accounts/user.interface';
 export type { GameUserFacet } from '../../shared/core/common/game-user-facet';
 export { resolvePersonalityTraitId, getGameUserFacet, getGameUserInterests, getGameUserValues } from '../../shared/core/common/game-user-facet';
 
