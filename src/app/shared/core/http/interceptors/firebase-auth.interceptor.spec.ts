@@ -22,6 +22,7 @@ describe('firebaseAuthInterceptor bootstrap isolation', () => {
         useValue: {
           currentSession: () => ({
             kind: 'firebase',
+            sessionId: 'firebase-session',
             profile: {
               id: 'firebase-user',
               name: 'Firebase User',
@@ -56,6 +57,17 @@ describe('firebaseAuthInterceptor bootstrap isolation', () => {
 
     expect(response.body).toBe('Bearer firebase-token');
     expect(getFirebaseIdToken).toHaveBeenCalledOnce();
+  });
+
+  it('sends the tracked session ID with the Firebase credential', async () => {
+    let sessionId: string | null = null;
+    await firstValueFrom(TestBed.runInInjectionContext(() =>
+      firebaseAuthInterceptor(new HttpRequest('GET', '/api/auth/me'), request => {
+        sessionId = request.headers.get('X-App-Session-Id');
+        return of(new HttpResponse({ status: 200 }));
+      })
+    ));
+    expect(sessionId).toBe('firebase-session');
   });
 });
 

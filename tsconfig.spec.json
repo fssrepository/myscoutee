@@ -10,7 +10,7 @@
     ]
   },
   "include": [
-    "src/app/shared/ui/ui.providers.ts",
+    "src/app/shared/ui/context/ui.providers.ts",
     "src/**/*.d.ts",
     "src/**/*.spec.ts"
   ]
