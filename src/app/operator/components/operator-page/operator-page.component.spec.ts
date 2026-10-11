@@ -116,6 +116,7 @@ describe('OperatorPageComponent', () => {
 
     const fixture = TestBed.createComponent(OperatorPageComponent);
     const componentView = fixture.componentInstance as unknown as {
+      loadInitialWorkspace: () => Promise<void>;
       loading: Signal<boolean>;
       leaderboardQuery: Signal<Partial<ListQuery<OperatorLeaderboardFilters>>>;
       actionItems: Signal<readonly AppMenuItem<string>[]>;
@@ -141,8 +142,7 @@ describe('OperatorPageComponent', () => {
         adjustVisibleTotal: (delta: number) => boolean;
       };
     };
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await componentView.loadInitialWorkspace();
     const initialQuery = componentView.leaderboardQuery();
 
     registryBusyAction.set('load');
