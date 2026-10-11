@@ -855,7 +855,8 @@ export class LocalChatsRepository {
       if (!existingRecord) {
         return currentState;
       }
-      let nextMessagesTable = currentMessagesTable;
+      let ownerCopies: ChatThreadRecord[] | null = null;
+      let nextMessageRecords: typeof currentMessagesTable.byId | null = null;
       for (const messageId of targetIds) {
         const messageRecord = this.findMessageRecord(currentMessagesTable, existingRecord, messageId);
         if (
@@ -865,21 +866,29 @@ export class LocalChatsRepository {
         ) {
           continue;
         }
-        const nextMessageRecord: ChatMessageRecord = {
-          ...messageRecord,
-          readBy: [
-            ...(messageRecord.readBy ?? []),
-            {
+        changedIds.push(messageRecord.messageId);
+        ownerCopies ??= currentTable.ids
+          .map(id => currentTable.byId[id])
+          .filter(owner => owner?.id === existingRecord.id);
+        nextMessageRecords ??= { ...currentMessagesTable.byId };
+        for (const owner of ownerCopies) {
+          const copyId = LocalChatMessageMapper.recordKey(owner.ownerUserId, owner.id, messageRecord.messageId);
+          const copy = nextMessageRecords[copyId];
+          if (!copy || (copy.readBy ?? []).some(existingReader => existingReader.userId === reader.id)) continue;
+          nextMessageRecords[copyId] = {
+            ...copy,
+            readBy: [...(copy.readBy ?? []), {
               userId: reader.id,
               initials: reader.initials,
               gender: reader.gender,
               imageUrl: reader.imageUrl ?? null
-            }
-          ]
-        };
-        changedIds.push(messageRecord.messageId);
-        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, nextMessageRecord);
+            }]
+          };
+        }
       }
+      // Receipt changes preserve message identity/order; no per-message upsert or sort is needed.
+      const nextMessagesTable = nextMessageRecords
+        ? { ...currentMessagesTable, byId: nextMessageRecords } : currentMessagesTable;
       const clearWholeChannel = wholeChannel && previousUnread > 0;
       if (changedIds.length === 0 && !clearWholeChannel) {
         return currentState;

@@ -124,6 +124,31 @@ describe('LocalChatsRepository chat pages', () => {
     expect(repository.queryChatMessagesPage(invited, pageRequest({})).items[0].mine).toBe(false);
   });
 
+  it('persists peer read receipts in every existing owner copy without changing other unread counts', () => {
+    for (const id of ['read-a','read-b']) seedUser(user(id));
+    memoryDb.write(state => ({...state,[CONTACTS_TABLE_NAME]:{ownerUserIds:['read-a'],byOwnerUserId:{'read-a':[{userId:'read-b'} as StoredContact]}}}));
+    const access=TestBed.inject(LocalContactsRepository);
+    const pending=access.changeChatAccess('read-a','read-b','request');
+    access.changeChatAccess('read-b','read-a','approve',pending.version);
+    const sender=repository.ensureContactChat('read-a','read-b');
+    const message:ContractTypes.ChatMessageDto={id:'read-receipt-message',sender:'Reader A',senderAvatar:{id:'read-a',initials:'RA',gender:'man'},text:'Please read',time:'10:00',sentAtIso:'2026-10-11T10:00:00Z',mine:true,readBy:[]};
+    repository.appendChatMessage(sender,message);
+    const peer=repository.queryChatItemById('read-b',sender.id)!;
+    const senderUnread=sender.unread;
+    const beforeCounter=memoryDb.read().users.byId['read-b'].activities.chats??0;
+    const order=[...memoryDb.read().chatMessages.ids];
+    expect(repository.markChatRead(peer,'read-b',[message.id])?.messageIds).toEqual([message.id]);
+    for(const owner of [sender,peer]) {
+      expect(repository.queryChatMessagesPage(owner,pageRequest({})).items.find(item=>item.id===message.id)?.readBy.map(reader=>reader.id)).toEqual(['read-b']);
+    }
+    expect(repository.queryChatItemById('read-a',sender.id)?.unread).toBe(senderUnread);
+    expect(repository.queryChatItemById('read-b',sender.id)?.unread).toBe(0);
+    expect(memoryDb.read().users.byId['read-b'].activities.chats).toBe(beforeCounter-1);
+    expect(repository.markChatRead(peer,'read-b',[message.id])).toBeNull();
+    expect(memoryDb.read().users.byId['read-b'].activities.chats).toBe(beforeCounter-1);
+    expect(memoryDb.read().chatMessages.ids).toEqual(order);
+  });
+
   it('rejects a saved contact from a different workspace', () => {
     seedUser(user('contact-a'));
     seedUser({ ...user('contact-b'), workspaceGroupId: 'other' });
