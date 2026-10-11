@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute } from '@angular/router';
 
@@ -73,7 +73,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   private selectionInputSignature = '';
   private sectionSignature = '';
   private openSectionSignature = '';
-  private routeConfig: DocumentViewerConfig | null = null;
+  private readonly routeConfig = signal<DocumentViewerConfig | null>(null);
 
   ngOnInit(): void {
     if (!this.config) {
@@ -372,20 +372,20 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   protected activeConfig(): DocumentViewerConfig | null {
-    return this.config ?? this.routeConfig;
+    return this.config ?? this.routeConfig();
   }
 
   private async prepareRouteDocument(): Promise<void> {
     const data = this.route.snapshot.data as DocumentViewerRouteData;
     const kind = this.normalizeDocumentKind(data.documentKind);
-    this.routeConfig = this.createRouteConfig(data, null, true);
+    this.routeConfig.set(this.createRouteConfig(data, null, true));
     try {
       await this.helpCenter.preload(kind);
-      this.routeConfig = this.createRouteConfig(data, this.activeRevision(kind), false);
+      this.routeConfig.set(this.createRouteConfig(data, this.activeRevision(kind), false));
       this.syncSelectionFromConfig();
       this.syncOpenSection();
     } catch {
-      this.routeConfig = this.createRouteConfig(data, null, false);
+      this.routeConfig.set(this.createRouteConfig(data, null, false));
     }
   }
 
