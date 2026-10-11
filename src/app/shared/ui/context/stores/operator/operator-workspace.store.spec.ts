@@ -1013,7 +1013,8 @@ describe('OperatorWorkspaceStore', () => {
           providerId: 'stripe',
           publicBaseUrl: 'https://community.example.test',
           merchantAccount: '',
-          credential: 'write-only-payment'
+          credential: 'write-only-payment',
+          exchangeRateUrl: ''
         }
       })
     );

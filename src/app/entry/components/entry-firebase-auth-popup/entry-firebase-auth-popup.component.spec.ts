@@ -12,7 +12,7 @@ describe('EntryFirebaseAuthPopupComponent login feedback', () => {
       imports: [EntryFirebaseAuthPopupComponent],
       providers: [{
         provide: I18nService,
-        useValue: {
+        useValue: { currentLanguage: () => 'en',
           revision: signal(0),
           translate: (key: string) => key === 'auth.session.limit.reached' ? limitMessage : key
         }

@@ -100,7 +100,7 @@ describe('DeploymentConfigurationService', () => {
     restoreUrlMethod('revokeObjectURL', originalRevokeObjectUrl);
   });
 
-  it('refreshes the server Messaging capability and clears it when configuration is unavailable', async () => {
+  it('refreshes Messaging capability, retains the last configuration on transport failure and retries', async () => {
     loadLocalBranding.mockResolvedValue({ ...DEFAULT_DEPLOYMENT_CONFIGURATION, firebaseMessagingConfigured: true });
     const service = TestBed.inject(DeploymentConfigurationService);
     await service.initialize();
@@ -112,7 +112,12 @@ describe('DeploymentConfigurationService', () => {
     await service.reload();
     loadLocalBranding.mockRejectedValue(new Error('unavailable'));
     await service.reload();
+    expect(service.firebaseMessagingConfigured()).toBe(true);
+    expect(service.loading()).toBe(false);
+    loadLocalBranding.mockResolvedValue({ ...DEFAULT_DEPLOYMENT_CONFIGURATION, firebaseMessagingConfigured: false });
+    await service.initialize();
     expect(service.firebaseMessagingConfigured()).toBe(false);
+    expect(loadLocalBranding).toHaveBeenCalledTimes(5);
   });
 
   it('shares bootstrap configuration with later setup opens without reading the adapter again', async () => {

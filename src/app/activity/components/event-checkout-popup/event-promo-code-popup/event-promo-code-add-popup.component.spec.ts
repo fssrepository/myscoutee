@@ -18,6 +18,7 @@ describe('EventPromoCodeAddPopupComponent validation localization', () => {
       providers: [{
         provide: I18nService,
         useValue: {
+          currentLanguage: () => 'en',
           revision: vi.fn(),
           translate
         }

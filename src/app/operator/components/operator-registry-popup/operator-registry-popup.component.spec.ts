@@ -93,7 +93,7 @@ describe('OperatorRegistryPopupComponent', () => {
 
     expect(componentView.popupModel().size).toBe('small');
     expect(componentView.popupModel().height).toBe('auto');
-    expect(componentView.popupModel().bodyLayout).toBe('overflow');
+    expect(componentView.popupModel().bodyLayout).toBe('default');
     expect(componentView.registryUrlConfig().panelMode).toBe('auto');
     expect(componentView.registryUrlConfig().availableUrls).toEqual([
       expect.objectContaining({

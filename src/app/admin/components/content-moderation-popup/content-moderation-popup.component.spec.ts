@@ -11,6 +11,7 @@ describe('Content moderation dual filters', () => {
     Object.assign(component, {
       category: 'all', status: 'under-review', groupContext: () => null, destroyRef: { destroyed: false },
       snapshot: () => component.state.snapshot(), i18n: { translate: (key: string) => key },
+      baseWorkspace: { active: () => null },
       workspace: { dashboard: () => ({ activeAdmin: { id: 'admin' } }) },
       state: { apply: vi.fn(), forScope: vi.fn().mockReturnValue(null), snapshot: () => ({ settings: { enabled: true }, counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
       error: { set: vi.fn() }, dialogs: { open: vi.fn() }, service: { decide: vi.fn(), page: vi.fn() },

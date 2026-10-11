@@ -33,6 +33,8 @@ function popup() {
     usersService: { loadPageFilterPreferences: vi.fn().mockReturnValue(pending.promise) },
     activitiesService: { loadExplore: vi.fn().mockResolvedValue({ items: [], total: 0 }) },
     eventCheckoutDraftStore: { reconcileExpiredEventDrafts: vi.fn() },
+    explanationGuide: { registerContext: vi.fn().mockReturnValue(() => undefined) },
+    chatShare: { controls: () => [] },
     cdr: { markForCheck: vi.fn() }, dialogStore: { open: vi.fn() },
     prewarmEventEditorPopup: vi.fn(), refreshUsersDirectory: vi.fn(), closeMembersPopup: vi.fn(),
     restoreServerCheckoutDrafts: vi.fn().mockResolvedValue(undefined), reloadEventExploreSmartList: vi.fn()
@@ -53,7 +55,7 @@ describe('Explore nonblocking preference loading', () => {
     expect(component.eventExploreFilters()).toEqual(saved);
     expect(component.preferencesReady()).toBe(true);
     expect(component.activitiesService.loadExplore).toHaveBeenCalledExactlyOnceWith({ ...query,
-      filters: { ...query.filters, ...saved, topic: 'music' } });
+      filters: { ...query.filters, ...saved, followedOnly: false, topic: 'music' } });
     expect(component.reloadEventExploreSmartList).not.toHaveBeenCalled();
     await component.loadEventExplorePage({ ...query, page: 1, cursor: 'next' });
     expect(component.usersService.loadPageFilterPreferences).toHaveBeenCalledTimes(1);

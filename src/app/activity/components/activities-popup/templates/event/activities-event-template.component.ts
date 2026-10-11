@@ -1233,9 +1233,9 @@ export class ActivitiesEventsController {
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      this.patchVisiblePublicationState(row, 'A');
-      const dto = this.activityEventDTOForRow(row);
-      if (dto) this.activitiesStore.emitActivityEventSync({ ...dto, cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false });
+      this.patchVisiblePublicationState(row, 'A', {
+        cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false
+      });
     }
 
     this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);
@@ -1260,11 +1260,15 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private patchVisiblePublicationState(row: InfoCardData, status: ActivityContracts.ActivityEventStatus): void {
+  private patchVisiblePublicationState(
+    row: InfoCardData, status: ActivityContracts.ActivityEventStatus,
+    patch: Partial<ActivityContracts.ActivityEventDTO> = {}
+  ): void {
     const source = this.activityEventDTOForRow(row);
     if (source) {
       this.activitiesStore.emitActivityEventSync({
         ...source,
+        ...patch,
         status
       });
       return;

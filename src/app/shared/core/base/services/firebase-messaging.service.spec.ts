@@ -65,7 +65,7 @@ describe('Notification preference and background registration', () => {
       { provide: DeploymentConfigurationService, useValue: {
         firebaseMessagingConfigured: messagingConfigured, reload: reloadDeployment, initialize: initializeDeployment
       } },
-      { provide: I18nService, useValue: { revision: () => 0, translate: (key: string) => key } },
+      { provide: I18nService, useValue: { revision: () => 0, currentLanguage: () => 'en', translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
         trackingEnabled: signal(true), setTrackingEnabled: vi.fn(),
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),

@@ -19,7 +19,7 @@ function history(direction = 'all') {
   };
   const component = Object.assign(Object.create(PaymentMethodsPopupComponent.prototype), {
     activeUserId: () => 'payer', historyList: () => list, historyDirectionRef: signal(direction),
-    store: { applyHistorySummary: vi.fn() }, revisionRef: signal(7), loadAllHistory: vi.fn()
+    store: { applyHistorySummary: vi.fn(), counterparty: () => null }, revisionRef: signal(7), loadAllHistory: vi.fn()
   });
   return { component, list, rows: () => rows, untouched };
 }

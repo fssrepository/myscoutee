@@ -56,6 +56,6 @@ describe('RouteDelayService', () => {
 
     const service = TestBed.inject(RouteDelayService);
 
-    expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(650);
+    expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(1500);
   });
 });

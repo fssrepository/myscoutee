@@ -9,18 +9,15 @@ describe('scoped Asset member management', () => {
     ])).toBe(false);
   });
 
-  it('does not let a pending manager or accepted ordinary member manage the Asset', () => {
-    expect(canManageScopedAssetMembers('casey', [
-      { userId: 'casey', status: 'pending', role: 'Manager' }
-    ])).toBe(false);
+  it('does not let an accepted ordinary member manage the Asset', () => {
     expect(canManageScopedAssetMembers('casey', [
       { userId: 'casey', status: 'accepted', role: 'Member' }
     ])).toBe(false);
   });
 
-  it('lets the accepted scoped Asset Manager manage its members', () => {
+  it.each(['pending', 'accepted'])('lets the assigned scoped Asset Manager manage its members while %s', status => {
     expect(canManageScopedAssetMembers('casey', [
-      { userId: 'casey', status: 'accepted', role: 'Manager' }
+      { userId: 'casey', status: status as 'pending' | 'accepted', role: 'Manager' }
     ])).toBe(true);
   });
 });

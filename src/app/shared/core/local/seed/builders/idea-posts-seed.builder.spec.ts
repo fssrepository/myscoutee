@@ -1,10 +1,12 @@
+import workArticles from '../data/work-articles.json';
+import communityArticles from '../data/community-articles.json';
 import { SeedIdeaPostsBuilder } from './idea-posts-seed.builder';
 
 describe('SeedIdeaPostsBuilder', () => {
   it('embeds each primary image in the article detail HTML', () => {
     const posts = SeedIdeaPostsBuilder.buildDefaultPosts();
 
-    expect(posts).toHaveLength(18);
+    expect(posts).toHaveLength(10 + workArticles.length + communityArticles.length);
     for (const post of posts) {
       expect(post.imageUrl).toBeTruthy();
       expect(post.imageUrls).toContain(post.imageUrl);

@@ -23,7 +23,7 @@ describe('Setup permission help', () => {
     TestBed.configureTestingModule({ imports: [AppSetupPopupComponent], providers: [
       { provide: AppSetupStore, useValue: store },
       { provide: SessionService, useValue: { currentSession: () => null } },
-      { provide: I18nService, useValue: { revision: () => 0, translate: (value: string) => value } }
+      { provide: I18nService, useValue: { currentLanguage: () => 'en', revision: () => 0, translate: (value: string) => value } }
     ] });
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
@@ -69,7 +69,7 @@ describe('Setup automatic installation offer', () => {
       { provide: SessionService, useValue: { currentSession } },
       { provide: DialogStore, useValue: { dialog: signal(null) } },
       { provide: PopupPresenceStore, useValue: { visible: signal(false) } },
-      { provide: I18nService, useValue: { revision: () => 0 } }
+      { provide: I18nService, useValue: { currentLanguage: () => 'en', revision: () => 0 } }
     ] });
     TestBed.runInInjectionContext(() => new AppSetupPopupComponent());
     TestBed.tick();

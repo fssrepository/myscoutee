@@ -20,6 +20,8 @@ class TestOutlet { @Output() activate = new EventEmitter<void>(); }
 class TestSetup {}
 @Component({ selector: 'app-payment-authorization-popup', template: '' })
 class TestPayment {}
+@Component({ selector: 'app-dialog', template: '' })
+class TestDialog {}
 
 describe('application startup loading handoff', () => {
   let events: Subject<unknown>;
@@ -47,7 +49,7 @@ describe('application startup loading handoff', () => {
       { provide: DeploymentConfigurationService, useValue: {
         initialize: vi.fn(), branding: signal({ productName: 'MyScoutee', logoUrl: '' })
       } }
-    ] }).overrideComponent(App, { set: { imports: [NgComponentOutlet, TestOutlet, TestSetup, TestPayment, HomeHeaderComponent, AppMenuComponent] } });
+    ] }).overrideComponent(App, { set: { imports: [NgComponentOutlet, TestOutlet, TestSetup, TestPayment, HomeHeaderComponent, AppMenuComponent, TestDialog] } });
   });
 
   afterEach(() => {
@@ -163,11 +165,17 @@ describe('application startup loading handoff', () => {
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
   });
 
-  it('removes the game preview when validation redirects to entry', () => {
+  it('removes the retained loading avatar when the validation redirect to entry commits', () => {
     currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'expired-user' } });
     const fixture = create('/game');
     events.next(new NavigationCancel(1, '/game', 'Redirect', NavigationCancellationCode.Redirect));
     events.next(new NavigationStart(2, '/entry'));
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar button').disabled).toBe(true);
+    router.url = '/entry';
+    router.navigated = true;
+    events.next(new NavigationEnd(2, '/entry', '/entry'));
+    // The Subject router stub does not schedule Angular's navigation render.
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
     expect(fixture.nativeElement.querySelector('.game-startup-avatar')).toBeNull();

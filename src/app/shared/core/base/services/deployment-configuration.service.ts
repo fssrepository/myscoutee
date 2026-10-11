@@ -111,8 +111,7 @@ export class DeploymentConfigurationService
       this.loadingRef.set(true);
       this.loadPromise = this.configurationService()
         .loadBranding()
-        .then(value => this.applyConfiguration(value))
-        .catch(() => {
+        .then(value => this.applyConfiguration(value), () => {
           // An unavailable startup response is not an empty saved configuration.
           // Keep the last value and allow the next ordinary load to try again.
           this.loadPromise = null;

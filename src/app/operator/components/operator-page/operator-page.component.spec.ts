@@ -28,7 +28,7 @@ describe('OperatorPageComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('keeps the leaderboard mounted while registration refreshes and the popup closes', () => {
+  it('keeps the leaderboard mounted while registration refreshes and the popup closes', async () => {
     const registryStatus = signal<OperatorRegistryStatusDto | null>(
       registeredStatus()
     );
@@ -83,6 +83,7 @@ describe('OperatorPageComponent', () => {
             busyAction: workspaceBusyAction.asReadonly(),
             deploymentUpdate: signal(null).asReadonly(),
             claimStatus: claimStatus.asReadonly(),
+            loadInitialWorkspace: vi.fn().mockResolvedValue(undefined),
             loadDeploymentUpdate: vi.fn()
           }
         },
@@ -93,7 +94,7 @@ describe('OperatorPageComponent', () => {
             latestCacheMutation: leaderboardCacheMutation.asReadonly(),
             consumeCacheMutation,
             invalidate: invalidateLeaderboard,
-            queryPage: vi.fn()
+            queryPage: vi.fn().mockResolvedValue({ items: [], total: 0 })
           }
         },
         {
@@ -105,6 +106,7 @@ describe('OperatorPageComponent', () => {
         {
           provide: I18nService,
           useValue: {
+            revision: () => 0,
             currentLanguage: () => 'en',
             translate: (value: string) => value
           }
@@ -139,6 +141,8 @@ describe('OperatorPageComponent', () => {
         adjustVisibleTotal: (delta: number) => boolean;
       };
     };
+    fixture.detectChanges();
+    await fixture.whenStable();
     const initialQuery = componentView.leaderboardQuery();
 
     registryBusyAction.set('load');
@@ -152,9 +156,9 @@ describe('OperatorPageComponent', () => {
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
     expect(componentView.actionItems().map(item => item.id)).toEqual([
       'updates',
+      'configuration',
       'registration',
       'claim',
-      'configuration',
       'revenue'
     ]);
     expect(componentView.actionItems().at(-1)).toEqual(expect.objectContaining({

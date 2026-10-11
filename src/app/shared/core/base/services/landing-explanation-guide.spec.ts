@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { provideUiTranslations } from '@fssrepository/myscoutee-components';
 import { environment } from '../../../../../environments/environment';
 import { reportBackendReadiness } from '../../common/backend-connectivity';
 import { LandingContentService } from './landing-content.service';
@@ -12,6 +13,7 @@ describe('landing guide readiness', () => {
   beforeEach(() => {
     load.mockReset().mockResolvedValue({ activeRevision: null, revisions: [], guideFields: [], availableLanguages: [], auditTrail: [] });
     TestBed.configureTestingModule({ providers: [
+      provideUiTranslations(I18nService),
       { provide: LandingContentService, useValue: { loadExplanationState: load } },
       { provide: I18nService, useValue: { currentLanguage: signal('en') } }
     ] });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SimpleChange } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
 import { createInitialGameFilter, GameFilterMenuKind } from '../../shared/home-game-filter.shared';
 import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
@@ -14,7 +15,7 @@ class Filter extends HomeGameFilterPopupComponent {
   draft() { return this.filterDraft; }
 }
 function popup() {
-  const component = new Filter();
+  const component = TestBed.runInInjectionContext(() => new Filter());
   component.context = { activeUser: new UserDto(), users: [], filter: createInitialGameFilter(),
     interestOptionGroups: [], valueOptionGroups: [] };
   component.ngOnChanges({ context: new SimpleChange(null, component.context, true) });

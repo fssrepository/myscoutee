@@ -83,7 +83,8 @@ describe('ActivitiesEventsController publication sync', () => {
     expect(emitActivityEventSync).toHaveBeenCalledOnce();
     expect(emitActivityEventSync).toHaveBeenCalledWith({
       ...source,
-      status: expectedStatus
+      status: expectedStatus,
+      ...(action === 'publish' ? { cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false } : {})
     });
     expect(patchVisibleItem).not.toHaveBeenCalled();
   });
