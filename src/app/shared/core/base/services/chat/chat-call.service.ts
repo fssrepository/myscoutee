@@ -279,8 +279,14 @@ export class ChatCallService {
     }
     if (event.kind === 'error') { if (this.callId) await this.failJoin('chat.call.error.signaling'); return; }
     if (event.kind === 'ended') {
-      if (this.invite?.callId === event.callId) { this.invite = null; this.status.set('idle'); }
-      if (this.callId === event.callId) this.reset();
+      if (this.invite?.callId === event.callId) {
+        this.invite = null;
+        if (this.status() === 'incoming') this.status.set('idle');
+      }
+      // A quick rejoin can precede the previous room's final "ended" frame.
+      // Until our new roster confirms membership, that frame must not stop the
+      // new media setup. WebSocket order guarantees roster precedes its end.
+      if (this.callId === event.callId && this.selfId) this.reset();
       return;
     }
     if (!this.callId || event.callId !== this.callId || !this.mls) return;
