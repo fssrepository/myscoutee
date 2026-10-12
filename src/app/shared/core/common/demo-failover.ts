@@ -119,7 +119,10 @@ export async function prepareDemoFailover(): Promise<void> {
   if (environment.activitiesDataSource !== 'http') return;
   enabled = true;
   local = false;
-  if (anonymousLanding()) {
+  // A demo chosen on the backend-free landing remains a local demo when its
+  // workspace is reloaded. It has no paired HTTP login to restore.
+  const localDemoPage = localStorage.getItem(HTTP_SESSION) === null && readSession(LOCAL_SESSION) !== null;
+  if (anonymousLanding() || localDemoPage) {
     restoreLocalSession();
     if (!initialBackendReady()) useLocalAdapters();
     return;
@@ -154,6 +157,17 @@ export async function prepareDemoFailover(): Promise<void> {
     localStorage.setItem(LOCAL_ACTOR, localId);
   }
   useLocalAdapters();
+}
+
+// An explicit local-demo logout ends its paired HTTP-demo login too. Otherwise
+// a later local actor selection is mistaken for the old pair on page reload.
+export function endDemoFailoverSession(): void {
+  if (!enabled || !local) return;
+  const pair = JSON.parse(localStorage.getItem(PAIR_KEY) || 'null') as DemoPair | null;
+  if (!pair) return;
+  if (eligibleSession()?.userId === pair.http) localStorage.removeItem(HTTP_SESSION);
+  localStorage.removeItem(PAIR_KEY);
+  localStorage.removeItem(LOCAL_SESSION_BEFORE);
 }
 
 export function demoFailoverEnabled(): boolean { return enabled; }

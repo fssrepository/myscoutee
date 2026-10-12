@@ -1,4 +1,5 @@
 import { OfflineCacheService } from '../platform/offline-cache.service';
+import { endDemoFailoverSession } from '../../../common/demo-failover';
 import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
@@ -341,6 +342,7 @@ export class SessionService {
   async logout(): Promise<void> {
     const current = this.sessionRef();
     const adminSupportSession = this.isAdminSupportSession(current);
+    if (current?.kind === 'demo' && !adminSupportSession) endDemoFailoverSession();
     const sessionRegistryEnabled = environment.activitiesDataSource === 'http';
     let firebaseToken: string | null = null;
     if (sessionRegistryEnabled && current?.kind === 'firebase') {
