@@ -49,6 +49,19 @@
   padding: 0.2rem;
 }
 
+.integration-settings-body--loading {
+  min-height: 100%;
+  box-sizing: border-box;
+  place-items: center;
+}
+
+.integration-settings-loading {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+}
+
 .integration-client-download {
   justify-self: end;
   max-width: 100%;

@@ -3,6 +3,7 @@ import { IntegrationAccessButtonComponent } from './integration-access-button.co
 import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 import {
   CopyLinkComponent,
+  IndicatorComponent,
   ExplanationGuideService,
   PopupComponent,
   type PopupActionEvent,
@@ -39,6 +40,7 @@ type IntegrationActionContext =
     IntegrationAccessButtonComponent,
     McpConnectionsComponent,
     CopyLinkComponent,
+    IndicatorComponent,
     SummaryCurrencyPopupComponent,
     CommonModule,
     MatIconModule,
@@ -141,7 +143,8 @@ export class IntegrationSettingsPopupComponent implements OnDestroy {
       ariaLabel: this.adminMode ? 'admin.api.title' : 'affiliate.open',
       closeAriaLabel: 'close',
       size: 'small',
-      height: 'auto',
+      height: 'full',
+      bodyLayout: 'fill',
       mobilePresentation: 'fullscreen',
       backdropTone: 'dim',
       headerControls: this.adminMode || !this.settings() ? [] : [{

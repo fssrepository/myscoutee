@@ -1,8 +1,11 @@
 @if (open()) {
   <app-popup [model]="popupModel()" [zIndex]="2500">
-    <div class="integration-settings-body" data-guide-field="integration-settings">
+    <div class="integration-settings-body" [class.integration-settings-body--loading]="loading()" data-guide-field="integration-settings">
       @if (loading()) {
-        <div class="integration-settings-state">{{ 'integration.loading' | i18n }}</div>
+        <div class="integration-settings-loading" role="status" aria-busy="true">
+          <app-indicator kind="load-ring" state="loading"></app-indicator>
+          <span>{{ 'integration.loading' | i18n }}</span>
+        </div>
       } @else if (settings(); as config) {
         @if (adminMode) {
           <app-menu class="integration-client-download" kind="inline" layout="row"
