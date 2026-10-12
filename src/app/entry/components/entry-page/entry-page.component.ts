@@ -325,7 +325,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (this.entryNetworkUnavailable) {
       return;
     }
-    if (!this.ensureEntryConsent()) {
+    if (!await this.ensureEntryConsent()) {
       this.resumeExploreAfterConsent = true;
       return;
     }
@@ -347,7 +347,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     await this.synchronizeDeploymentAuthMode();
-    if (!this.ensureEntryConsent()) {
+    if (!await this.ensureEntryConsent()) {
       return;
     }
     if (this.authMode !== 'firebase' && !options.forceAuthPopup) {
@@ -383,7 +383,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       });
       return;
     }
-    if (!this.ensureEntryConsent()) {
+    if (!await this.ensureEntryConsent()) {
       return;
     }
     this.openDemoUserSelectorPopup('operator', ['operator']);
@@ -571,8 +571,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.syncEntryAuthGateState();
   }
 
-  private ensureEntryConsent(): boolean {
+  private async ensureEntryConsent(): Promise<boolean> {
     if (this.entryNetworkUnavailable) {
+      return false;
+    }
+    if (this.entryPrivacyLoading || this.privacyPolicy.state() === null) {
+      await this.loadEntryContent();
+    }
+    if (this.entryNetworkUnavailable || this.entryPrivacyLoading) {
       return false;
     }
     if (this.hasEntryConsent) {
@@ -580,14 +586,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = true;
-    if (this.privacyPolicy.state() === null) {
-      this.entryPrivacyLoading = true;
-      void this.loadEntryContent();
-      return false;
-    }
-    if (this.entryPrivacyLoading) {
-      return false;
-    }
     return false;
   }
 

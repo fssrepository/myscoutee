@@ -1,4 +1,42 @@
 import { EntryPageComponent } from './entry-page.component';
+import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
+
+describe('entry consent visibility while the policy loads', () => {
+  afterEach(() => localStorage.removeItem(APP_STORAGE_KEYS.entryConsent));
+
+  it.each(['current', 'outdated', 'missing'] as const)('checks %s consent before opening the popup', async saved => {
+    if (saved !== 'missing') {
+      localStorage.setItem(APP_STORAGE_KEYS.entryConsent, JSON.stringify({
+        version: saved === 'current' ? 'privacy:privacy:v2' : 'privacy:privacy:v1',
+        accepted: true, acceptedAtIso: '2026-10-12T12:00:00Z'
+      }));
+    }
+    let revision: { id: string; version: number } | null = null;
+    let finish!: () => void;
+    const content = new Promise<void>(resolve => { finish = resolve; });
+    const opened: boolean[] = [];
+    let visible = false;
+    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+      entryNetworkUnavailable: false, entryPrivacyLoading: true, entryConsentViewOnly: false,
+      privacyPolicy: { state: () => revision, activeRevision: () => revision },
+      loadEntryContent: vi.fn(() => content.then(() => {
+        revision = { id: 'privacy', version: 2 };
+        component.entryPrivacyLoading = false;
+      }))
+    });
+    Object.defineProperty(component, 'showEntryConsentPopup', {
+      get: () => visible,
+      set: (value: boolean) => { visible = value; opened.push(value); }
+    });
+    const pending = component.ensureEntryConsent();
+    expect(visible).toBe(false);
+    expect(opened).not.toContain(true);
+    finish();
+    expect(await pending).toBe(saved === 'current');
+    expect(visible).toBe(saved !== 'current');
+    if (saved === 'current') expect(opened).not.toContain(true);
+  });
+});
 
 describe('EntryPageComponent new demo registration admission', () => {
   it.each([false, true])('waits for location admission (%s) before onboarding and retains the invitation', async eligible => {
@@ -106,8 +144,7 @@ describe('EntryPageComponent operator authentication gate', () => {
       onFirebaseSessionContinueRequested: vi.fn()
     });
     const opening = component.openEntryAuthPopup();
-    await Promise.resolve();
-    expect(component.ensureHttpLoginAccessAllowed).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(component.ensureHttpLoginAccessAllowed).toHaveBeenCalledOnce());
     expect(component.showFirebaseAuthPopup).toBe(false);
     close(allowed);
     await opening;
