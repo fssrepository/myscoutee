@@ -36,9 +36,19 @@ export class ChatCallMls {
       await result.core.transaction(async ctx => {
         const client = result.client(result.clientId);
         await ctx.mlsInit(client, {
-          sendCommitBundle: async bundle => sendCommit({ commit: encodeCallBytes(bundle.commit), members: [...result.commitMembers],
-            ...(bundle.welcome ? { welcome: encodeCallBytes(bundle.welcome.serialize()) } : {}) }),
-          prepareForTransport: async () => { throw new Error('Call history sharing is disabled.'); }
+          sendCommitBundle: async bundle => {
+            try {
+              await sendCommit({ commit: encodeCallBytes(bundle.commit), members: [...result.commitMembers],
+                ...(bundle.welcome ? { welcome: encodeCallBytes(bundle.welcome.serialize()) } : {}) });
+            } catch {
+              // UniFFI callbacks require their declared error type. An ordinary
+              // JS Error traps WASM on transport rejection or call cancellation.
+              throw new api.MlsTransportError.MessageRejected({ reason: 'Call commit transport rejected.' });
+            }
+          },
+          prepareForTransport: async () => {
+            throw new api.MlsTransportError.MessageRejected({ reason: 'Call history sharing is disabled.' });
+          }
         });
         result.credential = await ctx.addCredential(api.Credential.basic(api.CipherSuite.Mls128Dhkemx25519Aes128gcmSha256Ed25519, client));
         const keyPackage = await ctx.generateKeyPackage(result.credential, 3600);
