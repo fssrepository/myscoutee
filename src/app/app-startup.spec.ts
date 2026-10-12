@@ -5,6 +5,7 @@ import { By } from '@angular/platform-browser';
 import { NavigationCancel, NavigationCancellationCode, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { App } from './app';
+import { DEFAULT_DEPLOYMENT_BRANDING } from './shared/core/contracts/platform/deployment-configuration.interface';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
 import { AppMenuComponent } from '@fssrepository/myscoutee-components';
 import { SessionService } from './shared/core/base/services/accounts/session.service';
@@ -66,6 +67,43 @@ describe('application startup loading handoff', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  it('shows the default logo and releases the page before branding finishes', () => {
+    const loading = signal(true);
+    const initialize = vi.fn(() => new Promise<void>(() => {}));
+    TestBed.overrideProvider(DeploymentConfigurationService, { useValue: {
+      initialize, loading, branding: signal({ ...DEFAULT_DEPLOYMENT_BRANDING })
+    } });
+    const fixture = create();
+    expect(initialize).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup img').getAttribute('src'))
+      .toBe('assets/logo/heart.webp');
+    expect(fixture.nativeElement.querySelector('.app-route-warmup__label').textContent)
+      .toBe('MyScoutee');
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    fixture.detectChanges();
+    expect(loading()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
+  });
+
+  it('uses configured branding when ready and respects an intentionally empty logo', () => {
+    const loading = signal(true);
+    const branding = signal({ productName: DEFAULT_DEPLOYMENT_BRANDING.productName, logoUrl: DEFAULT_DEPLOYMENT_BRANDING.logoUrl });
+    TestBed.overrideProvider(DeploymentConfigurationService, { useValue: {
+      initialize: vi.fn(), loading, branding
+    } });
+    const fixture = create();
+    branding.set({ productName: 'Configured name', logoUrl: 'assets/configured-logo.png' });
+    loading.set(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup img').getAttribute('src'))
+      .toBe('assets/configured-logo.png');
+    expect(fixture.nativeElement.querySelector('.app-route-warmup__label').textContent)
+      .toBe('Configured name');
+    branding.set({ productName: 'Configured name', logoUrl: '' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup img')).toBeNull();
+  });
 
   it.each(['/', '/entry', '/game'])('covers the empty initial route until activation without a saved session on %s', url => {
     const fixture = create(url);

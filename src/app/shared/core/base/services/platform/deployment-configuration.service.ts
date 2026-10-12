@@ -164,7 +164,7 @@ export class DeploymentConfigurationService
     productName: string
   ): number | null {
     if (value === null || value === undefined) {
-      return DEFAULT_DEPLOYMENT_BRANDING.logoCharacterIndex;
+      return null;
     }
     const characterCount = Array.from(productName).length;
     if (!Number.isInteger(value) || value < -1 || value >= characterCount) {

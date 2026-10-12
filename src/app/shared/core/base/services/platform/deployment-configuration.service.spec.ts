@@ -335,14 +335,15 @@ describe('DeploymentConfigurationService', () => {
     expect(loadLocalBranding).not.toHaveBeenCalled();
   });
 
-  it('does not invent branding before loading or after absent/invalid fields', () => {
+  it('shows the default branding immediately and preserves cleared or invalid saved fields', () => {
     const service = TestBed.inject(DeploymentConfigurationService);
-    expect(service.branding().productName).toBe('');
-    expect(service.branding().logoUrl).toBe('');
-    const missing = service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING });
+    expect(service.branding().productName).toBe('MyScoutee');
+    expect(service.branding().logoUrl).toBe('assets/logo/heart.webp');
+    const missing = service.applyBranding({ productName: '', homeLabel: '', logoUrl: '', logoCharacterIndex: null, revision: 1 });
     expect(missing.productName).toBe('');
     expect(missing.homeLabel).toBe('');
     expect(missing.logoUrl).toBe('');
+    expect(missing.logoCharacterIndex).toBeNull();
     const invalid = service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING, productName: 'Configured', logoUrl: 'javascript:alert(1)' });
     expect(invalid.productName).toBe('Configured');
     expect(invalid.logoUrl).toBe('');

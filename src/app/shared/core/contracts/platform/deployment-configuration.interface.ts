@@ -15,10 +15,10 @@ export interface DeploymentPrivacyContactDto {
 import type { UiBranding as DeploymentBrandingDto } from '@fssrepository/myscoutee-components';
 
 export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
-  productName: '',
-  homeLabel: '',
-  logoUrl: '',
-  logoCharacterIndex: null,
+  productName: 'MyScoutee',
+  homeLabel: 'Your preferences come first',
+  logoUrl: 'assets/logo/heart.webp',
+  logoCharacterIndex: 0,
   revision: 0
 };
 
