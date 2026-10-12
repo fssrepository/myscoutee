@@ -1,3 +1,4 @@
+import { ChatMessageMenuConverter } from '../../../shared/ui/converters/chat/chat-message-menu.converter';
 import {
   UiDateUtils,
   ExplanationGuideService,
@@ -109,7 +110,7 @@ import {
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 import { mergeChatReadAvatars } from './chat-message-read-state';
-import { ChatCallPopupComponent } from './chat-call-popup.component';
+import { ChatCallPopupComponent } from '../../../shared/ui/components/chat-call-popup/chat-call-popup.component';
 import { ChatCallService } from '../../../shared/core/base/services/chat/chat-call.service';
 
 interface ChatThreadFilters {
@@ -349,25 +350,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected editingMessageId = '';
   protected highlightedMessageId = '';
   protected readonly quickReactionEmojis = ['❤️', '😆', '😮', '😢', '😡', '👍'];
-  protected readonly emojiPickerCategories = [
-    {
-      key: 'smileys',
-      label: 'Smileys & people',
-      icon: 'sentiment_satisfied',
-      emojis: [
-        '😀', '😃', '😄', '😁', '😆', '🥹', '😂', '🤣', '🥲', '😊', '☺️', '😉',
-        '😍', '🥰', '😘', '😗', '😋', '😛', '😝', '🤪', '🤨', '🧐', '😎', '🥳',
-        '😟', '😢', '😭', '😤', '😡', '🤯', '👍', '👎', '👏', '🙌', '🙏', '💪'
-      ]
-    },
-    { key: 'animals', label: 'Animals & nature', icon: 'pets', emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐸', '🐵', '🌲', '🌵', '🌻', '🌙'] },
-    { key: 'food', label: 'Food & drink', icon: 'restaurant', emojis: ['🍏', '🍎', '🍌', '🍓', '🍇', '🍉', '🍕', '🍔', '🍟', '🌮', '🍜', '🍣', '🍰', '☕', '🍺', '🍷', '🥂', '🍽️'] },
-    { key: 'activity', label: 'Activities', icon: 'sports_soccer', emojis: ['⚽', '🏀', '🏈', '🎾', '🏐', '🎱', '🏓', '🎯', '🎮', '🎲', '🎸', '🎤', '🎬', '🎨', '🏆', '🎉', '✨', '🔥'] },
-    { key: 'travel', label: 'Travel & places', icon: 'directions_car', emojis: ['🚗', '🚕', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚲', '✈️', '🚆', '🚢', '🏠', '🏙️', '⛰️', '🏖️', '🌍', '🧭', '📍'] },
-    { key: 'objects', label: 'Objects', icon: 'lightbulb', emojis: ['💡', '📱', '💻', '⌚', '📷', '🎁', '🔑', '🔒', '📌', '📎', '✏️', '📅', '💬', '🔔', '❤️', '🧡', '💙', '💜'] },
-    { key: 'symbols', label: 'Symbols', icon: 'shuffle', emojis: ['✅', '☑️', '❌', '⚠️', '❗', '❓', '➕', '➖', '➡️', '⬅️', '🔄', '🔁', '💯', '🔴', '🟢', '🔵', '⭐', '📌'] },
-    { key: 'flags', label: 'Flags', icon: 'flag', emojis: ['🏳️', '🏴', '🏁', '🚩', '🇺🇸', '🇨🇦', '🇬🇧', '🇮🇪', '🇩🇪', '🇫🇷', '🇪🇸', '🇮🇹', '🇭🇺', '🇸🇰', '🇨🇿', '🇵🇱', '🇺🇦', '🇪🇺'] }
-  ];
+  protected readonly emojiPickerCategories = ChatMessageMenuConverter.emojiCategories;
 
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
@@ -1480,48 +1463,7 @@ export class EventChatPopupComponent implements OnDestroy {
         context: { menu: 'message-action', message, action: 'view' }
       });
     }
-    items.push({
-      id: `chat-message-reply-${message.id}`,
-      label: 'Reply',
-      icon: 'reply',
-      context: { menu: 'message-action', message, action: 'reply' }
-    });
-    if (message.mine && !message.deletedAtIso) {
-      items.push({
-        id: `chat-message-edit-${message.id}`,
-        label: 'Edit',
-        icon: 'edit',
-        palette: 'blue',
-        surface: 'tinted',
-        context: { menu: 'message-action', message, action: 'edit' }
-      });
-      items.push({
-        id: `chat-message-unsend-${message.id}`,
-        label: 'Unsend',
-        icon: 'delete',
-        palette: 'danger',
-        surface: 'tinted',
-        context: { menu: 'message-action', message, action: 'unsend' }
-      });
-    }
-    items.push({
-      id: `chat-message-pin-${message.id}`,
-      label: message.pinnedAtIso ? 'Unpin' : 'Pin',
-      icon: message.pinnedAtIso ? 'push_pin' : 'push_pin',
-      palette: message.pinnedAtIso ? 'muted' : 'amber',
-      surface: 'tinted',
-      context: { menu: 'message-action', message, action: 'pin' }
-    });
-    if (message.mine && message.deliveryState === 'timed-out') {
-      items.push({
-        id: `chat-message-resend-${message.id}`,
-        label: 'Resend',
-        icon: 'send',
-        palette: 'blue',
-        surface: 'tinted',
-        context: { menu: 'message-action', message, action: 'resend' }
-      });
-    }
+    items.push(...ChatMessageMenuConverter.items(message));
     if (this.canReportMessage(message)) {
       items.push({
         id: `chat-message-report-${message.id}`,

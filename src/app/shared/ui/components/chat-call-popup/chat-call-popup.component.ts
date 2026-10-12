@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, QueryList, ViewChildren, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
-import { ChatCallService } from '../../../shared/core/base/services/chat/chat-call.service';
-import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { ChatCallService } from '../../../core/base/services/chat/chat-call.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import {
   ExplanationGuideService,
   PopupComponent,
