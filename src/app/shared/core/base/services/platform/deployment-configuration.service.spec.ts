@@ -178,7 +178,7 @@ describe('DeploymentConfigurationService', () => {
       productName: 'Community Hub',
       homeLabel: 'Meet locally',
       logoUrl: 'https://cdn.example.test/community-hub.webp',
-      logoCharacterIndex: 0,
+      logoCharacterIndex: null,
 
       revision: 4
     });

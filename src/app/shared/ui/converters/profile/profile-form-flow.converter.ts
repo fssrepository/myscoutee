@@ -474,32 +474,34 @@ export class ProfileFormFlowConverter {
     const latestBirthday = new Date(adultYear, today.getMonth(), Math.min(today.getDate(), lastDayOfMonth));
     const baseControls: FormFlowControlModel[] = [
       {
-        id: 'about',
-        kind: 'textarea',
-        label: 'about',
-        bind: 'profile.about',
-        rows: 3,
-        maxLength: 160
-      },
-      {
         id: 'full-name',
         kind: 'text',
         label: 'name',
         bind: 'profile.name',
         required: true,
         placeholder: 'name'
+      },
+      {
+        id: 'about',
+        kind: 'textarea',
+        label: 'about',
+        bind: 'profile.about',
+        rows: 3,
+        maxLength: 160
       }
     ];
     if (profileSize === 'small') {
+      const [name, about] = baseControls;
       return [
-        ...baseControls,
+        name,
         {
           id: 'headline',
           kind: 'text',
           label: 'Headline',
           bind: 'profile.headline',
           placeholder: 'Admin workspace'
-        }
+        },
+        about
       ];
     }
     return [
