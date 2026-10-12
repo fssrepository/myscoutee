@@ -1,67 +1,67 @@
 {
   "optionDefinitions": [
     [
-      "group-type.ts",
+      "groups/group-type.ts",
       "GROUP_TYPES",
       "group.type."
     ],
     [
-      "campaign.interface.ts",
+      "campaigns/campaign.interface.ts",
       "CAMPAIGN_KINDS",
       "campaign.kind."
     ],
     [
-      "campaign.interface.ts",
+      "campaigns/campaign.interface.ts",
       "CAMPAIGN_CATEGORIES",
       "campaign.category."
     ],
     [
-      "campaign.interface.ts",
+      "campaigns/campaign.interface.ts",
       "CampaignStatus",
       "campaign.status."
     ],
     [
-      "campaign.interface.ts",
+      "campaigns/campaign.interface.ts",
       "CampaignAction",
       "campaign.action."
     ],
     [
-      "community-case.interface.ts",
+      "community/community-case.interface.ts",
       "CASE_TYPES",
       "case.type."
     ],
     [
-      "community-case.interface.ts",
+      "community/community-case.interface.ts",
       "CaseStatus",
       "case.status."
     ],
     [
-      "community-case.interface.ts",
+      "community/community-case.interface.ts",
       "TaskFrequency",
       "case.frequency."
     ],
     [
-      "service-offering.interface.ts",
+      "community/service-offering.interface.ts",
       "SERVICE_CATEGORIES",
       "service.category."
     ],
     [
-      "service-offering.interface.ts",
+      "community/service-offering.interface.ts",
       "ServiceStatus",
       "service.status."
     ],
     [
-      "service-offering.interface.ts",
+      "community/service-offering.interface.ts",
       "ServiceAction",
       "service.action."
     ],
     [
-      "community-announcement.interface.ts",
+      "community/community-announcement.interface.ts",
       "VOTE_CHOICES",
       "announcement.choice."
     ],
     [
-      "community-announcement.interface.ts",
+      "community/community-announcement.interface.ts",
       "AnnouncementStatus",
       "announcement.status."
     ]
