@@ -348,6 +348,14 @@ export class ChatCallService {
           await peer.pc.setRemoteDescription(payload.description);
           for (const candidate of peer.incomingIce.splice(0)) await peer.pc.addIceCandidate(candidate);
           if (payload.description.type === 'offer') {
+            // The offer owns the media sections. Attach local tracks to those
+            // transceivers before answering, otherwise they remain recvonly.
+            for (const transceiver of peer.pc.getTransceivers()) {
+              const kind = transceiver.receiver.track.kind;
+              const track = this.localStream()?.getTracks().find(track => track.kind === kind);
+              transceiver.direction = 'sendrecv';
+              await transceiver.sender.replaceTrack(kind === 'video' && !peer.sendVideoEnabled ? null : track ?? null);
+            }
             await peer.pc.setLocalDescription(await peer.pc.createAnswer());
             if (generation !== this.generation) return;
             await this.sendDescription(event.senderSessionId, peer);
@@ -407,9 +415,13 @@ export class ChatCallService {
     const member = this.chat?.members?.find(member => member.id === participant.userId);
     this.remotes.update(items => [...items, { id: participant.sessionId, userId: participant.userId,
       name: member?.name ?? '', video: participant.video, stream, state: 'connecting' }]);
-    for (const kind of ['audio', 'video'] as const) {
-      const track = this.localStream()?.getTracks().find(track => track.kind === kind);
-      pc.addTransceiver(track ?? kind, { direction: 'sendrecv' });
+    // Only the elected offerer creates media sections. Pre-created answerer
+    // transceivers are not associated with the incoming offer by the browser.
+    if (this.selfId < participant.sessionId) {
+      for (const kind of ['audio', 'video'] as const) {
+        const track = this.localStream()?.getTracks().find(track => track.kind === kind);
+        pc.addTransceiver(track ?? kind, { direction: 'sendrecv' });
+      }
     }
     pc.ontrack = event => {
       stream.addTrack(event.track); this.remotes.update(items => [...items]);
