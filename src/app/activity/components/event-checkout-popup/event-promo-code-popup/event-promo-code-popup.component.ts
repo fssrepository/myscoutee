@@ -18,7 +18,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import { I18nService } from '../../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../../shared/core/base/services/localization/i18n.service';
 import { EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY } from '../../../../shared/core/contracts';
 import {
   I18nPipe,
@@ -30,7 +30,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   type SingleRowData
-} from '../../../../shared/ui';
+} from '@fssrepository/myscoutee-components';
 import {
   EventPromoCodePopupStore,
   type EventPromoCodeAddPopupActionRequest,

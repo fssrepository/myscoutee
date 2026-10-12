@@ -17,24 +17,21 @@ import {
 } from '../../../shared/core';
 import {
   FormFlowComponent,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form/flow';
-import {
+  type FormFlowModel,
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui/components/core/menu';
-import {
+  type AppMenuItemSelectEvent,
   PopupComponent,
   type PopupModel
-} from '../../../shared/ui/components/core/popup';
+} from '@fssrepository/myscoutee-components';
+
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 @Component({
   selector: 'app-admin-chat-review-popup',

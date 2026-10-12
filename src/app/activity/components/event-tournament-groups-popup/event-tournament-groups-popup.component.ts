@@ -19,16 +19,7 @@ import {
 import { of } from 'rxjs';
 
 import {
-  ActivityResourceBuilder,
-  ActivityResourcesService,
   ExplanationGuideService,
-  EventsService
-} from '../../../shared/core';
-import type * as AppDTOs from '../../../shared/core/contracts';
-import type * as ContractTypes from '../../../shared/core/contracts';
-import * as AppConstants from '../../../shared/core/common/constants';
-import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
-import {
   AccordionComponent,
   FormFlowComponent,
   IndicatorComponent,
@@ -49,9 +40,16 @@ import {
   type UiAccordionActionMenuSelectEvent,
   type UiAccordionItem,
   type UiAccordionModel,
-  type UiAccordionToggleEvent
-} from '../../../shared/ui';
-import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+  type UiAccordionToggleEvent,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
+import type * as AppDTOs from '../../../shared/core/contracts';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import * as AppConstants from '../../../shared/core/common/constants';
+import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
+
+import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 import {
   EventTournamentGroupsPopupConverter,
   ActivityChatSingleRowConverter,
@@ -60,21 +58,19 @@ import {
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   EventSubeventGroupFormPopupComponent
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 import {
   ActivityStore,
   type ActivityResourceMemberDeltaSyncState
-} from '../../../shared/ui/context/stores/activity.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
 
 type TournamentGroupsHeaderAction = 'add-group';
 type TournamentGroupsTab = 'standings' | 'history';

@@ -1,9 +1,27 @@
-import { ContactChatAccessStore } from '../../../shared/ui/context/stores/contact-chat-access.store';
-import type { ContactChatAccessAction } from '../../../shared/core/contracts/contact.interface';
-import { ChatsService } from '../../../shared/core/base/services/chats.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
-import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../../../shared/ui/context/stores/activities-popup.store';
+import { ContactChatAccessStore } from '../../../shared/ui/context/stores/chat/contact-chat-access.store';
+import type { ContactChatAccessAction } from '../../../shared/core/contracts/accounts/contact.interface';
+import { ChatsService } from '../../../shared/core/base/services/chat/chats.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import {
+  I18nPipe,
+  AppMenuComponent,
+  AppMenuTriggerComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type ListQuery,
+  type PageResult,
+  type PopupActionEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  DialogStore,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
+import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   Component,
   HostListener,
@@ -33,47 +51,16 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
-import {
-  AppMenuComponent,
-  AppMenuTriggerComponent,
-  PopupComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type ListQuery,
-  type PageResult,
-  type PopupActionEvent,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListLoadPage
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '../../../shared/core/base/app-utils';
+
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import {
-  ContactsService as ContactsDataService,
-  ExplanationGuideService,
-  UsersService,
-  type ActivityMemberDTO,
-  type ContactFormValue,
-  type ContactListFilters,
-  type ContactListItem,
-  type ContactMethodDraft,
-  type ContactMethodItem,
-  type ContactMethodOption,
-  type ContactMethodType,
-  type StoredContact,
-  type UserDto
-} from '../../../shared/core';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+
+import { ContactsService as ContactsDataService, UsersService, type ActivityMemberDTO, type ContactFormValue, type ContactListFilters, type ContactListItem, type ContactMethodDraft, type ContactMethodItem, type ContactMethodOption, type ContactMethodType, type StoredContact, type UserDto } from '../../../shared/core';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   {

@@ -1,8 +1,28 @@
 import { CommunityServicesHomeComponent } from '../community-services-home/community-services-home.component';
 import { CommunityAnnouncementsComponent } from '../../../shared/ui/components/community-announcements/community-announcements.component';
 import { WorkHomeComponent } from '../work-home/work-home.component';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
-import { ratingCriteriaFor, type RatingSnapshot } from '../../../shared/core/contracts/rating-snapshot';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
+import {
+  type RatingSnapshot,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type CardProfileViewData,
+  type ListQuery,
+  type PageResult,
+  type PairCardData,
+  type AppMenuRateConfig,
+  type SingleCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListStateChange,
+  PairCardComponent,
+  SingleCardComponent,
+  SmartListComponent,
+  ExplanationGuideService,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
+import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import {
   ChangeDetectionStrategy,
@@ -26,41 +46,23 @@ import {
 } from 'rxjs';
 import {
   ActivitiesPopupStore
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
-import type {
-  AppMenuItem,
-  AppMenuItemSelectEvent,
-  AppMenuPalette,
-  CardProfileViewData,
-  ListQuery,
-  PageResult,
-  PairCardData,
-  AppMenuRateConfig,
-  SingleCardData,
-  SmartListConfig,
-  SmartListLoadPage,
-  SmartListStateChange
-} from '../../../shared/ui';
-import { PairCardComponent } from '../../../shared/ui/components/core/smart-list/card/pair-card/pair-card.component';
-import {
-  SingleCardComponent
-} from '../../../shared/ui/components/core/smart-list/card/single-card/single-card.component';
-import { SmartListComponent } from '../../../shared/ui/components/core/smart-list/smart-list.component';
+
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { GameService } from '../../../shared/core/base/services/game.service';
-import { UsersService } from '../../../shared/core/base/services/users.service';
+} from '../../../shared/core/common/app-static-data';
+
+import { GameService } from '../../../shared/core/base/services/accounts/game.service';
+import { UsersService } from '../../../shared/core/base/services/accounts/users.service';
 import type { UserDto, UserGameMode, UserGameSocialCard } from '../../../shared/core';
 import {
   HomeGameFilterPopupComponent
 } from '../home-game-filter-popup/home-game-filter-popup.component';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -77,10 +79,10 @@ import {
   normalizeGameFilter,
   parseGameHeightCm
 } from '../../shared/home-game-filter.shared';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
 
 type LocalPopup = 'filter' | null;
 
@@ -2640,7 +2642,6 @@ export class HomeComponent implements OnDestroy {
     this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
     this.cdr.markForCheck();
   }
-
 
   private maybeStartGameStackPaginationLoad(): void {
     const stateKey = this.gameStackPaginationStateKey();

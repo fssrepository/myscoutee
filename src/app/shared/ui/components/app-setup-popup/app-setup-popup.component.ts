@@ -1,12 +1,19 @@
-import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../../../../entry/components/entry-landing/landing-guide-surface.directive';
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { AppMenuComponent, type AppMenuItem, type AppMenuModel, type AppMenuItemSelectEvent } from '../core/menu';
-import { I18nPipe } from '../../pipes';
+import { AppSetupStore } from '../../context/stores/app/app-setup.store';
+import {
+  PopupComponent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuItemSelectEvent,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
+
 import { APP_SETUP_CONFIG } from '../../../core/base/config';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 @Component({
   selector: 'app-setup-popup',

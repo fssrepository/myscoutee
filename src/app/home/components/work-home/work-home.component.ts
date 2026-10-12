@@ -1,18 +1,26 @@
-import { ratingCriteriaFor } from '../../../shared/core/contracts/rating-snapshot';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
+import {
+  ExplanationGuideService,
+  type UiBranding as DeploymentBrandingDto,
+  SmartListComponent,
+  SingleCardComponent,
+  type SingleCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '@fssrepository/myscoutee-components';
 import { ChangeDetectionStrategy, Component, Input, OnDestroy, inject, computed } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
-import { WorkHomeStore } from '../../../shared/ui/context/stores/work-home.store';
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/campaign.converter';
-import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignFilters, type CampaignCategory, type CampaignKind } from '../../../shared/core/contracts/campaign.interface';
-import type { DeploymentBrandingDto } from '../../../shared/core/contracts/deployment-configuration.interface';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { SmartListComponent, SingleCardComponent, type SingleCardData, type SmartListConfig, type SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../shared/ui/components/core/menu';
+import { WorkHomeStore } from '../../../shared/ui/context/stores/services/work-home.store';
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { CampaignConverter, CAMPAIGN_CATEGORY_STYLE, CAMPAIGN_KIND_STYLE } from '../../../shared/ui/converters/activity/campaign.converter';
+import { CAMPAIGN_CATEGORIES, CAMPAIGN_KINDS, type Campaign, type CampaignFilters, type CampaignCategory, type CampaignKind } from '../../../shared/core/contracts/campaigns/campaign.interface';
+
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 
 @Component({ selector: 'app-work-home', standalone: true,
   imports: [HomeHeaderComponent, SmartListComponent, SingleCardComponent],

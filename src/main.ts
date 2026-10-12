@@ -97,7 +97,7 @@ prepareDemoFailover()
     if (localUserId) {
       appConfig.providers.push(provideAppInitializer(() => {
         const injector = inject(Injector);
-        return import('./app/shared/core/local/seed/services/demo-bootstrap.service').then(async module => {
+        return import('./app/shared/core/local/seed/services/platform/demo-bootstrap.service').then(async module => {
           const seed = injector.get(module.SeedDemoBootstrapService);
           await seed.ensureDemoSelectorReady('member');
           await seed.ensureUserReady(localUserId, 'member');
@@ -108,7 +108,7 @@ prepareDemoFailover()
     // Only demo sessions can use these seeds. Real sessions must not download
     // and evaluate the demo builders while authentication is still starting.
     if (demoFailoverSeedWarmupNeeded()) {
-      void import('./app/shared/core/local/seed/services/demo-bootstrap.service').catch(() => undefined);
+      void import('./app/shared/core/local/seed/services/platform/demo-bootstrap.service').catch(() => undefined);
     }
     return app;
   })

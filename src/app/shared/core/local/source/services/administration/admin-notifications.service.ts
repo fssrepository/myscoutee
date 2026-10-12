@@ -1,0 +1,472 @@
+import { LocalServiceFeedbackService } from '../community/service-feedback.service';
+import { LocalCommunityAnnouncementsService } from '../community/community-announcements.service';
+import { LocalCommunityCasesService } from '../community/community-cases.service';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../../contracts/groups/group-type';
+import { LocalContentModerationRepository } from '../../repositories/content/content-moderation.repository';
+import { Injectable, inject } from '@angular/core';
+
+import type {
+  AdminNotificationCenterState,
+  AdminNotificationProcessFilter,
+  AdminNotificationRule,
+  AdminNotificationRuleLiveEvent,
+  AdminNotificationRunResult
+} from '../../../../contracts/administration/admin.interface';
+import { LocalAdminNotificationsRepository } from '../../repositories/administration/admin-notifications.repository';
+import { LocalRouteDelayService } from '../platform/route-delay.service';
+import { LocalEventsService } from '../events/events.service';
+import { LocalAdminAffinityGraphRepository } from '../../repositories/affinity/admin-affinity-graph.repository';
+import { LocalAdminStatsRepository } from '../../repositories/administration/admin-stats.repository';
+
+const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
+const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
+const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
+const PROCESS_FILTER_ALL = 'all';
+const PROCESS_FILTER_ACTIVE = 'active';
+const PROCESS_FILTER_SUSPENDED = 'suspended';
+const PROCESS_FILTER_RUNNING = 'running';
+const PROCESS_FILTER_FAILED = 'failed';
+const PROCESS_PROBLEM_STATUSES = new Set(['failed', 'error', 'missed', 'skipped']);
+const INTERVAL_UNIT_MILLIS: Record<string, number> = {
+  seconds: 1000,
+  minutes: 60_000,
+  hours: 3_600_000,
+  days: 86_400_000,
+  weeks: 604_800_000,
+  months: 2_592_000_000,
+  years: 31_536_000_000
+};
+
+export interface LocalAdminNotificationDelayOptions {
+  skipDemoDelay?: boolean;
+  filter?: AdminNotificationProcessFilter | null;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LocalAdminNotificationsService extends LocalRouteDelayService {
+  private readonly serviceFeedback=inject(LocalServiceFeedbackService);
+  private readonly repository = inject(LocalAdminNotificationsRepository);
+  private readonly moderation = inject(LocalContentModerationRepository);
+  private readonly moderationRunning = new Set<string | null>();
+  private readonly checkoutPurgeRunning = new Set<string | null>();
+  private readonly events = inject(LocalEventsService);
+  private readonly graph = inject(LocalAdminAffinityGraphRepository);
+  private readonly announcements = inject(LocalCommunityAnnouncementsService);
+  private readonly communityCases = inject(LocalCommunityCasesService);
+  private readonly stats = inject(LocalAdminStatsRepository);
+  private readonly projectionRunning = new Set<string>();
+
+  async runStatsTick(): Promise<void> {
+    for (const groupId of await this.repository.groupIds()) {
+      for (const key of ['affinity-graph-layout', 'admin-telemetry']) {
+        const state = await this.readNotificationCenter(groupId);
+        const rule = state.rules.find(item => item.ruleKey === key);
+        if (!rule?.enabled || rule.timing?.mode !== 'interval' || Date.parse(this.nextRunAtIso(rule)) > Date.now()) continue;
+        await this.runProjection(rule, key, 'scheduled', groupId);
+      }
+    }
+  }
+
+  async runCommunityTasksTick(): Promise<void> {
+    await this.serviceFeedback.drain();
+    if (!(await this.repository.groupIds()).includes(COMMUNITY_BASE_GROUP_ID)) return;
+    const state = await this.readNotificationCenter(COMMUNITY_BASE_GROUP_ID);
+    for (const rule of state.rules.filter(item => ['community-scheduled-cases', 'community-voting-close'].includes(item.ruleKey))) {
+      if (!rule.enabled || rule.timing?.mode !== 'interval' || Date.parse(this.nextRunAtIso(rule)) > Date.now()) continue;
+      await this.runProjection(rule, rule.ruleKey, 'scheduled', COMMUNITY_BASE_GROUP_ID);
+    }
+  }
+
+  private async runProjection(rule: AdminNotificationRule, runnerUser: string, trigger: 'manual' | 'scheduled', groupId: string | null): Promise<AdminNotificationRunResult> {
+    const key = `${groupId ?? 'dating'}:${rule.ruleKey}`;
+    if (this.projectionRunning.has(key)) return { ruleKey: rule.ruleKey, label: rule.label, affectedCount: 0,
+      status: 'skipped', detail: '', ranAtIso: new Date().toISOString() };
+    this.projectionRunning.add(key);
+    const start = Date.now(), startedAtIso = new Date(start).toISOString();
+    let count = 0, status = 'completed', detail = '';
+    try {
+      try {
+        if (rule.ruleKey === 'affinity-graph-layout') count = (await this.graph.buildAndWriteGraphSnapshot(groupId)).nodes.length;
+        else if (rule.ruleKey === 'community-voting-close') count = await this.announcements.closeDue(groupId);
+        else if (rule.ruleKey === 'community-scheduled-cases') count = await this.communityCases.createScheduledCases(groupId);
+        else await this.stats.refreshGroup(groupId, await this.graph.readGroupSnapshot(groupId));
+      } catch (error) { status = 'failed'; detail = error instanceof Error ? error.message : String(error); }
+      const finishedAtIso = new Date().toISOString(), durationMillis = Date.now() - start;
+      await this.repository.updateRule(rule.ruleKey, item => ({ ...item,
+        runState: { ...item.runState, currentStatus: status, progressPercent: 100, progressDetail: detail,
+          startedAtIso, finishedAtIso, durationMillis, lastRunAtIso: finishedAtIso, lastRunStatus: status,
+          lastRunDetail: detail, lastRunCount: count, lastRunUser: runnerUser },
+        runHistory: [{ id: crypto.randomUUID(), trigger, runnerUser, startedAtIso, finishedAtIso, durationMillis,
+          processedCount: count, status, detail }, ...(item.runHistory ?? [])].slice(0, 12)
+      }), groupId);
+      return { ruleKey: rule.ruleKey, label: rule.label, affectedCount: count, status, detail, ranAtIso: finishedAtIso };
+    } finally { this.projectionRunning.delete(key); }
+  }
+
+  async runContentApprovalTick(): Promise<void> {
+    for (const groupId of await this.repository.groupIds()) await this.runContentApprovalForGroup(groupId);
+  }
+
+  private async runContentApprovalForGroup(groupId: string | null): Promise<void> {
+    if (this.moderationRunning.has(groupId)) return;
+    this.moderationRunning.add(groupId);
+    try {
+      const state = await this.readNotificationCenter(groupId);
+      const rule = state.rules.find(item => item.ruleKey === 'content-auto-approve');
+      if (!rule?.enabled || rule.timing?.mode !== 'interval') return;
+      const now = Date.now();
+      const last = Date.parse(rule.runState.lastRunAtIso || '');
+      const interval = Math.max(1, Number(rule.timing.intervalSeconds) || Number(rule.timing.intervalMinutes) * 60 || 60) * 1000;
+      if (Number.isFinite(last) && last + interval > now) return;
+      let count = 0, status = 'completed', detail = 'admin.jobs.rule.content.autoApprove.completed';
+      try { count = await this.moderation.approveDue(now, groupId); }
+      catch { status = 'failed'; detail = 'moderation.failed'; }
+      const finishedAtIso = new Date().toISOString(), startedAtIso = new Date(now).toISOString();
+      await this.repository.updateRule(rule.ruleKey, item => ({
+        ...item, runState: { ...item.runState, currentStatus: status, progressPercent: 100, progressDetail: detail,
+          startedAtIso, finishedAtIso, durationMillis: Date.now() - now, lastRunAtIso: finishedAtIso,
+          lastRunStatus: status, lastRunDetail: detail, lastRunCount: count, lastRunUser: 'content-auto-approve' },
+        runHistory: [{ id: crypto.randomUUID(), trigger: 'scheduled', runnerUser: 'content-auto-approve',
+          startedAtIso, finishedAtIso, durationMillis: Date.now() - now, processedCount: count, status, detail }, ...(item.runHistory ?? [])].slice(0, 12)
+      }), groupId);
+    } finally { this.moderationRunning.delete(groupId); }
+  }
+
+  async runCheckoutPurgeTick(): Promise<void> {
+    for (const groupId of await this.repository.groupIds()) await this.runCheckoutPurgeForGroup(groupId);
+  }
+
+  private async runCheckoutPurgeForGroup(groupId: string | null): Promise<void> {
+    if (this.checkoutPurgeRunning.has(groupId)) return;
+    const state = await this.readNotificationCenter(groupId);
+    const rule = state.rules.find(item => item.ruleKey === 'event-checkout-basket-purge');
+    if (!rule?.enabled || rule.timing?.mode !== 'interval') return;
+    const last = Date.parse(rule.runState.lastRunAtIso || '');
+    const interval = Math.max(1, Number(rule.timing.intervalSeconds) || Number(rule.timing.intervalMinutes) * 60 || 60) * 1000;
+    if (Number.isFinite(last) && last + interval > Date.now()) return;
+    await this.runCheckoutPurge(rule, 'checkout-basket-purge', 'scheduled', groupId);
+  }
+
+  private async runCheckoutPurge(
+    rule: AdminNotificationRule, runnerUser: string, trigger: 'manual' | 'scheduled', groupId: string | null
+  ): Promise<AdminNotificationRunResult> {
+    if (this.checkoutPurgeRunning.has(groupId)) return { ruleKey: rule.ruleKey, label: rule.label,
+      affectedCount: 0, status: 'skipped', detail: '', ranAtIso: new Date().toISOString() };
+    this.checkoutPurgeRunning.add(groupId);
+    const started = Date.now(), startedAtIso = new Date(started).toISOString();
+    let count = 0, status = 'completed', detail = '';
+    try {
+      try { count = await this.events.purgeExpiredCheckoutBaskets(started, groupId); }
+      catch (error) { status = 'failed'; detail = error instanceof Error ? error.message : String(error); }
+      const finishedAtIso = new Date().toISOString(), durationMillis = Date.now() - started;
+      await this.repository.updateRule(rule.ruleKey, item => ({
+        ...item, runState: { ...item.runState, currentStatus: status, progressPercent: 100, progressDetail: detail,
+          startedAtIso, finishedAtIso, durationMillis, lastRunAtIso: finishedAtIso,
+          lastRunStatus: status, lastRunDetail: detail, lastRunCount: count, lastRunUser: runnerUser },
+        runHistory: [{ id: crypto.randomUUID(), trigger, runnerUser, startedAtIso, finishedAtIso,
+          durationMillis, processedCount: count, status, detail }, ...(item.runHistory ?? [])].slice(0, 12)
+      }), groupId);
+      return { ruleKey: rule.ruleKey, label: rule.label, affectedCount: count, status, detail, ranAtIso: finishedAtIso };
+    } finally { this.checkoutPurgeRunning.delete(groupId); }
+  }
+
+  async loadNotificationCenter(options?: LocalAdminNotificationDelayOptions, adminUserId?: string | null): Promise<AdminNotificationCenterState> {
+    const groupId = this.repository.groupForAdmin(adminUserId);
+    const state = await this.withAdminNotificationDelay(
+      this.readNotificationCenter(groupId),
+      ADMIN_NOTIFICATION_LOAD_ROUTE,
+      options
+    );
+    return this.applyProcessFilter(state, options?.filter);
+  }
+
+  async saveNotificationCenter(
+    rules: readonly AdminNotificationRule[],
+    adminUserId?: string | null,
+    options?: LocalAdminNotificationDelayOptions
+  ): Promise<AdminNotificationCenterState> {
+    const groupId = this.repository.groupForAdmin(adminUserId);
+    const existing = await this.readNotificationCenter(groupId);
+    const incomingByKey = new Map(rules.map(rule => [rule.ruleKey, rule]));
+    const existingKeys = new Set(existing.rules.map(rule => rule.ruleKey));
+    const mergedRules = existing.rules.map(rule => {
+      const incoming = incomingByKey.get(rule.ruleKey);
+      return incoming ? { ...incoming } : rule;
+    });
+    if (rules.some(rule => !existingKeys.has(rule.ruleKey))) throw new Error('Job is not seeded for this group.');
+    const next: AdminNotificationCenterState = {
+      rules: mergedRules.map(rule => this.withDerivedRuntime(rule)),
+      emailTemplates: existing.emailTemplates,
+      filterCounts: this.processFilterCounts(mergedRules),
+      updatedDate: new Date().toISOString()
+    };
+    await this.repository.writeStore(next, groupId);
+    await this.waitForAdminNotificationDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, options);
+    return this.applyProcessFilter(next, options?.filter);
+  }
+
+  async runNotificationRule(
+    ruleKey: string,
+    adminUserId?: string | null
+  ): Promise<AdminNotificationRunResult> {
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    const state = await this.loadNotificationCenter({ skipDemoDelay: true }, adminUserId);
+    const nowIso = new Date().toISOString();
+    const runnerUser = `${adminUserId ?? ''}`.trim() || 'demo-admin';
+    const groupId = this.repository.groupForAdmin(adminUserId);
+    const selected = state.rules.find(rule => rule.ruleKey === normalizedRuleKey);
+    if (!selected || !selected.enabled || !selected.manualRunEnabled) return {
+      ruleKey: normalizedRuleKey, label: selected?.label ?? normalizedRuleKey, affectedCount: 0,
+      status: 'skipped', detail: 'admin.jobs.demo.action.driven', ranAtIso: nowIso
+    };
+    if (['affinity-graph-layout', 'admin-telemetry', 'community-scheduled-cases', 'community-voting-close'].includes(normalizedRuleKey)) return this.runProjection(selected, runnerUser, 'manual', groupId);
+    if (normalizedRuleKey === 'event-checkout-basket-purge' && selected?.manualRunEnabled) {
+      const result = await this.runCheckoutPurge(selected, runnerUser, 'manual', groupId);
+      await this.waitForRouteDelay(ADMIN_NOTIFICATION_RUN_ROUTE);
+      return result;
+    }
+    const nextRules = state.rules.map(rule => {
+      if (rule.ruleKey !== normalizedRuleKey) {
+        return rule;
+      }
+      const count = rule.triggerKind === 'scheduled_process'
+        ? this.demoScheduledRunCount(rule.ruleKey)
+        : 0;
+      const status = rule.manualRunEnabled ? 'completed' : 'skipped';
+      const detail = rule.manualRunEnabled ? 'admin.jobs.demo.run.recorded' : 'admin.jobs.demo.action.driven';
+      const startedAtIso = new Date(Date.now() - 1150).toISOString();
+      return {
+        ...rule,
+        runState: {
+          ...rule.runState,
+          currentStatus: status,
+          progressPercent: 100,
+          progressDetail: detail,
+          startedAtIso,
+          finishedAtIso: nowIso,
+          durationMillis: 1150,
+          lastRunAtIso: nowIso,
+          lastRunStatus: status,
+          lastRunDetail: detail,
+          lastRunCount: count,
+          lastRunUser: runnerUser
+        },
+        runHistory: [{
+          id: `run-${Date.now()}`,
+          trigger: 'manual',
+          runnerUser,
+          startedAtIso,
+          finishedAtIso: nowIso,
+          durationMillis: 1150,
+          processedCount: count,
+          status,
+          detail
+        }, ...(rule.runHistory ?? [])].slice(0, 12),
+        updatedDate: nowIso,
+        updatedUser: runnerUser
+      };
+    });
+    const saved = await this.saveNotificationCenter(nextRules, adminUserId, { skipDemoDelay: true });
+    await this.waitForRouteDelay(ADMIN_NOTIFICATION_RUN_ROUTE);
+    const updated = saved.rules.find(rule => rule.ruleKey === normalizedRuleKey);
+    return {
+      ruleKey: normalizedRuleKey,
+      label: updated?.label ?? normalizedRuleKey,
+      affectedCount: updated?.runState.lastRunCount ?? 0,
+      status: updated?.runState.lastRunStatus ?? 'skipped',
+      detail: updated?.runState.lastRunDetail ?? 'Rule was not found.',
+      ranAtIso: updated?.runState.lastRunAtIso ?? nowIso
+    };
+  }
+
+  async loadNotificationRuleRuntime(ruleKey: string, adminUserId?: string | null): Promise<AdminNotificationRule | null> {
+    const groupId = this.repository.groupForAdmin(adminUserId);
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    if (!normalizedRuleKey) {
+      return null;
+    }
+    const state = await this.readNotificationCenter(groupId);
+    return state.rules.find(rule => rule.ruleKey === normalizedRuleKey) ?? null;
+  }
+
+  subscribeNotificationRuleUpdates(
+    _adminUserId: string | null | undefined,
+    _onEvent: (event: AdminNotificationRuleLiveEvent) => void
+  ): () => void {
+    return () => {};
+  }
+
+  private async readNotificationCenter(groupId: string | null = null): Promise<AdminNotificationCenterState> {
+    await this.repository.whenReady();
+    const existing = await this.repository.readStore<AdminNotificationCenterState>(groupId);
+    if (!existing?.rules?.length) {
+      throw new Error('Demo notification center is not bootstrapped.');
+    }
+    return {
+      ...existing,
+      rules: existing.rules.map(rule => this.withDerivedRuntime(rule))
+    };
+  }
+
+  private withDerivedRuntime(rule: AdminNotificationRule): AdminNotificationRule {
+    return {
+      ...rule,
+      runState: {
+        ...rule.runState,
+        nextRunAtIso: this.nextRunAtIso(rule)
+      }
+    };
+  }
+
+  private nextRunAtIso(rule: AdminNotificationRule): string {
+    if (!rule.enabled || rule.timing?.mode !== 'interval') {
+      return '';
+    }
+    const amount = Math.max(1, Math.trunc(Number(rule.timing.intervalAmount) || 1));
+    const unit = `${rule.timing.intervalUnit ?? ''}`.trim();
+    const unitMillis = INTERVAL_UNIT_MILLIS[unit]
+      ?? Math.max(1, Math.trunc(Number(rule.timing.intervalSeconds) || 60)) * 1000;
+    const lastRunAt = Date.parse(rule.runState?.lastRunAtIso || '');
+    if (!Number.isFinite(lastRunAt)) return new Date().toISOString();
+    let base = lastRunAt;
+    if (unit === 'minutes') base -= base % 60_000;
+    return new Date(base + amount * unitMillis).toISOString();
+  }
+
+  private applyProcessFilter(
+    state: AdminNotificationCenterState,
+    filter: AdminNotificationProcessFilter | null | undefined
+  ): AdminNotificationCenterState {
+    const rules = state.rules ?? [];
+    const normalizedFilter = this.normalizeProcessFilter(filter);
+    return {
+      ...state,
+      filterCounts: this.processFilterCounts(rules),
+      rules: normalizedFilter === PROCESS_FILTER_ALL
+        ? rules
+        : rules.filter(rule => this.matchesProcessFilter(rule, normalizedFilter))
+    };
+  }
+
+  private processFilterCounts(rules: readonly AdminNotificationRule[]): Record<string, number> {
+    const processRules = rules.filter(rule => rule.triggerKind === 'scheduled_process');
+    return {
+      [PROCESS_FILTER_ALL]: processRules.length,
+      [PROCESS_FILTER_ACTIVE]: processRules.filter(rule =>
+        rule.enabled && this.processStatusKind(rule) !== PROCESS_FILTER_FAILED
+      ).length,
+      [PROCESS_FILTER_SUSPENDED]: processRules.filter(rule =>
+        this.processStatusKind(rule) === PROCESS_FILTER_SUSPENDED
+      ).length,
+      [PROCESS_FILTER_RUNNING]: processRules.filter(rule =>
+        this.processStatusKind(rule) === PROCESS_FILTER_RUNNING
+      ).length,
+      [PROCESS_FILTER_FAILED]: processRules.filter(rule =>
+        this.processStatusKind(rule) === PROCESS_FILTER_FAILED
+      ).length
+    };
+  }
+
+  private matchesProcessFilter(rule: AdminNotificationRule, filter: AdminNotificationProcessFilter): boolean {
+    if (rule.triggerKind !== 'scheduled_process') {
+      return false;
+    }
+    const status = this.processStatusKind(rule);
+    if (filter === PROCESS_FILTER_ACTIVE) {
+      return rule.enabled && status !== PROCESS_FILTER_FAILED;
+    }
+    if (filter === PROCESS_FILTER_SUSPENDED) {
+      return status === PROCESS_FILTER_SUSPENDED;
+    }
+    if (filter === PROCESS_FILTER_RUNNING) {
+      return status === PROCESS_FILTER_RUNNING;
+    }
+    if (filter === PROCESS_FILTER_FAILED) {
+      return status === PROCESS_FILTER_FAILED;
+    }
+    return true;
+  }
+
+  private processStatusKind(rule: AdminNotificationRule): AdminNotificationProcessFilter | 'ready' {
+    const currentStatus = `${rule.runState?.currentStatus ?? ''}`.trim().toLowerCase();
+    if (currentStatus === PROCESS_FILTER_RUNNING) {
+      return PROCESS_FILTER_RUNNING;
+    }
+    const lastStatus = `${rule.runState?.lastRunStatus || currentStatus}`.trim().toLowerCase();
+    if (PROCESS_PROBLEM_STATUSES.has(lastStatus)) {
+      return PROCESS_FILTER_FAILED;
+    }
+    if (!rule.enabled || currentStatus === PROCESS_FILTER_SUSPENDED) {
+      return PROCESS_FILTER_SUSPENDED;
+    }
+    return 'ready';
+  }
+
+  private normalizeProcessFilter(
+    filter: AdminNotificationProcessFilter | null | undefined
+  ): AdminNotificationProcessFilter {
+    return [
+      PROCESS_FILTER_ACTIVE,
+      PROCESS_FILTER_SUSPENDED,
+      PROCESS_FILTER_RUNNING,
+      PROCESS_FILTER_FAILED
+    ].includes(filter as AdminNotificationProcessFilter)
+      ? filter as AdminNotificationProcessFilter
+      : PROCESS_FILTER_ALL;
+  }
+
+  private async withAdminNotificationDelay<T>(
+    work: Promise<T>,
+    route: string,
+    options?: LocalAdminNotificationDelayOptions
+  ): Promise<T> {
+    if (options?.skipDemoDelay === true) {
+      return await work;
+    }
+    const delay = this.waitForRouteDelay(route);
+    try {
+      const [result] = await Promise.all([work, delay]);
+      return result;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async waitForAdminNotificationDelay(
+    route: string,
+    options?: LocalAdminNotificationDelayOptions
+  ): Promise<void> {
+    if (options?.skipDemoDelay === true) {
+      return;
+    }
+    await this.waitForRouteDelay(route);
+  }
+
+  private demoScheduledRunCount(ruleKey: string): number {
+    switch (ruleKey) {
+      case 'event-random-groups':
+        return 1;
+      case 'event-auto-inviter':
+        return 3;
+      case 'event-tournament-review':
+        return 2;
+      case 'event-counter-expiry':
+        return 6;
+      case 'notification-outbox':
+        return 12;
+      case 'affinity-recompute':
+        return 8;
+      case 'affinity-graph-layout':
+        return 1;
+      case 'scheduled-messages':
+        return 4;
+      case 'account-purge':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+}

@@ -1,13 +1,8 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 
-import {
-  AppMenuComponent,
-  I18nPipe,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui';
+import { AppMenuComponent, I18nPipe, type AppMenuItem, type AppMenuItemSelectEvent } from '@fssrepository/myscoutee-components';
 
-import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import type * as AssetContracts from '../../../shared/core/contracts/assets/asset.interface';
 
 @Component({
   selector: 'app-asset-ticket-scanner-popup',

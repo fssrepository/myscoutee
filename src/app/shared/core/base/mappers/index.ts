@@ -4,5 +4,5 @@ export {
   type UserRateGameCardPairRecordDTO,
   type UserRateGameCardRecordDTO,
   type UserRateRecordDTO
-} from './rate.mapper';
-export * from './operator-configuration.mapper';
+} from './affinity/rate.mapper';
+export * from './operator/operator-configuration.mapper';

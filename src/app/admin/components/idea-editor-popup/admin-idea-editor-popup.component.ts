@@ -1,5 +1,33 @@
-import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/image-gallery.interface';
-import { ImageGalleryStore } from '../../../shared/ui/context/stores/image-gallery.store';
+import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/media/image-gallery.interface';
+import {
+  ImageGalleryStore,
+  CARD_MENU_ACTIONS,
+  InfoCardComponent,
+  type InfoCardData,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardMenuAction,
+  ImageCarouselComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  IndicatorComponent,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListConverter,
+  type SmartListLoadPage,
+  DialogStore,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
 import {
   CommonModule
 } from '@angular/common';
@@ -25,8 +53,8 @@ import {
 
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
+} from '../../../shared/core/common/app-static-data';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import {
   IdeaPostsService,
   type IdeaPostAdminCountsDto,
@@ -35,53 +63,12 @@ import {
   type IdeaPostDto,
   type IdeaPostSaveRequestDto
 } from '../../../shared/core';
-import {
-  CARD_MENU_ACTIONS,
-  InfoCardComponent,
-  type InfoCardData,
-  type CardMenuActionEvent,
-  type CardMenuRequestEvent,
-  type CardMenuAction
-} from '../../../shared/ui/components/core/smart-list/card';
-import {
-  ImageCarouselComponent
-} from '../../../shared/ui/components/core/image-carousel';
-import {
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
-import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
-import {
-  PopupComponent,
-  type PopupActionEvent,
-  type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
-  SmartListComponent,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListConverter,
-  type SmartListLoadPage
-} from '../../../shared/ui/components/core/smart-list';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
-import {
-  I18nPipe
-} from '../../../shared/ui';
+
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = IdeaPostAdminFilter;

@@ -3,15 +3,17 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
-import { adminAccessInterceptor } from './shared/core/http/admin-access.interceptor';
-import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interceptor';
-import { operatorBootstrapAuthInterceptor } from './shared/core/http/operator-bootstrap-auth.interceptor';
-import { paymentProviderSyncInterceptor } from './shared/core/http/payment-provider-sync.interceptor';
-import { sessionModeInterceptor } from './shared/core/http/session-mode.interceptor';
-import { connectivityInterceptor } from './shared/core/http/connectivity.interceptor';
+import { MYSCOUTEE_UI_PROVIDERS } from './shared/ui/context/ui.providers';
+import { adminAccessInterceptor } from './shared/core/http/interceptors/access/admin-access.interceptor';
+import { firebaseAuthInterceptor } from './shared/core/http/interceptors/accounts/firebase-auth.interceptor';
+import { operatorBootstrapAuthInterceptor } from './shared/core/http/interceptors/operator/operator-bootstrap-auth.interceptor';
+import { paymentProviderSyncInterceptor } from './shared/core/http/interceptors/payments/payment-provider-sync.interceptor';
+import { sessionModeInterceptor } from './shared/core/http/interceptors/accounts/session-mode.interceptor';
+import { connectivityInterceptor } from './shared/core/http/interceptors/platform/connectivity.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    ...MYSCOUTEE_UI_PROVIDERS,
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([

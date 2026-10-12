@@ -1,4 +1,26 @@
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  HeaderCardComponent,
+  ImageCarouselComponent,
+  PopupComponent,
+  type HeaderCardModel,
+  type PopupControl,
+  type PopupModel,
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowDraft,
+  type FormFlowModel,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   CommonModule
 } from '@angular/common';
@@ -24,62 +46,36 @@ import {
 } from '@angular/material/icon';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   AppUtils
-} from '../../../shared/app-utils';
-import {
-  ExplanationGuideService,
-  USER_PROFILE_SAVE_CONTEXT_KEY,
-  UsersService
-} from '../../../shared/core';
+} from '../../../shared/core/base/app-utils';
+
+import { USER_PROFILE_SAVE_CONTEXT_KEY, UsersService } from '../../../shared/core';
 import {
   ProfileExtDto,
   UserDto
-} from '../../../shared/core/contracts/user.interface';
-import {
-  HeaderCardComponent,
-  ImageCarouselComponent,
-  PopupComponent,
-  type HeaderCardModel,
-  type PopupControl,
-  type PopupModel,
-  ProfileExperienceManagerComponent
-} from '../../../shared/ui';
-import {
-  AppMenuComponent,
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
-import {
-  FormFlowComponent,
-  type FormFlowActionEvent,
-  type FormFlowDraft,
-  type FormFlowModel
-} from '../../../shared/ui/components/core/form/flow';
+} from '../../../shared/core/contracts/accounts/user.interface';
+
+import { ProfileExperienceManagerComponent } from '../../../shared/ui';
+
 import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import type * as ProfileContracts from '../../../shared/core/contracts/accounts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import { IntegrationSettingsPopupComponent } from '../integration-settings-popup/integration-settings-popup.component';
-import { CalendarExportStore } from '../../../shared/ui/context/stores/calendar-export.store';
+import { CalendarExportStore } from '../../../shared/ui/context/stores/activity/calendar-export.store';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 
@@ -266,7 +262,7 @@ export class ProfileEditorComponent implements OnDestroy {
 
   protected get profileEditorAge(): number {
     const profile = this.profileEditorData.profile;
-    return AppUtils.ageFromIsoDate(profile.birthday, profile.age);
+    return UiDateUtils.ageFromIsoDate(profile.birthday, profile.age);
   }
 
   protected onProfileEditorFlowAction(event: FormFlowActionEvent): void {

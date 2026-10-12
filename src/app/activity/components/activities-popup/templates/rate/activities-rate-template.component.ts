@@ -1,19 +1,5 @@
-import { ratingCriteriaFor, type RatingSnapshot } from '../../../../../shared/core/contracts/rating-snapshot';
-
 import {
-  ChangeDetectionStrategy,
-  Component,
-  EventEmitter,
-  Input,
-  OnChanges,
-  Output,
-  SimpleChanges,
-  ViewEncapsulation
-} from '@angular/core';
-
-import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
-import type * as ContractTypes from '../../../../../shared/core/contracts';
-import {
+  type RatingSnapshot,
   type AppMenuItemSelectEvent,
   type AppMenuItem,
   type CardMenuRequestEvent,
@@ -26,7 +12,23 @@ import {
   type PairCardData,
   type SmartListItemMenuRequest,
   type SingleCardData
-} from '../../../../../shared/ui';
+} from '@fssrepository/myscoutee-components';
+import { ratingCriteriaFor } from '../../../../../shared/core/contracts/affinity/rating-snapshot';
+
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  ViewEncapsulation
+} from '@angular/core';
+
+import type { ActivityRateDTO } from '../../../../../shared/core/contracts/common/activity.interface';
+import type * as ContractTypes from '../../../../../shared/core/contracts';
+
 import {
   ActivityRatePairCardConverter,
   ActivityRateSingleCardConverter,

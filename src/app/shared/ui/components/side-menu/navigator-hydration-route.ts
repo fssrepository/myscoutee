@@ -1,4 +1,4 @@
-import { AppUtils } from '../../../app-utils';
+import { AppUtils } from '../../../core/base/app-utils';
 
 export function isNavigatorHydrationRoute(routeUrl: string): boolean {
   const path = AppUtils.normalizeRoutePath(routeUrl);

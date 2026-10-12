@@ -3,12 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 
 import { HelpCenterService } from '../../../core';
-import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import {
   DEFAULT_DEPLOYMENT_BRANDING,
   type DeploymentPrivacyContactDto
-} from '../../../core/contracts/deployment-configuration.interface';
+} from '../../../core/contracts/platform/deployment-configuration.interface';
 import { DocumentViewerComponent } from './document-viewer.component';
 import type { DocumentViewerConfig } from './document-viewer.types';
 
@@ -69,6 +69,38 @@ describe('DocumentViewerComponent deployment privacy tokens', () => {
 
   afterEach(() => {
     TestBed.resetTestingModule();
+  });
+
+  it('renders the loaded route document without another user interaction', async () => {
+    let complete!: () => void;
+    const preload = new Promise<void>(resolve => { complete = resolve; });
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { snapshot: { data: { documentKind: 'privacy' } } } });
+    TestBed.overrideProvider(HelpCenterService, { useValue: {
+      preload: () => preload,
+      activePrivacyRevision: () => ({ summary: 'Loaded privacy', description: 'Loaded content', version: 2, sections: [] })
+    } });
+    const fixture = TestBed.createComponent(DocumentViewerComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Loading privacy content');
+    complete();
+    await preload;
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Loaded privacy');
+    expect(fixture.nativeElement.textContent).not.toContain('Loading privacy content');
+  });
+
+  it('renders the unavailable state when a route document fails to load', async () => {
+    let fail!: (error: Error) => void;
+    const preload = new Promise<void>((_resolve, reject) => { fail = reject; });
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { snapshot: { data: { documentKind: 'privacy' } } } });
+    TestBed.overrideProvider(HelpCenterService, { useValue: { preload: () => preload } });
+    const fixture = TestBed.createComponent(DocumentViewerComponent);
+    fixture.detectChanges();
+    fail(new Error('Unavailable'));
+    await preload.catch(() => undefined);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.document-viewer-status-loading')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Privacy is not available');
   });
 
   it('escapes and renders a configured contact without creating injected HTML', () => {

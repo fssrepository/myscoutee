@@ -1,4 +1,4 @@
-import type { UserRecord } from '../../../source/entity/user.entity';
+import type { UserRecord } from '../../../source/entity/accounts/user.entity';
 import type { AdminSeedUserDto } from './admin-seed.models';
 
 export class AdminProfileSeedBuilder {

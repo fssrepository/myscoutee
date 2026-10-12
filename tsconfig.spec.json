@@ -10,7 +10,9 @@
     ]
   },
   "include": [
+    "src/app/shared/ui/context/ui.providers.ts",
     "src/**/*.d.ts",
+    "src/test-browser.ts",
     "src/**/*.spec.ts"
   ]
 }

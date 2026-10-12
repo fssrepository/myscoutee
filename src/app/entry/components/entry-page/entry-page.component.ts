@@ -1,12 +1,18 @@
-import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/group-type';
+import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/landing-explanation-guide';
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
-import { AffiliateReferralService } from '../../../shared/core/base/services/affiliate-referral.service';
+import {
+  ExplanationGuideService,
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSection as HelpCenterSectionDto,
+  DialogStore,
+  type InfoCardData
+} from '@fssrepository/myscoutee-components';
+import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/help/landing-explanation-guide';
+import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
+import { AffiliateReferralService } from '../../../shared/core/base/services/integrations/affiliate-referral.service';
 import {
   ChangeDetectorRef,
   Component,
@@ -26,7 +32,7 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   CURRENT_PROFILE_FORM_VERSION,
   type AuthMode
@@ -40,7 +46,8 @@ import {
 import {
   hasOperatorRole
 } from '../../../shared/core/common/user-role';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto, SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
+
+import type { SupportedCountryDto } from '../../../shared/core/contracts/content/content.interface';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
@@ -50,45 +57,43 @@ import type {
   UserDto,
   UserSelectorListItemDto,
   UserLocationEligibilityResponseDto
-} from '../../../shared/core/contracts/user.interface';
+} from '../../../shared/core/contracts/accounts/user.interface';
 import {
   AdminWorkspaceDataService
-} from '../../../shared/core/base/services/admin-workspace-data.service';
+} from '../../../shared/core/base/services/administration/admin-workspace-data.service';
 import {
   HelpCenterService
-} from '../../../shared/core/base/services/help-center.service';
+} from '../../../shared/core/base/services/help/help-center.service';
 import {
   FirebaseAppService
-} from '../../../shared/core/base/services/firebase-app.service';
-import { FirebaseMessagingService } from '../../../shared/core/base/services/firebase-messaging.service';
-import { AppLocationService } from '../../../shared/core/base/services/app-location.service';
-import { AppSetupStore } from '../../../shared/ui/context/stores/app-setup.store';
+} from '../../../shared/core/base/services/accounts/firebase-app.service';
+import { FirebaseMessagingService } from '../../../shared/core/base/services/notifications/firebase-messaging.service';
+import { AppLocationService } from '../../../shared/core/base/services/accounts/app-location.service';
+import { AppSetupStore } from '../../../shared/ui/context/stores/app/app-setup.store';
 import {
   I18nService
-} from '../../../shared/core/base/services/i18n.service';
+} from '../../../shared/core/base/services/localization/i18n.service';
 import {
   LandingContentService
-} from '../../../shared/core/base/services/landing-content.service';
+} from '../../../shared/core/base/services/content/landing-content.service';
 import {
   PrivacyPolicyService, canonicalEntryConsentVersion
-} from '../../../shared/core/base/services/privacy-policy.service';
+} from '../../../shared/core/base/services/help/privacy-policy.service';
 import {
   SessionService,
   type AppSession
-} from '../../../shared/core/base/services/session.service';
+} from '../../../shared/core/base/services/accounts/session.service';
 import {
   TermsPolicyService
-} from '../../../shared/core/base/services/terms-policy.service';
+} from '../../../shared/core/base/services/help/terms-policy.service';
 import {
   UsersService
-} from '../../../shared/core/base/services/users.service';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '../../../shared/core/base/services/accounts/users.service';
+
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
-import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
+
 import {
   DocumentViewerComponent,
   type DocumentViewerAction,
@@ -98,7 +103,7 @@ import {
 } from '../../../shared/ui/components/document-viewer';
 import {
   HelpCenterRevisionDocumentViewerConfigConverter
-} from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
+} from '../../../shared/ui/converters/app/help-center-revision-document-viewer.converter';
 import {
   EntryFirebaseAuthPopupComponent
 } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
@@ -111,7 +116,7 @@ import {
 import {
   DemoBootstrapSelectorStore,
   type DemoBootstrapSelectorMode
-} from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
+} from '../../../shared/ui/context/stores/app/demo-bootstrap-selector.store';
 
 interface EntryDemoUserSelectionEvent {
   userId: string;
@@ -194,7 +199,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
-
 
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
@@ -321,7 +325,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (this.entryNetworkUnavailable) {
       return;
     }
-    if (!this.ensureEntryConsent()) {
+    if (!await this.ensureEntryConsent()) {
       this.resumeExploreAfterConsent = true;
       return;
     }
@@ -343,7 +347,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     await this.synchronizeDeploymentAuthMode();
-    if (!this.ensureEntryConsent()) {
+    if (!await this.ensureEntryConsent()) {
       return;
     }
     if (this.authMode !== 'firebase' && !options.forceAuthPopup) {
@@ -379,7 +383,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       });
       return;
     }
-    if (!this.ensureEntryConsent()) {
+    if (!await this.ensureEntryConsent()) {
       return;
     }
     this.openDemoUserSelectorPopup('operator', ['operator']);
@@ -567,8 +571,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.syncEntryAuthGateState();
   }
 
-  private ensureEntryConsent(): boolean {
+  private async ensureEntryConsent(): Promise<boolean> {
     if (this.entryNetworkUnavailable) {
+      return false;
+    }
+    if (this.entryPrivacyLoading || this.privacyPolicy.state() === null) {
+      await this.loadEntryContent();
+    }
+    if (this.entryNetworkUnavailable || this.entryPrivacyLoading) {
       return false;
     }
     if (this.hasEntryConsent) {
@@ -576,14 +586,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = true;
-    if (this.privacyPolicy.state() === null) {
-      this.entryPrivacyLoading = true;
-      void this.loadEntryContent();
-      return false;
-    }
-    if (this.entryPrivacyLoading) {
-      return false;
-    }
     return false;
   }
 

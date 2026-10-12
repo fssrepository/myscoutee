@@ -1,3 +1,4 @@
+import { clampNumber, ExplanationGuideService, PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
 import {
   CommonModule
 } from '@angular/common';
@@ -18,24 +19,21 @@ import {
 } from '@angular/material/icon';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
-import { ExplanationGuideService } from '../../../shared/core';
+
 import {
   resolveSideMenuPresentation,
   type SideMenuPresentation
 } from '../../../shared/ui/components/side-menu/side-menu-presenters';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui';
+
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 interface ProfileImpressionsPulseFlags {
   hostTop: boolean;
@@ -480,7 +478,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
     if (!Number.isFinite(value)) {
       return null;
     }
-    return AppUtils.clampNumber(Number(value), 0, 5);
+    return clampNumber(Number(value), 0, 5);
   }
 
   private impressionSectionBadgeList(items: readonly string[] | undefined): string[] | null {

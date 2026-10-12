@@ -13,22 +13,22 @@ import {
 
 import {
   AssetDefaultsBuilder
-} from '../../../shared/core/base/builders/asset-defaults.builder';
+} from '../../../shared/core/base/builders/assets/asset-defaults.builder';
 import {
   AdminWorkspaceDataService
-} from '../../../shared/core/base/services/admin-workspace-data.service';
+} from '../../../shared/core/base/services/administration/admin-workspace-data.service';
 import {
   EventsService
-} from '../../../shared/core/base/services/events.service';
+} from '../../../shared/core/base/services/events/events.service';
 import {
   SessionService
-} from '../../../shared/core/base/services/session.service';
-import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
-import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
+} from '../../../shared/core/base/services/accounts/session.service';
+import type { AssetDTO } from '../../../shared/core/contracts/assets/asset.interface';
+import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/content/share.interface';
 import * as AppConstants from '../../../shared/core/common/constants';
 import type { AssetType } from '../../../shared/core/common/constants';
-import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/app/demo-bootstrap-selector.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
 
 @Component({
   selector: 'app-admin-help-session-page',

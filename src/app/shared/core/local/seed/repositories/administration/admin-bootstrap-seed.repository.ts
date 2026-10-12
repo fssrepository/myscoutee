@@ -1,0 +1,338 @@
+import { LocalAdminStatsRepository } from '../../../source/repositories/administration/admin-stats.repository';
+import { LocalAdminAffinityGraphRepository } from '../../../source/repositories/affinity/admin-affinity-graph.repository';
+import type { ChatRecord, ChatThreadRecord } from '../../../source/entity/chat/chat.entity';
+import type { UserRecord } from '../../../source/entity/accounts/user.entity';
+import { Location } from '@angular/common';
+import { Injectable, inject } from '@angular/core';
+
+import type { AdminChatMessageDto, AdminHelpTarget, AdminMonitoringStateDto, AdminModerationStore, AdminNotificationCenterState, AdminUserDto } from '../../../../contracts/administration/admin.interface';
+import type { ChatMessageDto } from '../../../../contracts/chat/chat.interface';
+
+import { AdminHelpSeedBuilder, AdminModerationSeedBuilder, AdminMonitoringSeedBuilder, AdminNotificationsSeedBuilder, AdminParamsSeedBuilder, AdminProfileSeedBuilder, AdminStatsSeedBuilder } from '../../builders/admin';
+import { SeedChatsRepository } from '../chat/chats-seed.repository';
+import { SeedHelpCenterRepository } from '../help/help-center-seed.repository';
+import { SeedIdeaPostsRepository } from '../content/idea-posts-seed.repository';
+import { SeedUsersRatingsRepository } from '../affinity/users-ratings-seed.repository';
+import { SeedUsersRepository } from '../accounts/users-seed.repository';
+import { SeedAdminStoreRepository, type SeedAdminMenuCounterState, type SeedAdminStores } from './admin-store-seed.repository';
+import { SeedAdminAffinityGraphRepository } from '../affinity/admin-affinity-graph-seed.repository';
+import { SeedShareTokensRepository } from '../content/share-tokens-seed.repository';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class SeedAdminBootstrapRepository {
+  private readonly location = inject(Location);
+  private readonly usersSeed = inject(SeedUsersRepository);
+  private readonly usersRatingsSeed = inject(SeedUsersRatingsRepository);
+  private readonly affinityGraphSeed = inject(SeedAdminAffinityGraphRepository);
+  private readonly chatsSeed = inject(SeedChatsRepository);
+  private readonly shareTokensSeed = inject(SeedShareTokensRepository);
+  private readonly storeSeed = inject(SeedAdminStoreRepository);
+  private readonly statsRepository = inject(LocalAdminStatsRepository);
+  private readonly graphRepository = inject(LocalAdminAffinityGraphRepository);
+  private readonly helpCenterSeed = inject(SeedHelpCenterRepository);
+  private readonly ideaPostsSeed = inject(SeedIdeaPostsRepository);
+
+  async whenUsersReady(): Promise<void> {
+    await this.usersSeed.whenReady();
+  }
+
+  async seedHelpCenter(): Promise<boolean> {
+    return await this.helpCenterSeed.seedDefaults();
+  }
+
+  async seedIdeaPosts(): Promise<boolean> {
+    return await this.ideaPostsSeed.seedDefaults();
+  }
+
+  seedUserRatings(seedUsers?: readonly UserRecord[]): void {
+    this.usersRatingsSeed.seedDefaults(seedUsers);
+  }
+
+  seedChats(): void {
+    this.chatsSeed.seedDefaults();
+  }
+
+  async seedDemoAdminUsers(): Promise<void> {
+    for (const admin of [
+      this.resolveDemoAdmin('admin-demo-ava'),
+      this.resolveDemoAdmin('admin-demo-noel')
+    ]) {
+      const seededAdmin = AdminProfileSeedBuilder.buildDemoAdminUser(admin);
+      const existing = this.findUser(admin.id);
+      if (existing) {
+        const seededImages = this.demoAdminImages(admin.id);
+        const existingImages = existing.images ?? [];
+        const shouldRefreshImages = seededImages.length > 0
+          && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)));
+        const shouldRefreshAdminFields = existing.admin !== true
+          || `${existing.city ?? ''}`.trim().length === 0
+          || `${existing.hostTier ?? ''}`.trim().toLowerCase() !== 'admin';
+        if (shouldRefreshAdminFields || shouldRefreshImages) {
+          await this.saveUser({
+            ...existing,
+            admin: true,
+            city: `${existing.city ?? ''}`.trim() || seededAdmin.city,
+            hostTier: `${existing.hostTier ?? ''}`.trim().toLowerCase() === 'admin' ? existing.hostTier : seededAdmin.hostTier,
+            images: shouldRefreshImages ? seededImages : existingImages
+          });
+        }
+        continue;
+      }
+      await this.saveUser(seededAdmin);
+    }
+  }
+
+  async seedDemoAdminStores(): Promise<SeedAdminMenuCounterState<AdminNotificationCenterState, AdminMonitoringStateDto>> {
+    const moderation = this.buildSeedDemoModerationStore();
+    return await this.resetAndSeedAdminStores({
+      moderation,
+      notificationCenter: AdminNotificationsSeedBuilder.buildScopedNotificationCenter(),
+      monitoring: AdminMonitoringSeedBuilder.buildScopedMonitoringState(),
+      stats: AdminStatsSeedBuilder.buildSeedDemoStatsSnapshot(),
+      params: AdminParamsSeedBuilder.buildScopedParamsStore()
+    });
+  }
+
+  async seedNotificationCenter(): Promise<void> {
+    await this.storeSeed.seedNotificationCenter(() => AdminNotificationsSeedBuilder.buildScopedNotificationCenter());
+  }
+
+  async seedDemoAdminMenuCounters(
+    seedState: SeedAdminMenuCounterState<AdminNotificationCenterState, AdminMonitoringStateDto>
+  ): Promise<void> {
+    const notificationCenter = seedState.notificationCenter;
+    const monitoringState = seedState.monitoring;
+    const adminJobs = this.countFailedNotificationRules(notificationCenter);
+    const adminMetrics = this.countAlertMonitoringMetrics(monitoringState);
+    for (const admin of [
+      this.resolveDemoAdmin('admin-demo-ava'),
+      this.resolveDemoAdmin('admin-demo-noel')
+    ]) {
+      const user = this.findUser(admin.id);
+      if (!user) {
+        continue;
+      }
+      const nextActivities = {
+        ...user.activities,
+        game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
+        chats: Math.max(0, Math.trunc(Number(user.activities?.chats) || 0)),
+        invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
+        events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
+        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
+        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        adminJobs,
+        adminMetrics
+      };
+      if (
+        nextActivities.adminJobs === Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0))
+        && nextActivities.adminMetrics === Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
+      ) {
+        continue;
+      }
+      await this.saveUser({
+        ...user,
+        activities: nextActivities
+      });
+    }
+  }
+
+  async seedDemoAdminSupport(adminUserId?: string): Promise<void> {
+    const admin = this.resolveDemoAdmin(adminUserId);
+    const helpUser = this.findUser('u1');
+    if (!helpUser) {
+      return;
+    }
+    const now = new Date();
+    const chat: ChatRecord & { ownerUserId?: string } = {
+      id: `c-admin-service-help-${helpUser.id}`,
+      avatar: helpUser.initials,
+      title: `MyScoutee Support · ${helpUser.name}`,
+      lastMessage: 'Please help me with what I see on MyScoutee.',
+      lastSenderId: helpUser.id,
+      memberIds: [admin.id, helpUser.id],
+      unread: 1,
+      dateIso: now.toISOString(),
+      channelType: 'appSupport',
+      ownerUserId: admin.id
+    };
+    const messages: ChatMessageDto[] = [];
+    for (let index = 0; index < this.demoAdminHelpTargets().length; index += 1) {
+      const target = this.demoAdminHelpTargets()[index];
+      if (!target) {
+        continue;
+      }
+      const token = this.ensureAdminHelpToken({
+        adminId: admin.id,
+        userId: helpUser.id,
+        targetKey: target.key,
+        targetUrl: target.targetUrl
+      });
+      const helpUrl = this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
+      const sentAt = new Date(now.getTime() + index * 1000);
+      const sentAtIso = sentAt.toISOString();
+      const message: ChatMessageDto = {
+        id: target.messageId,
+        sender: helpUser.name,
+        senderAvatar: {
+          id: helpUser.id,
+          initials: helpUser.initials,
+          gender: helpUser.gender
+        },
+        text: target.text,
+        time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        sentAtIso,
+        mine: false,
+        readBy: [],
+        attachments: [{
+          id: target.attachmentId,
+          type: target.attachmentType,
+          title: target.title,
+          entityId: target.attachmentType === 'link' ? token : target.attachmentEntityId,
+          assetType: target.assetType ?? null,
+          ownerUserId: helpUser.id,
+          subtitle: target.subtitle,
+          description: target.description,
+          url: helpUrl,
+          previewUrl: target.previewUrl ?? null
+        }]
+      };
+      messages.push(message);
+    }
+    this.seedChatMessages(chat, messages);
+  }
+
+  async buildAndWriteAffinityGraphSnapshot(): Promise<void> {
+    await this.affinityGraphSeed.buildAndWriteGraphSnapshot();
+    for (const groupId of [null, 'myscoutee-work', 'myscoutee-community']) await this.statsRepository.refreshGroup(groupId, await this.graphRepository.readGroupSnapshot(groupId));
+  }
+
+  private async resetAndSeedAdminStores<
+    TModeration,
+    TNotification,
+    TMonitoring,
+    TStats,
+    TParams
+  >(
+    stores: SeedAdminStores<TModeration, TNotification, TMonitoring, TStats, TParams>
+  ): Promise<SeedAdminMenuCounterState<TNotification, TMonitoring>> {
+    return await this.storeSeed.resetAndSeedAdminStores(stores);
+  }
+
+  private buildSeedDemoModerationStore(): AdminModerationStore {
+    return AdminModerationSeedBuilder.buildSeedDemoModerationStore({
+      userImageUrl: userId => this.firstUserImage(this.findUser(userId)),
+      chatMessages: (ownerUserId, chatId) => this.demoChatMessages(ownerUserId, chatId)
+    });
+  }
+
+  private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
+    const chat = this.findChatById(ownerUserId, chatId);
+    if (!chat) {
+      return [];
+    }
+    return this.readChatMessagesPage(chat).map(message => ({
+      id: message.id,
+      sender: message.sender,
+      senderUserId: message.senderAvatar.id,
+      senderInitials: message.senderAvatar.initials,
+      senderGender: message.senderAvatar.gender,
+      text: message.text,
+      time: message.time,
+      sentAtIso: message.sentAtIso
+    }));
+  }
+
+  private findUser(userId: string): UserRecord | null {
+    return this.usersSeed.queryUserById(userId);
+  }
+
+  private async saveUser(user: UserRecord): Promise<UserRecord> {
+    return this.usersSeed.upsertUser(user);
+  }
+
+  private findChatById(userId: string, chatId: string): ChatThreadRecord | null {
+    return this.chatsSeed.queryChatItemById(userId, chatId);
+  }
+
+  private readChatMessagesPage(chat: ChatRecord): ChatMessageDto[] {
+    return this.chatsSeed.queryChatMessagesPage(chat, 0, 50);
+  }
+
+  private seedChatMessages(chat: ChatRecord & { ownerUserId?: string }, messages: readonly ChatMessageDto[]): void {
+    this.chatsSeed.seedChatMessages(chat, messages);
+  }
+
+  private ensureAdminHelpToken(request: {
+    adminId: string;
+    userId: string;
+    targetKey: string;
+    targetUrl: string;
+  }): string {
+    return this.shareTokensSeed.ensureAdminHelpToken(request);
+  }
+
+  private demoAdminHelpTargets(): AdminHelpTarget[] {
+    return AdminHelpSeedBuilder.demoAdminHelpTargets();
+  }
+
+  private resolveDemoAdmin(adminUserId?: string): AdminUserDto {
+    const id = `${adminUserId ?? ''}`.trim();
+    if (id === 'admin-demo-noel') {
+      return {
+        id: 'admin-demo-noel',
+        name: 'Noel Safety',
+        initials: 'NS',
+        email: 'admin2@myscoutee.local',
+        images: this.demoAdminImages('admin-demo-noel')
+      };
+    }
+    return {
+      id: 'admin-demo-ava',
+      name: 'Ava',
+      initials: 'AM',
+      email: 'admin1@myscoutee.local',
+      images: this.demoAdminImages('admin-demo-ava')
+    };
+  }
+
+  private demoAdminImages(adminUserId: string): string[] {
+    return AdminProfileSeedBuilder.demoAdminImages(adminUserId);
+  }
+
+  private isLegacyDemoAdminImage(imageUrl: string | null | undefined): boolean {
+    return AdminProfileSeedBuilder.isLegacyDemoAdminImage(imageUrl);
+  }
+
+  private firstUserImage(user: UserRecord | null | undefined): string | null {
+    return user?.images?.find(image => image.trim().length > 0) ?? null;
+  }
+
+  private countFailedNotificationRules(state: AdminNotificationCenterState | null | undefined): number {
+    return (state?.rules ?? []).filter(rule => {
+      const current = `${rule.runState?.currentStatus ?? ''}`.trim().toLowerCase();
+      const last = `${rule.runState?.lastRunStatus ?? ''}`.trim().toLowerCase();
+      return this.isFailureStatus(current) || this.isFailureStatus(last);
+    }).length;
+  }
+
+  private countAlertMonitoringMetrics(state: AdminMonitoringStateDto | null | undefined): number {
+    return (state?.categories ?? [])
+      .flatMap(category => category.nodes ?? [])
+      .flatMap(node => node.metrics ?? [])
+      .filter(metric => metric.status === 'alert' || this.isFailureStatus(metric.key) || this.isFailureStatus(metric.labelKey))
+      .reduce((total, metric) => total + Math.max(0, Math.trunc(Number(metric.value) || 0)), 0);
+  }
+
+  private isFailureStatus(value: string): boolean {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized.includes('failed')
+      || normalized.includes('error')
+      || normalized.includes('missed')
+      || normalized.includes('timeout')
+      || normalized.includes('hiany')
+      || normalized.includes('hiba');
+  }
+}

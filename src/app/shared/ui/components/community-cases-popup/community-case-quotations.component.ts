@@ -1,18 +1,29 @@
 import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
-import { AppUtils } from '../../../app-utils';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { FormFlowComponent, type FormFlowModel } from '../core/form/flow';
-import { SmartListComponent, SingleRowComponent, type SingleRowData, type SmartListConfig, type SmartListLoadPage } from '../core/smart-list';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../core/menu';
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
-import { CommunityCaseConverter } from '../../converters/community-case.converter';
-import type { EventPolicyDTO } from '../../../core/contracts/event.interface';
-import type { CaseOffer } from '../../../core/contracts/community-case.interface';
+import { AppUtils } from '../../../core/base/app-utils';
+import {
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  SmartListComponent,
+  SingleRowComponent,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  I18nPipe,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
+
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+
+import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
+import type { EventPolicyDTO } from '../../../core/contracts/events/event.interface';
+import type { CaseOffer } from '../../../core/contracts/community/community-case.interface';
 type Row = SingleRowData<CaseOffer>;
 const emptyOffer = () => ({amount:0,currency:'EUR',note:'',workPolicies:[] as EventPolicyDTO[],refundPolicies:[] as EventPolicyDTO[]});
 @Component({selector:'app-community-case-quotations',standalone:true,

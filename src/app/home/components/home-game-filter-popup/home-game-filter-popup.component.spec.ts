@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { SimpleChange } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
 import { createInitialGameFilter, GameFilterMenuKind } from '../../shared/home-game-filter.shared';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile-form-flow.converter';
-import type { FormFlowMenuControlConfig } from '../../../shared/ui';
-import { UserDto } from '../../../shared/core/contracts/user.interface';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
+import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile/profile-form-flow.converter';
+import type { FormFlowMenuControlConfig } from '@fssrepository/myscoutee-components';
+import { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 
 class Filter extends HomeGameFilterPopupComponent {
   model = this.filterMenuModel.bind(this);
@@ -14,7 +15,7 @@ class Filter extends HomeGameFilterPopupComponent {
   draft() { return this.filterDraft; }
 }
 function popup() {
-  const component = new Filter();
+  const component = TestBed.runInInjectionContext(() => new Filter());
   component.context = { activeUser: new UserDto(), users: [], filter: createInitialGameFilter(),
     interestOptionGroups: [], valueOptionGroups: [] };
   component.ngOnChanges({ context: new SimpleChange(null, component.context, true) });

@@ -2,13 +2,19 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
-import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
-import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
-import type { PageResult, SmartListConfig, SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
-import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card';
+import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content/content.interface';
+import {
+  provideUiTranslations,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type InfoCardData
+} from '@fssrepository/myscoutee-components';
+
 import { EntryLandingComponent } from './entry-landing.component';
 
 describe('EntryLandingComponent article lists', () => {
@@ -53,6 +59,7 @@ describe('EntryLandingComponent article lists', () => {
     TestBed.configureTestingModule({
       imports: [EntryLandingComponent],
       providers: [
+        provideUiTranslations(I18nService),
         {
           provide: IdeaPostsService,
           useValue: { loadPublishedIdeaCardsPage }
@@ -61,12 +68,14 @@ describe('EntryLandingComponent article lists', () => {
           provide: DeploymentConfigurationService,
           useValue: {
             branding,
-            socialLinks
+            socialLinks,
+            initialize: vi.fn().mockResolvedValue(DEFAULT_DEPLOYMENT_BRANDING)
           }
         },
         {
           provide: I18nService,
           useValue: {
+            currentLanguage: () => 'en',
             revision: i18nRevision.asReadonly(),
             translate: (key: string, fallback?: string) =>
               translations[key] ?? fallback ?? key,
@@ -117,6 +126,7 @@ describe('EntryLandingComponent article lists', () => {
 
     expect(loadPublishedIdeaCardsPage).toHaveBeenCalledOnce();
     expect(loadPublishedIdeaCardsPage).toHaveBeenCalledWith({
+      groupId: null,
       page: 0,
       pageSize: 10,
       cursor: null
@@ -274,7 +284,7 @@ describe('EntryLandingComponent article lists', () => {
     expect(fixture.nativeElement.querySelector('.entry-shell')?.hasAttribute('inert')).toBe(true);
     const popupBody = fixture.nativeElement.querySelector('.entry-partners-popup-body') as HTMLElement | null;
     expect(popupBody).not.toBeNull();
-    expect(popupBody?.querySelectorAll('.entry-partner-role')).toHaveLength(4);
+    expect(popupBody?.querySelectorAll('.entry-partner-role')).toHaveLength(6);
 
     const popupText = popupBody?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
     expect(popupText).toContain('virtual private server (VPS)');

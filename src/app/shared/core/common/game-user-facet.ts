@@ -1,5 +1,5 @@
-import { APP_STATIC_DATA } from '../../app-static-data';
-import type { UserDto } from '../contracts/user.interface';
+import { APP_STATIC_DATA } from './app-static-data';
+import type { UserDto } from '../contracts/accounts/user.interface';
 
 export interface GameUserFacet {
   gender: string;

@@ -1,0 +1,300 @@
+import type { SlotTemplate } from '@fssrepository/myscoutee-components';
+import type * as PricingContracts from '../payments/pricing.interface';
+import type { SubEventDefinitionDTO } from '../common/activity.interface';
+
+export interface EventPolicyDTO {
+  id: string;
+  title: string;
+  description: string;
+  required: boolean;
+}
+
+export type EventMode = 'Casual' | 'Tournament' | 'Mingle';
+export type TournamentLeaderboardType = 'Score' | 'Fifa';
+export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
+export type EventEditorMode = 'edit' | 'create';
+export type EventEditorTarget = 'events' | 'hosting';
+export type EventBlindMode = 'Open Event' | 'Blind Event';
+export type EventRecordKind = 'main' | 'slot' | 'random-room' | 'tournament-room';
+
+export interface TournamentCurrentStageDTO {
+  id: string;
+  name: string;
+  stageNumber: number;
+  totalStages: number;
+  status: TournamentStageStatus | string;
+}
+
+export interface EventSlotTemplateDTO extends SlotTemplate {
+  subEventDefinitions?: SubEventDefinitionDTO[];
+}
+
+export interface EventSlotOccurrenceDTO {
+  id: string;
+  parentEventId: string;
+  slotTemplateId: string;
+  title: string;
+  timeframe: string;
+  startAtIso: string;
+  endAtIso: string;
+  capacityTotal: number;
+  acceptedMembers: number;
+  pendingMembers: number;
+}
+
+export interface SubEventDTO {
+  id: string;
+  runtimeKind?: 'MAIN_EVENT' | string | null;
+  eventId?: string | null;
+  name: string;
+  description: string;
+  startAt: string;
+  endAt: string;
+  location?: string;
+  createdByUserId?: string;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
+  groupsCount?: number;
+  groupsPending?: number;
+  optional: boolean;
+  capacityMin: number;
+  capacityMax: number;
+  membersAccepted: number;
+  membersPending: number;
+  carsPending: number;
+  accommodationPending: number;
+  suppliesPending: number;
+  carsAccepted?: number;
+  accommodationAccepted?: number;
+  suppliesAccepted?: number;
+  pricing?: PricingContracts.PricingConfig | null;
+  carsCapacityMin?: number;
+  carsCapacityMax?: number;
+  accommodationCapacityMin?: number;
+  accommodationCapacityMax?: number;
+  suppliesCapacityMin?: number;
+  suppliesCapacityMax?: number;
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
+  stageStatus?: TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  stageResultRevision?: number | null;
+}
+
+export interface SubEventGroupDTO {
+  id: string;
+  name: string;
+  capacityMin?: number;
+  capacityMax?: number;
+  source?: 'manual' | 'generated';
+}
+
+export interface EventCapacityRange {
+  min: number | null;
+  max: number | null;
+}
+
+export interface SubEventLeaderboardMember {
+  id: string;
+  name: string;
+  initials?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface MingleParticipantDTO {
+  userId: string;
+  name: string;
+  initials: string;
+  avatarUrl: string | null;
+}
+
+export interface MingleTableDTO {
+  tableNumber: number;
+  subEventId: string;
+  memberOwnerId: string;
+  participants: MingleParticipantDTO[];
+}
+
+export interface MingleStateDTO {
+  eventId: string;
+  eventTitle: string;
+  status: 'ROUND' | 'BREAK' | 'PAUSED' | 'COMPLETED' | string;
+  roundNumber: number;
+  plannedRounds: number;
+  phaseStartedAtIso: string | null;
+  phaseEndsAtIso: string | null;
+  remainingSeconds: number;
+  tableNumber: number | null;
+  tables: MingleTableDTO[];
+  canManage: boolean;
+  waitingForTable: boolean;
+  revision: number;
+}
+
+export interface SubEventLeaderboardScoreEntry {
+  id: string;
+  stageId: string;
+  groupId: string;
+  memberId: string;
+  value: number;
+  note: string;
+  createdAtMs: number;
+}
+
+export interface SubEventLeaderboardFifaMatch {
+  id: string;
+  stageId: string;
+  groupId: string;
+  homeMemberId: string;
+  awayMemberId: string;
+  homeScore: number;
+  awayScore: number;
+  note: string;
+  createdAtMs: number;
+}
+
+export interface SubEventLeaderboardScoreStandingRow {
+  memberId: string;
+  memberName: string;
+  total: number;
+  updates: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R' | 'V';
+  isPlaceholder?: boolean;
+}
+
+export interface SubEventLeaderboardFifaStandingRow {
+  memberId: string;
+  memberName: string;
+  points: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  positionLabel: string;
+  participantState: 'A' | 'DQ' | 'R' | 'V';
+  isPlaceholder?: boolean;
+}
+
+export interface SubEventLeaderboardGroupState {
+  groupId: string;
+  title: string;
+  memberCount: number;
+  advancePerGroup: number;
+  advancingMemberIds: string[];
+  members: SubEventLeaderboardMember[];
+  scoreEntries: SubEventLeaderboardScoreEntry[];
+  fifaMatches: SubEventLeaderboardFifaMatch[];
+  scoreRows: SubEventLeaderboardScoreStandingRow[];
+  fifaRows: SubEventLeaderboardFifaStandingRow[];
+}
+
+export interface SubEventLeaderboardState {
+  eventId: string;
+  subEventId: string;
+  title: string;
+  leaderboardType: 'Score' | 'Fifa' | string;
+  groups: SubEventLeaderboardGroupState[];
+}
+
+export interface EventTournamentGroupDTO {
+  id: string;
+  name: string;
+  source: 'manual' | 'generated' | string;
+  capacityMin: number;
+  capacityMax: number;
+  membersAccepted: number;
+  membersPending: number;
+  memberOwnerType?: 'event' | 'group';
+  memberOwnerId?: string;
+  viewerAccepted?: boolean;
+  resourceMetricsByType: Partial<Record<string, EventTournamentResourceMetricDTO>>;
+}
+
+export interface EventTournamentResourceMetricDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface EventTournamentStageDTO {
+  subEventId: string;
+  title: string;
+  description: string;
+  location: string;
+  startAt: string;
+  endAt: string;
+  stageNumber: number;
+  stageStatus?: TournamentStageStatus | string;
+  leaderboardType: TournamentLeaderboardType | string;
+  advancePerGroup: number;
+  groups: EventTournamentGroupDTO[];
+}
+
+export interface EventTournamentGroupsStateDTO {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  canManage: boolean;
+  stages: EventTournamentStageDTO[];
+}
+
+export interface EventTournamentGroupsQueryDTO {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventTournamentStageGroupsQueryDTO {
+  userId?: string | null;
+  eventId: string;
+  slotId?: string | null;
+  stageId: string;
+}
+
+export interface EventTournamentStageSnapshotDTO {
+  groups: EventTournamentGroupDTO[];
+  leaderboard: SubEventLeaderboardState | null;
+}
+
+export interface EventTournamentGroupUpsertRequestDTO {
+  actorUserId: string;
+  eventId: string;
+  slotId?: string | null;
+  subEventId: string;
+  groupId?: string | null;
+  name: string;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface EventTournamentGroupDeleteRequestDTO {
+  actorUserId: string;
+  eventId: string;
+  slotId?: string | null;
+  subEventId: string;
+  groupId: string;
+}
+
+export interface SubEventLeaderboardEntryUpsertRequestDTO {
+  actorUserId: string;
+  eventId: string;
+  subEventId: string;
+  groupId: string;
+  mode: TournamentLeaderboardType | string;
+  memberId?: string | null;
+  scoreValue?: number | null;
+  note?: string | null;
+  homeMemberId?: string | null;
+  awayMemberId?: string | null;
+  homeScore?: number | null;
+  awayScore?: number | null;
+}

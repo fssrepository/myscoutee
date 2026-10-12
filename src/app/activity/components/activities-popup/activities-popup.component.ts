@@ -1,67 +1,6 @@
-import { CampaignsStore } from '../../../shared/ui/context/stores/campaigns.store';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
-import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
 import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  effect,
-  HostListener,
-  inject,
-  OnDestroy,
-  untracked,
-  ViewChild
-} from '@angular/core';
-import {
-  CommonModule
-} from '@angular/common';
-import {
-  MatIconModule
-} from '@angular/material/icon';
-import {
-  from
-} from 'rxjs';
-
-import {
-  APP_STATIC_DATA,
-  type RateFilterEntry
-} from '../../../shared/app-static-data';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import {
-  type ActivityEventDTO,
-  type EventCheckoutBasket,
-  type EventCheckoutResultState,
-  type ActivityMembersSummaryDto
-} from '../../../shared/core/contracts/activity.interface';
-import type {
-  ActivityRateDTO
-} from '../../../shared/core/contracts/activity.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import {
-  AppUtils
-} from '../../../shared/app-utils';
-import {
-  type ActivityCounterKey,
-  type ActivityCounters,
-  type ActivityMembersSyncState
-} from '../../../shared/ui';
-import {
-  ActivitiesPopupStore,
-  type ActivityEventSyncMessage,
-  type EventChatRowPatch
-} from '../../../shared/ui/context/stores/activities-popup.store';
-import {
-  EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
-import {
-  AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
-import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
-import type * as ContractTypes from '../../../shared/core/contracts';
-import { resolveActivityRateOrder } from '../../../shared/core/base/activity-rate-order';
-import {
+  UiLinkUtils,
+  UiDateUtils,
   AppMenuDispatcher,
   type AppMenuGroup,
   type AppMenuItem,
@@ -89,11 +28,76 @@ import {
   type SmartListMenuItemsContext,
   type SmartListPresentation,
   type SmartListStateChange,
-  type UiListConverter
+  type UiListConverter,
+  UiPollCoordinator,
+  DialogStore,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
+
+import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
+import { matchesActivitiesRateFilter } from './templates/rate/activities-rate-state.presenter';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  effect,
+  HostListener,
+  inject,
+  OnDestroy,
+  untracked,
+  ViewChild
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
+
+import {
+  APP_STATIC_DATA,
+  type RateFilterEntry
+} from '../../../shared/core/common/app-static-data';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import {
+  type ActivityEventDTO,
+  type EventCheckoutBasket,
+  type EventCheckoutResultState,
+  type ActivityMembersSummaryDto
+} from '../../../shared/core/contracts/common/activity.interface';
+import type {
+  ActivityRateDTO
+} from '../../../shared/core/contracts/common/activity.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
+import {
+  AppUtils
+} from '../../../shared/core/base/app-utils';
+import {
+  type ActivityCounterKey,
+  type ActivityCounters,
+  type ActivityMembersSyncState
 } from '../../../shared/ui';
 import {
-  UiPollCoordinator
-} from '../../../shared/ui/scheduler';
+  ActivitiesPopupStore,
+  type ActivityEventSyncMessage,
+  type EventChatRowPatch
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset/asset.store';
+import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import { resolveActivityRateOrder } from '../../../shared/core/base/activity-rate-order';
+
 import {
   ActivityChatSingleRowConverter,
   type ActivityChatSingleRowData,
@@ -105,19 +109,17 @@ import type {
   ActivityEventInfoCardMenuContext,
   ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
-} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
 import {
   EventCheckoutDialogStore
-} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import {
   EventCheckoutPopupComponent
 } from '../event-checkout-popup';
@@ -135,32 +137,23 @@ import {
   type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import { shouldApplyActivitiesEventBucketLoad } from './activities-event-bucket-state-policy';
-import {
-  ActivityMembersBuilder,
-  ActivitiesService,
-  ActivityMembersService,
-  ActivityResourcesService,
-  ChatsService,
-  EventsService,
-  ExplanationGuideService,
-  RatesService,
-  UsersService
-} from '../../../shared/core';
+
+import { ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, RatesService, UsersService } from '../../../shared/core';
 import {
   I18nService
 } from '../../../shared/core';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
   type ActivityChatMetricBucketPatch
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
@@ -610,7 +603,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     if (action.actionId === 'externalInfo') {
-      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(this.activityEventMenuSubjectFromRow(row)?.sourceLink));
+      UiLinkUtils.openExternalUrl(UiLinkUtils.normalizeHttpUrl(this.activityEventMenuSubjectFromRow(row)?.sourceLink));
       return;
     }
     if (action.actionId === 'followOrganizer' || action.actionId === 'unfollowOrganizer') {
@@ -2700,7 +2693,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private chatRowLocalSortKey(row: ActivityListItem): SmartListLocalSortKey {
     const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
-    const timestamp = AppUtils.toSortableDate(row.dateIso ?? '');
+    const timestamp = UiDateUtils.toSortableDate(row.dateIso ?? '');
     if (secondaryFilter === 'relevant') {
       return [
         -this.chatRowMetricScore(row),
@@ -2771,7 +2764,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const startAtIso = this.isEventStyleActivity(row)
       ? this.eventsService.peekKnownItemById(this.activeUser.id, row.id)?.startAtIso
       : null;
-    return AppUtils.toSortableDate(startAtIso ?? row.dateIso ?? '');
+    return UiDateUtils.toSortableDate(startAtIso ?? row.dateIso ?? '');
   }
 
   private activityRowDayOrderValue(row: ActivityListItem): number {
@@ -2779,7 +2772,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!Number.isFinite(timestamp)) {
       return 0;
     }
-    return AppUtils.dateOnly(new Date(timestamp)).getTime();
+    return UiDateUtils.dateOnly(new Date(timestamp)).getTime();
   }
 
   protected refreshSectionBadges(): void {

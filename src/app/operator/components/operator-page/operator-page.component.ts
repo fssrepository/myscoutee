@@ -1,4 +1,19 @@
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import {
+  ExplanationGuideService,
+  type ListQuery,
+  IndicatorComponent,
+  DeploymentBrandComponent,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  SingleRowComponent,
+  SmartListComponent,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListItemSelectEvent,
+  type SmartListLoadPage,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
 import { DestroyRef } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import {
@@ -16,41 +31,26 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../../shared/core';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import type { ListQuery } from '../../../shared/core/contracts/list.interface';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+
 import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup
-} from '../../../shared/core/contracts/operator.interface';
-import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui/components/core/menu';
-import {
-  SingleRowComponent,
-  SmartListComponent,
-  type SingleRowData,
-  type SmartListConfig,
-  type SmartListItemSelectEvent,
-  type SmartListLoadPage
-} from '../../../shared/ui/components/core/smart-list';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/core/contracts/operator/operator.interface';
+
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   OperatorLeaderboardStore,
   type OperatorLeaderboardFilters
-} from '../../../shared/ui/context/stores/operator-leaderboard.store';
+} from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
-} from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
-import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator-leaderboard-single-row.converter';
-import { I18nPipe } from '../../../shared/ui/pipes';
+} from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
+import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator/operator-leaderboard-single-row.converter';
 
 type OperatorActionId = Exclude<
   OperatorMenuKind,

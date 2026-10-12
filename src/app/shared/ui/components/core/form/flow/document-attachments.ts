@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
-import type { MediaService } from '../../../../../core/base/services/media.service';
-import type { DocumentAttachment } from '../../../../../core/contracts/document-attachment.interface';
-import type { FormFlowStepModel, FormFlowActionEvent } from './form-flow.types';
+import type { MediaService } from '../../../../../core/base/services/media/media.service';
+import type { DocumentAttachment } from '../../../../../core/contracts/media/document-attachment.interface';
+import type { FormFlowStepModel, FormFlowActionEvent } from '@fssrepository/myscoutee-components';
 
 /** Shared document block used by announcement and campaign editors. */
 export class DocumentAttachments {

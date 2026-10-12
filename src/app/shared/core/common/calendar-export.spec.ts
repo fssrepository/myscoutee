@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderCalendarExport } from './calendar-export';
-import type { ActivityEventDTO } from '../contracts/activity.interface';
+import type { ActivityEventDTO } from '../contracts/common/activity.interface';
 
 const now = new Date('2026-09-23T08:00:00Z');
 const event = (overrides: Partial<ActivityEventDTO> = {}): ActivityEventDTO => ({

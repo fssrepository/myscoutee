@@ -10,6 +10,30 @@ It includes domain-specific ratings, document attachments, contextual EN/HU
 guides and API/MCP permission controls. The Java client and MCP development
 version is **1.6.0**; full execution QA for these extensions is pending.
 
+### Core organization
+
+Services, repositories, contracts, mappers, builders and local entities are grouped
+by backend domain inside their existing base/HTTP/local layers. See the
+[core domain map](src/app/shared/core/README.md). UI stores and converters retain
+their existing presentation folders; shared components remain in their submodule.
+
+### Shared components development
+
+Shared UI source is owned by the `myscoutee-components` repository, integrated as the
+`components` Git submodule on `master`. Initialize submodules, switch that checkout to `master`, then run
+`npm ci`. Existing `npm run build:*`, `start:*` and `watch:*` scripts build the
+components workspace before the application. The dev stack uses that same path.
+
+Use public imports from `@fssrepository/myscoutee-components` and
+`@fssrepository/myscoutee-components/styles`; do not add forwarding files or source-path imports.
+Generic tests live beside the library source and run with `npm test` inside the
+submodule. Application integration tests stay here. The component repository also
+builds independently with `npm ci && npm run build`.
+
+When editing a separate components checkout, commit there and fast-forward the
+submodule's `master` branch. Then commit the updated frontend gitlink. Generated
+`dist/` and dependencies are ignored; no npm publication is needed.
+
 ### Source snapshot — 7 October 2026
 
 | Scope | Physical source lines |
@@ -68,7 +92,7 @@ for their installation scope.
 | User Manual | 1.0.0 | MyScoutee 1.0.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_User_Manual_v1.0.0_EN.pdf) |
 | Integration API Guide | 1.0.1 | 1.0.1 + MSC-119 source extensions | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Integration_API_Guide_v1.0.1_EN.pdf) |
 | MCP User Guide | 1.0.0 | MCP / client 1.6.0 · MSC-119 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_MCP_User_Guide_v1.0.0_EN.pdf) |
-| Microservices Guide | 0.1.0 | MSC-121 implementation preview | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_v0.1.0_EN.pdf) |
+| Microservices Guide | 0.1.1 | MSC-121 implementation preview | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_EN.pdf) |
 
 Document versions are independent of software versions. The MCP guide covers
 MSC-119 source behavior and identifies its pending live-host QA.

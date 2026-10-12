@@ -1,51 +1,51 @@
-export { ActivitiesService } from './base/services/activities.service';
-export { IntegrationService } from './base/services/integration.service';
+export { ActivitiesService } from './base/services/common/activities.service';
+export { IntegrationService } from './base/services/integrations/integration.service';
 export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY
-} from './base/services/game.service';
+} from './base/services/accounts/game.service';
 export {
   HelpCenterService,
   HELP_CENTER_LOAD_CONTEXT_KEY
-} from './base/services/help-center.service';
-export { PrivacyPolicyService, type PrivacyPolicyOpenOptions } from './base/services/privacy-policy.service';
-export { TermsPolicyService, type TermsPolicyOpenOptions } from './base/services/terms-policy.service';
-export { ExplanationGuideService } from './base/services/explanation-guide.service';
-export { IdeaPostsService } from './base/services/idea-posts.service';
-export { LandingContentService } from './base/services/landing-content.service';
-export { DeploymentConfigurationService } from './base/services/deployment-configuration.service';
-export { MediaService } from './base/services/media.service';
-export { NotificationsService } from './base/services/notifications.service';
-export { PaymentMethodsService } from './base/services/payment-methods.service';
+} from './base/services/help/help-center.service';
+export { PrivacyPolicyService, type PrivacyPolicyOpenOptions } from './base/services/help/privacy-policy.service';
+export { TermsPolicyService, type TermsPolicyOpenOptions } from './base/services/help/terms-policy.service';
+
+export { IdeaPostsService } from './base/services/content/idea-posts.service';
+export { LandingContentService } from './base/services/content/landing-content.service';
+export { DeploymentConfigurationService } from './base/services/platform/deployment-configuration.service';
+export { MediaService } from './base/services/media/media.service';
+export { NotificationsService } from './base/services/notifications/notifications.service';
+export { PaymentMethodsService } from './base/services/payments/payment-methods.service';
 export {
   PaymentAuthorizationService,
   type PaymentAuthorizationContinuation
-} from './base/services/payment-authorization.service';
-export { OperatorRegistryService } from './base/services/operator-registry.service';
-export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
+} from './base/services/payments/payment-authorization.service';
+export { OperatorRegistryService } from './base/services/operator/operator-registry.service';
+export { AdminWorkspaceDataService } from './base/services/administration/admin-workspace-data.service';
 export {
   AdminParamsService,
   type AdminParamsDelayOptions
-} from './base/services/admin-params.service';
-export { AdminMonitoringService } from './base/services/admin-monitoring.service';
-export { AdminStatsService } from './base/services/admin-stats.service';
+} from './base/services/affinity/admin-params.service';
+export { AdminMonitoringService } from './base/services/administration/admin-monitoring.service';
+export { AdminStatsService } from './base/services/administration/admin-stats.service';
 export {
   AdminNotificationsService,
   type AdminNotificationDelayOptions
-} from './base/services/admin-notifications.service';
+} from './base/services/administration/admin-notifications.service';
 export {
   AdminModerationService,
   type AdminModerationActionResult,
   type AdminModerationUserPatch
-} from './base/services/admin-moderation.service';
+} from './base/services/content/admin-moderation.service';
 export {
   AdminAffinityGraphService,
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
-} from './base/services/admin-affinity-graph.service';
-export { ContactsService } from './base/services/contacts.service';
-export { I18nService } from './base/services/i18n.service';
-export { I18nBundleRepository, type StoredI18nBundle } from './base/repositories/i18n-bundle.repository';
+} from './base/services/affinity/admin-affinity-graph.service';
+export { ContactsService } from './base/services/accounts/contacts.service';
+export { I18nService } from './base/services/localization/i18n.service';
+export { I18nBundleRepository, type StoredI18nBundle } from './base/repositories/localization/i18n-bundle.repository';
 export {
   BOOTSTRAP_PROCESS_STEPS,
   BootstrapProcessService,
@@ -55,34 +55,34 @@ export {
   type BootstrapProcessStage,
   type BootstrapProcessState,
   type BootstrapProcessStep
-} from './base/services/bootstrap.service';
-export { EventsService } from './base/services/events.service';
-export { RouteDelayService } from './base/services/route-delay.service';
-export { RouteIntervalSchedulerService } from './base/services/route-interval-scheduler.service';
-export { ActivityMembersService } from './base/services/activity-members.service';
-export { ActivityResourcesService } from './base/services/activity-resources.service';
-export { AssetsService } from './base/services/assets.service';
-export { ShareTokensService } from './base/services/share-tokens.service';
-export { AssetTicketsService } from './base/services/asset-tickets.service';
-export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
-export { ChatsService } from './base/services/chats.service';
-export { ChatVoiceClipsService } from './base/services/chat-voice-clips.service';
-export { RatesService } from './base/services/rates.service';
+} from './base/services/platform/bootstrap.service';
+export { EventsService } from './base/services/events/events.service';
+export { RouteDelayService } from './base/services/platform/route-delay.service';
+export { RouteIntervalSchedulerService } from './base/services/platform/route-interval-scheduler.service';
+export { ActivityMembersService } from './base/services/events/activity-members.service';
+export { ActivityResourcesService } from './base/services/events/activity-resources.service';
+export { AssetsService } from './base/services/assets/assets.service';
+export { ShareTokensService } from './base/services/content/share-tokens.service';
+export { AssetTicketsService } from './base/services/assets/asset-tickets.service';
+export { ActivityInviteCandidatesService } from './base/services/events/activity-invite-candidates.service';
+export { ChatsService } from './base/services/chat/chats.service';
+export { ChatVoiceClipsService } from './base/services/chat/chat-voice-clips.service';
+export { RatesService } from './base/services/affinity/rates.service';
 export {
   UserExperiencesService,
   type UserExperiencesRouteConfig
-} from './base/services/user-experiences.service';
+} from './base/services/accounts/user-experiences.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UsersService
-} from './base/services/users.service';
+} from './base/services/accounts/users.service';
 export {
   SessionService,
   type AppSession,
   type SupportSessionContext
-} from './base/services/session.service';
+} from './base/services/accounts/session.service';
 export * from './base/builders';
 export type * from './contracts';

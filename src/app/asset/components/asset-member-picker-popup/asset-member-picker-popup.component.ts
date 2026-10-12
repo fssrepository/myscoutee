@@ -1,5 +1,26 @@
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  ImageCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  type ImageCardData,
+  type ImageCardMediaAction,
+  type ImageCardMediaActionEvent,
+  type ListQuery,
+  type PageResult,
+  type PopupControl,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListItemTemplateContext,
+  type SmartListLoaders,
+  type SmartListStateChange,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
 
 import {
   ChangeDetectionStrategy,
@@ -18,45 +39,27 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
-import {
-  ImageCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuTrigger,
-  type ImageCardData,
-  type ImageCardMediaAction,
-  type ImageCardMediaActionEvent,
-  type ListQuery,
-  type PageResult,
-  type PopupControl,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListItemTemplateContext,
-  type SmartListLoaders,
-  type SmartListStateChange
-} from '../../../shared/ui';
+} from '../../../shared/core/base/app-utils';
+
 import {
   ActivityInviteCandidatesService,
   ActivityMembersService
 } from '../../../shared/core';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
+
 interface ActivityInviteFilters {
   ownerId?: string;
   sort?: AppConstants.ActivityInviteSort;
@@ -621,7 +624,7 @@ export class AssetMemberPickerPopupComponent {
       return candidates;
     }
     return candidates.sort((left, right) => {
-      return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+      return UiDateUtils.toSortableDate(right.actionAtIso) - UiDateUtils.toSortableDate(left.actionAtIso);
     });
   }
 

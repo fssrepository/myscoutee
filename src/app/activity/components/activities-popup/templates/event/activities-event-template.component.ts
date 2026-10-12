@@ -1,4 +1,14 @@
-import type * as ActivityContracts from '../../../../../shared/core/contracts/activity.interface';
+import {
+  UiDateUtils,
+  InfoCardComponent,
+  type InfoCardData,
+  type AppMenuPalette,
+  type CardMenuAction,
+  type CardMenuActionEvent,
+  type CardProfileViewData,
+  type CardMenuRequestEvent
+} from '@fssrepository/myscoutee-components';
+import type * as ActivityContracts from '../../../../../shared/core/contracts/common/activity.interface';
 
 import {
   ChangeDetectionStrategy,
@@ -12,24 +22,15 @@ import {
 
 import {
   AppUtils
-} from '../../../../../shared/app-utils';
-import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
+} from '../../../../../shared/core/base/app-utils';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat/chat.interface';
 import {
   ActivityEventDetailDTO
-} from '../../../../../shared/core/contracts/activity.interface';
+} from '../../../../../shared/core/contracts/common/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
-import {
-  type ActivityCounterKey,
-  type ActivityCounters,
-  InfoCardComponent,
-  type InfoCardData,
-  type AppMenuPalette,
-  type CardMenuAction,
-  type CardMenuActionEvent,
-  type CardProfileViewData,
-  type CardMenuRequestEvent
-} from '../../../../../shared/ui';
+import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/accounts/user.interface';
+
+import { type ActivityCounterKey, type ActivityCounters } from '../../../../../shared/ui';
 import {
   ActivityEventInfoCardConverter,
   ActivityEventInfoCardMenuConverter,
@@ -39,10 +40,9 @@ import {
 } from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
-import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
-import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
-import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores/event-checkout-draft.store';
-
+import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/app/member-menu.store';
+import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event/event-subevents-popup.store';
+import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores/event/event-checkout-draft.store';
 
 @Component({
   selector: 'app-activities-event-template',
@@ -1233,9 +1233,9 @@ export class ActivitiesEventsController {
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      this.patchVisiblePublicationState(row, 'A');
-      const dto = this.activityEventDTOForRow(row);
-      if (dto) this.activitiesStore.emitActivityEventSync({ ...dto, cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false });
+      this.patchVisiblePublicationState(row, 'A', {
+        cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false
+      });
     }
 
     this.signalActivityCounterDelta(activeUserId, result.counterDelta ?? null);
@@ -1260,11 +1260,15 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private patchVisiblePublicationState(row: InfoCardData, status: ActivityContracts.ActivityEventStatus): void {
+  private patchVisiblePublicationState(
+    row: InfoCardData, status: ActivityContracts.ActivityEventStatus,
+    patch: Partial<ActivityContracts.ActivityEventDTO> = {}
+  ): void {
     const source = this.activityEventDTOForRow(row);
     if (source) {
       this.activitiesStore.emitActivityEventSync({
         ...source,
+        ...patch,
         status
       });
       return;
@@ -1673,7 +1677,7 @@ export class ActivitiesEventsController {
     activeUserId: string,
     requiresAdminApproval: boolean
   ): ActivityContracts.ActivityMemberDTO[] | null {
-    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
     let didUpdate = false;
     const nextMembers = members.map(member => {
       if (member.userId !== activeUserId) {
@@ -1806,7 +1810,7 @@ export class ActivitiesEventsController {
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
     }
-    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const nowIso = UiDateUtils.toIsoDateTime(new Date());
     this.selectedActivityMembers = this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {

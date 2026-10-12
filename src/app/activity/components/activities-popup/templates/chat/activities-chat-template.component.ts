@@ -1,16 +1,12 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
-import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
-import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../../../shared/core/contracts/accounts/user.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../../../shared/ui/context/stores/activities-popup.store';
-import {
-  type CardMenuActionEvent,
-  SingleRowComponent,
-  type SingleRowData
-} from '../../../../../shared/ui';
+} from '../../../../../shared/ui/context/stores/activity/activities-popup.store';
+import { type CardMenuActionEvent, SingleRowComponent, type SingleRowData } from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-activities-chat-template',

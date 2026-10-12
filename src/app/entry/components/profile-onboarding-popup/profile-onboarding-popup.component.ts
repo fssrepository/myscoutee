@@ -1,25 +1,31 @@
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/core/form/popups/profile-experience-manager';
-import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
-import type { FormFlowActionEvent, FormFlowDraft, FormFlowModel } from '../../../shared/ui/components/core/form/flow/form-flow.types';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
-import { UsersService } from '../../../shared/core/base/services/users.service';
-import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
+import {
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowDraft,
+  type FormFlowModel,
+  PopupComponent,
+  type PopupModel,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
+
+import { UsersService } from '../../../shared/core/base/services/accounts/users.service';
+import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 import type {
   ExperienceEntry,
   ExperienceFilter
-} from '../../../shared/core/contracts/profile.interface';
+} from '../../../shared/core/contracts/accounts/profile.interface';
 import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   type ProfileFormFlowMenuContext
-} from '../../../shared/ui/converters/profile-form-flow.converter';
+} from '../../../shared/ui/converters/profile/profile-form-flow.converter';
 
 type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Workspace' | 'School'>;
 

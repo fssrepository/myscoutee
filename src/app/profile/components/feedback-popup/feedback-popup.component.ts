@@ -1,4 +1,4 @@
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 
 import {
   Component,
@@ -11,17 +11,23 @@ import {
 } from '@angular/forms';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
-import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
-import { type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type FormFlowModel } from '../../../shared/ui';
-import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
+} from '../../../shared/core/common/app-static-data';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/accounts/users.service';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type FormFlowModel,
+  FormFlowComponent
+} from '@fssrepository/myscoutee-components';
+
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 interface FeedbackFormValue {
   category: string;

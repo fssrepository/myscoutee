@@ -1,17 +1,35 @@
+import {
+  UiDateUtils,
+  type ListQuery,
+  DialogStore,
+  ExplanationGuideService,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  PopupComponent,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListPollDeltaSnapshot,
+  SingleRowComponent,
+  type SingleRowData
+} from '@fssrepository/myscoutee-components';
 import { Router } from '@angular/router';
-import { UserProfileStore } from '../../context/stores/user-profile.store';
-import {PaymentMethodsPopupStore} from '../../context/stores/payment-methods-popup.store';
-import { CommunityAnnouncementsStore } from '../../context/stores/community-announcements.store';
-import { ChatsService } from '../../../core/base/services/chats.service';
-import { CommunityCasesStore } from '../../context/stores/community-cases.store';
-import { CampaignsStore } from '../../context/stores/campaigns.store';
-import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
-import { ProfileStore } from '../../context/stores/profile.store';
-import { ContactChatAccessStore } from '../../context/stores/contact-chat-access.store';
-import { GroupWorkspaceStore } from '../../context/stores/group-workspace.store';
+import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
+import {PaymentMethodsPopupStore} from '../../context/stores/payment/payment-methods-popup.store';
+import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
+import { ChatsService } from '../../../core/base/services/chat/chats.service';
+import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
+import { CampaignsStore } from '../../context/stores/activity/campaigns.store';
+import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
+import { ContactChatAccessStore } from '../../context/stores/chat/contact-chat-access.store';
+import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
 import { environment } from '../../../../../environments/environment';
 import { backendUnavailable } from '../../../core/common/backend-connectivity';
-import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
+import { AppRuntimeStore } from '../../context/stores/app/app-runtime.store';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,7 +41,6 @@ import {
 } from '@angular/core';
 import { from } from 'rxjs';
 
-import { AppUtils } from '../../../app-utils';
 import { I18nService } from '../../../core';
 import * as AppConstants from '../../../core/common/constants';
 import type {
@@ -31,39 +48,17 @@ import type {
   NotificationDto,
   NotificationListFilters,
   NotificationSyncRequestDto
-} from '../../../core/contracts/notification.interface';
-import type { ListQuery } from '../../../core/contracts/list.interface';
+} from '../../../core/contracts/notifications/notification.interface';
+
 import {
   NotificationSingleRowConverter
-} from '../../converters/notification-single-row.converter';
-import { DialogStore } from '../../context/stores/dialog.store';
-import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activities-popup.store';
-import { EventSubeventsPopupStore } from '../../context/stores/event-subevents-popup.store';
-import { NotificationCenterStore } from '../../context/stores/notification-center.store';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
-import { SubEventResourcePopupStore } from '../../context/stores/sub-event-resource-popup.store';
-import {
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuTrigger
-} from '../core/menu';
-import {
-  PopupComponent,
-  type PopupMenuSelectEvent,
-  type PopupModel
-} from '../core/popup';
-import {
-  SmartListComponent,
-  type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListPollDeltaSnapshot
-} from '../core/smart-list';
-import {
-  SingleRowComponent
-} from '../core/smart-list/card/single-row/single-row.component';
-import type {
-  SingleRowData
-} from '../core/smart-list/card/card.types';
+} from '../../converters/notification/notification-single-row.converter';
+
+import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activity/activities-popup.store';
+import { EventSubeventsPopupStore } from '../../context/stores/event/event-subevents-popup.store';
+import { NotificationCenterStore } from '../../context/stores/notification/notification-center.store';
+
+import { SubEventResourcePopupStore } from '../../context/stores/event/sub-event-resource-popup.store';
 
 interface NotificationRowMenuContext extends Record<string, unknown> {
   notification: NotificationDto;
@@ -309,7 +304,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     const groupDate = new Date(value);
     return Number.isNaN(groupDate.getTime())
       ? 'Date unavailable'
-      : AppUtils.smartListDayLabel(groupDate);
+      : UiDateUtils.smartListDayLabel(groupDate);
   }
 
   private notificationDateMs(value: string): number {

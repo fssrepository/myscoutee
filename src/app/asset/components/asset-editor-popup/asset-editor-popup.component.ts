@@ -1,3 +1,23 @@
+import {
+  type RouteInputConfig,
+  UiDateUtils,
+  ExplanationGuideService,
+  AppMenuComponent,
+  type LocationInputConfig,
+  IndicatorComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowTone,
+  PopupComponent,
+  type PopupControl,
+  type PopupModel,
+  type DateInputRangeValue
+} from '@fssrepository/myscoutee-components';
+
 import { PaymentRefundPolicyComponent } from '../../../shared/ui/components/payment-refund-policy/payment-refund-policy.component';
 import {
   CommonModule
@@ -14,46 +34,24 @@ import {
 
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   AssetCardBuilder,
   AssetDefaultsBuilder,
   PricingBuilder
 } from '../../../shared/core/base/builders';
-import {
-  AssetsService,
-  ExplanationGuideService,
-  I18nService
-} from '../../../shared/core';
+
+import { AssetsService, I18nService } from '../../../shared/core';
 import {
   AssetStore,
   type AssetEditorCheckoutState,
   type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState,
   type AssetFormState
-} from '../../../shared/ui/context/stores/asset.store';
-import {
-  AppMenuComponent,
-  type LocationInputConfig,
-  IndicatorComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  FormFlowComponent,
-  type FormFlowModel,
-  type FormFlowTone,
-  type PoliciesInputConfig,
-  type PricingEditorConfig,
-  type PricingEditorRuntimePreview,
-  PopupComponent,
-  type PopupControl,
-  type PopupModel,
-  type RouteInputConfig
-} from '../../../shared/ui';
-import type {
-  DateInputRangeValue
-} from '../../../shared/ui/components/core/form/inputs/date-input';
+} from '../../../shared/ui/context/stores/asset/asset.store';
+
+import { type PoliciesInputConfig, type PricingEditorConfig, type PricingEditorRuntimePreview } from '../../../shared/ui';
+
 import {
   EventBasketInputComponent,
   type EventBasketInputConfig,
@@ -66,13 +64,13 @@ import {
 } from '../../../activity/components/event-editor-popup/event-payment-input';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import { environment } from '../../../../environments/environment';
 
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'category'; category: AppConstants.AssetCategory }
@@ -515,6 +513,8 @@ export class AssetEditorPopupComponent implements OnDestroy {
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
     return {
       title: runtimeRoute?.title ?? 'Route',
+      mapAriaLabel: 'asset.assignment.route.map.aria',
+      stopCountLabel: count => this.i18n.translateParams(count === 1 ? 'asset.assignment.route.stop.one' : 'asset.assignment.route.stop.many', { count }),
       subtitle: runtimeRoute?.subtitle ?? 'Runtime route for this event asset.',
       openLabel: runtimeRoute?.openLabel ?? 'Open Route Setup',
       emptyLabel: runtimeRoute?.emptyLabel ?? 'No route is set for this event asset.',
@@ -1139,7 +1139,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
   protected checkoutPaymentTimeframe(): string {
     const dateRange = this.assetCheckout()?.dateRange;
     return dateRange
-      ? AppUtils.dateTimeRangeLabel(dateRange.startAt, dateRange.endAt, '')
+      ? UiDateUtils.dateTimeRangeLabel(dateRange.startAt, dateRange.endAt, '')
       : '';
   }
 

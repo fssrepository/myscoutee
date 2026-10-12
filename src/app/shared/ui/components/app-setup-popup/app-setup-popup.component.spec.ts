@@ -1,12 +1,10 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AppSetupStore } from '../../context/stores/app-setup.store';
-import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
-import { I18nService } from '../../../core/base/services/i18n.service';
+import { AppSetupStore } from '../../context/stores/app/app-setup.store';
+import { PopupPresenceStore, DialogStore } from '@fssrepository/myscoutee-components';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import { AppSetupPopupComponent } from './app-setup-popup.component';
-import { SessionService } from '../../../core/base/services/session.service';
-import { DialogStore } from '../../context/stores/dialog.store';
-
+import { SessionService } from '../../../core/base/services/accounts/session.service';
 
 describe('Setup permission help', () => {
   afterEach(() => TestBed.resetTestingModule());
@@ -25,7 +23,7 @@ describe('Setup permission help', () => {
     TestBed.configureTestingModule({ imports: [AppSetupPopupComponent], providers: [
       { provide: AppSetupStore, useValue: store },
       { provide: SessionService, useValue: { currentSession: () => null } },
-      { provide: I18nService, useValue: { revision: () => 0, translate: (value: string) => value } }
+      { provide: I18nService, useValue: { currentLanguage: () => 'en', revision: () => 0, translate: (value: string) => value } }
     ] });
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
@@ -71,7 +69,7 @@ describe('Setup automatic installation offer', () => {
       { provide: SessionService, useValue: { currentSession } },
       { provide: DialogStore, useValue: { dialog: signal(null) } },
       { provide: PopupPresenceStore, useValue: { visible: signal(false) } },
-      { provide: I18nService, useValue: { revision: () => 0 } }
+      { provide: I18nService, useValue: { currentLanguage: () => 'en', revision: () => 0 } }
     ] });
     TestBed.runInInjectionContext(() => new AppSetupPopupComponent());
     TestBed.tick();

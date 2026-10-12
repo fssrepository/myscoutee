@@ -1,0 +1,665 @@
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
+import { AppUtils } from '../../../../base/app-utils';
+import { ActivityResourceBuilder } from '../../../../base/builders';
+import type { UserDto } from '../../../../contracts/accounts/user.interface';
+import type {
+  ActivityMemberDTO,
+  ActivityMemberInvolvementDTO,
+  ActivityMemberOwnerRef,
+  ActivityMembersSummaryDto,
+  ActivityInviteCandidatesQuery
+} from '../../../../contracts/common/activity.interface';
+import type {
+  ActivityMemberRecord,
+  ActivitySubEventStageRuntimeRecord,
+  ActivitySubEventResourceRecord
+} from '../../entity/common/activity.entity';
+
+import type * as AppDTOs from '../../../../contracts';
+export interface LocalActivityInviteCandidateRecord {
+  user: UserDto;
+  metAtIso: string;
+  metWhere: string;
+  userRateAffinity: number;
+}
+
+export class LocalActivityInviteCandidatesMapper {
+  static toEntry(
+    query: ActivityInviteCandidatesQuery,
+    candidate: LocalActivityInviteCandidateRecord
+  ): ActivityMemberDTO {
+    const user = candidate.user;
+    const rowKey = `${query.owner.sourceType}:${query.owner.ownerId}`;
+    return {
+      id: `${rowKey}:${user.id}`,
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      city: user.city,
+      statusText: user.statusText,
+      role: query.owner.isAdmin && user.id === query.activeUserId ? 'Admin' : 'Member',
+      status: 'pending',
+      pendingSource: 'admin',
+      requestKind: 'invite',
+      invitedByActiveUser: true,
+      metAtIso: candidate.metAtIso,
+      actionAtIso: candidate.metAtIso,
+      metWhere: candidate.metWhere,
+      avatarUrl: AppUtils.firstImageUrl(user.images),
+      profile: user
+    };
+  }
+
+  static toEntries(
+    query: ActivityInviteCandidatesQuery,
+    candidates: readonly LocalActivityInviteCandidateRecord[]
+  ): ActivityMemberDTO[] {
+    return candidates.map(candidate => this.toEntry(query, candidate));
+  }
+}
+
+export interface ActivityMemberProfileFallback {
+  name?: string;
+  initials?: string;
+  city?: string;
+  gender?: UserDto['gender'];
+}
+
+export type ActivityMemberProfileResolver = (
+  userId: string,
+  fallback: ActivityMemberProfileFallback
+) => UserDto;
+
+export interface LocalActivityMembersOwnerSnapshot {
+  ownerType: ActivityMemberOwnerRef['ownerType'];
+  ownerId: string;
+  records: ActivityMemberRecord[];
+  acceptedMemberUserIds: string[];
+  capacityOccupyingAcceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+  invitedMemberUserIds: string[];
+  pendingRequestMemberUserIds: string[];
+  adminUserIds: string[];
+  capacityTotal: number;
+}
+
+export class LocalActivityMembersBuilder {
+  static toEntry(
+    record: ActivityMemberRecord,
+    resolveProfile: ActivityMemberProfileResolver,
+    involvementRecords: readonly ActivityMemberRecord[] = []
+  ): ActivityMemberDTO {
+    return {
+      id: record.id,
+      userId: record.userId,
+      name: record.name,
+      initials: record.initials,
+      gender: record.gender,
+      city: record.city,
+      statusText: record.statusText,
+      role: record.role,
+      status: record.status,
+      pendingSource: record.pendingSource,
+      requestKind: record.requestKind,
+      invitedByActiveUser: record.invitedByActiveUser,
+      invitedByUserId: record.invitedByUserId ?? null,
+      metAtIso: record.metAtIso,
+      actionAtIso: record.actionAtIso,
+      metWhere: record.metWhere,
+      avatarUrl: record.avatarUrl,
+      involvements: this.toInvolvementEntries(involvementRecords),
+      revision: record.updatedAtIso,
+      attendanceStatus: record.attendanceStatus ?? null,
+      checkedInAtIso: record.checkedInAtIso ?? null,
+      checkedInByUserId: record.checkedInByUserId ?? null,
+      checkedInTicketId: record.checkedInTicketId ?? null,
+      managerGrantedByUserId: record.managerGrantedByUserId ?? null,
+      organizerOnly: record.organizerOnly === true,
+      profile: resolveProfile(record.userId, {
+        name: record.name,
+        initials: record.initials,
+        city: record.city,
+        gender: record.gender
+      })
+    };
+  }
+
+  static toRecord(
+    owner: ActivityMemberOwnerRef,
+    member: ActivityMemberDTO,
+    existingRecord?: ActivityMemberRecord | null
+  ): ActivityMemberRecord {
+    const normalizedOwner = this.normalizeOwner(owner);
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    const { involvements: _involvements, ...persistedMember } = member;
+    const invitedByUserId = member.status === 'pending'
+      && (
+        member.requestKind === 'invite'
+        || member.requestKind === 'waitlist-invite'
+        || member.requestKind === 'approval'
+      )
+        ? member.invitedByUserId?.trim() || null
+        : null;
+    return {
+      ...persistedMember,
+      invitedByUserId: existingRecord?.eventVipInvitation ? existingRecord.invitedByUserId : invitedByUserId,
+      eventVipInvitation: existingRecord?.eventVipInvitation === true,
+      eventVipAcceptedAtIso: existingRecord?.eventVipAcceptedAtIso ?? null,
+      eventVipOfferedAtIso: existingRecord?.eventVipOfferedAtIso ?? null,
+      eventVipOfferedPricing: existingRecord?.eventVipOfferedPricing ?? null,
+      eventVipPriceAudit: existingRecord?.eventVipPriceAudit ?? [],
+      invitedByActiveUser: invitedByUserId ? member.invitedByActiveUser === true : false,
+      ownerType: normalizedOwner.ownerType,
+      ownerId: normalizedOwner.ownerId,
+      ownerKey: this.ownerKey(normalizedOwner),
+      createdMs: Number.isFinite(Number(existingRecord?.createdMs)) ? Number(existingRecord?.createdMs) : nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existingRecord?.createdAtIso?.trim() || nowIso,
+      updatedAtIso: nowIso
+    };
+  }
+
+  static recordsToOwnerSnapshot(
+    owner: ActivityMemberOwnerRef,
+    records: readonly ActivityMemberRecord[],
+    capacityTotal?: number | null
+  ): LocalActivityMembersOwnerSnapshot {
+    const normalizedOwner = this.normalizeOwner(owner);
+    const normalizedRecords = this.cloneRecords(records);
+    const acceptedMemberUserIds = this.memberUserIds(
+      normalizedRecords,
+      record => record.status === 'accepted' && record.organizerOnly !== true
+    );
+    const capacityOccupyingAcceptedMemberUserIds = this.memberUserIds(
+      normalizedRecords,
+      record => record.status === 'accepted' && record.organizerOnly !== true
+    );
+    const pendingMemberUserIds = this.memberUserIds(normalizedRecords, record => record.status === 'pending');
+    return {
+      ownerType: normalizedOwner.ownerType,
+      ownerId: normalizedOwner.ownerId,
+      records: normalizedRecords,
+      acceptedMemberUserIds,
+      capacityOccupyingAcceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds: this.memberUserIds(
+        normalizedRecords,
+        record => record.status === 'pending' && this.isInvitationRecord(record)
+      ),
+      pendingRequestMemberUserIds: this.memberUserIds(
+        normalizedRecords,
+        record => record.status === 'pending' && !this.isInvitationRecord(record)
+      ),
+      adminUserIds: this.memberUserIds(
+        normalizedRecords,
+        record => record.status === 'accepted' && (record.role === 'Admin' || record.role === 'Manager')
+      ),
+      capacityTotal: Math.max(
+        capacityOccupyingAcceptedMemberUserIds.length,
+        this.normalizeCount(capacityTotal) ?? capacityOccupyingAcceptedMemberUserIds.length
+      )
+    };
+  }
+
+  static ownerSnapshotToSummary(snapshot: LocalActivityMembersOwnerSnapshot): ActivityMembersSummaryDto {
+    return {
+      ownerType: snapshot.ownerType,
+      ownerId: snapshot.ownerId,
+      acceptedMembers: snapshot.capacityOccupyingAcceptedMemberUserIds.length,
+      pendingMembers: snapshot.pendingMemberUserIds.length,
+      capacityTotal: Math.max(
+        snapshot.capacityOccupyingAcceptedMemberUserIds.length,
+        this.normalizeCount(snapshot.capacityTotal) ?? 0
+      ),
+      acceptedMemberUserIds: [...snapshot.acceptedMemberUserIds],
+      pendingMemberUserIds: [...snapshot.pendingMemberUserIds]
+    };
+  }
+
+  static cloneRecord(record: ActivityMemberRecord): ActivityMemberRecord {
+    return {
+      ...record,
+      profile: record.profile ? { ...record.profile } : record.profile
+    };
+  }
+
+  static cloneRecords(records: readonly ActivityMemberRecord[]): ActivityMemberRecord[] {
+    return records.map(record => this.cloneRecord(record));
+  }
+
+  static toInvolvementEntries(records: readonly ActivityMemberRecord[]): ActivityMemberInvolvementDTO[] {
+    const seen = new Set<string>();
+    return records
+      .filter(record => record.status !== 'deleted')
+      .map(record => this.toInvolvementEntry(record))
+      .filter((entry): entry is ActivityMemberInvolvementDTO => Boolean(entry))
+      .filter(entry => {
+        const key = `${entry.ownerType}:${entry.ownerId}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+  }
+
+  private static toInvolvementEntry(record: ActivityMemberRecord): ActivityMemberInvolvementDTO | null {
+    const ownerId = `${record.ownerId ?? ''}`.trim();
+    if (!ownerId) {
+      return null;
+    }
+    const scope = this.ownerTypeLabel(record.ownerType);
+    const slotDate = this.slotDateLabel(ownerId);
+    const label = [
+      record.metWhere?.trim() || scope,
+      slotDate
+    ].filter(value => value.length > 0).join(' · ');
+    const detail = [
+      scope,
+      this.statusLabel(record.status),
+      record.role
+    ].filter(value => value.length > 0).join(' · ');
+    return {
+      id: `${record.ownerType}:${ownerId}`,
+      ownerType: record.ownerType,
+      ownerId,
+      label,
+      detail,
+      status: record.status,
+      role: record.role,
+      actionAtIso: record.actionAtIso
+    };
+  }
+
+  private static ownerTypeLabel(ownerType: ActivityMemberOwnerRef['ownerType']): string {
+    switch (ownerType) {
+      case 'case': return 'Case';
+      case 'event':
+        return 'Event';
+      case 'subEvent':
+        return 'Sub event';
+      case 'community':
+      case 'group':
+        return 'Group';
+      case 'asset':
+        return 'Asset';
+    }
+  }
+
+  private static statusLabel(status: ActivityMemberRecord['status']): string {
+    switch (status) {
+      case 'accepted':
+        return 'Accepted';
+      case 'pending':
+        return 'Pending';
+      case 'disqualified':
+        return 'Disqualified';
+      case 'removed':
+        return 'Removed';
+      case 'deleted':
+        return 'Deleted';
+      case 'blocked':
+        return 'Blocked';
+    }
+  }
+
+  private static slotDateLabel(ownerId: string): string {
+    const marker = ':slot:';
+    const markerIndex = ownerId.indexOf(marker);
+    if (markerIndex < 0) {
+      return '';
+    }
+    const tail = ownerId.slice(markerIndex + marker.length);
+    const separatorIndex = tail.indexOf(':');
+    const dateText = separatorIndex >= 0 ? tail.slice(separatorIndex + 1) : tail;
+    const dateMs = Date.parse(dateText);
+    if (!Number.isFinite(dateMs)) {
+      return '';
+    }
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(new Date(dateMs));
+  }
+
+  static sortEntriesForManagement(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
+    return [...entries].sort((left, right) => {
+      const priorityComparison = this.managementPriority(left) - this.managementPriority(right);
+      if (priorityComparison !== 0) {
+        return priorityComparison;
+      }
+      const actionComparison = UiDateUtils.toSortableDate(right.actionAtIso)
+        - UiDateUtils.toSortableDate(left.actionAtIso);
+      return actionComparison !== 0
+        ? actionComparison
+        : left.userId.localeCompare(right.userId);
+    });
+  }
+
+  private static managementPriority(entry: ActivityMemberDTO): number {
+    if (entry.status === 'pending') {
+      return 0;
+    }
+    if (entry.status === 'accepted' && (entry.role === 'Admin' || entry.role === 'Manager')) {
+      return 1;
+    }
+    if (entry.status === 'accepted') {
+      return 2;
+    }
+    return entry.status === 'disqualified' ? 3 : 4;
+  }
+
+  private static normalizeOwner(owner: ActivityMemberOwnerRef): ActivityMemberOwnerRef {
+    return {
+      ownerType: owner.ownerType,
+      ownerId: owner.ownerId.trim()
+    };
+  }
+
+  private static ownerKey(owner: ActivityMemberOwnerRef): string {
+    return `${owner.ownerType}:${owner.ownerId}`;
+  }
+
+  private static memberUserIds(
+    records: readonly ActivityMemberRecord[],
+    predicate: (record: ActivityMemberRecord) => boolean
+  ): string[] {
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    for (const record of records) {
+      const userId = record.userId.trim();
+      if (!userId || seen.has(userId) || !predicate(record)) {
+        continue;
+      }
+      seen.add(userId);
+      ids.push(userId);
+    }
+    return ids;
+  }
+
+  private static isInvitationRecord(record: ActivityMemberRecord): boolean {
+    return record.requestKind === 'invite' || record.requestKind === 'waitlist-invite';
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    if (!Number.isFinite(Number(value))) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
+  }
+}
+
+export class LocalActivityResourcesMapper {
+  private static readonly STATUS_ACTIVE = 'A';
+  private static readonly STATUS_DELETED = 'D';
+
+  static normalizeRef(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO | null | undefined
+  ): AppDTOs.ActivitySubEventResourceStateRefDTO | null {
+    const ownerId = `${ref?.ownerId ?? ''}`.trim();
+    const subEventId = `${ref?.subEventId ?? ''}`.trim();
+    const assetOwnerUserId = `${ref?.assetOwnerUserId ?? ''}`.trim();
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return null;
+    }
+    return {
+      ownerId,
+      subEventId,
+      assetOwnerUserId
+    };
+  }
+
+  static recordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    return ActivityResourceBuilder.recordId(ref);
+  }
+
+  static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    return ActivityResourceBuilder.ownerKey(ref);
+  }
+
+  static normalizeState(
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    fallbackRef?: AppDTOs.ActivitySubEventResourceStateRefDTO | null
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    return ActivityResourceBuilder.normalizeState(state, fallbackRef);
+  }
+
+  static toRecord(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    existing?: ActivitySubEventResourceRecord | null,
+    status = this.STATUS_ACTIVE
+  ): ActivitySubEventResourceRecord {
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    return {
+      id: existing?.id ?? this.newRecordId(state),
+      status,
+      ownerKey: this.ownerKey(state),
+      ownerId: state.ownerId,
+      subEventId: state.subEventId,
+      assetOwnerUserId: state.assetOwnerUserId,
+      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(state.assetAssignmentIds),
+      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(state.assetSettingsByType),
+      supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
+        state.supplyContributionEntriesByAssetId
+      ),
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(state.fallbackAssetCardsByType),
+      resourceMetricsByType: ActivityResourceBuilder.cloneResourceMetricsByType(state.resourceMetricsByType),
+      createdMs: existing?.createdMs ?? nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso
+    };
+  }
+
+  private static newRecordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
+    const generation = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `${this.recordId(ref)}:${generation}`;
+  }
+
+  static toState(
+    record: ActivitySubEventResourceRecord
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    if (this.isDeleted(record)) {
+      return null;
+    }
+    const normalizedState = ActivityResourceBuilder.normalizeState({
+      ownerId: record.ownerId,
+      subEventId: record.subEventId,
+      assetOwnerUserId: record.assetOwnerUserId,
+      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds),
+      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
+      supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
+        record.supplyContributionEntriesByAssetId
+      ),
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType),
+      resourceMetricsByType: ActivityResourceBuilder.cloneResourceMetricsByType(record.resourceMetricsByType)
+    }, record);
+    return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
+  }
+
+  static cloneRecord(record: ActivitySubEventResourceRecord): ActivitySubEventResourceRecord {
+    return {
+      ...record,
+      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds),
+      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
+      supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
+        record.supplyContributionEntriesByAssetId
+      ),
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType)
+    };
+  }
+
+  static isDeleted(record: ActivitySubEventResourceRecord | null | undefined): boolean {
+    return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
+  }
+
+}
+
+export class LocalActivitySubEventStageRuntimeMapper {
+  private static readonly STATUS_ACTIVE = 'A';
+  private static readonly STATUS_DELETED = 'D';
+
+  static normalizeRef(
+    ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null | undefined
+  ): AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null {
+    const ownerId = `${ref?.ownerId ?? ''}`.trim();
+    const subEventId = `${ref?.subEventId ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return null;
+    }
+    return {
+      ownerId,
+      subEventId
+    };
+  }
+
+  static recordId(ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO): string {
+    return `${ref.ownerId.trim()}:${ref.subEventId.trim()}`;
+  }
+
+  static ownerKey(ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO): string {
+    return ref.ownerId.trim();
+  }
+
+  static normalizeState(
+    state: AppDTOs.ActivitySubEventStageRuntimeStateDTO | null | undefined,
+    fallbackRef?: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null
+  ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    const ref = this.normalizeRef(state) ?? this.normalizeRef(fallbackRef);
+    if (!ref) {
+      return null;
+    }
+    return {
+      ownerId: ref.ownerId,
+      subEventId: ref.subEventId,
+      stageStatus: `${state?.stageStatus ?? ''}`.trim() || null,
+      stageStatusReason: `${state?.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || null,
+      stageResultRevision: this.normalizeCount(state?.stageResultRevision),
+      groupsCount: this.normalizeCount(state?.groupsCount)
+    };
+  }
+
+  static toRecord(
+    state: AppDTOs.ActivitySubEventStageRuntimeStateDTO,
+    existing?: ActivitySubEventStageRuntimeRecord | null
+  ): ActivitySubEventStageRuntimeRecord {
+    const normalized = this.normalizeState(state);
+    if (!normalized) {
+      throw new Error('Invalid sub-event stage runtime state.');
+    }
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    return {
+      id: this.recordId(normalized),
+      status: this.STATUS_ACTIVE,
+      ownerKey: this.ownerKey(normalized),
+      ownerId: normalized.ownerId,
+      subEventId: normalized.subEventId,
+      stageStatus: `${normalized.stageStatus ?? ''}`.trim() || null,
+      stageStatusReason: `${normalized.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${normalized.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
+      stageResultRevision: normalized.stageResultRevision ?? existing?.stageResultRevision ?? null,
+      groupsCount: normalized.groupsCount ?? existing?.groupsCount ?? null,
+      groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
+        existing?.groupResourceMetricsByAssetOwnerId
+      ),
+      groupResourceReadAtByUserId: this.cloneGroupResourceReadAt(
+        existing?.groupResourceReadAtByUserId
+      ),
+      createdMs: existing?.createdMs ?? nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso
+    };
+  }
+
+  static toState(
+    record: ActivitySubEventStageRuntimeRecord,
+    viewerUserId?: string | null
+  ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    if (this.isDeleted(record)) {
+      return null;
+    }
+    const normalized = this.normalizeState({
+      ownerId: record.ownerId,
+      subEventId: record.subEventId,
+      stageStatus: record.stageStatus,
+      stageStatusReason: record.stageStatusReason,
+      stageStatusUpdatedAt: record.stageStatusUpdatedAt,
+      stageFinalizedAt: record.stageFinalizedAt,
+      stageFinalizedByUserId: record.stageFinalizedByUserId,
+      stageResultRevision: record.stageResultRevision,
+      groupsCount: record.groupsCount
+    }, record);
+    return normalized
+      ? {
+          ...normalized,
+          groupsResourcePendingRead: 0
+        }
+      : null;
+  }
+
+  static cloneRecord(record: ActivitySubEventStageRuntimeRecord): ActivitySubEventStageRuntimeRecord {
+    return {
+      ...record,
+      groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
+        record.groupResourceMetricsByAssetOwnerId
+      ),
+      groupResourceReadAtByUserId: this.cloneGroupResourceReadAt(
+        record.groupResourceReadAtByUserId
+      )
+    };
+  }
+
+  static cloneGroupResourceMetrics(
+    source: ActivitySubEventStageRuntimeRecord['groupResourceMetricsByAssetOwnerId'] | null | undefined
+  ): ActivitySubEventStageRuntimeRecord['groupResourceMetricsByAssetOwnerId'] {
+    return Object.fromEntries(Object.entries(source ?? {}).map(([groupId, byAssetOwner]) => [
+      groupId,
+      Object.fromEntries(Object.entries(byAssetOwner ?? {}).map(([assetOwnerUserId, metricsByType]) => [
+        assetOwnerUserId,
+        ActivityResourceBuilder.cloneResourceMetricsByType(metricsByType)
+      ]))
+    ]));
+  }
+
+  static cloneGroupResourceReadAt(
+    source: ActivitySubEventStageRuntimeRecord['groupResourceReadAtByUserId'] | null | undefined
+  ): ActivitySubEventStageRuntimeRecord['groupResourceReadAtByUserId'] {
+    return Object.fromEntries(Object.entries(source ?? {}).map(([groupId, byUser]) => [
+      groupId,
+      Object.fromEntries(Object.entries(byUser ?? {}).map(([userId, readAtByType]) => [
+        userId,
+        { ...(readAtByType ?? {}) }
+      ]))
+    ]));
+  }
+
+  static resourcePendingRead(
+    _record: ActivitySubEventStageRuntimeRecord | null | undefined,
+    _viewerUserId?: string | null
+  ): number {
+    return 0;
+  }
+
+  static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {
+    return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    if (!Number.isFinite(Number(value))) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
+  }
+}

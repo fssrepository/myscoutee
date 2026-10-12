@@ -1,0 +1,2675 @@
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+
+import { environment } from '../../../../../../environments/environment';
+import type {
+  OperatorGroupLinkRequestDto,
+  OperatorGroupingTokenDto,
+  OperatorClaimEligibilityStatus,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
+  OperatorClaimRequestDto,
+  OperatorClaimStatusDto,
+  OperatorCommunityAnnouncementDto,
+  OperatorCommunityAnnouncementKind,
+  OperatorCommunityAnnouncementSeverity,
+  OperatorCommunityAnnouncementStatus,
+  OperatorCommunityAvailability,
+  OperatorCommunityProviderDto,
+  OperatorCommunityStatusDto,
+  OperatorConfigurationDto,
+  OperatorConfigurationSaveRequestDto,
+  OperatorConfigurationTestRequestDto,
+  OperatorConfigurationTestResultDto,
+  OperatorTlsConfigurationDto,
+  OperatorTlsConfigurationUpdateDto,
+  OperatorTlsJobDto,
+  OperatorTlsTestRequestDto,
+  OperatorDeploymentEligibilityStatus,
+  OperatorDeploymentUpdateDto,
+  OperatorRollbackDto,
+  OperatorDeploymentUpdatePhase,
+  OperatorDeploymentUpdateProgressDto,
+  OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentClaimState,
+  OperatorLeaderboardDeploymentDto,
+  OperatorLeaderboardDeploymentMembershipState,
+  OperatorLeaderboardDeploymentPageDto,
+  OperatorLeaderboardEntryDto,
+  OperatorLeaderboardGroup,
+  OperatorLeaderboardGroupSummaryDto,
+  OperatorLeaderboardMutationDto,
+  OperatorLeaderboardPageDto,
+  OperatorLeaderboardSnapshotBoundaryDto,
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
+  OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto,
+  OperatorSettlementDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
+  OperatorRegistryMutationResultDto,
+  OperatorRegistryRegisterRequestDto,
+  OperatorRegistryConfirmRequestDto,
+  OperatorRegistryInspectRequestDto,
+  OperatorRegistryInspectionDto,
+  OperatorRegistryServiceContract,
+  OperatorRegistryStatusDto
+} from '../../../contracts/operator/operator.interface';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
+import { I18nService } from '../../../base/services/localization/i18n.service';
+import { SessionService } from '../../../base/services/accounts/session.service';
+import { RouteDelayService } from '../../../base/services/platform/route-delay.service';
+
+const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
+const OPERATOR_NETWORK_ROUTE = '/operator';
+const OPERATOR_ANNOUNCEMENTS_ROUTE = '/operator/announcements';
+const OPERATOR_COMMUNITY_PROVIDERS_ROUTE = '/operator/community/providers';
+const OPERATOR_UPDATES_ROUTE = '/operator/updates';
+const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
+const OPERATOR_TLS_CONFIGURATION_ROUTE = '/operator/configuration/tls';
+const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
+const OPERATOR_MEASUREMENTS_ROUTE = '/operator/measurements';
+const DEMO_OPERATOR_USER_HEADER = 'X-Demo-User-Id';
+const LEADERBOARD_VIEWS = ['founder', 'claimed', 'unclaimed'] as const;
+const ZERO_SHA256_HASH = `sha256:${'0'.repeat(64)}`;
+const UPDATE_POLL_INTERVAL_MS = 750;
+const UPDATE_POLL_LIMIT = 800;
+const UPDATE_TERMINAL_PHASES = new Set([
+  'COMPLETED',
+  'FAILED',
+  'REJECTED',
+  'RECOVERY_REQUIRED'
+]);
+
+type RemoteLeaderboardView = typeof LEADERBOARD_VIEWS[number];
+
+interface RemoteOperatorActionReceipt {
+  acceptedAt: string | null;
+  claimState: string | null;
+  groupId: string | null;
+  tokenExpiresAt: string | null;
+}
+
+interface RemoteOperatorActionResult {
+  clientToken: string | null;
+  receipt: RemoteOperatorActionReceipt;
+}
+
+type RemoteOperatorClaimStatus = Omit<
+  Partial<OperatorClaimStatusDto>,
+  'eligibilityStatus'
+> & {
+  eligibilityStatus?: string | null;
+};
+
+interface RemoteOperatorClaimOverview {
+  status: RemoteOperatorClaimStatus;
+  submission: OperatorClaimRequestDto | null;
+}
+
+interface RemoteOperatorLeaderboardSnapshot {
+  snapshotId: string;
+  formulaVersion: string;
+  rulesetVersion: string;
+  throughPeriod: string;
+  throughLedgerIndex: number;
+  throughAuditIndex: number;
+  throughReviewIndex: number;
+  throughEligibilityIndex: number;
+  throughTransferEventIndex: number;
+  ledgerHeadHash: string;
+  auditHeadHash: string;
+  reviewHeadHash: string;
+  eligibilityHeadHash: string;
+  transferEventHeadHash: string;
+  founderUnitsNumerator: string;
+  founderUnitsDenominator: string;
+  founderShareNumerator: string;
+  founderShareDenominator: string;
+  measuredWeightNumerator: string;
+  measuredWeightDenominator: string;
+  claimedWeightNumerator: string;
+  claimedWeightDenominator: string;
+  createdAt: string;
+  snapshotHash: string;
+}
+
+interface RemoteOperatorLeaderboardRow {
+  rowId: string;
+  view: RemoteLeaderboardView;
+  groupId: string | null;
+  label: string;
+  avatarUrl: string | null;
+  claimState: string;
+  eligibilityStatus: string;
+  deploymentCount: number;
+  weightNumerator: string;
+  weightDenominator: string;
+  shareNumerator: string;
+  shareDenominator: string;
+}
+
+interface RemoteOperatorLeaderboardPage {
+  snapshot: RemoteOperatorLeaderboardSnapshot;
+  view: RemoteLeaderboardView;
+  items: RemoteOperatorLeaderboardRow[];
+  nextCursor: string | null;
+}
+
+interface RemoteOperatorLeaderboardDeployment {
+  deploymentId: string;
+  groupId: string;
+  claimState: string;
+  eligibilityStatus: string;
+  membershipState: string;
+  weightNumerator: string;
+  weightDenominator: string;
+  shareNumerator: string;
+  shareDenominator: string;
+}
+
+interface RemoteOperatorLeaderboardDeploymentPage {
+  snapshot: RemoteOperatorLeaderboardSnapshot;
+  groupId: string;
+  items: RemoteOperatorLeaderboardDeployment[];
+  nextCursor: string | null;
+}
+
+interface RemoteOperatorRegistryMutationResult {
+  status: OperatorRegistryStatusDto;
+  leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+  removedLeaderboardEntryIds: string[];
+  leaderboardTotalDelta?: number | null;
+  created: boolean;
+}
+
+interface RemoteOperatorClaimMutationResult {
+  status: RemoteOperatorClaimStatus;
+  submission: OperatorClaimRequestDto | null;
+  leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+  removedLeaderboardEntryIds: string[];
+  leaderboardTotalDelta?: number | null;
+}
+
+interface OperatorLeaderboardCursorState {
+  viewIndex: number;
+  viewCursor: string | null;
+  throughPeriod: string | null;
+  throughLedgerIndex: number | null;
+  throughAuditIndex: number | null;
+  throughReviewIndex: number | null;
+  throughEligibilityIndex: number | null;
+  throughTransferEventIndex: number | null;
+  ledgerHeadHash: string | null;
+  auditHeadHash: string | null;
+  reviewHeadHash: string | null;
+  eligibilityHeadHash: string | null;
+  transferEventHeadHash: string | null;
+  emitted: number;
+}
+
+interface RemoteOperatorAnnouncementLocalization {
+  locale: string;
+  title: string;
+  body: string;
+}
+
+interface RemoteOperatorAnnouncementLink {
+  relation: string;
+  url: string;
+}
+
+interface RemoteOperatorUpdateManifest {
+  manifestVersion: string;
+  releaseVersion: string;
+  channel: string;
+  publishedAt: string;
+  minimumCompatibleVersion: string;
+  maximumCompatibleVersion: string;
+  artifactUrl: string;
+  artifactSizeBytes: number;
+  artifactSha256: string;
+  packageSigningKeyId: string;
+  packageSignature: string;
+  releaseNotesUrl: string;
+  backupRequired: boolean;
+  expectedDowntimeSeconds: number;
+  status: string;
+  supersedesVersion: string | null;
+  supersededByVersion: string | null;
+  revocationReason: string | null;
+  packageSigningKeyConfigured: boolean;
+  packageSigningKeyMatches: boolean;
+  packageSignatureVerified: boolean;
+}
+
+interface RemoteOperatorAnnouncement {
+  sequence: number;
+  announcementId: string;
+  kind: string;
+  severity: string;
+  publishedAt: string;
+  expiresAt: string | null;
+  titleKey: string | null;
+  bodyKey: string | null;
+  localizations: RemoteOperatorAnnouncementLocalization[];
+  links: RemoteOperatorAnnouncementLink[];
+  updateManifest: RemoteOperatorUpdateManifest | null;
+  updateManifestHash: string | null;
+  announcementHash: string;
+}
+
+interface RemoteOperatorAnnouncementPage {
+  snapshot: {
+    asOf: string;
+    throughSequence: number;
+    createdAt: string;
+  };
+  items: RemoteOperatorAnnouncement[];
+  nextCursor: string | null;
+}
+
+interface RemoteOperatorCommunityProvider {
+  id: string;
+  name: string;
+  purpose: string;
+  url: string;
+  configured: boolean;
+  available: boolean;
+}
+
+interface RemoteOperatorUpdateJob {
+  rollback?: OperatorRollbackDto | null;
+  monitorToken?: string | null;
+  schemaVersion: number;
+  jobId: string;
+  phase: string;
+  percent: number;
+  message: string | null;
+  updatedAt: string;
+  requestedAt: string;
+  requestedBy: string;
+  manifestHash: string;
+  currentVersion: string;
+  targetVersion: string;
+  channel: string;
+  artifactSha256: string;
+  backupPath: string | null;
+}
+
+interface RemoteOperatorUpdateEventPage {
+  items: Array<{
+    sequence: number;
+    status: RemoteOperatorUpdateJob;
+  }>;
+  nextAfter: number;
+  terminal: boolean;
+}
+
+interface RemoteOperatorUpdatesStatus {
+  rollback?: OperatorRollbackDto | null;
+  enabled: boolean;
+  currentVersion: string;
+  latestJob: RemoteOperatorUpdateJob | null;
+}
+
+interface RemoteOperatorRevenueReportPage {
+  items: OperatorRevenueReportDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+type RemoteOperatorSettlement = {
+  [Key in keyof OperatorSettlementDto]?: unknown;
+};
+
+interface RemoteOperatorSettlementPage {
+  items: RemoteOperatorSettlement[];
+  nextAfterPeriod: string | null;
+  nextAfterSettlementId: string | null;
+  generatedAtIso: string;
+}
+
+interface RemoteOperatorMeasurementReportPage {
+  items: OperatorMeasurementReportDto[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class HttpOperatorRegistryService implements OperatorRegistryServiceContract {
+  readonly source = 'http' as const;
+  private readonly http = inject(HttpClient);
+  private readonly i18n = inject(I18nService);
+  private readonly sessionService = inject(SessionService);
+  private readonly routeDelay = inject(RouteDelayService);
+  private readonly apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+  private readonly endpoint = `${this.apiBaseUrl}${OPERATOR_REGISTRY_ROUTE}`;
+  private readonly operatorEndpoint = `${this.apiBaseUrl}${OPERATOR_NETWORK_ROUTE}`;
+  private latestUpdateAnnouncement: RemoteOperatorAnnouncement | null = null;
+  private latestAnnouncementsCheckedAt: string | null = null;
+  private rollbackPoint: OperatorRollbackDto | null = null;
+  private activeUpdateJob: RemoteOperatorUpdateJob | null = null;
+  private currentDeploymentVersion = '—';
+  private updateExecutionEnabled = false;
+  private claimVerificationAvailable: boolean | null = null;
+
+  async loadStatus(): Promise<OperatorRegistryStatusDto> {
+    return await this.requireResponse(
+      OPERATOR_REGISTRY_ROUTE,
+      this.http.get<OperatorRegistryStatusDto>(this.endpoint, this.requestOptions()).toPromise()
+    );
+  }
+
+  async inspect(request: OperatorRegistryInspectRequestDto): Promise<OperatorRegistryInspectionDto> {
+    const payload: OperatorRegistryInspectRequestDto = {
+      baseUrl: request.baseUrl.trim(),
+      ...(request.expectedScope?.trim() ? { expectedScope: request.expectedScope.trim() } : {})
+    };
+    return await this.requireResponse(
+      `${OPERATOR_REGISTRY_ROUTE}/inspect`,
+      this.http.post<OperatorRegistryInspectionDto>(
+        `${this.endpoint}/inspect`,
+        payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async confirm(inspectionToken: string): Promise<OperatorRegistryStatusDto> {
+    const payload: OperatorRegistryConfirmRequestDto = {
+      inspectionToken: inspectionToken.trim()
+    };
+    return await this.requireResponse(
+      `${OPERATOR_REGISTRY_ROUTE}/confirm`,
+      this.http.post<OperatorRegistryStatusDto>(
+        `${this.endpoint}/confirm`,
+        payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
+    const payload: OperatorRegistryRegisterRequestDto = {
+      registryBaseUrl: request.registryBaseUrl.trim(),
+      ...(request.expectedRegistryScope?.trim()
+        ? { expectedRegistryScope: request.expectedRegistryScope.trim() }
+        : {})
+    };
+    const response = await this.requireResponse(
+      `${OPERATOR_REGISTRY_ROUTE}/register`,
+      this.http.post<RemoteOperatorRegistryMutationResult>(
+        `${this.endpoint}/register`,
+        payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return this.toRegistryMutationResult(response);
+  }
+
+  async retry(): Promise<OperatorRegistryStatusDto> {
+    return await this.requireResponse(
+      `${OPERATOR_REGISTRY_ROUTE}/retry`,
+      this.http.post<OperatorRegistryStatusDto>(
+        `${this.endpoint}/retry`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async disconnect(): Promise<OperatorRegistryMutationResultDto> {
+    const response = await this.requireResponse(
+      `${OPERATOR_REGISTRY_ROUTE}/disconnect`,
+      this.http.post<RemoteOperatorRegistryMutationResult>(
+        `${this.endpoint}/disconnect`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return this.toRegistryMutationResult(response);
+  }
+
+  async synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto> {
+    return await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/synchronize`,
+      this.http.post<OperatorMeasurementSyncDto>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/synchronize`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    this.throwIfAborted(signal);
+    const page = Math.max(0, Math.min(
+      1_000_000,
+      Math.trunc(Number(query.page) || 0)
+    ));
+    const size = Math.max(1, Math.min(
+      100,
+      Math.trunc(Number(query.pageSize) || 10)
+    ));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
+      this.http.get<RemoteOperatorMeasurementReportPage>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (Math.trunc(Number(result.page)) !== page) {
+      throw new Error('operator.measurements.reports.response.invalid');
+    }
+    return {
+      items: result.items ?? [],
+      total: Math.max(0, Math.trunc(Number(result.totalElements) || 0))
+    };
+  }
+
+  async requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto> {
+    const normalizedReportId = reportId.trim();
+    if (!/^[0-9a-f]{24}$/.test(normalizedReportId)) {
+      throw new Error('operator.measurements.report.id.invalid');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_MEASUREMENTS_ROUTE}/reports/${normalizedReportId}/requeue`,
+      this.http.post<OperatorMeasurementReportDto>(
+        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports/${
+          encodeURIComponent(normalizedReportId)
+        }/requeue`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async leaderboardPage(
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardPageDto> {
+    this.throwIfAborted(signal);
+    const pageSize = Math.max(1, Math.min(100, Math.trunc(Number(query.pageSize) || 20)));
+    const state = this.decodeLeaderboardCursor(query.cursor);
+    const items: OperatorLeaderboardEntryDto[] = [];
+    let viewIndex = state.viewIndex;
+    let viewCursor = state.viewCursor;
+    let throughPeriod = state.throughPeriod;
+    let snapshot: RemoteOperatorLeaderboardSnapshot | null = null;
+    let snapshotBoundary = this.cursorSnapshotBoundary(state);
+    let requestCount = 0;
+
+    while (items.length < pageSize && viewIndex < LEADERBOARD_VIEWS.length) {
+      requestCount += 1;
+      if (requestCount > 100) {
+        throw new Error('operator.leaderboard.error.pagination');
+      }
+      this.throwIfAborted(signal);
+      const view = LEADERBOARD_VIEWS[viewIndex]!;
+      let params = new HttpParams()
+        .set('view', view)
+        .set('limit', pageSize - items.length);
+      if (throughPeriod) {
+        params = params.set('throughPeriod', throughPeriod);
+      }
+      if (viewCursor) {
+        params = params.set('cursor', viewCursor);
+      }
+      const remote = await this.requireResponse(
+        `${OPERATOR_NETWORK_ROUTE}/leaderboard`,
+        this.http.get<RemoteOperatorLeaderboardPage>(
+          `${this.operatorEndpoint}/leaderboard`,
+          this.requestOptions(params)
+        ).toPromise()
+      );
+      this.throwIfAborted(signal);
+      if (remote.view !== view) {
+        throw new Error('operator.leaderboard.error.response');
+      }
+      const remoteBoundary = this.toSnapshotBoundary(remote.snapshot);
+      if (
+        snapshotBoundary
+        && !this.sameSnapshotBoundary(snapshotBoundary, remoteBoundary)
+      ) {
+        throw new Error('operator.leaderboard.error.snapshot.changed');
+      }
+      snapshotBoundary ??= remoteBoundary;
+      snapshot ??= remote.snapshot;
+      throughPeriod ??= remoteBoundary.throughPeriod;
+      items.push(...remote.items.map(row => this.toLeaderboardEntry(row)));
+
+      if (remote.nextCursor) {
+        if (remote.nextCursor === viewCursor && remote.items.length === 0) {
+          throw new Error('operator.leaderboard.error.pagination');
+        }
+        viewCursor = remote.nextCursor;
+      } else {
+        viewIndex += 1;
+        viewCursor = null;
+      }
+    }
+
+    const emitted = state.emitted + items.length;
+    const nextCursor = viewIndex < LEADERBOARD_VIEWS.length
+      ? this.encodeLeaderboardCursor({
+          viewIndex,
+          viewCursor,
+          throughPeriod,
+          throughLedgerIndex: snapshotBoundary?.throughLedgerIndex ?? null,
+          throughAuditIndex: snapshotBoundary?.throughAuditIndex ?? null,
+          throughReviewIndex: snapshotBoundary?.throughReviewIndex ?? null,
+          throughEligibilityIndex:
+            snapshotBoundary?.throughEligibilityIndex ?? null,
+          throughTransferEventIndex:
+            snapshotBoundary?.throughTransferEventIndex ?? null,
+          ledgerHeadHash: snapshotBoundary?.ledgerHeadHash ?? null,
+          auditHeadHash: snapshotBoundary?.auditHeadHash ?? null,
+          reviewHeadHash: snapshotBoundary?.reviewHeadHash ?? null,
+          eligibilityHeadHash: snapshotBoundary?.eligibilityHeadHash ?? null,
+          transferEventHeadHash:
+            snapshotBoundary?.transferEventHeadHash ?? null,
+          emitted
+        })
+      : null;
+    return {
+      items,
+      total: emitted + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: {
+        snapshotBoundary,
+        groupSummaries: this.toLeaderboardSummaries(snapshot, items)
+      }
+    };
+  }
+
+  async leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    this.throwIfAborted(signal);
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.group.invalid'
+      );
+    }
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 20))
+    );
+    let params = new HttpParams().set('limit', pageSize);
+    const cursor = query.cursor?.trim() ?? '';
+    if (cursor) {
+      params = params.set('cursor', cursor);
+    }
+    const route = `${
+      OPERATOR_NETWORK_ROUTE
+    }/leaderboard/groups/${encodeURIComponent(normalizedGroupId)}/deployments`;
+    const remote = await this.requireResponse(
+      route,
+      this.http.get<RemoteOperatorLeaderboardDeploymentPage>(
+        `${this.apiBaseUrl}${route}`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (remote.groupId?.trim() !== normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.response'
+      );
+    }
+    const items = (remote.items ?? []).map(item =>
+      this.toLeaderboardDeployment(item, normalizedGroupId)
+    );
+    const snapshotBoundary = this.toSnapshotBoundary(remote.snapshot);
+    const nextCursor = remote.nextCursor?.trim() || null;
+    const pageOffset = Math.max(
+      0,
+      Math.trunc(Number(query.page) || 0)
+    ) * pageSize;
+    return {
+      items,
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: snapshotBoundary
+    };
+  }
+
+  async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
+    const remote = await this.requireResponse(
+      `${OPERATOR_NETWORK_ROUTE}/claim`,
+      this.http.get<RemoteOperatorClaimOverview>(
+        `${this.operatorEndpoint}/claim`,
+        this.requestOptions()
+      ).toPromise()
+    ).catch(async (error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        // The older API sends no domain error code. Confirm the registration
+        // prerequisite rather than labelling every conflict as unregistered.
+        const registry = await this.loadStatus().catch(() => null);
+        if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+          throw new Error('operator.claim.error.registration.required');
+        }
+      }
+      throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+        ? 'operator.request.timeout' : 'operator.request.failed');
+    });
+    const status = this.toClaimStatus(remote.status);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission)
+    };
+  }
+
+  async claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
+    if (this.claimVerificationAvailable === null) {
+      await this.loadClaimStatus();
+    }
+    if (!this.claimVerificationAvailable) {
+      throw new Error('operator.claim.verification.backend.unavailable');
+    }
+    const payload = this.requireClaimVerificationRequest(request);
+    const remote = await this.requireResponse(
+      `${OPERATOR_NETWORK_ROUTE}/claim`,
+      this.http.post<RemoteOperatorClaimMutationResult>(
+        `${this.operatorEndpoint}/claim`,
+        payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+    const status = this.toClaimStatus(remote.status);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission),
+      ...this.toLeaderboardMutation(remote)
+    };
+  }
+
+  async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
+    const result = await this.requireResponse(
+      `${OPERATOR_NETWORK_ROUTE}/claim/client-token`,
+      this.http.post<RemoteOperatorActionResult>(
+        `${this.operatorEndpoint}/claim/client-token`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+    const clientToken = result.clientToken?.trim() ?? '';
+    const expiresAt = result.receipt?.tokenExpiresAt?.trim() ?? '';
+    if (!clientToken || !expiresAt) {
+      throw new Error('operator.group.error.token.response');
+    }
+    return {
+      clientToken,
+      expiresAt
+    };
+  }
+
+  async linkOperatorGroup(
+    request: OperatorGroupLinkRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
+    const remote = await this.requireResponse(
+      `${OPERATOR_NETWORK_ROUTE}/claim/redeem`,
+      this.http.post<RemoteOperatorClaimMutationResult>(
+        `${this.operatorEndpoint}/claim/redeem`,
+        {
+          clientToken: request.clientToken.trim()
+        },
+        this.requestOptions()
+      ).toPromise()
+    );
+    const status = this.toClaimStatus(remote.status);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission),
+      ...this.toLeaderboardMutation(remote)
+    };
+  }
+
+  async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
+    const status = await this.requireResponse(
+      OPERATOR_UPDATES_ROUTE,
+      this.http.get<RemoteOperatorUpdatesStatus>(
+        `${this.operatorEndpoint}/updates`,
+        this.requestOptions()
+      ).toPromise()
+    ).catch(() => { throw new Error('operator.update.error.check'); });
+    this.updateExecutionEnabled = status.enabled === true;
+    this.currentDeploymentVersion = status.currentVersion?.trim() || '—';
+    this.activeUpdateJob = status.latestJob ?? null;
+    this.rollbackPoint = status.rollback ?? null;
+    const releases = await this.requireResponse(
+      `${OPERATOR_UPDATES_ROUTE}/releases`,
+      this.http.get<{ checkedAt: string; items: RemoteOperatorAnnouncement[] }>(
+        `${this.operatorEndpoint}/updates/releases`, this.requestOptions()
+      ).toPromise()
+    ).catch((error: unknown) => {
+      const status = error instanceof HttpErrorResponse ? error.status : 0;
+      throw new Error(status === 412 ? 'operator.update.error.metadata'
+        : status === 428 ? 'operator.update.error.key' : 'operator.update.error.check');
+    });
+    this.latestAnnouncementsCheckedAt = releases.checkedAt;
+    this.latestUpdateAnnouncement = releases.items[0] ?? null;
+
+    return this.toDeploymentUpdate(
+      this.latestUpdateAnnouncement,
+      this.activeUpdateJob
+    );
+  }
+
+  async applyDeploymentUpdate(
+    onProgress?: OperatorDeploymentUpdateProgressHandler
+  ): Promise<OperatorDeploymentUpdateDto> {
+    if (!this.latestUpdateAnnouncement) {
+      await this.loadDeploymentUpdate();
+    }
+    const announcement = this.latestUpdateAnnouncement;
+    if (!this.updateExecutionEnabled || !announcement?.updateManifest || !this.installableUpdate(announcement.updateManifest)) {
+      throw new Error('operator.update.error.unavailable');
+    }
+
+    return this.executeUpdate(announcement, `${this.operatorEndpoint}/updates`,
+      { announcementId: announcement.announcementId.trim() }, onProgress);
+  }
+
+  async rollbackDeploymentUpdate(onProgress?: OperatorDeploymentUpdateProgressHandler): Promise<OperatorDeploymentUpdateDto> {
+    const point = this.rollbackPoint;
+    if (!this.updateExecutionEnabled || !point) throw new Error('operator.update.error.rollback.unavailable');
+    const announcement = await this.requireResponse(OPERATOR_UPDATES_ROUTE,
+      this.http.get<RemoteOperatorAnnouncement>(
+        `${this.operatorEndpoint}/updates/releases/${encodeURIComponent(point.targetVersion)}`,
+        this.requestOptions()).toPromise()
+    ).catch(() => { throw new Error('operator.update.error.rollback.unavailable'); });
+    if (announcement.updateManifest?.artifactSha256 !== point.artifactSha256) {
+      throw new Error('operator.update.error.rollback.unavailable');
+    }
+    return this.executeUpdate(announcement,
+      `${this.operatorEndpoint}/updates/jobs/${encodeURIComponent(point.jobId)}/rollback`, {}, onProgress);
+  }
+
+  private async executeUpdate(
+    announcement: RemoteOperatorAnnouncement,
+    endpoint: string,
+    approval: object,
+    onProgress?: OperatorDeploymentUpdateProgressHandler
+  ): Promise<OperatorDeploymentUpdateDto> {
+    let job = await this.requireResponse(
+      OPERATOR_UPDATES_ROUTE,
+      this.http.post<RemoteOperatorUpdateJob>(
+        endpoint,
+        approval,
+        this.requestOptions()
+      ).toPromise()
+    ).catch(() => { throw new Error('operator.update.error.start'); });
+    const monitorToken = job.monitorToken?.trim() || null;
+    if (monitorToken && !/^[0-9a-f]{64}$/.test(monitorToken)) {
+      throw new Error('operator.update.error.response');
+    }
+    this.activeUpdateJob = job;
+    this.currentDeploymentVersion = job.currentVersion?.trim()
+      || this.currentDeploymentVersion;
+    onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
+
+    job = monitorToken ? job : await this.loadUpdateJob(job.jobId).catch((error: unknown) => {
+      if (this.transientUpdateReadError(error)) {
+        return job;
+      }
+      throw new Error('operator.update.error.status');
+    });
+    this.activeUpdateJob = job;
+    this.currentDeploymentVersion = job.currentVersion?.trim() || this.currentDeploymentVersion;
+    onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
+    if (this.updateJobTerminal(job.phase)) {
+      return this.toDeploymentUpdate(announcement, job);
+    }
+
+    let after = 0;
+    const deadline = Date.now() + UPDATE_POLL_LIMIT * UPDATE_POLL_INTERVAL_MS;
+    for (let poll = 0; poll < UPDATE_POLL_LIMIT && Date.now() < deadline; poll += 1) {
+      const read = monitorToken
+        ? this.loadMonitoredUpdate(job.jobId, monitorToken, after)
+        : this.loadUpdateEvents(job.jobId, after);
+      const page = await read.catch((error: unknown) => {
+        // Installation restarts the API/proxy. Retry only reads of the same
+        // accepted job, keeping its cursor and last confirmed progress.
+        if (this.transientUpdateReadError(error)) {
+          return null;
+        }
+        throw new Error('operator.update.error.status');
+      });
+      if (!page) {
+        await this.waitForUpdatePoll();
+        continue;
+      }
+      for (const event of page.items) {
+        if (event.sequence <= after) {
+          continue;
+        }
+        after = event.sequence;
+        job = event.status;
+        this.activeUpdateJob = job;
+        this.currentDeploymentVersion = job.currentVersion?.trim() || this.currentDeploymentVersion;
+        onProgress?.(this.toUpdateProgress(job, announcement.updateManifest));
+      }
+      after = Math.max(after, Math.max(0, Math.trunc(Number(page.nextAfter) || 0)));
+      if (page.terminal || this.updateJobTerminal(job.phase)) {
+        return this.toDeploymentUpdate(announcement, job);
+      }
+      await this.waitForUpdatePoll();
+    }
+    throw new Error('operator.update.error.status.timeout');
+  }
+
+  private transientUpdateReadError(error: unknown): boolean {
+    return (error instanceof HttpErrorResponse && [0, 502, 503, 504].includes(error.status))
+      || (error instanceof Error && error.message === 'operator.request.timeout');
+  }
+
+  private async loadMonitoredUpdate(jobId: string, token: string, after: number): Promise<RemoteOperatorUpdateEventPage> {
+    // Same-origin HTTPS; the independent host reader is behind the retained ingress.
+    // This job-scoped read capability stays in memory and never enters a URL/storage.
+    const route = `/operator-update-status/${encodeURIComponent(jobId)}`;
+    const status = await this.requireResponse(route, this.http.get<RemoteOperatorUpdateJob>(route, {
+      headers: new HttpHeaders({ Authorization: `UpdateMonitor ${token}` })
+    }).toPromise());
+    if (status.jobId !== jobId) throw new Error('operator.update.error.response');
+    if (status.rollback) this.rollbackPoint = status.rollback;
+    return { items: [{ sequence: after + 1, status }], nextAfter: after + 1,
+      terminal: this.updateJobTerminal(status.phase) };
+  }
+
+  async loadConfiguration(): Promise<OperatorConfigurationDto> {
+    return await this.requireResponse(
+      OPERATOR_CONFIGURATION_ROUTE,
+      this.http.get<OperatorConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async saveConfiguration(
+    request: OperatorConfigurationSaveRequestDto
+  ): Promise<OperatorConfigurationDto> {
+    return await this.requireResponse(
+      OPERATOR_CONFIGURATION_ROUTE,
+      this.http.put<OperatorConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}`,
+        request,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async testConfiguration(
+    request: OperatorConfigurationTestRequestDto
+  ): Promise<OperatorConfigurationTestResultDto> {
+    const destinationToken = request.destinationToken?.trim() ?? '';
+    const browserReadinessToken =
+      request.browserReadinessToken?.trim() ?? '';
+    const browserAppId = request.browserAppId?.trim() ?? '';
+    if (destinationToken.length > 4096) {
+      throw new Error('operator.configuration.test.messaging.destination.too.long');
+    }
+    if (
+      browserReadinessToken.length > 4096
+      || browserAppId.length > 256
+    ) {
+      throw new Error('operator.configuration.test.failed');
+    }
+    const payload: OperatorConfigurationTestRequestDto = {
+      kind: request.kind,
+      ...(request.kind === 'FIREBASE_MESSAGING' && destinationToken
+        ? { destinationToken }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING' && browserReadinessToken
+        ? { browserReadinessToken }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING'
+        && Number.isSafeInteger(request.browserConfigurationRevision)
+        && (request.browserConfigurationRevision ?? -1) >= 0
+        ? {
+            browserConfigurationRevision:
+              request.browserConfigurationRevision
+          }
+        : {}),
+      ...(request.kind === 'FIREBASE_MESSAGING' && browserAppId
+        ? { browserAppId }
+        : {})
+    };
+    return await this.requireResponse(
+      `${OPERATOR_CONFIGURATION_ROUTE}/tests`,
+      this.http.post<OperatorConfigurationTestResultDto>(
+        `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/tests`,
+        payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async loadTlsConfiguration(): Promise<OperatorTlsConfigurationDto> {
+    return await this.requireResponse(
+      OPERATOR_TLS_CONFIGURATION_ROUTE,
+      this.http.get<OperatorTlsConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async saveTlsConfiguration(
+    request: OperatorTlsConfigurationUpdateDto
+  ): Promise<OperatorTlsJobDto> {
+    const job = await this.requireResponse(
+      OPERATOR_TLS_CONFIGURATION_ROUTE,
+      this.http.put<OperatorTlsJobDto>(
+        `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}`,
+        request,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return await this.waitForTlsJob(job);
+  }
+
+  async testTlsConfiguration(
+    request: OperatorTlsTestRequestDto
+  ): Promise<OperatorTlsJobDto> {
+    const job = await this.requireResponse(
+      OPERATOR_TLS_CONFIGURATION_ROUTE,
+      this.http.post<OperatorTlsJobDto>(
+        `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}/tests`,
+        request,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return await this.waitForTlsJob(job);
+  }
+
+  async activateFirebase(): Promise<OperatorConfigurationDto> {
+    return await this.requireResponse(
+      `${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
+      this.http.post<OperatorConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async loadRevenue(): Promise<OperatorRevenueDto> {
+    return await this.requireResponse(
+      OPERATOR_REVENUE_ROUTE,
+      this.http.get<OperatorRevenueDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
+    return await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/synchronize`,
+      this.http.post<OperatorRevenueSyncDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/synchronize`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    this.throwIfAborted(signal);
+    const page = Math.max(0, Math.min(
+      1_000_000,
+      Math.trunc(Number(query.page) || 0)
+    ));
+    const size = Math.max(1, Math.min(
+      100,
+      Math.trunc(Number(query.pageSize) || 10)
+    ));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/reports`,
+      this.http.get<RemoteOperatorRevenueReportPage>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (Math.trunc(Number(result.page)) !== page) {
+      throw new Error('operator.revenue.delivery.reports.response.invalid');
+    }
+    return {
+      items: result.items ?? [],
+      total: Math.max(0, Math.trunc(Number(result.totalElements) || 0))
+    };
+  }
+
+  async requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto> {
+    const normalizedReportId = reportId.trim();
+    if (!/^[0-9a-f]{24}$/.test(normalizedReportId)) {
+      throw new Error('operator.revenue.delivery.report.id.invalid');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/reports/${normalizedReportId}/requeue`,
+      this.http.post<OperatorRevenueReportDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports/${
+          encodeURIComponent(normalizedReportId)
+        }/requeue`,
+        null,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    this.throwIfAborted(signal);
+    const limit = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
+    );
+    const currencyCode =
+      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
+    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
+    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
+    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
+      throw new Error('operator.revenue.settlement.currency.invalid');
+    }
+    if (
+      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
+      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
+      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
+    ) {
+      throw new Error('operator.revenue.settlement.period.invalid');
+    }
+    const cursor = this.decodeSettlementCursor(query.cursor);
+    let params = new HttpParams()
+      .set('includeSuperseded', Boolean(
+        query.filters?.includeSuperseded
+      ))
+      .set('limit', limit);
+    if (currencyCode) {
+      params = params.set('currencyCode', currencyCode);
+    }
+    if (fromPeriod) {
+      params = params.set('fromPeriod', fromPeriod);
+    }
+    if (throughPeriod) {
+      params = params.set('throughPeriod', throughPeriod);
+    }
+    if (cursor) {
+      params = params
+        .set('afterPeriod', cursor.afterPeriod)
+        .set('afterSettlementId', cursor.afterSettlementId);
+    }
+    const result = await this.requireResponse(
+      `${OPERATOR_REVENUE_ROUTE}/settlements`,
+      this.http.get<RemoteOperatorSettlementPage>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/settlements`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (!Array.isArray(result.items)) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    const generatedAtIso =
+      this.settlementText(result.generatedAtIso);
+    if (!this.validIsoTimestamp(generatedAtIso)) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    const nextAfterPeriod =
+      this.settlementText(result.nextAfterPeriod);
+    const nextAfterSettlementId =
+      this.settlementText(result.nextAfterSettlementId);
+    if (Boolean(nextAfterPeriod) !== Boolean(nextAfterSettlementId)) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    const nextCursor = nextAfterPeriod
+      ? this.encodeSettlementCursor(
+          nextAfterPeriod,
+          nextAfterSettlementId
+        )
+      : null;
+    const items = result.items.map(item =>
+      this.toSettlement(item)
+    );
+    const pageOffset =
+      Math.max(0, Math.trunc(Number(query.page) || 0)) * limit;
+    return {
+      items,
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor,
+      context: { generatedAtIso }
+    };
+  }
+
+  async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
+    const [providers, page] = await Promise.all([
+      this.loadCommunityProviders(),
+      this.loadAnnouncements({
+        includeExpired: false,
+        limit: 100
+      })
+    ]).catch(async (error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        const registry = await this.loadStatus().catch(() => null);
+        if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+          throw new Error('operator.community.error.registration.required');
+        }
+      }
+      throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+        ? 'operator.request.timeout' : 'operator.request.failed');
+    });
+    return {
+      availability: 'INVISIBLE',
+      updatedAt:
+        page.snapshot.asOf?.trim()
+        || page.snapshot.createdAt?.trim()
+        || null,
+      providers,
+      announcements: [...page.items]
+        .sort((left, right) => Number(right.sequence) - Number(left.sequence))
+        .map(item => this.toCommunityAnnouncement(item))
+    };
+  }
+
+  async setCommunityAvailability(
+    _availability: OperatorCommunityAvailability
+  ): Promise<OperatorCommunityStatusDto> {
+    return this.unsupported('community availability');
+  }
+
+  private async loadCommunityProviders(): Promise<OperatorCommunityProviderDto[]> {
+    const providers = await this.requireResponse(
+      OPERATOR_COMMUNITY_PROVIDERS_ROUTE,
+      this.http.get<RemoteOperatorCommunityProvider[]>(
+        `${this.apiBaseUrl}${OPERATOR_COMMUNITY_PROVIDERS_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return providers.map(provider => this.toCommunityProvider(provider));
+  }
+
+  private async loadAnnouncements(filters: {
+    kind?: string;
+    severity?: string;
+    channel?: string;
+    includeExpired?: boolean;
+    limit: number;
+    cursor?: string | null;
+  }): Promise<RemoteOperatorAnnouncementPage> {
+    let params = new HttpParams()
+      .set('includeExpired', filters.includeExpired === true)
+      .set('limit', Math.max(1, Math.min(100, Math.trunc(filters.limit) || 100)));
+    if (filters.kind?.trim()) {
+      params = params.set('kind', filters.kind.trim());
+    }
+    if (filters.severity?.trim()) {
+      params = params.set('severity', filters.severity.trim());
+    }
+    if (filters.channel?.trim()) {
+      params = params.set('channel', filters.channel.trim());
+    }
+    if (filters.cursor?.trim()) {
+      params = params.set('cursor', filters.cursor.trim());
+    }
+    return await this.requireResponse(
+      OPERATOR_ANNOUNCEMENTS_ROUTE,
+      this.http.get<RemoteOperatorAnnouncementPage>(
+        `${this.operatorEndpoint}/announcements`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+  }
+
+  private async loadUpdateJob(jobId: string): Promise<RemoteOperatorUpdateJob> {
+    const normalizedJobId = jobId.trim();
+    if (!normalizedJobId) {
+      throw new Error('operator.update.error.response');
+    }
+    return await this.requireResponse(
+      `${OPERATOR_UPDATES_ROUTE}/jobs/${normalizedJobId}`,
+      this.http.get<RemoteOperatorUpdateJob>(
+        `${this.operatorEndpoint}/updates/jobs/${encodeURIComponent(normalizedJobId)}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  private async loadUpdateEvents(
+    jobId: string,
+    after: number
+  ): Promise<RemoteOperatorUpdateEventPage> {
+    const normalizedJobId = jobId.trim();
+    if (!normalizedJobId) {
+      throw new Error('operator.update.error.response');
+    }
+    const params = new HttpParams()
+      .set('after', Math.max(0, Math.trunc(Number(after) || 0)))
+      .set('limit', 100);
+    return await this.requireResponse(
+      `${OPERATOR_UPDATES_ROUTE}/jobs/${normalizedJobId}/events`,
+      this.http.get<RemoteOperatorUpdateEventPage>(
+        `${this.operatorEndpoint}/updates/jobs/${encodeURIComponent(normalizedJobId)}/events`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+  }
+
+  private toDeploymentUpdate(
+    announcement: RemoteOperatorAnnouncement | null,
+    job: RemoteOperatorUpdateJob | null
+  ): OperatorDeploymentUpdateDto {
+    const manifest = announcement?.updateManifest ?? null;
+    const completed = job?.phase?.trim().toUpperCase() === 'COMPLETED';
+    const running = !!job && !this.updateJobTerminal(job.phase);
+    const targetVersion = (running ? job?.targetVersion?.trim() : manifest?.releaseVersion?.trim())
+      || job?.targetVersion?.trim() || '—';
+    const currentVersion = this.currentDeploymentVersion || job?.currentVersion?.trim() || '—';
+    return {
+      currentVersion,
+      rollback: this.rollbackPoint?.fromVersion === currentVersion ? this.rollbackPoint : null,
+      availableVersion: targetVersion,
+      updateAvailable: Boolean(
+        manifest
+        && this.updateExecutionEnabled
+        && this.installableUpdate(manifest)
+        && currentVersion !== targetVersion
+      ),
+      lastCheckedAt:
+        this.latestAnnouncementsCheckedAt
+        || job?.updatedAt?.trim()
+        || null,
+      lastUpdatedAt: completed ? job?.updatedAt?.trim() || null : null,
+      progress: job
+        ? this.toUpdateProgress(job, manifest)
+        : {
+            phase: 'IDLE',
+            bytesDownloaded: 0,
+            bytesTotal: Math.max(0, Number(manifest?.artifactSizeBytes) || 0),
+            percent: 0,
+            message: null,
+            updatedAt: this.latestAnnouncementsCheckedAt
+          }
+    };
+  }
+
+  private toUpdateProgress(
+    job: RemoteOperatorUpdateJob,
+    manifest: RemoteOperatorUpdateManifest | null
+  ): OperatorDeploymentUpdateProgressDto {
+    const phase = this.updatePhase(job.phase);
+    const percent = Math.max(0, Math.min(100, Math.trunc(Number(job.percent) || 0)));
+    const bytesTotal = Math.max(0, Number(manifest?.artifactSizeBytes) || 0);
+    let bytesDownloaded = 0;
+    if (job.phase?.trim().toUpperCase() === 'DOWNLOADING') {
+      const downloadPercent = Math.max(0, Math.min(1, (percent - 10) / 50));
+      bytesDownloaded = Math.round(bytesTotal * downloadPercent);
+    } else if (['VERIFYING', 'INSTALLING', 'COMPLETED', 'CONFIGURING_PACKAGE', 'LOADING_IMAGES', 'VERIFYING_IMAGES', 'PREPARING_DATA', 'STARTING_SERVICES', 'WAITING_FOR_HEALTH', 'SWITCHING_INGRESS'].includes(phase)) {
+      bytesDownloaded = bytesTotal;
+    }
+    return {
+      phase,
+      bytesDownloaded,
+      bytesTotal,
+      percent,
+      message: job.phase?.trim().toUpperCase() === 'RECOVERY_REQUIRED'
+        ? 'operator.update.error.recovery.required'
+        : phase === 'FAILED'
+          ? 'operator.update.error.failed'
+          : null,
+      updatedAt: job.updatedAt?.trim() || null
+    };
+  }
+
+  private updatePhase(value: string): OperatorDeploymentUpdatePhase {
+    switch (value?.trim().toUpperCase()) {
+      case 'CHECKING':
+        return 'CHECKING';
+      case 'DOWNLOADING':
+        return 'DOWNLOADING';
+      case 'STAGING':
+      case 'VERIFYING':
+        return 'VERIFYING';
+      case 'AWAITING_HOST':
+      case 'BACKING_UP':
+      case 'INSTALLING':
+      case 'RESTARTING':
+        return 'INSTALLING';
+      case 'CONFIGURING_PACKAGE':
+        return 'CONFIGURING_PACKAGE';
+      case 'LOADING_IMAGES':
+        return 'LOADING_IMAGES';
+      case 'VERIFYING_IMAGES':
+        return 'VERIFYING_IMAGES';
+      case 'PREPARING_DATA':
+        return 'PREPARING_DATA';
+      case 'STARTING_SERVICES':
+        return 'STARTING_SERVICES';
+      case 'WAITING_FOR_HEALTH':
+        return 'WAITING_FOR_HEALTH';
+      case 'SWITCHING_INGRESS':
+        return 'SWITCHING_INGRESS';
+      case 'COMPLETED':
+        return 'COMPLETED';
+      case 'FAILED':
+      case 'REJECTED':
+      case 'RECOVERY_REQUIRED':
+        return 'FAILED';
+      default:
+        return 'CHECKING';
+    }
+  }
+
+  private updateJobTerminal(value: string): boolean {
+    return UPDATE_TERMINAL_PHASES.has(value?.trim().toUpperCase());
+  }
+
+  private installableUpdate(manifest: RemoteOperatorUpdateManifest): boolean {
+    return manifest.status?.trim().toUpperCase() === 'AVAILABLE'
+      && manifest.packageSigningKeyConfigured === true
+      && manifest.packageSigningKeyMatches === true
+      && manifest.packageSignatureVerified === true;
+  }
+
+  private toCommunityProvider(
+    provider: RemoteOperatorCommunityProvider
+  ): OperatorCommunityProviderDto {
+    const url = this.safeHttpsUrl(provider.url) ?? '';
+    return {
+      id: `${provider.id ?? ''}`.trim(),
+      name: `${provider.name ?? ''}`.trim(),
+      purpose: `${provider.purpose ?? ''}`.trim(),
+      url,
+      configured: provider.configured === true,
+      available: provider.available === true && Boolean(url)
+    };
+  }
+
+  private toCommunityAnnouncement(
+    announcement: RemoteOperatorAnnouncement
+  ): OperatorCommunityAnnouncementDto {
+    const localization = this.announcementLocalization(announcement);
+    const title = announcement.titleKey?.trim() || localization?.title?.trim()
+      || announcement.announcementId;
+    const body = announcement.bodyKey?.trim() || localization?.body?.trim() || '';
+    const manifest = announcement.updateManifest;
+    return {
+      id: announcement.announcementId,
+      kind: this.announcementKind(announcement.kind),
+      severity: this.announcementSeverity(announcement.severity),
+      status: this.announcementStatus(announcement),
+      unread: true,
+      title,
+      body,
+      publishedAt: announcement.publishedAt,
+      expiresAt: announcement.expiresAt?.trim() || null,
+      links: (announcement.links ?? []).map((link, index) => ({
+        id: `${announcement.announcementId}:${link.relation || index}`,
+        label: this.announcementLinkLabel(link.relation),
+        url: link.url,
+        verified: true
+      })),
+      update: manifest
+        ? {
+            version: manifest.releaseVersion,
+            purpose: 'operator.community.announcement.update.verified.purpose',
+            releaseNotes: [],
+            artifact: {
+              downloadUrl: manifest.artifactUrl,
+              downloadUrlVerified: this.installableUpdate(manifest),
+              sha256Digest: manifest.artifactSha256?.trim() || '',
+              packageSigningKeyId:
+                manifest.packageSigningKeyId?.trim() || '',
+              signature: manifest.packageSignature?.trim() || '',
+              signatureVerified:
+                manifest.packageSignatureVerified === true,
+              sizeBytes: Math.max(0, Number(manifest.artifactSizeBytes) || 0),
+              compatibility: `v${manifest.minimumCompatibleVersion} – v${manifest.maximumCompatibleVersion}`
+            }
+          }
+        : null
+    };
+  }
+
+  private announcementLocalization(
+    announcement: RemoteOperatorAnnouncement
+  ): RemoteOperatorAnnouncementLocalization | null {
+    const localizations = announcement.localizations ?? [];
+    const language = this.i18n.currentLanguage().trim().toLowerCase();
+    return localizations.find(item => item.locale?.trim().toLowerCase() === language)
+      ?? localizations.find(
+        item => item.locale?.trim().toLowerCase().split('-')[0] === language.split('-')[0]
+      )
+      ?? localizations.find(item => item.locale?.trim().toLowerCase() === 'en')
+      ?? localizations[0]
+      ?? null;
+  }
+
+  private announcementKind(value: string): OperatorCommunityAnnouncementKind {
+    switch (value?.trim().toUpperCase()) {
+      case 'UPDATE':
+        return 'UPDATE';
+      case 'MAINTENANCE':
+        return 'MAINTENANCE';
+      case 'SECURITY':
+        return 'SECURITY';
+      default:
+        return 'GENERAL';
+    }
+  }
+
+  private announcementSeverity(value: string): OperatorCommunityAnnouncementSeverity {
+    switch (value?.trim().toUpperCase()) {
+      case 'SUCCESS':
+        return 'SUCCESS';
+      case 'WARNING':
+      case 'WARN':
+        return 'WARNING';
+      case 'CRITICAL':
+      case 'ERROR':
+        return 'CRITICAL';
+      default:
+        return 'INFO';
+    }
+  }
+
+  private announcementStatus(
+    announcement: RemoteOperatorAnnouncement
+  ): OperatorCommunityAnnouncementStatus {
+    const manifestStatus = announcement.updateManifest?.status?.trim().toUpperCase();
+    if (manifestStatus === 'REVOKED' || manifestStatus === 'WITHDRAWN') {
+      return 'WITHDRAWN';
+    }
+    if (
+      manifestStatus === 'SUPERSEDED'
+      || (
+        announcement.expiresAt
+        && Number.isFinite(Date.parse(announcement.expiresAt))
+        && Date.parse(announcement.expiresAt) <= Date.now()
+      )
+    ) {
+      return 'ARCHIVED';
+    }
+    return 'PUBLISHED';
+  }
+
+  private announcementLinkLabel(relation: string): string {
+    const normalized = relation?.trim().toLowerCase();
+    if (normalized === 'release-notes' || normalized === 'release_notes') {
+      return 'operator.community.announcement.link.release.notes';
+    }
+    if (normalized === 'project') {
+      return 'operator.community.announcement.link.project';
+    }
+    return normalized
+      ? normalized.replace(/[-_]+/g, ' ').replace(/\b\w/g, value => value.toUpperCase())
+      : 'operator.community.announcement.link.open';
+  }
+
+  private waitForUpdatePoll(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, UPDATE_POLL_INTERVAL_MS));
+  }
+
+  private async waitForTlsJob(
+    initial: OperatorTlsJobDto
+  ): Promise<OperatorTlsJobDto> {
+    let job = initial;
+    for (let attempt = 0; attempt < 240; attempt += 1) {
+      if (
+        job.phase === 'COMPLETED'
+        || job.phase === 'FAILED'
+        || job.phase === 'REJECTED'
+      ) {
+        if (job.phase !== 'COMPLETED') {
+          throw new Error(job.message || 'operator.configuration.tls.test.failed');
+        }
+        return job;
+      }
+      await this.waitForUpdatePoll();
+      try {
+        job = await this.requireResponse(
+          OPERATOR_TLS_CONFIGURATION_ROUTE,
+          this.http.get<OperatorTlsJobDto>(
+            `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}/jobs/${
+              encodeURIComponent(job.jobId)
+            }`,
+            this.requestOptions()
+          ).toPromise()
+        );
+      } catch {
+        /*
+         * Applying TLS recreates Nginx, and the worker briefly owns a request
+         * between removing it from the inbox and publishing status. Both are
+         * expected transient polling gaps.
+         */
+      }
+    }
+    throw new Error('operator.request.timeout');
+  }
+
+  private safeHttpsUrl(value: string | null | undefined): string | null {
+    try {
+      const url = new URL(`${value ?? ''}`.trim());
+      return url.protocol === 'https:' && !url.username && !url.password
+        ? url.toString()
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private toClaimStatus(remote: RemoteOperatorClaimStatus): OperatorClaimStatusDto {
+    const claimed = remote.claimed === true;
+    const hasVerificationCapability =
+      remote.verificationCapability === 'AVAILABLE'
+      || remote.verificationCapability === 'BACKEND_UNAVAILABLE';
+    const verificationStatus = remote.verificationStatus === 'PENDING_REVIEW'
+      || remote.verificationStatus === 'APPROVED'
+      || remote.verificationStatus === 'VERIFIED'
+      || remote.verificationStatus === 'REJECTED'
+      || remote.verificationStatus === 'WITHDRAWN'
+      || remote.verificationStatus === 'NOT_SUBMITTED'
+      ? remote.verificationStatus
+      : claimed
+        ? 'VERIFIED'
+        : 'NOT_SUBMITTED';
+    return {
+      claimed,
+      claimedAt: remote.claimedAt?.trim() || null,
+      claimantUserId: remote.claimantUserId?.trim() || null,
+      claimantName: remote.claimantName?.trim() || null,
+      claimantAvatarUrl: this.safeHttpsUrl(remote.claimantAvatarUrl),
+      operatorGroupId: remote.operatorGroupId?.trim() || null,
+      activeLinkId: remote.activeLinkId?.trim() || null,
+      sharePercent: Math.max(0, Number(remote.sharePercent) || 0),
+      shareNumerator: remote.shareNumerator?.trim() || null,
+      shareDenominator: remote.shareDenominator?.trim() || null,
+      verificationCapability: hasVerificationCapability
+        ? remote.verificationCapability!
+        : 'BACKEND_UNAVAILABLE',
+      verificationUnavailableReason: hasVerificationCapability
+        ? remote.verificationUnavailableReason?.trim() || null
+        : 'operator.claim.verification.backend.unavailable',
+      verificationStatus,
+      verificationSubmittedAt: remote.verificationSubmittedAt?.trim() || null,
+      legalName: remote.legalName?.trim() || remote.claimantName?.trim() || null,
+      eligibilityStatus: this.claimEligibilityStatus(
+        remote.eligibilityStatus
+      )
+    };
+  }
+
+  private claimEligibilityStatus(
+    value: string | null | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (`${value ?? ''}`.trim().toLowerCase()) {
+      case 'active':
+        return 'ACTIVE';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'inactive':
+        return 'INACTIVE';
+      default:
+        return 'INACTIVE';
+    }
+  }
+
+  private toClaimSubmission(
+    remote: OperatorClaimRequestDto | null | undefined
+  ): OperatorClaimRequestDto | null {
+    if (!remote) {
+      return null;
+    }
+    return {
+      legalName: `${remote.legalName ?? ''}`,
+      registrationNumber: `${remote.registrationNumber ?? ''}`,
+      jurisdiction: `${remote.jurisdiction ?? ''}`,
+      registeredAddress: `${remote.registeredAddress ?? ''}`,
+      website: `${remote.website ?? ''}`,
+      verificationContactName: `${remote.verificationContactName ?? ''}`,
+      verificationContactRole: `${remote.verificationContactRole ?? ''}`,
+      verificationContactEmail: `${remote.verificationContactEmail ?? ''}`,
+      authorityAttested: remote.authorityAttested === true
+    };
+  }
+
+  private requireClaimVerificationRequest(
+    request: OperatorClaimRequestDto
+  ): OperatorClaimRequestDto {
+    const payload: OperatorClaimRequestDto = {
+      legalName: `${request.legalName ?? ''}`.trim(),
+      registrationNumber: `${request.registrationNumber ?? ''}`.trim(),
+      jurisdiction: `${request.jurisdiction ?? ''}`.trim(),
+      registeredAddress: `${request.registeredAddress ?? ''}`.trim(),
+      website: this.publicWebsite(request.website),
+      verificationContactName: `${request.verificationContactName ?? ''}`.trim(),
+      verificationContactRole: `${request.verificationContactRole ?? ''}`.trim(),
+      verificationContactEmail:
+        `${request.verificationContactEmail ?? ''}`.trim().toLowerCase(),
+      authorityAttested: request.authorityAttested === true
+    };
+    if (
+      !payload.legalName
+      || payload.legalName.length > 160
+      || !payload.registrationNumber
+      || payload.registrationNumber.length > 80
+      || !payload.jurisdiction
+      || payload.jurisdiction.length > 80
+      || !payload.registeredAddress
+      || payload.registeredAddress.length > 500
+      || !payload.website
+      || !payload.verificationContactName
+      || payload.verificationContactName.length > 120
+      || !payload.verificationContactRole
+      || payload.verificationContactRole.length > 120
+      || payload.verificationContactEmail.length > 254
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
+      || !payload.authorityAttested
+    ) {
+      throw new Error('operator.claim.verification.error.required');
+    }
+    return payload;
+  }
+
+  private publicWebsite(value: string | null | undefined): string {
+    const source = `${value ?? ''}`.trim();
+    if (!source || source.length > 2048) {
+      throw new Error('operator.claim.verification.error.website');
+    }
+    try {
+      const url = new URL(source);
+      if (url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
+      if (
+        url.protocol === 'https:'
+        && !url.username
+        && !url.password
+      ) {
+        return url.toString();
+      }
+    } catch {
+      // Fall through to the validation error.
+    }
+    throw new Error('operator.claim.verification.error.website');
+  }
+
+  private requestOptions(params?: HttpParams): { headers?: HttpHeaders; params?: HttpParams } {
+    const session = this.sessionService.currentSession();
+    const options: { headers?: HttpHeaders; params?: HttpParams } = {};
+    if (session?.kind === 'demo') {
+      options.headers = new HttpHeaders({
+        [DEMO_OPERATOR_USER_HEADER]: session.userId.trim()
+      });
+    }
+    if (params) {
+      options.params = params;
+    }
+    return options;
+  }
+
+  private async requireResponse<T>(route: string, task: Promise<T | undefined>): Promise<T> {
+    const response = await this.routeDelay.withRequestTimeout(
+      route,
+      task,
+      'operator.request.timeout'
+    );
+    if (!response) {
+      throw new Error('operator.registration.error.response.unavailable');
+    }
+    return response;
+  }
+
+  private unsupported<T>(_capability: string): Promise<T> {
+    return Promise.reject(
+      new Error('operator.remote.capability.unavailable')
+    );
+  }
+
+  private toLeaderboardEntry(
+    row: RemoteOperatorLeaderboardRow
+  ): OperatorLeaderboardEntryDto {
+    const group: OperatorLeaderboardGroup = row.view === 'founder'
+      ? 'FOUNDER'
+      : row.view === 'claimed'
+        ? 'CLAIMED'
+        : 'UNCLAIMED';
+    const claimVerificationStatus =
+      row.claimState?.trim().toLowerCase() === 'pending-review'
+        ? 'PENDING_REVIEW'
+        : row.claimState?.trim().toLowerCase() === 'rejected'
+          ? 'REJECTED'
+          : group === 'CLAIMED'
+            ? 'APPROVED'
+            : null;
+    const eligibilityStatus = this.leaderboardEligibilityStatus(
+      row.eligibilityStatus,
+      group
+    );
+    const reportedShare =
+      this.rational(row.shareNumerator, row.shareDenominator) * 100;
+    return {
+      id: row.rowId,
+      nodeId: group === 'UNCLAIMED' ? row.rowId : null,
+      label: row.label,
+      group,
+      verifiedWeight: this.rational(row.weightNumerator, row.weightDenominator),
+      sharePercent:
+        claimVerificationStatus !== 'PENDING_REVIEW'
+        && (
+          eligibilityStatus === 'SUSPENDED'
+          || eligibilityStatus === 'INACTIVE'
+        )
+          ? 0
+          : reportedShare,
+      claimed: group !== 'UNCLAIMED',
+      claimantUserId: null,
+      claimantName: group === 'CLAIMED' ? row.label : null,
+      claimantAvatarUrl: row.avatarUrl?.trim() || null,
+      operatorGroupId: row.groupId?.trim() || null,
+      deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0)),
+      eligibilityStatus,
+      claimVerificationStatus
+    };
+  }
+
+  private toLeaderboardDeployment(
+    row: RemoteOperatorLeaderboardDeployment,
+    expectedGroupId: string
+  ): OperatorLeaderboardDeploymentDto {
+    const claimState = this.leaderboardDeploymentClaimState(row.claimState);
+    const eligibilityStatus = this.deploymentEligibilityStatus(
+      row.eligibilityStatus
+    );
+    const reportedShare =
+      this.rational(row.shareNumerator, row.shareDenominator) * 100;
+    return {
+      deploymentId: row.deploymentId?.trim() || '',
+      groupId: row.groupId?.trim() || expectedGroupId,
+      claimState,
+      eligibilityStatus,
+      membershipState: this.leaderboardDeploymentMembershipState(
+        row.membershipState
+      ),
+      verifiedWeight: this.rational(
+        row.weightNumerator,
+        row.weightDenominator
+      ),
+      sharePercent:
+        claimState !== 'pending-review'
+        && eligibilityStatus !== 'ACTIVE'
+          ? 0
+          : reportedShare
+    };
+  }
+
+  private leaderboardDeploymentClaimState(
+    value: string
+  ): OperatorLeaderboardDeploymentClaimState {
+    switch (value?.trim().toLowerCase()) {
+      case 'pending-review':
+        return 'pending-review';
+      case 'approved':
+        return 'approved';
+      case 'rejected':
+        return 'rejected';
+      case 'withdrawn':
+        return 'withdrawn';
+      case 'claimed':
+      default:
+        return 'claimed';
+    }
+  }
+
+  private leaderboardDeploymentMembershipState(
+    value: string
+  ): OperatorLeaderboardDeploymentMembershipState {
+    return value?.trim().toLowerCase() === 'owner'
+      ? 'owner'
+      : 'linked';
+  }
+
+  private leaderboardEligibilityStatus(
+    value: string | null | undefined,
+    group: OperatorLeaderboardGroup
+  ): OperatorClaimEligibilityStatus {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'active') {
+      return 'ACTIVE';
+    }
+    if (normalized === 'suspended') {
+      return 'SUSPENDED';
+    }
+    if (normalized === 'partially-suspended') {
+      return 'PARTIALLY_SUSPENDED';
+    }
+    if (normalized === 'inactive') {
+      return 'INACTIVE';
+    }
+    if (group === 'UNCLAIMED') {
+      return 'INACTIVE';
+    }
+    if (group === 'CLAIMED') {
+      return 'INACTIVE';
+    }
+    throw new Error('operator.leaderboard.error.eligibility.invalid');
+  }
+
+  private deploymentEligibilityStatus(
+    value: string | null | undefined
+  ): OperatorDeploymentEligibilityStatus {
+    switch (`${value ?? ''}`.trim().toLowerCase()) {
+      case 'active':
+        return 'ACTIVE';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'inactive':
+        return 'INACTIVE';
+      default:
+        return 'INACTIVE';
+    }
+  }
+
+  private toRegistryMutationResult(
+    result: RemoteOperatorRegistryMutationResult
+  ): OperatorRegistryMutationResultDto {
+    return {
+      status: result.status,
+      ...this.toLeaderboardMutation(result),
+      created: result.created === true
+    };
+  }
+
+  private toLeaderboardMutation(
+    result: {
+      leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+      leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+      removedLeaderboardEntryIds: string[];
+      leaderboardTotalDelta?: number | null;
+    }
+  ): OperatorLeaderboardMutationDto {
+    const leaderboardEntry = result.leaderboardEntry
+      ? this.toLeaderboardEntry(result.leaderboardEntry)
+      : null;
+    const upsertsById = new Map<string, OperatorLeaderboardEntryDto>();
+    for (const row of result.leaderboardUpserts ?? (
+      result.leaderboardEntry ? [result.leaderboardEntry] : []
+    )) {
+      const entry = this.toLeaderboardEntry(row);
+      const id = entry.id.trim();
+      if (id) {
+        upsertsById.set(id, entry);
+      }
+    }
+    const totalDelta = Number(result.leaderboardTotalDelta);
+    return {
+      leaderboardEntry,
+      leaderboardUpserts: [...upsertsById.values()],
+      removedLeaderboardEntryIds: this.normalizedEntryIds(
+        result.removedLeaderboardEntryIds
+      ),
+      leaderboardTotalDelta: Number.isFinite(totalDelta)
+        ? Math.trunc(totalDelta)
+        : 0
+    };
+  }
+
+  private normalizedEntryIds(
+    source: readonly string[] | null | undefined
+  ): string[] {
+    return [...new Set(
+      (source ?? [])
+        .map(id => `${id ?? ''}`.trim())
+        .filter(Boolean)
+    )];
+  }
+
+  private toLeaderboardSummaries(
+    snapshot: RemoteOperatorLeaderboardSnapshot | null,
+    items: readonly OperatorLeaderboardEntryDto[]
+  ): OperatorLeaderboardGroupSummaryDto[] {
+    if (!snapshot) {
+      return (['FOUNDER', 'CLAIMED', 'UNCLAIMED'] as const).map(group => ({
+        group,
+        itemCount: 0,
+        verifiedWeight: 0,
+        sharePercent: 0
+      }));
+    }
+    const founderWeight = this.rational(
+      snapshot.founderUnitsNumerator,
+      snapshot.founderUnitsDenominator
+    );
+    const measuredWeight = this.rational(
+      snapshot.measuredWeightNumerator,
+      snapshot.measuredWeightDenominator
+    );
+    const claimedWeight = this.rational(
+      snapshot.claimedWeightNumerator,
+      snapshot.claimedWeightDenominator
+    );
+    const founderShare = this.rational(
+      snapshot.founderShareNumerator,
+      snapshot.founderShareDenominator
+    ) * 100;
+    const values: Record<
+      OperatorLeaderboardGroup,
+      { verifiedWeight: number; sharePercent: number }
+    > = {
+      FOUNDER: {
+        verifiedWeight: founderWeight,
+        sharePercent: founderShare
+      },
+      CLAIMED: {
+        verifiedWeight: claimedWeight,
+        sharePercent: claimedWeight > 0 ? Math.max(0, 100 - founderShare) : 0
+      },
+      UNCLAIMED: {
+        verifiedWeight: Math.max(0, measuredWeight - claimedWeight),
+        sharePercent: 0
+      }
+    };
+    return (['FOUNDER', 'CLAIMED', 'UNCLAIMED'] as const).map(group => ({
+      group,
+      itemCount: items.filter(item => item.group === group).length,
+      ...values[group]
+    }));
+  }
+
+  private rational(numerator: string, denominator: string): number {
+    const top = Number(numerator);
+    const bottom = Number(denominator);
+    if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom === 0) {
+      return 0;
+    }
+    return top / bottom;
+  }
+
+  private toSnapshotBoundary(
+    snapshot: RemoteOperatorLeaderboardSnapshot
+  ): OperatorLeaderboardSnapshotBoundaryDto {
+    if (!snapshot) {
+      throw new Error('operator.leaderboard.error.snapshot.invalid');
+    }
+    const boundary: OperatorLeaderboardSnapshotBoundaryDto = {
+      throughPeriod: `${snapshot.throughPeriod ?? ''}`.trim(),
+      throughLedgerIndex: Number(snapshot.throughLedgerIndex),
+      throughAuditIndex: Number(snapshot.throughAuditIndex),
+      throughReviewIndex: Number(snapshot.throughReviewIndex),
+      throughEligibilityIndex: Number(snapshot.throughEligibilityIndex),
+      throughTransferEventIndex:
+        Number(snapshot.throughTransferEventIndex),
+      ledgerHeadHash: `${snapshot.ledgerHeadHash ?? ''}`.trim(),
+      auditHeadHash: `${snapshot.auditHeadHash ?? ''}`.trim(),
+      reviewHeadHash: `${snapshot.reviewHeadHash ?? ''}`.trim(),
+      eligibilityHeadHash: `${snapshot.eligibilityHeadHash ?? ''}`.trim(),
+      transferEventHeadHash:
+        `${snapshot.transferEventHeadHash ?? ''}`.trim()
+    };
+    if (
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(boundary.throughPeriod)
+      || !this.validSnapshotIndex(boundary.throughLedgerIndex)
+      || !this.validSnapshotIndex(boundary.throughAuditIndex)
+      || !this.validSnapshotIndex(boundary.throughReviewIndex)
+      || !this.validSnapshotIndex(boundary.throughEligibilityIndex)
+      || !this.validSnapshotIndex(boundary.throughTransferEventIndex)
+      || !this.validSnapshotHash(boundary.ledgerHeadHash)
+      || !this.validSnapshotHash(boundary.auditHeadHash)
+      || !this.validSnapshotHash(boundary.reviewHeadHash)
+      || !this.validSnapshotHash(boundary.eligibilityHeadHash)
+      || !this.validSnapshotHash(boundary.transferEventHeadHash)
+    ) {
+      throw new Error('operator.leaderboard.error.snapshot.invalid');
+    }
+    return boundary;
+  }
+
+  private cursorSnapshotBoundary(
+    state: OperatorLeaderboardCursorState
+  ): OperatorLeaderboardSnapshotBoundaryDto | null {
+    const values = [
+      state.throughPeriod,
+      state.throughLedgerIndex,
+      state.throughAuditIndex,
+      state.throughReviewIndex,
+      state.throughEligibilityIndex,
+      state.throughTransferEventIndex,
+      state.ledgerHeadHash,
+      state.auditHeadHash,
+      state.reviewHeadHash,
+      state.eligibilityHeadHash,
+      state.transferEventHeadHash
+    ];
+    if (values.every(value => value === null)) {
+      return null;
+    }
+    if (values.some(value => value === null)) {
+      throw new Error('operator.leaderboard.error.cursor.invalid');
+    }
+    return this.toSnapshotBoundary({
+      throughPeriod: state.throughPeriod!,
+      throughLedgerIndex: state.throughLedgerIndex!,
+      throughAuditIndex: state.throughAuditIndex!,
+      throughReviewIndex: state.throughReviewIndex!,
+      throughEligibilityIndex: state.throughEligibilityIndex!,
+      throughTransferEventIndex: state.throughTransferEventIndex!,
+      ledgerHeadHash: state.ledgerHeadHash!,
+      auditHeadHash: state.auditHeadHash!,
+      reviewHeadHash: state.reviewHeadHash!,
+      eligibilityHeadHash: state.eligibilityHeadHash!,
+      transferEventHeadHash: state.transferEventHeadHash!
+    } as RemoteOperatorLeaderboardSnapshot);
+  }
+
+  private sameSnapshotBoundary(
+    left: OperatorLeaderboardSnapshotBoundaryDto,
+    right: OperatorLeaderboardSnapshotBoundaryDto
+  ): boolean {
+    return left.throughPeriod === right.throughPeriod
+      && left.throughLedgerIndex === right.throughLedgerIndex
+      && left.throughAuditIndex === right.throughAuditIndex
+      && left.throughReviewIndex === right.throughReviewIndex
+      && left.throughEligibilityIndex === right.throughEligibilityIndex
+      && left.throughTransferEventIndex === right.throughTransferEventIndex
+      && left.ledgerHeadHash === right.ledgerHeadHash
+      && left.auditHeadHash === right.auditHeadHash
+      && left.reviewHeadHash === right.reviewHeadHash
+      && left.eligibilityHeadHash === right.eligibilityHeadHash
+      && left.transferEventHeadHash === right.transferEventHeadHash;
+  }
+
+  private validSnapshotIndex(value: number): boolean {
+    return Number.isSafeInteger(value) && value >= 0;
+  }
+
+  private validSnapshotHash(value: string): boolean {
+    return /^sha256:[0-9a-f]{64}$/.test(value);
+  }
+
+  private encodeLeaderboardCursor(state: OperatorLeaderboardCursorState): string {
+    return `operator-http:${encodeURIComponent(JSON.stringify(state))}`;
+  }
+
+  private decodeLeaderboardCursor(
+    cursor: string | null | undefined
+  ): OperatorLeaderboardCursorState {
+    const value = `${cursor ?? ''}`.trim();
+    if (!value) {
+      return {
+        viewIndex: 0,
+        viewCursor: null,
+        throughPeriod: null,
+        throughLedgerIndex: null,
+        throughAuditIndex: null,
+        throughReviewIndex: null,
+        throughEligibilityIndex: null,
+        throughTransferEventIndex: null,
+        ledgerHeadHash: null,
+        auditHeadHash: null,
+        reviewHeadHash: null,
+        eligibilityHeadHash: null,
+        transferEventHeadHash: null,
+        emitted: 0
+      };
+    }
+    if (!value.startsWith('operator-http:')) {
+      throw new Error('operator.leaderboard.error.cursor.invalid');
+    }
+    try {
+      const parsed = JSON.parse(
+        decodeURIComponent(value.slice('operator-http:'.length))
+      ) as Partial<OperatorLeaderboardCursorState>;
+      const viewIndex = Math.trunc(Number(parsed.viewIndex));
+      const emitted = Math.max(0, Math.trunc(Number(parsed.emitted) || 0));
+      if (
+        !Number.isFinite(viewIndex)
+        || viewIndex < 0
+        || viewIndex >= LEADERBOARD_VIEWS.length
+      ) {
+        throw new Error();
+      }
+      const throughPeriod = typeof parsed.throughPeriod === 'string'
+        ? parsed.throughPeriod
+        : null;
+      const throughLedgerIndex = this.cursorIndex(parsed.throughLedgerIndex);
+      const throughAuditIndex = this.cursorIndex(parsed.throughAuditIndex);
+      const throughReviewIndex = this.cursorIndex(parsed.throughReviewIndex);
+      const throughEligibilityIndex = this.cursorIndex(
+        parsed.throughEligibilityIndex
+      );
+      const ledgerHeadHash = this.cursorHash(parsed.ledgerHeadHash);
+      const auditHeadHash = this.cursorHash(parsed.auditHeadHash);
+      const reviewHeadHash = this.cursorHash(parsed.reviewHeadHash);
+      const eligibilityHeadHash = this.cursorHash(parsed.eligibilityHeadHash);
+      const hasTransferIndex = Object.prototype.hasOwnProperty.call(
+        parsed,
+        'throughTransferEventIndex'
+      );
+      const hasTransferHash = Object.prototype.hasOwnProperty.call(
+        parsed,
+        'transferEventHeadHash'
+      );
+      const completeLegacyBoundary = [
+        throughPeriod,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex,
+        ledgerHeadHash,
+        auditHeadHash,
+        reviewHeadHash,
+        eligibilityHeadHash
+      ].every(entry => entry !== null);
+      const throughTransferEventIndex =
+        !hasTransferIndex && !hasTransferHash && completeLegacyBoundary
+          ? 0
+          : this.cursorIndex(parsed.throughTransferEventIndex);
+      const transferEventHeadHash =
+        !hasTransferIndex && !hasTransferHash && completeLegacyBoundary
+          ? ZERO_SHA256_HASH
+          : this.cursorHash(parsed.transferEventHeadHash);
+      return {
+        viewIndex,
+        viewCursor: typeof parsed.viewCursor === 'string'
+          ? parsed.viewCursor
+          : null,
+        throughPeriod,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex,
+        throughTransferEventIndex,
+        ledgerHeadHash,
+        auditHeadHash,
+        reviewHeadHash,
+        eligibilityHeadHash,
+        transferEventHeadHash,
+        emitted
+      };
+    } catch {
+      throw new Error('operator.leaderboard.error.cursor.invalid');
+    }
+  }
+
+  private cursorIndex(value: unknown): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const normalized = Number(value);
+    if (!this.validSnapshotIndex(normalized)) {
+      throw new Error();
+    }
+    return normalized;
+  }
+
+  private cursorHash(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const normalized = `${value}`.trim();
+    if (!this.validSnapshotHash(normalized)) {
+      throw new Error();
+    }
+    return normalized;
+  }
+
+  private toSettlement(
+    source: RemoteOperatorSettlement
+  ): OperatorSettlementDto {
+    const settlementId = this.settlementText(source.settlementId);
+    const period = this.settlementText(source.period);
+    const currencyCode =
+      this.settlementText(source.currencyCode).toUpperCase();
+    const revision = this.settlementInteger(source.revision);
+    const supersedesSettlementId =
+      this.settlementText(source.supersedesSettlementId) || null;
+    const beneficiaryType =
+      this.settlementText(source.beneficiaryType);
+    const beneficiaryId = this.settlementText(source.beneficiaryId);
+    const shareNumerator = this.settlementText(source.shareNumerator);
+    const shareDenominator = this.settlementText(source.shareDenominator);
+    const fractionDigits = this.settlementInteger(source.fractionDigits);
+    const networkPoolMinor =
+      this.settlementInteger(source.networkPoolMinor);
+    const networkPoolAllocationMinor =
+      this.settlementInteger(source.networkPoolAllocationMinor);
+    const ttmCommissionBasisMinor =
+      this.settlementInteger(source.ttmCommissionBasisMinor);
+    const ttmNetworkCommissionPoolMinor =
+      this.settlementInteger(source.ttmNetworkCommissionPoolMinor);
+    const indicativeNetworkValueMinor =
+      this.settlementInteger(source.indicativeNetworkValueMinor);
+    const indicativeValueAllocationMinor =
+      this.settlementInteger(source.indicativeValueAllocationMinor);
+    const baseValuationMultiplierBasisPoints =
+      this.settlementInteger(source.baseValuationMultiplierBasisPoints);
+    const recentThreeMonthAverageMinor =
+      this.settlementInteger(source.recentThreeMonthAverageMinor);
+    const priorThreeMonthAverageMinor =
+      this.settlementInteger(source.priorThreeMonthAverageMinor);
+    const earlierThreeMonthAverageMinor =
+      this.settlementInteger(source.earlierThreeMonthAverageMinor);
+    const recentGrowthBasisPoints =
+      this.settlementInteger(source.recentGrowthBasisPoints);
+    const priorGrowthBasisPoints =
+      this.settlementInteger(source.priorGrowthBasisPoints);
+    const accelerationBasisPoints =
+      this.settlementInteger(source.accelerationBasisPoints);
+    const valuationAdjustmentBasisPoints =
+      this.settlementInteger(source.valuationAdjustmentBasisPoints);
+    const effectiveValuationMultiplierBasisPoints =
+      this.settlementInteger(source.effectiveValuationMultiplierBasisPoints);
+    const throughLedgerIndex =
+      this.settlementInteger(source.throughLedgerIndex);
+    const throughAuditIndex =
+      this.settlementInteger(source.throughAuditIndex);
+    const throughReviewIndex =
+      this.settlementInteger(source.throughReviewIndex);
+    const throughEligibilityIndex =
+      this.settlementInteger(source.throughEligibilityIndex);
+    const valuationRulesetVersion =
+      this.settlementText(source.valuationRulesetVersion);
+    const sourceFingerprint =
+      this.settlementText(source.sourceFingerprint);
+    const settlementHash = this.settlementText(source.settlementHash);
+    const acceptedAtIso = this.settlementText(source.acceptedAtIso);
+    if (
+      !/^stl_[0-9a-f]{32}$/.test(settlementId)
+      || !this.validSettlementPeriod(period)
+      || !/^[A-Z]{3}$/.test(currencyCode)
+      || ![
+        fractionDigits,
+        revision,
+        networkPoolMinor,
+        networkPoolAllocationMinor,
+        ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        indicativeValueAllocationMinor,
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints,
+        throughLedgerIndex,
+        throughAuditIndex,
+        throughReviewIndex,
+        throughEligibilityIndex
+      ].every(value => Number.isSafeInteger(value))
+      || fractionDigits < 0
+      || fractionDigits > 6
+      || revision < 1
+      || (
+        revision === 1
+          ? supersedesSettlementId !== null
+          : !supersedesSettlementId
+            || !/^stl_[0-9a-f]{32}$/.test(supersedesSettlementId)
+      )
+      || beneficiaryType !== 'OPERATOR_GROUP'
+      || !/^opg_[0-9a-f]{32}$/.test(beneficiaryId)
+      || !this.validSettlementShare(
+        shareNumerator,
+        shareDenominator
+      )
+      || networkPoolMinor < 0
+      || networkPoolAllocationMinor < 0
+      || networkPoolAllocationMinor > networkPoolMinor
+      || ttmCommissionBasisMinor < 0
+      || ttmNetworkCommissionPoolMinor < 0
+      || indicativeNetworkValueMinor < 0
+      || indicativeValueAllocationMinor < 0
+      || indicativeValueAllocationMinor > indicativeNetworkValueMinor
+      || valuationRulesetVersion
+        !== 'three-month-acceleration-valuation-v1'
+      || baseValuationMultiplierBasisPoints <= 0
+      || recentThreeMonthAverageMinor < 0
+      || priorThreeMonthAverageMinor < 0
+      || earlierThreeMonthAverageMinor < 0
+      || !this.settlementWithin(
+        recentGrowthBasisPoints,
+        -10_000,
+        20_000
+      )
+      || !this.settlementWithin(
+        priorGrowthBasisPoints,
+        -10_000,
+        20_000
+      )
+      || !this.settlementWithin(
+        accelerationBasisPoints,
+        -10_000,
+        10_000
+      )
+      || !this.settlementWithin(
+        valuationAdjustmentBasisPoints,
+        -2_500,
+        2_500
+      )
+      || effectiveValuationMultiplierBasisPoints <= 0
+      || !this.validSettlementDerivation({
+        ttmCommissionBasisMinor,
+        ttmNetworkCommissionPoolMinor,
+        indicativeNetworkValueMinor,
+        baseValuationMultiplierBasisPoints,
+        recentThreeMonthAverageMinor,
+        priorThreeMonthAverageMinor,
+        earlierThreeMonthAverageMinor,
+        recentGrowthBasisPoints,
+        priorGrowthBasisPoints,
+        accelerationBasisPoints,
+        valuationAdjustmentBasisPoints,
+        effectiveValuationMultiplierBasisPoints
+      })
+      || source.valuationIsNonBinding !== true
+      || throughLedgerIndex <= 0
+      || throughAuditIndex < 0
+      || throughReviewIndex < 0
+      || throughEligibilityIndex < 0
+      || !this.validSnapshotHash(sourceFingerprint)
+      || !this.validSnapshotHash(settlementHash)
+      || !this.validIsoTimestamp(acceptedAtIso)
+    ) {
+      throw new Error('operator.revenue.settlement.response.invalid');
+    }
+    return {
+      settlementId,
+      period,
+      currencyCode,
+      fractionDigits,
+      revision,
+      supersedesSettlementId,
+      beneficiaryType: 'OPERATOR_GROUP',
+      beneficiaryId,
+      shareNumerator,
+      shareDenominator,
+      networkPoolMinor,
+      networkPoolAllocationMinor,
+      ttmCommissionBasisMinor,
+      ttmNetworkCommissionPoolMinor,
+      indicativeNetworkValueMinor,
+      indicativeValueAllocationMinor,
+      valuationRulesetVersion,
+      baseValuationMultiplierBasisPoints,
+      recentThreeMonthAverageMinor,
+      priorThreeMonthAverageMinor,
+      earlierThreeMonthAverageMinor,
+      recentGrowthBasisPoints,
+      priorGrowthBasisPoints,
+      accelerationBasisPoints,
+      valuationAdjustmentBasisPoints,
+      effectiveValuationMultiplierBasisPoints,
+      valuationIsNonBinding: true,
+      throughLedgerIndex,
+      throughAuditIndex,
+      throughReviewIndex,
+      throughEligibilityIndex,
+      sourceFingerprint,
+      settlementHash,
+      acceptedAtIso
+    };
+  }
+
+  private encodeSettlementCursor(
+    afterPeriod: string,
+    afterSettlementId: string
+  ): string {
+    if (
+      !this.validSettlementPeriod(afterPeriod)
+      || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+    ) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    return `operator-settlement:${
+      encodeURIComponent(JSON.stringify({
+        afterPeriod,
+        afterSettlementId
+      }))
+    }`;
+  }
+
+  private decodeSettlementCursor(
+    cursor: string | null | undefined
+  ): {
+    afterPeriod: string;
+    afterSettlementId: string;
+  } | null {
+    const normalized = `${cursor ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    if (!normalized.startsWith('operator-settlement:')) {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+    try {
+      const parsed = JSON.parse(decodeURIComponent(
+        normalized.slice('operator-settlement:'.length)
+      )) as {
+        afterPeriod?: unknown;
+        afterSettlementId?: unknown;
+      };
+      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
+      const afterSettlementId =
+        `${parsed.afterSettlementId ?? ''}`.trim();
+      if (
+        !this.validSettlementPeriod(afterPeriod)
+        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
+      ) {
+        throw new Error();
+      }
+      return { afterPeriod, afterSettlementId };
+    } catch {
+      throw new Error('operator.revenue.settlement.cursor.invalid');
+    }
+  }
+
+  private settlementText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private settlementInteger(value: unknown): number {
+    const normalized = Number(value);
+    return Number.isSafeInteger(normalized)
+      ? normalized
+      : Number.NaN;
+  }
+
+  private validSettlementPeriod(value: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+  }
+
+  private validSettlementShare(
+    numerator: string,
+    denominator: string
+  ): boolean {
+    if (
+      !/^(0|[1-9]\d*)$/.test(numerator)
+      || !/^[1-9]\d*$/.test(denominator)
+    ) {
+      return false;
+    }
+    try {
+      const top = BigInt(numerator);
+      const bottom = BigInt(denominator);
+      return top >= 0n
+        && bottom > 0n
+        && top <= bottom
+        && this.settlementGreatestCommonDivisor(top, bottom) === 1n;
+    } catch {
+      return false;
+    }
+  }
+
+  private settlementGreatestCommonDivisor(
+    left: bigint,
+    right: bigint
+  ): bigint {
+    let current = left < 0n ? -left : left;
+    let next = right < 0n ? -right : right;
+    while (next !== 0n) {
+      const remainder = current % next;
+      current = next;
+      next = remainder;
+    }
+    return current;
+  }
+
+  private settlementWithin(
+    value: number,
+    minimum: number,
+    maximum: number
+  ): boolean {
+    return Number.isSafeInteger(value)
+      && value >= minimum
+      && value <= maximum;
+  }
+
+  private validSettlementDerivation(source: {
+    ttmCommissionBasisMinor: number;
+    ttmNetworkCommissionPoolMinor: number;
+    indicativeNetworkValueMinor: number;
+    baseValuationMultiplierBasisPoints: number;
+    recentThreeMonthAverageMinor: number;
+    priorThreeMonthAverageMinor: number;
+    earlierThreeMonthAverageMinor: number;
+    recentGrowthBasisPoints: number;
+    priorGrowthBasisPoints: number;
+    accelerationBasisPoints: number;
+    valuationAdjustmentBasisPoints: number;
+    effectiveValuationMultiplierBasisPoints: number;
+  }): boolean {
+    const priorGrowth = this.settlementGrowthBasisPoints(
+      source.earlierThreeMonthAverageMinor,
+      source.priorThreeMonthAverageMinor
+    );
+    const recentGrowth = this.settlementGrowthBasisPoints(
+      source.priorThreeMonthAverageMinor,
+      source.recentThreeMonthAverageMinor
+    );
+    const acceleration = this.settlementClamp(
+      recentGrowth - priorGrowth,
+      -10_000n,
+      10_000n
+    );
+    const adjustment = this.settlementClamp(
+      recentGrowth / 4n + acceleration / 4n,
+      -2_500n,
+      2_500n
+    );
+    const baseMultiplier =
+      BigInt(source.baseValuationMultiplierBasisPoints);
+    const effectiveMultiplier =
+      baseMultiplier * (10_000n + adjustment) / 10_000n;
+    const ttmBasis = BigInt(source.ttmCommissionBasisMinor);
+    const ttmPool = ttmBasis * 500n / 10_000n;
+    const indicativeValue =
+      ttmBasis * effectiveMultiplier / 10_000n;
+    return priorGrowth === BigInt(source.priorGrowthBasisPoints)
+      && recentGrowth === BigInt(source.recentGrowthBasisPoints)
+      && acceleration === BigInt(source.accelerationBasisPoints)
+      && adjustment === BigInt(source.valuationAdjustmentBasisPoints)
+      && effectiveMultiplier
+        === BigInt(source.effectiveValuationMultiplierBasisPoints)
+      && ttmPool === BigInt(source.ttmNetworkCommissionPoolMinor)
+      && indicativeValue === BigInt(source.indicativeNetworkValueMinor);
+  }
+
+  private settlementGrowthBasisPoints(
+    previous: number,
+    current: number
+  ): bigint {
+    const previousValue = BigInt(previous);
+    const currentValue = BigInt(current);
+    if (previousValue === 0n) {
+      return currentValue === 0n ? 0n : 20_000n;
+    }
+    return this.settlementClamp(
+      (currentValue - previousValue) * 10_000n / previousValue,
+      -10_000n,
+      20_000n
+    );
+  }
+
+  private settlementClamp(
+    value: bigint,
+    minimum: bigint,
+    maximum: bigint
+  ): bigint {
+    return value < minimum
+      ? minimum
+      : value > maximum
+        ? maximum
+        : value;
+  }
+
+  private validIsoTimestamp(value: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/
+      .test(value)
+      && Number.isFinite(Date.parse(value));
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (!signal?.aborted) {
+      return;
+    }
+    const error = new Error('operator.request.aborted');
+    error.name = 'AbortError';
+    throw error;
+  }
+}

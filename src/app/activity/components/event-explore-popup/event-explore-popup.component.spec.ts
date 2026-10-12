@@ -1,17 +1,17 @@
 import { ChangeDetectorRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService } from '../../../shared/core';
-import { AppMenuDispatcher } from '../../../shared/ui';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
-import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { AppMenuDispatcher, DialogStore } from '@fssrepository/myscoutee-components';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activity/activities-popup.store';
+import { ProfileStore } from '../../../shared/ui/context/stores/profile/profile.store';
+
+import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
+import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 import { EventExplorePopupComponent } from './event-explore-popup.component';
 
 const defaults = { friendsOnly: false, openSpotsOnly: false, topic: '', mode: '' as const };
@@ -33,6 +33,8 @@ function popup() {
     usersService: { loadPageFilterPreferences: vi.fn().mockReturnValue(pending.promise) },
     activitiesService: { loadExplore: vi.fn().mockResolvedValue({ items: [], total: 0 }) },
     eventCheckoutDraftStore: { reconcileExpiredEventDrafts: vi.fn() },
+    explanationGuide: { registerContext: vi.fn().mockReturnValue(() => undefined) },
+    chatShare: { controls: () => [] },
     cdr: { markForCheck: vi.fn() }, dialogStore: { open: vi.fn() },
     prewarmEventEditorPopup: vi.fn(), refreshUsersDirectory: vi.fn(), closeMembersPopup: vi.fn(),
     restoreServerCheckoutDrafts: vi.fn().mockResolvedValue(undefined), reloadEventExploreSmartList: vi.fn()
@@ -53,7 +55,7 @@ describe('Explore nonblocking preference loading', () => {
     expect(component.eventExploreFilters()).toEqual(saved);
     expect(component.preferencesReady()).toBe(true);
     expect(component.activitiesService.loadExplore).toHaveBeenCalledExactlyOnceWith({ ...query,
-      filters: { ...query.filters, ...saved, topic: 'music' } });
+      filters: { ...query.filters, ...saved, followedOnly: false, topic: 'music' } });
     expect(component.reloadEventExploreSmartList).not.toHaveBeenCalled();
     await component.loadEventExplorePage({ ...query, page: 1, cursor: 'next' });
     expect(component.usersService.loadPageFilterPreferences).toHaveBeenCalledTimes(1);

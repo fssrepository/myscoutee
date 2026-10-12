@@ -1,0 +1,1644 @@
+import { UiDateUtils, type ListQuery } from '@fssrepository/myscoutee-components';
+import { caseOfferChatParticipantIds, caseChatParticipantIds, COMMUNITY_CASES_TABLE_NAME, type CommunityCaseRecord } from '../../entity/community/community-case.entity';
+import { COMMUNITY_BASE_GROUP_ID } from '../../../../contracts/groups/group-type';
+import { LocalUsersRepository } from '../accounts/users.repository';
+import { LocalContactsRepository } from '../accounts/contacts.repository';
+import { CONTACTS_TABLE_NAME } from '../../entity/accounts/profile.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../entity/chat/chat.entity';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../entity/common/activity.entity';
+import type { ChatMessageRecord } from '../../entity/chat/chat.entity';
+import type { ChatRecord, ChatThreadRecord } from '../../entity/chat/chat.entity';
+import { USERS_TABLE_NAME } from '../../entity/accounts/user.entity';
+import { Injectable, inject } from '@angular/core';
+
+import type * as ContractTypes from '../../../../contracts';
+import { AppUtils } from '../../../../base/app-utils';
+import type { AppMemorySchema } from '../../../common/memory.schema';
+import { LocalMemoryDb } from '../../../../common/app.db';
+import { UserProfileState } from '../../../../common/user-profile-state';
+import { LocalChatMessageMapper, LocalChatThreadMapper } from '../../mappers';
+import type * as ActivityContracts from '../../../../contracts/common/activity.interface';
+
+import type { ChatFeedFilters } from '../../../../contracts';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LocalChatsRepository {
+  private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly contacts = inject(LocalContactsRepository);
+  private readonly users = inject(LocalUsersRepository);
+
+  async flushToIndexedDb(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
+  }
+
+  queryChatItemById(userId: string, chatId: string): ChatThreadRecord | null {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedUserId || !normalizedChatId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const accountId = this.users.accountId(normalizedUserId);
+    const contact = accountId !== normalizedUserId
+      ? table.byId[LocalChatThreadMapper.buildRecordKey(accountId, normalizedChatId)] : null;
+    const record = contact?.channelType === 'contact' && contact.memberIds.includes(accountId)
+      ? contact : table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
+    return record && this.hasCaseChatAccess(record, normalizedUserId) ? LocalChatThreadMapper.cloneRecord(record) : null;
+  }
+
+  syncCaseChat(c: CommunityCaseRecord): void {
+    const threads = [{ id: `c-case-${c.id}`, caseOfferId: undefined as string | undefined, title: c.title, accounts: caseChatParticipantIds(c) },
+      ...c.offers.map(offer => ({ id: `c-case-offer-${c.id}-${offer.id}`, caseOfferId: offer.id,
+        title: `${c.title} · ${offer.amount} ${offer.currency}`, accounts: caseOfferChatParticipantIds(c, offer.id) }))];
+    for (const thread of threads) {
+      const members = thread.accounts.map(id => `group:${COMMUNITY_BASE_GROUP_ID}:${id}`).filter(id => !!this.users.queryUserById(id));
+      this.writeContactChat(thread.id, members, { id: thread.id, channelType: 'case', serviceContext: 'case',
+        caseOfferId: thread.caseOfferId, title: thread.title, avatar: 'C', ownerId: c.id, memberIds: members, unread: 0, lastMessage: '', lastSenderId: '' });
+    }
+  }
+
+  private hasCaseChatAccess(chat: ChatRecord, profileId: string): boolean {
+    if (chat.channelType !== 'case') return true;
+    const state = this.memoryDb.read(), profile = state[USERS_TABLE_NAME].byId[profileId];
+    const c = state[COMMUNITY_CASES_TABLE_NAME].byId[chat.ownerId ?? ''];
+    return !!c && profile?.workspaceGroupId === COMMUNITY_BASE_GROUP_ID
+      && (chat.caseOfferId ? caseOfferChatParticipantIds(c, chat.caseOfferId) : caseChatParticipantIds(c)).includes(profile.accountUserId ?? profile.id);
+  }
+
+  ensureContactChat(actorId: string, targetUserId: string): ChatThreadRecord {
+    actorId = this.users.accountId(actorId);
+    const targetId = targetUserId.trim();
+    this.requireContactTargets(actorId, [targetId], true);
+    this.requireDirectChatConsent(actorId, targetId);
+    const memberIds = [actorId, targetId].sort();
+    const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const id = `c-contact-${encoded}`;
+    this.writeContactChat(id, memberIds);
+    return this.queryChatItemById(actorId, id)!;
+  }
+
+  addContactChatMembers(actorId: string, chatId: string, userIds: readonly string[]): ChatThreadRecord {
+    actorId = this.users.accountId(actorId);
+    const chat = this.queryChatItemById(actorId, chatId);
+    if (!chat || chat.channelType !== 'contact' || !chat.memberIds.includes(actorId)) throw new Error('Chat unavailable');
+    const added = [...new Set(userIds.map(id => id.trim()))].filter(id => !chat.memberIds.includes(id));
+    if (!added.length) return chat;
+    this.requireContactTargets(actorId, added);
+    for (const targetId of added) this.requireDirectChatConsent(actorId, targetId);
+    this.writeContactChat(chat.id, [...chat.memberIds, ...added]);
+    return this.queryChatItemById(actorId, chat.id)!;
+  }
+
+  private requireContactTargets(actorId: string, userIds: readonly string[], allowApprovedPair = false): void {
+    const state = this.memoryDb.read();
+    const actor = state[USERS_TABLE_NAME].byId[actorId];
+    const contacts = state[CONTACTS_TABLE_NAME].byOwnerUserId[actorId] ?? [];
+    if (!actor || actor.deletedAtIso || !userIds.length || userIds.length > 100 || userIds.some(id => {
+      const user = state[USERS_TABLE_NAME].byId[id];
+      return !id || id === actorId || !user || !!user.deletedAtIso
+        || (user.workspaceGroupId ?? '') !== (actor.workspaceGroupId ?? '')
+        || (!contacts.some(contact => contact.userId === id) && !(allowApprovedPair && this.contacts.isChatApproved(actorId, id)));
+    })) throw new Error('Contact unavailable');
+  }
+
+  requireDirectChatConsent(actor: string, peer: string): void {
+    if (!this.contacts.isChatApproved(actor, peer)) throw new Error('Direct chat access requires approval.');
+  }
+
+  private writeContactChat(id: string, memberIds: string[], resource?: ChatRecord): void {
+    this.memoryDb.write(state => {
+      const table = state[CHATS_TABLE_NAME];
+      const byId = { ...table.byId }; const ids = new Set(table.ids);
+      let messages = state[CHAT_MESSAGES_TABLE_NAME];
+      const existing = table.ids.map(key => table.byId[key]).find(chat => chat.id === id);
+      const participants = [...new Set(resource ? memberIds : [...(existing?.memberIds ?? []), ...memberIds])];
+      let users = state[USERS_TABLE_NAME];
+      if (resource) for (const key of table.ids) {
+        const prior = byId[key];
+        if (prior.id === id && !participants.includes(prior.ownerUserId)) {
+          const context = this.chatCounterKey(prior.channelType);
+          if (context) users = this.applyStoredChatCounterDelta(users, prior.ownerUserId, context, -this.normalizeCounter(prior.unread));
+          delete byId[key]; ids.delete(key);
+        }
+      }
+      for (const ownerUserId of participants) {
+        const key = LocalChatThreadMapper.buildRecordKey(ownerUserId, id);
+        const current = byId[key];
+        const otherNames = participants.filter(userId => userId !== ownerUserId)
+          .map(userId => state[USERS_TABLE_NAME].byId[userId]?.name ?? '').filter(Boolean).join(', ');
+        byId[key] = {
+          ...(current ?? { id, ownerUserId, avatar: AppUtils.initialsFromText(otherNames), title: otherNames,
+            lastMessage: existing?.lastMessage ?? '', lastSenderId: existing?.lastSenderId ?? '', unread: 0,
+            dateIso: existing?.dateIso ?? new Date().toISOString(), channelType: 'contact' as const }),
+          ...(resource ? { channelType: resource.channelType, serviceContext: resource.serviceContext, ownerId: resource.ownerId, caseOfferId: resource.caseOfferId, title: resource.title, avatar: resource.avatar } : {}),
+          memberIds: participants,
+          revision: current && participants.length !== current.memberIds.length ? this.nextChatRevision(current.revision) : current?.revision ?? 1
+        };
+        if (!current && existing) {
+          const historyKey = LocalChatMessageMapper.chatKey(existing.ownerUserId, id);
+          for (const messageId of state[CHAT_MESSAGES_TABLE_NAME].idsByChatKey[historyKey] ?? []) {
+            const original = state[CHAT_MESSAGES_TABLE_NAME].byId[messageId];
+            if (!original) continue;
+            const message = LocalChatMessageMapper.toDto(original);
+            messages = this.upsertMessageRecord(messages, LocalChatMessageMapper.toRecord(ownerUserId, id,
+              { ...message, mine: message.senderAvatar.id === ownerUserId }));
+          }
+        }
+        ids.add(key);
+      }
+      return { ...state, [CHATS_TABLE_NAME]: { ...table, ids: [...ids], byId }, [CHAT_MESSAGES_TABLE_NAME]: messages, [USERS_TABLE_NAME]: users };
+    });
+  }
+
+  ensureServiceChat(chat: ChatRecord & { ownerUserId?: string | null }): ChatThreadRecord | null {
+    if (chat.channelType === 'campaign' || chat.channelType === 'case' || chat.channelType === 'groupSupport') {
+      this.writeContactChat(chat.id, chat.memberIds, chat);
+      return this.queryChatItemById(chat.ownerUserId ?? chat.memberIds[0], chat.id);
+    }
+    const record = this.resolveChatRecord(chat);
+    if (!record) {
+      return null;
+    }
+    const contextStartAtIso = `${chat.contextStartAtIso ?? ''}`.trim() || null;
+    const contextEndAtIso = `${chat.contextEndAtIso ?? ''}`.trim() || null;
+    if (
+      (record.contextStartAtIso ?? null) === contextStartAtIso
+      && (record.contextEndAtIso ?? null) === contextEndAtIso
+    ) {
+      return LocalChatThreadMapper.cloneRecord(record);
+    }
+    const next: ChatThreadRecord = {
+      ...record,
+      contextStartAtIso,
+      contextEndAtIso,
+      revision: this.nextChatRevision(record.revision)
+    };
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [CHATS_TABLE_NAME]: {
+        ...currentState[CHATS_TABLE_NAME],
+        byId: {
+          ...currentState[CHATS_TABLE_NAME].byId,
+          [recordKey]: next
+        }
+      }
+    }));
+    return LocalChatThreadMapper.cloneRecord(next);
+  }
+
+  syncPublishedMainEventChat(
+    event: ActivityContracts.ActivityEventRecord,
+    viewerUserId?: string | null
+  ): boolean {
+    const eventId = `${event?.id ?? ''}`.trim();
+    const normalizedViewerUserId = `${viewerUserId ?? ''}`.trim();
+    const participantUserIds = [...new Set([
+      ...(event?.acceptedMemberUserIds ?? []),
+      ...(event?.adminIds ?? [])
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))].sort();
+    if (!eventId || participantUserIds.length === 0) {
+      throw new Error('A published local event chat requires an event id and accepted participants.');
+    }
+
+    const chatId = `c-context-main-${eventId}`;
+    const nowIso = new Date().toISOString();
+    let viewerChatAdded = false;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      const nextIds = [...currentTable.ids];
+      let nextUsersTable = currentState[USERS_TABLE_NAME];
+      for (const ownerUserId of participantUserIds) {
+        const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, chatId);
+        const current = currentTable.byId[recordKey] ?? null;
+        const isNewOwnerChat = current == null;
+        const contextWindowChanged = current != null && (
+          (current.contextStartAtIso ?? null) !== (event.startAtIso || null)
+          || (current.contextEndAtIso ?? null) !== (event.endAtIso || null)
+        );
+        const nextRecord: ChatThreadRecord = {
+          ...(current ?? {
+            id: chatId,
+            ownerUserId,
+            avatar: AppUtils.initialsFromText(event.title || 'Event'),
+            title: event.title?.trim() || 'Event',
+            lastMessage: '',
+            lastSenderId: null,
+            unread: 0
+          }),
+          id: chatId,
+          ownerUserId,
+          title: event.title?.trim() || current?.title || 'Event',
+          memberIds: [...participantUserIds],
+          unread: this.normalizeCounter(current?.unread ?? 0),
+          dateIso: current?.dateIso ?? nowIso,
+          contextStartAtIso: event.startAtIso || null,
+          contextEndAtIso: event.endAtIso || null,
+          channelType: 'mainEvent',
+          ownerId: eventId,
+          eventId,
+          ownerStatus: 'A',
+          revision: contextWindowChanged
+            ? this.nextChatRevision(current.revision)
+            : Math.max(1, Math.trunc(Number(current?.revision) || 1))
+        };
+        nextById[recordKey] = nextRecord;
+        if (!nextIds.includes(recordKey)) {
+          nextIds.push(recordKey);
+        }
+        if (isNewOwnerChat) {
+          if (ownerUserId === normalizedViewerUserId) {
+            viewerChatAdded = true;
+          }
+        }
+      }
+      const staleRecordKeys = currentTable.ids.filter(recordKey => {
+        const current = currentTable.byId[recordKey];
+        return current?.channelType === 'mainEvent'
+          && `${current.ownerId ?? ''}`.trim() === eventId
+          && !participantUserIds.includes(`${current.ownerUserId ?? ''}`.trim());
+      });
+      for (const recordKey of staleRecordKeys) {
+        const current = currentTable.byId[recordKey];
+        const ownerUserId = `${current?.ownerUserId ?? ''}`.trim();
+        const unreadDelta = -this.normalizeCounter(current?.unread ?? 0);
+        delete nextById[recordKey];
+        if (ownerUserId && unreadDelta !== 0) {
+          nextUsersTable = this.applyStoredChatCounterDelta(
+            nextUsersTable,
+            ownerUserId,
+            'event',
+            unreadDelta
+          );
+        }
+      }
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: nextById,
+          ids: nextIds.filter(recordKey => !staleRecordKeys.includes(recordKey))
+        },
+        [USERS_TABLE_NAME]: nextUsersTable
+      };
+    });
+    return viewerChatAdded;
+  }
+
+  appendEventSystemMessage(
+    eventId: string,
+    text: string,
+    messageKind: string,
+    sentAtIso: string
+  ): number {
+    const normalizedEventId = eventId.trim();
+    const normalizedText = text.trim();
+    const normalizedKind = messageKind.trim();
+    const normalizedSentAtIso = sentAtIso.trim();
+    if (!normalizedEventId || !normalizedText || !normalizedKind || !normalizedSentAtIso) {
+      return 0;
+    }
+    const messageId = `${normalizedKind}:${normalizedEventId}:${normalizedSentAtIso}`;
+    const sentAt = new Date(normalizedSentAtIso);
+    const time = Number.isFinite(sentAt.getTime())
+      ? sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : '';
+    let appended = 0;
+    this.memoryDb.write(currentState => {
+      const currentChatsTable = currentState[CHATS_TABLE_NAME];
+      const nextChatsById = { ...currentChatsTable.byId };
+      let nextMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      let nextUsersTable = currentState[USERS_TABLE_NAME];
+      for (const recordKey of currentChatsTable.ids) {
+        const current = currentChatsTable.byId[recordKey];
+        if (
+          current?.channelType !== 'mainEvent'
+          || `${current.ownerId ?? ''}`.trim() !== normalizedEventId
+        ) {
+          continue;
+        }
+        const chatKey = LocalChatMessageMapper.chatKey(current.ownerUserId, current.id);
+        const alreadyStored = (nextMessagesTable.idsByChatKey[chatKey] ?? [])
+          .some(id => nextMessagesTable.byId[id]?.messageId === messageId);
+        if (alreadyStored) {
+          continue;
+        }
+        const storedMessage = this.withAppendTimeline({
+          id: messageId,
+          sender: 'System',
+          senderAvatar: {
+            id: 'system',
+            initials: 'SYS',
+            gender: 'system'
+          },
+          text: normalizedText,
+          time,
+          sentAtIso: normalizedSentAtIso,
+          mine: false,
+          readBy: []
+        }, current, nextMessagesTable);
+        const messageRecord = LocalChatMessageMapper.toRecord(
+          current.ownerUserId,
+          current.id,
+          storedMessage
+        );
+        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, messageRecord);
+        nextChatsById[recordKey] = {
+          ...current,
+          lastMessage: storedMessage.text,
+          lastSenderId: storedMessage.senderAvatar.id,
+          dateIso: storedMessage.sentAtIso,
+          unread: this.normalizeCounter(current.unread) + 1,
+          revision: this.nextChatRevision(current.revision)
+        };
+        nextUsersTable = this.applyStoredChatCounterDelta(
+          nextUsersTable,
+          current.ownerUserId,
+          'event',
+          1
+        );
+        appended += 1;
+      }
+      return appended === 0
+        ? currentState
+        : {
+            ...currentState,
+            [CHATS_TABLE_NAME]: {
+              ...currentChatsTable,
+              byId: nextChatsById
+            },
+            [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable,
+            [USERS_TABLE_NAME]: nextUsersTable
+          };
+    });
+    return appended;
+  }
+
+  updateEventChatOwnerStatus(
+    eventId: string,
+    ownerStatus: ActivityContracts.ActivityEventStatus
+  ): number {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return 0;
+    }
+    let changed = 0;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      for (const recordKey of currentTable.ids) {
+        const current = currentTable.byId[recordKey];
+        if (`${current?.eventId ?? ''}`.trim() !== normalizedEventId || current.ownerStatus === ownerStatus) {
+          continue;
+        }
+        nextById[recordKey] = {
+          ...current,
+          memberIds: [...(current.memberIds ?? [])],
+          ownerStatus,
+          revision: this.nextChatRevision(current.revision)
+        };
+        changed += 1;
+      }
+      return changed === 0
+        ? currentState
+        : {
+            ...currentState,
+            [CHATS_TABLE_NAME]: {
+              ...currentTable,
+              byId: nextById
+            }
+          };
+    });
+    return changed;
+  }
+
+  queryActivitiesChatPage(
+    userId: string,
+    query: ListQuery<ChatFeedFilters>
+  ): { items: ChatThreadRecord[]; total: number; nextCursor: string | null } {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    const rangeStartMs = this.parseRangeDateMs(query.rangeStart, Number.NEGATIVE_INFINITY);
+    const rangeEndMs = this.parseRangeDateMs(query.rangeEnd, Number.POSITIVE_INFINITY);
+    if (rangeStartMs > rangeEndMs) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    const source = (query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
+      ? this.querySupportCaseRecordsForAdmin(normalizedUserId, this.activitiesSupportCaseFilter(query))
+      : this.queryUserRecordsForPage(normalizedUserId, query))
+      .filter(record => this.matchesDateRange(record, rangeStartMs, rangeEndMs));
+    const sorted = this.sortChatPageRecords(source, query);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const startIndex = this.resolvePageStartIndex(query, pageSize);
+    const endIndex = Math.min(sorted.length, startIndex + pageSize);
+    return {
+      items: sorted
+        .slice(startIndex, endIndex)
+        .map(record => LocalChatThreadMapper.cloneRecord(record)),
+      total: sorted.length,
+      nextCursor: endIndex < sorted.length ? String(endIndex) : null
+    };
+  }
+
+  queryChatMembers(chatId: string): ActivityContracts.ActivityMemberDTO[] {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const userIds = this.chatMemberUserIds(normalizedChatId);
+    return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
+  }
+
+  queryChatMembersPage(
+    chatId: string,
+    query: ListQuery
+  ): ActivityContracts.ActivityMembersPageResultDTO {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    let userIds = this.chatMemberUserIds(normalizedChatId)
+      .sort((left, right) => left.localeCompare(right));
+    const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
+    if (pendingOnly) {
+      userIds = this.pendingChatMemberUserIds(normalizedChatId, userIds);
+    }
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
+    const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);
+    const startIndex = Number.isFinite(cursorOffset)
+      ? Math.max(0, cursorOffset)
+      : Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+    const endIndex = Math.min(userIds.length, startIndex + pageSize);
+    return {
+      items: userIds
+        .slice(startIndex, endIndex)
+        .map((userId, index) => this.toChatMemberEntry(
+          normalizedChatId,
+          userId,
+          startIndex + index,
+          pendingOnly ? 'pending' : 'accepted'
+        )),
+      total: userIds.length,
+      nextCursor: endIndex < userIds.length ? `${endIndex}` : null
+    };
+  }
+
+  private chatMemberUserIds(chatId: string): string[] {
+    if (!chatId) {
+      return [];
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const recordId = table.ids.find(id => table.byId[id]?.id === chatId) ?? '';
+    const record = recordId ? table.byId[recordId] : null;
+    return [...new Set(
+      (record?.memberIds ?? [])
+        .map(userId => `${userId ?? ''}`.trim())
+        .filter(userId => userId.length > 0)
+    )];
+  }
+
+  private pendingChatMemberUserIds(chatId: string, memberIds: readonly string[]): string[] {
+    if (!chatId || memberIds.length === 0) {
+      return [];
+    }
+    const chats = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const chatRecordId = chats.ids.find(id => chats.byId[id]?.id === chatId) ?? '';
+    const chat = chatRecordId ? chats.byId[chatRecordId] : null;
+    const ownerType = chat?.channelType === 'mainEvent'
+      ? 'event'
+      : chat?.channelType === 'optionalSubEvent'
+        ? 'subEvent'
+        : chat?.channelType === 'groupSubEvent'
+          ? 'group'
+          : '';
+    const ownerId = `${chat?.ownerId ?? ''}`.trim();
+    if (!ownerType || !ownerId) {
+      return [];
+    }
+    const members = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
+    const memberIdSet = new Set(memberIds);
+    return (members.idsByOwnerKey[`${ownerType}:${ownerId}`] ?? [])
+      .map(id => members.byId[id])
+      .filter(record => record?.status === 'pending' && memberIdSet.has(record.userId))
+      .map(record => record.userId)
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  private withSupportCaseCounters(state: AppMemorySchema): AppMemorySchema {
+    const byBase = new Map<string, Map<string, ContractTypes.SupportCaseStatus>>();
+    for (const chat of Object.values(state.chats.byId)) {
+      if (!this.isSupportCaseRecord(chat) || !chat.supportCase) continue;
+      const base = chat.supportBaseGroupId ?? '';
+      const cases = byBase.get(base) ?? new Map<string, ContractTypes.SupportCaseStatus>();
+      cases.set(chat.id, chat.supportCase.status); byBase.set(base, cases);
+    }
+    const byId = { ...state.users.byId };
+    for (const user of Object.values(byId)) {
+      if (!user.admin) continue;
+      const counters = { pending: 0, warned: 0, picked: 0, solved: 0, blocked: 0, all: 0 };
+      for (const status of byBase.get(user.workspaceGroupId ?? '')?.values() ?? []) {
+        counters[status]++; counters.all++;
+      }
+      byId[user.id] = { ...user, activities: { ...user.activities, chat: { ...user.activities?.chat, supportCases: counters } } };
+    }
+    return { ...state, users: { ...state.users, byId } };
+  }
+
+  private querySupportCaseRecordsForAdmin(
+    normalizedUserId: string,
+    filter: ContractTypes.SupportCaseFilter = 'all'
+  ): ChatThreadRecord[] {
+    if (!this.isDemoAdminUser(normalizedUserId)) {
+      return [];
+    }
+    const normalizedFilter = this.normalizeSupportCaseFilter(filter);
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const byChatId = new Map<string, ChatThreadRecord>();
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || !this.isSupportCaseRecord(record)
+          || (record.supportBaseGroupId ?? null) !== (this.memoryDb.read().users.byId[normalizedUserId]?.workspaceGroupId ?? null)) {
+        continue;
+      }
+      const chatId = `${record.id ?? ''}`.trim();
+      if (!chatId) {
+        continue;
+      }
+      const current = byChatId.get(chatId);
+      if (!current || record.ownerUserId === normalizedUserId) {
+        byChatId.set(chatId, record);
+      }
+    }
+    return [...byChatId.values()]
+      .filter(record => normalizedFilter === 'all' || record.supportCase?.status === normalizedFilter)
+      .map(record => ({
+        ...record,
+        supportCase: this.cloneSupportCase(record.supportCase),
+        ownerUserId: normalizedUserId
+      }));
+  }
+
+  queryChatSharedMessages(chat: ChatRecord, kind: 'event' | 'asset'): ContractTypes.ChatMessageDto[] {
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    if (!record) return [];
+    const snapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+    const key = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
+    const records = (snapshot.idsByChatKey[key] ?? []).map(id => snapshot.byId[id])
+      .filter((message): message is ChatMessageRecord => Boolean(message)
+        && (message.senderAvatar.userId === record.ownerUserId || message.mine && message.senderAvatar.userId === 'self') && !message.deletedAtIso
+        && message.attachments?.some(attachment => attachment.type === kind) === true);
+    return LocalChatMessageMapper.toDtoList(records);
+  }
+
+  queryChatMessagesPage(
+    chat: ChatRecord,
+    query: ListQuery
+  ): { items: ContractTypes.ChatMessageDto[]; total: number; nextCursor: string | null } {
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    if (!record) {
+      return { items: [], total: 0, nextCursor: null };
+    }
+    const snapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+    const chatKey = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
+    const orderedIds = snapshot.idsByChatKey[chatKey] ?? [];
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    let startIndex = this.resolveMessagePageStartIndex(query, pageSize);
+    const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
+    if (targetMessageId && !query.cursor) {
+      const targetIndex = orderedIds.slice().reverse()
+        .findIndex(id => snapshot.byId[id]?.messageId === targetMessageId);
+      if (targetIndex < 0) return { items: [], total: 0, nextCursor: null };
+      startIndex = Math.floor(targetIndex / pageSize) * pageSize;
+    }
+    const endIndex = Math.min(orderedIds.length, startIndex + pageSize);
+    const pageRecords = orderedIds
+      .slice()
+      .reverse()
+      .slice(startIndex, endIndex)
+      .map(id => snapshot.byId[id])
+      .filter((message): message is ChatMessageRecord => Boolean(message));
+    const messages = LocalChatMessageMapper.toDtoList(pageRecords).map(message => ({
+      ...message,
+      readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
+    }));
+    return {
+      items: messages,
+      total: orderedIds.length,
+      nextCursor: endIndex < orderedIds.length ? String(endIndex) : null
+    };
+  }
+
+  appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageDto | null {
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    if (!record) return null;
+    if (record.channelType === 'contact' && record.memberIds.length === 2) {
+      for (const peer of record.memberIds) if (peer !== record.ownerUserId) this.requireDirectChatConsent(record.ownerUserId, peer);
+    }
+    let saved: ContractTypes.ChatMessageDto | null = null;
+    this.memoryDb.write(state => {
+      const table = state[CHATS_TABLE_NAME];
+      let messages = state[CHAT_MESSAGES_TABLE_NAME];
+      const previous = this.findMessageRecord(messages, record, message.id);
+      if (previous) { saved = LocalChatMessageMapper.toDto(previous); return state; }
+      const stored = this.withAppendTimeline(message, record, messages);
+      const byId = { ...table.byId };
+      let users = state[USERS_TABLE_NAME];
+      for (const key of table.ids) {
+        const owner = table.byId[key];
+        if (owner.id !== record.id) continue;
+        const mine = owner.ownerUserId === record.ownerUserId;
+        const copy = { ...stored, mine };
+        messages = this.upsertMessageRecord(messages, LocalChatMessageMapper.toRecord(owner.ownerUserId, owner.id, copy));
+        byId[key] = { ...owner, lastMessage: stored.text || this.chatAttachmentSummary(stored),
+          lastSenderId: stored.senderAvatar.id, dateIso: stored.sentAtIso,
+          unread: this.normalizeCounter(owner.unread) + (mine ? 0 : 1), revision: this.nextChatRevision(owner.revision) };
+        const context = this.chatCounterKey(owner.channelType);
+        if (!mine && context) users = this.applyStoredChatCounterDelta(users, owner.ownerUserId, context, 1);
+      }
+      saved = stored;
+      return { ...state, [CHATS_TABLE_NAME]: { ...table, byId }, [CHAT_MESSAGES_TABLE_NAME]: messages, [USERS_TABLE_NAME]: users };
+    });
+    return saved;
+  }
+
+  upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatMessageDto, unreadForOwner: boolean): void {
+    const sourceId = `${chat.id ?? ''}`.trim();
+    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
+    if (!sourceId || !ownerUserId) {
+      return;
+    }
+    const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId);
+    const messageRecord = LocalChatMessageMapper.toRecord(ownerUserId, sourceId, message);
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      if (currentMessagesTable.byId[messageRecord.recordId]) return currentState;
+      const existing = currentTable.byId[recordKey];
+      const nextRecord: ChatThreadRecord = {
+        ...(existing ?? chat),
+        ...chat,
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
+        revision: this.nextChatRevision(existing?.revision ?? chat.revision)
+      };
+      const unreadDelta = this.normalizeCounter(nextRecord.unread) - this.normalizeCounter(existing?.unread);
+      const currentUsersTable = currentState[USERS_TABLE_NAME];
+      const currentUser = currentUsersTable.byId[ownerUserId] ?? null;
+      const currentChatCounters = currentUser?.activities?.chat ?? {};
+      const chatCounterKey = this.chatCounterKey(chat.channelType);
+      const nextUsersTable = currentUser && unreadDelta !== 0
+        ? {
+            ...currentUsersTable,
+            byId: {
+              ...currentUsersTable.byId,
+              [ownerUserId]: {
+                ...currentUser,
+                activities: {
+                  ...currentUser.activities,
+                  chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + unreadDelta),
+                  chat: {
+                    ...currentChatCounters,
+                    all: this.normalizeCounter((currentChatCounters.all ?? currentUser.activities?.chats ?? 0) + unreadDelta),
+                    event: this.normalizeCounter((currentChatCounters.event ?? 0) + (chatCounterKey === 'event' ? unreadDelta : 0)),
+                    subEvent: this.normalizeCounter((currentChatCounters.subEvent ?? 0) + (chatCounterKey === 'subEvent' ? unreadDelta : 0)),
+                    group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
+                    service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
+                    appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
+                    contacts: this.normalizeCounter((currentChatCounters.contacts ?? 0) + (chatCounterKey === 'contacts' ? unreadDelta : 0)),
+                    campaign: this.normalizeCounter((currentChatCounters.campaign ?? 0) + (chatCounterKey === 'campaign' ? unreadDelta : 0)),
+                    cases: this.normalizeCounter((currentChatCounters.cases ?? 0) + (chatCounterKey === 'cases' ? unreadDelta : 0)),
+                    groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
+                  }
+                }
+              }
+            }
+          }
+        : currentUsersTable;
+      return this.withSupportCaseCounters({
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: nextRecord
+          },
+          ids: currentTable.ids.includes(recordKey)
+            ? [...currentTable.ids]
+            : [...currentTable.ids, recordKey]
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: this.upsertMessageRecord(currentMessagesTable, messageRecord),
+        [USERS_TABLE_NAME]: nextUsersTable
+      });
+    });
+  }
+
+  updateChatMessage(
+    chat: ChatRecord,
+    messageId: string,
+    mutation: ContractTypes.ChatMessageMutation
+  ): ContractTypes.ChatMessageDto | null {
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    const normalizedMessageId = `${messageId ?? ''}`.trim();
+    if (!record || !normalizedMessageId) {
+      return null;
+    }
+    const actor = this.memoryDb.read()[USERS_TABLE_NAME].byId[record.ownerUserId];
+    const actorId = record.ownerUserId;
+    const actorName = actor?.name ?? actorId;
+    const actorInitials = actor?.initials ?? AppUtils.initialsFromText(actorName);
+    const actorGender: 'woman' | 'man' = actor?.gender === 'woman' ? 'woman' : 'man';
+    const nowIso = new Date().toISOString();
+    let updatedMessage: ContractTypes.ChatMessageDto | null = null;
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      const existingRecord = currentTable.byId[recordKey];
+      if (!existingRecord) {
+        return currentState;
+      }
+      const existingMessageRecord = this.findMessageRecord(currentMessagesTable, existingRecord, normalizedMessageId);
+      if (!existingMessageRecord) {
+        return currentState;
+      }
+      if ((mutation.deleted || typeof mutation.text === 'string')
+          && !existingMessageRecord.mine && existingMessageRecord.senderAvatar.userId !== actorId) throw new Error('Forbidden');
+      const nextMessage = this.applyMessageMutation(LocalChatMessageMapper.toDto(existingMessageRecord), mutation, {
+        actorId,
+        actorName,
+        actorInitials,
+        actorGender,
+        nowIso
+      });
+      updatedMessage = nextMessage;
+      let nextMessagesTable = currentMessagesTable;
+      const byId = { ...currentTable.byId };
+      for (const key of currentTable.ids) {
+        const owner = currentTable.byId[key];
+        if (owner.id !== existingRecord.id) continue;
+        const previous = this.findMessageRecord(currentMessagesTable, owner, normalizedMessageId);
+        if (!previous) continue;
+        const copy = { ...nextMessage, mine: previous.mine };
+        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, LocalChatMessageMapper.toRecord(owner.ownerUserId, owner.id, copy));
+        const latestRecord = this.latestChatMessageRecord(nextMessagesTable, owner);
+        const latest = latestRecord ? LocalChatMessageMapper.toDto(latestRecord) : null;
+        byId[key] = { ...owner,
+          lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : owner.lastMessage,
+          lastSenderId: latest?.senderAvatar.id ?? owner.lastSenderId,
+          dateIso: latest?.sentAtIso ?? owner.dateIso, revision: this.nextChatRevision(owner.revision) };
+      }
+      return { ...currentState, [CHATS_TABLE_NAME]: { ...currentTable, byId }, [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable };
+    });
+    return updatedMessage;
+  }
+
+  markChatRead(
+    chat: ChatRecord,
+    ownerUserId: string,
+    messageIds: readonly string[],
+    wholeChannel = false
+  ): { messageIds: string[]; unread: number; reader: ContractTypes.ChatReadAvatar; readAtIso: string } | null {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const targetIds = [...new Set(
+      (messageIds ?? [])
+        .map(messageId => `${messageId ?? ''}`.trim())
+        .filter(Boolean)
+    )];
+    const sourceId = `${chat.id ?? ''}`.trim();
+    const channelOwnerId = `${chat.ownerId ?? ''}`.trim();
+    const channelType = `${chat.channelType ?? ''}`.trim();
+    if (!normalizedOwnerUserId || (!sourceId && !channelOwnerId)) {
+      return null;
+    }
+    const recordsTable = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const recordKey = this.findChatRecordKey(recordsTable, normalizedOwnerUserId, sourceId, channelOwnerId, channelType);
+    if (!recordKey) {
+      return null;
+    }
+    const record = recordsTable.byId[recordKey] ?? null;
+    if (!record) {
+      return null;
+    }
+
+    if (wholeChannel) {
+      const messagesTable = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+      const chatKey = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
+      targetIds.splice(
+        0,
+        targetIds.length,
+        ...(messagesTable.idsByChatKey[chatKey] ?? [])
+          .map(recordId => messagesTable.byId[recordId]?.messageId ?? '')
+          .filter(Boolean)
+      );
+    }
+    if (targetIds.length === 0 && !wholeChannel) {
+      return null;
+    }
+
+    const reader = this.readAvatarForUser(normalizedOwnerUserId);
+    const readAtIso = new Date().toISOString();
+    const changedIds: string[] = [];
+    const previousUnread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    let unread = previousUnread;
+    let changed = false;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      const existingRecord = currentTable.byId[recordKey];
+      if (!existingRecord) {
+        return currentState;
+      }
+      let ownerCopies: ChatThreadRecord[] | null = null;
+      let nextMessageRecords: typeof currentMessagesTable.byId | null = null;
+      for (const messageId of targetIds) {
+        const messageRecord = this.findMessageRecord(currentMessagesTable, existingRecord, messageId);
+        if (
+          !messageRecord
+          || messageRecord.mine
+          || (messageRecord.readBy ?? []).some(existingReader => existingReader.userId === normalizedOwnerUserId)
+        ) {
+          continue;
+        }
+        changedIds.push(messageRecord.messageId);
+        ownerCopies ??= currentTable.ids
+          .map(id => currentTable.byId[id])
+          .filter(owner => owner?.id === existingRecord.id);
+        nextMessageRecords ??= { ...currentMessagesTable.byId };
+        for (const owner of ownerCopies) {
+          const copyId = LocalChatMessageMapper.recordKey(owner.ownerUserId, owner.id, messageRecord.messageId);
+          const copy = nextMessageRecords[copyId];
+          if (!copy || (copy.readBy ?? []).some(existingReader => existingReader.userId === reader.id)) continue;
+          nextMessageRecords[copyId] = {
+            ...copy,
+            readBy: [...(copy.readBy ?? []), {
+              userId: reader.id,
+              initials: reader.initials,
+              gender: reader.gender,
+              imageUrl: reader.imageUrl ?? null
+            }]
+          };
+        }
+      }
+      // Receipt changes preserve message identity/order; no per-message upsert or sort is needed.
+      const nextMessagesTable = nextMessageRecords
+        ? { ...currentMessagesTable, byId: nextMessageRecords } : currentMessagesTable;
+      const clearWholeChannel = wholeChannel && previousUnread > 0;
+      if (changedIds.length === 0 && !clearWholeChannel) {
+        return currentState;
+      }
+      changed = true;
+      unread = wholeChannel ? 0 : this.normalizeCounter(previousUnread - changedIds.length);
+      const unreadDelta = unread - previousUnread;
+      const currentUsersTable = currentState[USERS_TABLE_NAME];
+      const currentUser = currentUsersTable.byId[normalizedOwnerUserId] ?? null;
+      const chatCounterKey = this.chatCounterKey(existingRecord.channelType);
+      const currentChatCounters = currentUser?.activities?.chat ?? {};
+      const nextChatCounters = {
+        all: this.normalizeCounter((currentChatCounters.all ?? currentUser?.activities?.chats ?? 0) + unreadDelta),
+        event: this.normalizeCounter((currentChatCounters.event ?? 0) + (chatCounterKey === 'event' ? unreadDelta : 0)),
+        subEvent: this.normalizeCounter((currentChatCounters.subEvent ?? 0) + (chatCounterKey === 'subEvent' ? unreadDelta : 0)),
+        group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
+        service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
+        appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0)),
+        contacts: this.normalizeCounter((currentChatCounters.contacts ?? 0) + (chatCounterKey === 'contacts' ? unreadDelta : 0)),
+        campaign: this.normalizeCounter((currentChatCounters.campaign ?? 0) + (chatCounterKey === 'campaign' ? unreadDelta : 0)),
+        cases: this.normalizeCounter((currentChatCounters.cases ?? 0) + (chatCounterKey === 'cases' ? unreadDelta : 0)),
+        groupSupport: this.normalizeCounter((currentChatCounters.groupSupport ?? 0) + (chatCounterKey === 'groupSupport' ? unreadDelta : 0))
+      };
+      const nextUsersTable = currentUser && unreadDelta !== 0
+        ? {
+            ...currentUsersTable,
+            byId: {
+              ...currentUsersTable.byId,
+              [normalizedOwnerUserId]: {
+                ...currentUser,
+                activities: {
+                  ...currentUser.activities,
+                  chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + unreadDelta),
+                  chat: nextChatCounters
+                }
+              }
+            }
+          }
+        : currentUsersTable;
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          ...currentTable,
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: {
+              ...existingRecord,
+              unread,
+              revision: this.nextChatRevision(existingRecord.revision)
+            }
+          }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable,
+        [USERS_TABLE_NAME]: nextUsersTable
+      };
+    });
+    return changed
+      ? {
+          messageIds: changedIds,
+          unread,
+          reader,
+          readAtIso
+        }
+      : null;
+  }
+
+  private applyStoredChatCounterDelta(
+    table: AppMemorySchema[typeof USERS_TABLE_NAME],
+    userId: string,
+    context: 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | 'campaign' | 'cases',
+    delta: number
+  ): AppMemorySchema[typeof USERS_TABLE_NAME] {
+    const currentUser = table.byId[userId] ?? null;
+    if (!currentUser || delta === 0) {
+      return table;
+    }
+    const currentChat = currentUser.activities?.chat ?? {};
+    return {
+      ...table,
+      byId: {
+        ...table.byId,
+        [userId]: {
+          ...currentUser,
+          activities: {
+            ...currentUser.activities,
+            chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + delta),
+            chat: {
+              ...currentChat,
+              all: this.normalizeCounter((currentChat.all ?? currentUser.activities?.chats ?? 0) + delta),
+              event: this.normalizeCounter((currentChat.event ?? 0) + (context === 'event' ? delta : 0)),
+              subEvent: this.normalizeCounter((currentChat.subEvent ?? 0) + (context === 'subEvent' ? delta : 0)),
+              group: this.normalizeCounter((currentChat.group ?? 0) + (context === 'group' ? delta : 0)),
+              service: this.normalizeCounter((currentChat.service ?? 0) + (context === 'service' ? delta : 0)),
+              appSupport: this.normalizeCounter((currentChat.appSupport ?? 0) + (context === 'appSupport' ? delta : 0)),
+              contacts: this.normalizeCounter((currentChat.contacts ?? 0) + (context === 'contacts' ? delta : 0)),
+              campaign: this.normalizeCounter((currentChat.campaign ?? 0) + (context === 'campaign' ? delta : 0)),
+              cases: this.normalizeCounter((currentChat.cases ?? 0) + (context === 'cases' ? delta : 0)),
+              groupSupport: this.normalizeCounter((currentChat.groupSupport ?? 0) + (context === 'groupSupport' ? delta : 0))
+            }
+          }
+        }
+      }
+    };
+  }
+
+  updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!sourceId) {
+      return null;
+    }
+    const actor = this.resolveDemoAdminActor(
+      typeof (chat as { ownerUserId?: unknown }).ownerUserId === 'string'
+        ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
+        : ''
+    );
+    const selectedId = (chat as ChatThreadRecord).ownerUserId;
+    if (!this.isDemoAdminUser(selectedId)) return null;
+    const actorGroupId = this.memoryDb.read().users.byId[selectedId]?.workspaceGroupId ?? null;
+    const state = this.nextSupportCaseState(action, actor);
+    if (!state) {
+      return null;
+    }
+    let updated: ChatThreadRecord | null = null;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const nextById = { ...currentTable.byId };
+      let changed = false;
+      for (const id of currentTable.ids) {
+        const record = currentTable.byId[id];
+        if (!record || record.id !== sourceId || !this.isSupportCaseRecord(record) || (record.supportBaseGroupId ?? null) !== actorGroupId) {
+          continue;
+        }
+        const nextRecord: ChatThreadRecord = {
+          ...record,
+          channelType: 'supportCase',
+          ownerId: `${record.ownerId ?? record.id ?? ''}`.trim(),
+          supportCase: {
+            status: state.status,
+            assignee: state.assigneeUserId
+              ? {
+                  userId: state.assigneeUserId,
+                  name: state.assigneeName ?? '',
+                  initials: state.assigneeInitials ?? ''
+                }
+              : null,
+            updatedAtIso: state.updatedAtIso
+          }
+        };
+        nextById[id] = nextRecord;
+        updated = record.ownerUserId === actor.id ? nextRecord : (updated ?? nextRecord);
+        changed = true;
+      }
+      if (!changed) {
+        return currentState;
+      }
+      return this.withSupportCaseCounters({
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          ...currentTable,
+          byId: nextById
+        }
+      });
+    });
+    return updated ? LocalChatThreadMapper.cloneRecord(updated) : null;
+  }
+
+  private queryUserRecords(userId: string): ChatThreadRecord[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
+      return [];
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ChatThreadRecord => Boolean(record))
+      .filter(record => record.ownerUserId === normalizedUserId)
+      .map(record => LocalChatThreadMapper.cloneRecord(record));
+  }
+
+  private queryUserRecordsForPage(
+    userId: string,
+    query: ListQuery<ChatFeedFilters>
+  ): ChatThreadRecord[] {
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ChatThreadRecord => Boolean(record))
+      .filter(record => record.ownerUserId === userId)
+      .filter(record => this.matchesChatContextFilter(record, this.activitiesChatContextFilter(query)))
+      .filter(record => this.matchesSupportCaseFilter(record, this.activitiesSupportCaseFilter(query)));
+  }
+
+  private matchesChatContextFilter(
+    record: ChatRecord,
+    filter: ContractTypes.ActivitiesChatContextFilter
+  ): boolean {
+    return filter === 'all' || this.activityChatContextFilterKey(record) === filter;
+  }
+
+  private activityChatContextFilterKey(
+    record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
+  ): ContractTypes.ActivitiesChatContextFilter {
+    if (record.channelType === 'campaign') return 'campaign';
+    if (record.channelType === 'case') return 'cases';
+    if (record.channelType === 'contact') return 'contacts';
+    if (record.channelType === 'groupSupport') return 'groupSupport';
+    if (record.channelType === 'appSupport' || record.channelType === 'supportCase') {
+      return 'appSupport';
+    }
+    if (record.channelType === 'serviceEvent' || record.serviceContext) {
+      return 'service';
+    }
+    if (record.channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    if (record.channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (record.channelType === 'mainEvent') {
+      return 'event';
+    }
+    return 'all';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesChatContextFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
+    const value = query.filters?.chatContextFilter;
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport' || value === 'campaign' || value === 'cases'
+      ? value
+      : 'all';
+  }
+
+  private activitiesSupportCaseFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.SupportCaseFilter {
+    const value = query.filters?.supportCaseFilter;
+    return value === 'pending' || value === 'warned' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
+  }
+
+  private matchesSupportCaseFilter(record: ChatRecord, filter: ContractTypes.SupportCaseFilter | undefined): boolean {
+    const normalizedFilter = this.normalizeSupportCaseFilter(filter ?? 'all');
+    return normalizedFilter === 'all' || record.supportCase?.status === normalizedFilter;
+  }
+
+  private sortChatPageRecords(
+    records: readonly ChatThreadRecord[],
+    query: ListQuery<ChatFeedFilters>
+  ): ChatThreadRecord[] {
+    const direction = query.direction === 'asc' ? 1 : -1;
+    const sorted = [...records];
+    if (this.activitiesSecondaryFilter(query) === 'relevant') {
+      return sorted.sort((left, right) =>
+        this.chatMetricScore(right) - this.chatMetricScore(left)
+        || direction * (
+          UiDateUtils.toSortableDate(left.dateIso ?? '') - UiDateUtils.toSortableDate(right.dateIso ?? '')
+        )
+      );
+    }
+    return sorted.sort((left, right) =>
+      direction * (UiDateUtils.toSortableDate(left.dateIso ?? '') - UiDateUtils.toSortableDate(right.dateIso ?? ''))
+    );
+  }
+
+  private chatMetricScore(record: Pick<ChatRecord, 'unread' | 'memberIds'>): number {
+    const unread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    const memberCount = new Set(
+      (record.memberIds ?? [])
+        .map(memberId => `${memberId ?? ''}`.trim())
+        .filter(Boolean)
+    ).size;
+    return unread * 10 + memberCount;
+  }
+
+  private normalizeCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  }
+
+  private nextChatRevision(value: unknown): number {
+    const current = Math.max(1, Math.trunc(Number(value) || 1));
+    return Math.max(Date.now(), current + 1);
+  }
+
+  private withAppendTimeline(
+    message: ContractTypes.ChatMessageDto,
+    chat: ChatThreadRecord,
+    messagesTable: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
+  ): ContractTypes.ChatMessageDto {
+    const latestRecord = this.latestChatMessageRecord(messagesTable, chat);
+    const latestMs = latestRecord ? UiDateUtils.toSortableDate(latestRecord.sentAtIso) : Number.NaN;
+    const messageMs = UiDateUtils.toSortableDate(message.sentAtIso ?? '');
+    if (!Number.isFinite(latestMs) || (Number.isFinite(messageMs) && messageMs > latestMs)) {
+      return message;
+    }
+
+    const sentAt = new Date(latestMs + 60 * 1000);
+    return {
+      ...message,
+      sentAtIso: UiDateUtils.toIsoDateTime(sentAt),
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    };
+  }
+
+  private findChatRecordKey(
+    table: AppMemorySchema[typeof CHATS_TABLE_NAME],
+    ownerUserId: string,
+    chatId: string,
+    ownerId: string,
+    channelType: string
+  ): string | null {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    const normalizedChannelType = `${channelType ?? ''}`.trim();
+    if (normalizedOwnerUserId && normalizedOwnerId) {
+      const ownerMatch = table.ids.find(id => {
+        const record = table.byId[id];
+        return record?.ownerUserId === normalizedOwnerUserId
+          && `${record.ownerId ?? ''}`.trim() === normalizedOwnerId
+          && (!normalizedChannelType || `${record.channelType ?? ''}`.trim() === normalizedChannelType);
+      });
+      if (ownerMatch) {
+        return ownerMatch;
+      }
+    }
+    if (normalizedOwnerUserId && normalizedChatId) {
+      const key = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, normalizedChatId);
+      if (table.byId[key]) {
+        return key;
+      }
+    }
+    return null;
+  }
+
+  private readAvatarForUser(userId: string): ContractTypes.ChatReadAvatar {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const user = normalizedUserId ? this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null : null;
+    const label = user?.name?.trim() || normalizedUserId || 'You';
+    return {
+      id: normalizedUserId,
+      initials: user?.initials?.trim() || AppUtils.initialsFromText(label),
+      gender: user?.gender ?? 'man',
+      imageUrl: AppUtils.firstImageUrl(user?.images)
+    };
+  }
+
+  private resolvePageStartIndex(query: ListQuery<ChatFeedFilters>, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private resolveMessagePageStartIndex(query: ListQuery, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private findMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord,
+    messageId: string
+  ): ChatMessageRecord | null {
+    const recordId = LocalChatMessageMapper.recordKey(chat.ownerUserId, chat.id, messageId);
+    return table.byId[recordId] ?? null;
+  }
+
+  private latestChatMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord
+  ): ChatMessageRecord | null {
+    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
+    const ids = table.idsByChatKey[chatKey] ?? [];
+    const latestId = ids[ids.length - 1] ?? '';
+    return latestId ? table.byId[latestId] ?? null : null;
+  }
+
+  private upsertMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    message: ChatMessageRecord
+  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    if (!message.recordId) {
+      return table;
+    }
+    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
+    const nextById = {
+      ...table.byId,
+      [message.recordId]: message
+    };
+    const nextIds = table.ids.includes(message.recordId)
+      ? [...table.ids]
+      : [...table.ids, message.recordId];
+    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
+      ? [...table.idsByChatKey[chatKey]]
+      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
+    nextChatIds.sort((leftId, rightId) => {
+      const left = nextById[leftId];
+      const right = nextById[rightId];
+      return left && right ? this.compareMessageRecordsAsc(left, right) : left ? -1 : right ? 1 : 0;
+    });
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByChatKey: {
+        ...table.idsByChatKey,
+        [chatKey]: nextChatIds
+      }
+    };
+  }
+
+  private compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {
+    return UiDateUtils.toSortableDate(left.sentAtIso) - UiDateUtils.toSortableDate(right.sentAtIso)
+      || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`);
+  }
+
+  private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {
+    const dateMs = UiDateUtils.toSortableDate(record.dateIso ?? '');
+    return dateMs >= rangeStartMs && dateMs <= rangeEndMs;
+  }
+
+  private parseRangeDateMs(value: string | null | undefined, fallback: number): number {
+    const text = `${value ?? ''}`.trim();
+    if (!text) {
+      return fallback;
+    }
+    const dateMs = UiDateUtils.toSortableDate(text);
+    return Number.isFinite(dateMs) ? dateMs : fallback;
+  }
+
+  private isDemoAdminUser(userId: string): boolean {
+    return this.memoryDb.read().users.byId[userId]?.admin === true || userId === 'admin-demo-ava' || userId === 'admin-demo-noel';
+  }
+
+  private isSupportCaseRecord(record: ChatRecord): boolean {
+    return record.channelType === 'supportCase'
+      || `${record.id ?? ''}`.trim().startsWith('c-support-admin-')
+      || Boolean(record.supportCase);
+  }
+
+  private cloneSupportCase<T extends ContractTypes.ChatSupportCase | null | undefined>(supportCase: T): T {
+    return supportCase
+      ? {
+          ...supportCase,
+          assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+        } as T
+      : supportCase;
+  }
+
+  private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): ContractTypes.SupportCaseFilter {
+    return filter === 'pending' || filter === 'warned' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+      ? filter
+      : 'all';
+  }
+
+  private resolveDemoAdminActor(ownerUserId: string): { id: string; name: string; initials: string } {
+    const profile = this.memoryDb.read().users.byId[ownerUserId];
+    if (profile?.admin) return { id: profile.id, name: profile.name, initials: profile.initials };
+    if (ownerUserId === 'admin-demo-noel') {
+      return {
+        id: 'admin-demo-noel',
+        name: 'Noel',
+        initials: 'NO'
+      };
+    }
+    return {
+      id: 'admin-demo-ava',
+      name: 'Ava',
+      initials: 'AV'
+    };
+  }
+
+  private nextSupportCaseState(
+    action: ContractTypes.SupportCaseAction,
+    actor: { id: string; name: string; initials: string }
+  ): {
+    status: ContractTypes.SupportCaseStatus;
+    assigneeUserId: string | null;
+    assigneeName: string | null;
+    assigneeInitials: string | null;
+    updatedAtIso: string;
+  } | null {
+    const updatedAtIso = new Date().toISOString();
+    if (action === 'unpick' || action === 'reopen') {
+      return {
+        status: 'pending',
+        assigneeUserId: null,
+        assigneeName: null,
+        assigneeInitials: null,
+        updatedAtIso
+      };
+    }
+    if (action === 'pick' || action === 'solve' || action === 'block') {
+      return {
+        status: action === 'solve' ? 'solved' : action === 'block' ? 'blocked' : 'picked',
+        assigneeUserId: actor.id,
+        assigneeName: actor.name,
+        assigneeInitials: actor.initials,
+        updatedAtIso
+      };
+    }
+    return null;
+  }
+
+  private isSetupRequiredDemoProfile(userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
+    return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
+  }
+
+  private toChatMemberEntry(
+    chatId: string,
+    userId: string,
+    index: number,
+    status: 'accepted' | 'pending' = 'accepted'
+  ): ActivityContracts.ActivityMemberDTO {
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
+    const label = user?.name?.trim() || userId;
+    const when = UiDateUtils.addDays(new Date(), -Math.max(0, index));
+    return {
+      id: `chat:${chatId}:${userId}`,
+      userId,
+      name: label,
+      initials: user?.initials?.trim() || AppUtils.initialsFromText(label),
+      gender: user?.gender ?? 'man',
+      city: user?.city ?? '',
+      statusText: user?.statusText?.trim() || 'Chat member',
+      role: 'Member',
+      status,
+      pendingSource: null,
+      requestKind: null,
+      invitedByActiveUser: false,
+      invitedByUserId: null,
+      metAtIso: UiDateUtils.toIsoDateTime(when),
+      actionAtIso: UiDateUtils.toIsoDateTime(when),
+      metWhere: 'Chat',
+      avatarUrl: AppUtils.firstImageUrl(user?.images),
+      profile: user ? { ...user, images: [...(user.images ?? [])] } : null
+    };
+  }
+
+  private resolveChatRecord(
+    chat: ChatRecord,
+    options: { createServiceChat?: boolean } = {}
+  ): ChatThreadRecord | null {
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!sourceId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const ownerUserId = typeof (chat as { ownerUserId?: unknown }).ownerUserId === 'string'
+      ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
+      : '';
+    if (ownerUserId) {
+      const record = table.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
+      if (record) {
+        return this.hasCaseChatAccess(record, ownerUserId) ? record : null;
+      }
+      if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
+        return this.createServiceChatRecord(ownerUserId, chat);
+      }
+    }
+    const matchId = table.ids.find(id => table.byId[id]?.id === sourceId);
+    if (matchId) {
+      return table.byId[matchId] ?? null;
+    }
+    if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
+      const fallbackOwnerUserId = (chat.memberIds ?? [])[0]?.trim() ?? '';
+      return fallbackOwnerUserId ? this.createServiceChatRecord(fallbackOwnerUserId, chat) : null;
+    }
+    return null;
+  }
+
+  private createServiceChatRecord(ownerUserId: string, chat: ChatRecord): ChatThreadRecord | null {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!normalizedOwnerUserId || !sourceId) {
+      return null;
+    }
+    const recordKey = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, sourceId);
+    const existing = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey];
+    if (existing) {
+      return existing;
+    }
+    const record: ChatThreadRecord = {
+      ...chat,
+      memberIds: [...(chat.memberIds ?? [])],
+      ownerUserId: normalizedOwnerUserId,
+      dateIso: chat.dateIso ?? new Date().toISOString()
+    };
+    const initialMessageRecords = this.buildInitialServiceMessages(chat)
+      .map(message => LocalChatMessageMapper.toRecord(normalizedOwnerUserId, sourceId, message));
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      if (currentTable.byId[recordKey]) {
+        return currentState;
+      }
+      const nextMessagesTable = initialMessageRecords.reduce(
+        (table, messageRecord) => this.upsertMessageRecord(table, messageRecord),
+        currentState[CHAT_MESSAGES_TABLE_NAME]
+      );
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: record
+          },
+          ids: [...currentTable.ids, recordKey]
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
+      };
+    });
+    return record;
+  }
+
+  private buildInitialServiceMessages(chat: ChatRecord): ContractTypes.ChatMessageDto[] {
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!sourceId.startsWith('c-support-blocked-')) {
+      return [];
+    }
+    const sentAtIso = chat.dateIso ?? new Date().toISOString();
+    return [{
+      id: `m-${sourceId}-admin`,
+      sender: 'MyScoutee Admin',
+      senderAvatar: {
+        id: 'myscoutee-admin',
+        initials: 'MS',
+        gender: 'woman'
+      },
+      text: 'Your account is blocked. You can reply here to contact MyScoutee support and ask for a review.',
+      time: 'Now',
+      sentAtIso,
+      mine: false,
+      readBy: []
+    }];
+  }
+
+  private chatAttachmentSummary(message: ContractTypes.ChatMessageDto): string {
+    const firstAttachment = message.attachments?.[0];
+    if (!firstAttachment) {
+      return '';
+    }
+    if (firstAttachment.type === 'image') {
+      return 'Sent an image';
+    }
+    if (firstAttachment.type === 'event') {
+      return 'Shared an event';
+    }
+    if (firstAttachment.type === 'asset') {
+      return 'Shared an asset';
+    }
+    return firstAttachment.title || 'Shared an attachment';
+  }
+
+  private applyMessageMutation(
+    message: ContractTypes.ChatMessageDto,
+    mutation: ContractTypes.ChatMessageMutation,
+    actor: {
+      actorId: string;
+      actorName: string;
+      actorInitials: string;
+      actorGender: 'woman' | 'man';
+      nowIso: string;
+    }
+  ): ContractTypes.ChatMessageDto {
+    if (mutation.deleted === true) {
+      return {
+        ...message,
+        text: '',
+        deletedAtIso: actor.nowIso,
+        deletedByUserId: actor.actorId,
+        deletedByName: actor.actorName,
+        reactions: [],
+        readBy: []
+      };
+    }
+    if (typeof mutation.text === 'string') {
+      const nextText = mutation.text.trim();
+      if (nextText && message.mine && !message.deletedAtIso) {
+        return {
+          ...message,
+          text: nextText,
+          editedAtIso: actor.nowIso
+        };
+      }
+    }
+    if (typeof mutation.pinned === 'boolean') {
+      return {
+        ...message,
+        pinnedAtIso: mutation.pinned ? actor.nowIso : null,
+        pinnedByUserId: mutation.pinned ? actor.actorId : null
+      };
+    }
+    if (Object.prototype.hasOwnProperty.call(mutation, 'reactionEmoji')) {
+      const emoji = `${mutation.reactionEmoji ?? ''}`.trim();
+      const withoutMine = (message.reactions ?? []).filter(reaction => reaction.userId !== actor.actorId);
+      return {
+        ...message,
+        reactions: emoji
+          ? [
+              ...withoutMine,
+              {
+                emoji,
+                userId: actor.actorId,
+                userName: actor.actorName,
+                userInitials: actor.actorInitials,
+                userGender: actor.actorGender,
+                reactedAtIso: actor.nowIso
+              }
+            ]
+          : withoutMine
+      };
+    }
+    if (mutation.attachments) {
+      return {
+        ...message,
+        attachments: mutation.attachments.map(attachment => ({ ...attachment }))
+      };
+    }
+    return message;
+  }
+
+  private deletedMessageSummary(message: ContractTypes.ChatMessageDto): string {
+    return message.deletedAtIso ? `${message.deletedByName || message.sender} deleted a message` : '';
+  }
+
+  private chatCounterKey(
+    channelType: ContractTypes.ChatChannelType | null | undefined
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | 'contacts' | 'groupSupport' | 'campaign' | 'cases' | null {
+    switch (channelType) {
+      case 'mainEvent': return 'event';
+      case 'optionalSubEvent': return 'subEvent';
+      case 'groupSubEvent': return 'group';
+      case 'serviceEvent': return 'service';
+      case 'campaign': return 'campaign';
+      case 'case': return 'cases';
+      case 'contact': return 'contacts';
+      case 'groupSupport': return 'groupSupport';
+      case 'appSupport':
+      case 'supportCase': return 'appSupport';
+      default: return null;
+    }
+  }
+}

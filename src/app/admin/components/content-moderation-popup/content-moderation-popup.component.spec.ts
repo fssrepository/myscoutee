@@ -1,6 +1,6 @@
 import { ContentModerationPopupComponent } from './content-moderation-popup.component';
 import { signal } from '@angular/core';
-import type { ContentModerationItem } from '../../../shared/core/contracts/content-moderation.interface';
+import type { ContentModerationItem } from '../../../shared/core/contracts/content/content-moderation.interface';
 
 describe('Content moderation dual filters', () => {
   const original: ContentModerationItem = { id: 'feed:post', category: 'feed', sourceId: 'post', ownerUserId: 'owner',
@@ -11,6 +11,7 @@ describe('Content moderation dual filters', () => {
     Object.assign(component, {
       category: 'all', status: 'under-review', groupContext: () => null, destroyRef: { destroyed: false },
       snapshot: () => component.state.snapshot(), i18n: { translate: (key: string) => key },
+      baseWorkspace: { active: () => null },
       workspace: { dashboard: () => ({ activeAdmin: { id: 'admin' } }) },
       state: { apply: vi.fn(), forScope: vi.fn().mockReturnValue(null), snapshot: () => ({ settings: { enabled: true }, counts: { feed: { 'under-review': 2 }, event: { 'under-review': 3 } } }) },
       error: { set: vi.fn() }, dialogs: { open: vi.fn() }, service: { decide: vi.fn(), page: vi.fn() },

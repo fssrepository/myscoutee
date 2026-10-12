@@ -1,5 +1,35 @@
-import { ExplanationGuideService } from '../../../../shared/core/base/services/explanation-guide.service';
-import { ChatShareStore } from '../../../../shared/ui/context/stores/chat-share.store';
+import {
+  clampNumber,
+  UiDateUtils,
+  ExplanationGuideService,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  PopupComponent,
+  type PopupModel,
+  CARD_MENU_ACTIONS,
+  type CardMenuAction,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type InfoCardData,
+  InfoCardComponent,
+  SmartListComponent,
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListStateChange,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+
+import { ChatShareStore } from '../../../../shared/ui/context/stores/chat/chat-share.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -26,139 +56,93 @@ import {
 } from 'rxjs';
 
 import {
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger
-} from '../../../../shared/ui/components/core/menu/menu.types';
-import {
-  AppMenuComponent
-} from '../../../../shared/ui/components/core/menu/menu.component';
-import {
-  AppMenuDispatcher
-} from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
-import {
-  AppMenuOutletComponent
-} from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../../shared/ui/components/core/popup';
-import {
-  CARD_MENU_ACTIONS,
-  type CardMenuAction,
-  type CardMenuActionEvent,
-  type CardMenuRequestEvent,
-  type InfoCardData
-} from '../../../../shared/ui/components/core/smart-list/card/card.types';
-import {
-  InfoCardComponent
-} from '../../../../shared/ui/components/core/smart-list/card/info-card/info-card.component';
-import {
-  SmartListComponent
-} from '../../../../shared/ui/components/core/smart-list/smart-list.component';
-import {
-  type DateInputModel,
-  type DateInputRangeValue,
-  type DateInputValue
-} from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
-import type {
-  ListQuery,
-  PageResult,
-  SmartListConfig,
-  SmartListLoadPage,
-  SmartListStateChange
-} from '../../../../shared/ui/components/core/smart-list/smart-list.types';
-import {
   AssetInfoCardConverter
-} from '../../../../shared/ui/converters/asset-info-card.converter';
+} from '../../../../shared/ui/converters/asset/asset-info-card.converter';
 import {
   ChatPopupHeaderContextConverter
-} from '../../../../shared/ui/converters/chat-popup-header-context.converter';
+} from '../../../../shared/ui/converters/chat/chat-popup-header-context.converter';
 import {
   AppUtils
-} from '../../../../shared/app-utils';
+} from '../../../../shared/core/base/app-utils';
 import {
   AssetCardBuilder
-} from '../../../../shared/core/base/builders/asset-card.builder';
+} from '../../../../shared/core/base/builders/assets/asset-card.builder';
 import {
   AssetDefaultsBuilder
-} from '../../../../shared/core/base/builders/asset-defaults.builder';
+} from '../../../../shared/core/base/builders/assets/asset-defaults.builder';
 import {
   PricingBuilder
-} from '../../../../shared/core/base/builders/pricing.builder';
+} from '../../../../shared/core/base/builders/payments/pricing.builder';
 import {
   ActivityResourceBuilder
-} from '../../../../shared/core/base/builders/activity-resource.builder';
+} from '../../../../shared/core/base/builders/events/activity-resource.builder';
 import {
   ActivityResourcesService
-} from '../../../../shared/core/base/services/activity-resources.service';
+} from '../../../../shared/core/base/services/events/activity-resources.service';
 import {
   ChatsService
-} from '../../../../shared/core/base/services/chats.service';
+} from '../../../../shared/core/base/services/chat/chats.service';
 import {
   AssetsService as SharedAssetsService
-} from '../../../../shared/core/base/services/assets.service';
+} from '../../../../shared/core/base/services/assets/assets.service';
 import {
   EventsService
-} from '../../../../shared/core/base/services/events.service';
+} from '../../../../shared/core/base/services/events/events.service';
 import {
   DeploymentConfigurationService
-} from '../../../../shared/core/base/services/deployment-configuration.service';
+} from '../../../../shared/core/base/services/platform/deployment-configuration.service';
 import {
   GameService
-} from '../../../../shared/core/base/services/game.service';
+} from '../../../../shared/core/base/services/accounts/game.service';
 import {
   I18nService
-} from '../../../../shared/core/base/services/i18n.service';
+} from '../../../../shared/core/base/services/localization/i18n.service';
 import {
   PaymentAuthorizationService
-} from '../../../../shared/core/base/services/payment-authorization.service';
+} from '../../../../shared/core/base/services/payments/payment-authorization.service';
 import {
-} from '../../../../shared/core/base/services/share-tokens.service';
+} from '../../../../shared/core/base/services/content/share-tokens.service';
 import {
   UsersService
-} from '../../../../shared/core/base/services/users.service';
+} from '../../../../shared/core/base/services/accounts/users.service';
 import type {
   UserDto
-} from '../../../../shared/core/contracts/user.interface';
+} from '../../../../shared/core/contracts/accounts/user.interface';
 import {
   ActivityStore
-} from '../../../../shared/ui/context/stores/activity.store';
+} from '../../../../shared/ui/context/stores/activity/activity.store';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../../shared/ui/context/stores/activities-popup.store';
-import {
-  DialogStore
-} from '../../../../shared/ui/context/stores/dialog.store';
+} from '../../../../shared/ui/context/stores/activity/activities-popup.store';
+
 import {
   AssetStore
-} from '../../../../shared/ui/context/stores/asset.store';
+} from '../../../../shared/ui/context/stores/asset/asset.store';
 import type {
   AssetEditorCheckoutState,
   AssetEditorRuntimeAssignmentState
-} from '../../../../shared/ui/context/stores/asset.store';
+} from '../../../../shared/ui/context/stores/asset/asset.store';
 import {
   AssetPopupStore
-} from '../../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   AssetBorrowDraftStore,
   assetBorrowSelectionSignature,
   type AssetBorrowDraft
-} from '../../../../shared/ui/context/stores/asset-borrow-draft.store';
+} from '../../../../shared/ui/context/stores/asset/asset-borrow-draft.store';
 import {
   SubEventResourcePopupStore
-} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import {
   ProfileStore
-} from '../../../../shared/ui/context/stores/profile.store';
-import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
+} from '../../../../shared/ui/context/stores/profile/profile.store';
+import type * as ActivityContracts from '../../../../shared/core/contracts/common/activity.interface';
 import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import type { ChatDTO } from '../../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../../shared/core/contracts/chat/chat.interface';
 import type {
   AssetExploreBorrowDialogState,
   AssetExploreBorrowPricingPreview,
@@ -167,11 +151,11 @@ import type {
   ResourceAssetDTO,
   ResourceAssetViewState,
   ResourcePopupContext
-} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import type {
   AssetExploreBorrowDialogViewState
 } from '../asset-explore-borrow-dialog/event-resource-asset-explore-borrow-dialog.component';
-import { UserProfileStore } from '../../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../../shared/ui/context/stores/profile/user-profile.store';
 
 interface AssetExploreSmartListFilters {
   revision?: number;
@@ -357,10 +341,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         precision: 'date'
       },
       dateRangeModel,
-      startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
-      endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
-      startTime: AppUtils.isoLocalTimePart(popup.startAtIso),
-      endTime: AppUtils.isoLocalTimePart(popup.endAtIso),
+      startDate: UiDateUtils.isoLocalDateTimeToDate(popup.startAtIso),
+      endDate: UiDateUtils.isoLocalDateTimeToDate(popup.endAtIso),
+      startTime: UiDateUtils.isoLocalTimePart(popup.startAtIso),
+      endTime: UiDateUtils.isoLocalTimePart(popup.endAtIso),
       loading: popup.loading,
       error: popup.error,
       cards: popup.cards
@@ -866,8 +850,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     this.setDateRange(
-      AppUtils.isoLocalDateTimeToDate(value.startAt),
-      AppUtils.isoLocalDateTimeToDate(value.endAt)
+      UiDateUtils.isoLocalDateTimeToDate(value.startAt),
+      UiDateUtils.isoLocalDateTimeToDate(value.endAt)
     );
   }
 
@@ -1045,7 +1029,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       if (!selected) {
         return true;
       }
-      const previous = AppUtils.isoLocalDateTimeToDate(current);
+      const previous = UiDateUtils.isoLocalDateTimeToDate(current);
       return previous !== null
         && previous.getFullYear() === selected.getFullYear()
         && previous.getMonth() === selected.getMonth()
@@ -1056,8 +1040,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     this.resourcePopupStore.assetExplorePopupRef.set(this.resolvePopupState({
       ...popup,
-      startAtIso: AppUtils.applyDatePartToIsoLocal(popup.startAtIso, start),
-      endAtIso: AppUtils.applyDatePartToIsoLocal(popup.endAtIso, end)
+      startAtIso: UiDateUtils.applyDatePartToIsoLocal(popup.startAtIso, start),
+      endAtIso: UiDateUtils.applyDatePartToIsoLocal(popup.endAtIso, end)
     }));
   }
 
@@ -1103,8 +1087,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     const normalizedWindow = this.normalizeBorrowSelectionToWindow(
-      start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso,
-      end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso,
+      start ? UiDateUtils.toIsoDateTimeLocal(start) : dialog.startAtIso,
+      end ? UiDateUtils.toIsoDateTimeLocal(end) : dialog.endAtIso,
       dialog.borrowWindow
     );
     if (!normalizedWindow) {
@@ -1136,8 +1120,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     const normalizedWindow = this.normalizeBorrowSelectionToWindow(
-      edge === 'start' ? AppUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso,
-      edge === 'end' ? AppUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso,
+      edge === 'start' ? UiDateUtils.applyTimePartToIsoLocal(dialog.startAtIso, value) : dialog.startAtIso,
+      edge === 'end' ? UiDateUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso,
       dialog.borrowWindow
     );
     if (!normalizedWindow) {
@@ -2448,8 +2432,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private onBorrowCheckoutDateRangeChange(value: DateInputRangeValue): void {
     this.setBorrowDateRange(
-      AppUtils.isoLocalDateTimeToDate(value.startAt),
-      AppUtils.isoLocalDateTimeToDate(value.endAt)
+      UiDateUtils.isoLocalDateTimeToDate(value.startAt),
+      UiDateUtils.isoLocalDateTimeToDate(value.endAt)
     );
   }
 
@@ -2660,7 +2644,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private defaultRange(subEvent: ContractTypes.SubEventDTO): { startAtIso: string; endAtIso: string } {
-    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(new Date());
+    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(new Date());
     const endAtIso = `${subEvent.endAt ?? ''}`.trim();
     if (endAtIso) {
       return {
@@ -2668,12 +2652,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         endAtIso
       };
     }
-    const base = AppUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
+    const base = UiDateUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
     const nextEnd = new Date(base);
     nextEnd.setHours(nextEnd.getHours() + 2);
     return {
       startAtIso,
-      endAtIso: AppUtils.toIsoDateTimeLocal(nextEnd)
+      endAtIso: UiDateUtils.toIsoDateTimeLocal(nextEnd)
     };
   }
 
@@ -2899,7 +2883,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
                 id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 userId: activeUserId,
                 quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
-                addedAtIso: AppUtils.toIsoDateTime(new Date())
+                addedAtIso: UiDateUtils.toIsoDateTime(new Date())
               },
               ...(currentState.supplyContributionEntriesByAssetId[card.id] ?? [])
             ]
@@ -3066,8 +3050,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       }
       const previous = existing[assetId];
       const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = AppUtils.clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = AppUtils.clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
         capacityMin,
         capacityMax,
@@ -3159,8 +3143,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       inventoryApplied?: boolean | null;
     } = {}
   ): AppDTOs.AssetHireRequestBookingDTO | null {
-    const absoluteStartAtIso = AppUtils.isoLocalDateTimeToDate(startAtIso)?.toISOString();
-    const absoluteEndAtIso = AppUtils.isoLocalDateTimeToDate(endAtIso)?.toISOString();
+    const absoluteStartAtIso = UiDateUtils.isoLocalDateTimeToDate(startAtIso)?.toISOString();
+    const absoluteEndAtIso = UiDateUtils.isoLocalDateTimeToDate(endAtIso)?.toISOString();
     return {
       eventId: ownerId,
       eventTitle: parentTitle,
@@ -3261,8 +3245,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private isValidWindow(startAtIso: string, endAtIso: string): boolean {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
     return !!start && !!end && start.getTime() < end.getTime();
   }
 
@@ -3290,16 +3274,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     endAtIso: string,
     borrowWindow: AppDTOs.AssetBorrowWindowDTO
   ): { startAtIso: string; endAtIso: string } | null {
-    const lowerBound = AppUtils.isoLocalDateTimeToDate(borrowWindow.startAtIso);
-    const upperBound = AppUtils.isoLocalDateTimeToDate(borrowWindow.endAtIso);
+    const lowerBound = UiDateUtils.isoLocalDateTimeToDate(borrowWindow.startAtIso);
+    const upperBound = UiDateUtils.isoLocalDateTimeToDate(borrowWindow.endAtIso);
     if (!lowerBound || !upperBound || lowerBound.getTime() >= upperBound.getTime()) {
       return null;
     }
     const lowerMs = lowerBound.getTime();
     const upperMs = upperBound.getTime();
     const minimumDurationMs = 60 * 60 * 1000;
-    const requestedStart = AppUtils.isoLocalDateTimeToDate(startAtIso)?.getTime() ?? lowerMs;
-    const requestedEnd = AppUtils.isoLocalDateTimeToDate(endAtIso)?.getTime() ?? upperMs;
+    const requestedStart = UiDateUtils.isoLocalDateTimeToDate(startAtIso)?.getTime() ?? lowerMs;
+    const requestedEnd = UiDateUtils.isoLocalDateTimeToDate(endAtIso)?.getTime() ?? upperMs;
     let safeStartMs = Math.min(upperMs, Math.max(lowerMs, requestedStart));
     let safeEndMs = Math.min(upperMs, Math.max(lowerMs, requestedEnd));
     if (safeEndMs <= safeStartMs) {
@@ -3312,14 +3296,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     return safeStartMs < safeEndMs
       ? {
-          startAtIso: AppUtils.toIsoDateTimeLocal(new Date(safeStartMs)),
-          endAtIso: AppUtils.toIsoDateTimeLocal(new Date(safeEndMs))
+          startAtIso: UiDateUtils.toIsoDateTimeLocal(new Date(safeStartMs)),
+          endAtIso: UiDateUtils.toIsoDateTimeLocal(new Date(safeEndMs))
         }
       : null;
   }
 
   private parseLocalDateMs(value: string | null | undefined): number | null {
-    const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
+    const parsed = UiDateUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
     return parsed ? parsed.getTime() : null;
   }
 
@@ -3481,7 +3465,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
     return this.supplyContributionEntries(subEventId, cardId)
-      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+      .reduce((sum, entry) => sum + clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
   private assignmentKey(subEventId: string, type: AppConstants.AssetType): string {
@@ -3489,8 +3473,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private timeframeLabel(startAtIso: string, endAtIso: string): string {
-    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
-    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
     if (!start || !end) {
       return '';
     }

@@ -1,18 +1,28 @@
-import { groupType } from '../../../core/contracts/group-type';
-import { groupTypeTrigger, groupTypeMenuItems } from '../../converters/group-type-menu';
+import { groupType } from '../../../core/contracts/groups/group-type';
+import { groupTypeTrigger, groupTypeMenuItems } from '../../converters/community/group-type-menu';
 import { Component, Input, OnChanges, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent, PopupModel } from '../core/popup';
-import { FormFlowComponent, FormFlowModel, FormFlowActionEvent, FormFlowControlModel, FormFlowMenuControlConfig } from '../core/form/flow';
-import { AppMenuPalette } from '../core/menu';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
-import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
-import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup } from '../../../core/contracts/community-group.interface';
-import { GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE, GROUP_VISIBILITY_STYLE } from '../../converters/community-group.converter';
-import { ProfileFormFlowConverter } from '../../converters/profile-form-flow.converter';
-import { APP_STATIC_DATA } from '../../../app-static-data';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import {
+  PopupComponent,
+  PopupModel,
+  FormFlowComponent,
+  FormFlowModel,
+  FormFlowActionEvent,
+  FormFlowControlModel,
+  FormFlowMenuControlConfig,
+  AppMenuPalette,
+  I18nPipe,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
+
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+
+import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
+import { CommunityGroup, GroupVisibility, GROUP_CATEGORIES, SaveCommunityGroup } from '../../../core/contracts/groups/community-group.interface';
+import { GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE, GROUP_VISIBILITY_STYLE } from '../../converters/community/community-group.converter';
+import { ProfileFormFlowConverter } from '../../converters/profile/profile-form-flow.converter';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+
 interface GroupForm extends SaveCommunityGroup { images: string[]; }
 @Component({ selector: 'app-community-group-editor', standalone: true, imports: [FormsModule, PopupComponent, FormFlowComponent, I18nPipe],
   host: { '[class.group-editor--readonly]': 'readOnly' },
@@ -29,8 +39,8 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
     :host(.group-editor--readonly) {
       --app-menu-disabled-opacity: 1;
       --app-menu-disabled-filter: none;
-      --on-off-toggle-disabled-opacity: 1;
-      --on-off-toggle-disabled-filter: none;
+      --app-menu-on-off-disabled-opacity: 1;
+      --app-menu-on-off-disabled-filter: none;
       --form-flow-disabled-background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%);
       --form-flow-disabled-color: rgba(58, 76, 103, 0.9);
     }

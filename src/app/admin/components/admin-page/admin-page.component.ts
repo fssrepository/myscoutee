@@ -1,6 +1,6 @@
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+import { ExplanationGuideService, DeploymentBrandComponent } from '@fssrepository/myscoutee-components';
 import { DestroyRef } from '@angular/core';
-import { UserProfileStore } from "../../../shared/ui/context/stores/user-profile.store";
+import { UserProfileStore } from "../../../shared/ui/context/stores/profile/user-profile.store";
 import {
   CommonModule,
   DOCUMENT
@@ -27,27 +27,27 @@ import {
 
 import {
   AdminWorkspaceDataService
-} from '../../../shared/core/base/services/admin-workspace-data.service';
+} from '../../../shared/core/base/services/administration/admin-workspace-data.service';
 import {
   HelpCenterService
-} from '../../../shared/core/base/services/help-center.service';
+} from '../../../shared/core/base/services/help/help-center.service';
 import {
   SessionService
-} from '../../../shared/core/base/services/session.service';
+} from '../../../shared/core/base/services/accounts/session.service';
 import {
   DeploymentConfigurationService
-} from '../../../shared/core/base/services/deployment-configuration.service';
-import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
+} from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/administration/admin.interface';
+
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 import {
   DemoBootstrapSelectorStore
-} from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
+} from '../../../shared/ui/context/stores/app/demo-bootstrap-selector.store';
 
 @Component({
   selector: 'app-admin-page',
@@ -98,7 +98,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly paymentSimulatorPopupComponent = this.paymentSimulatorPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
-
 
   constructor() {
     const releaseGuide = inject(ExplanationGuideService).registerContext('admin.home');

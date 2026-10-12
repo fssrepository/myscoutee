@@ -9,7 +9,7 @@ import {
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
-} from '../../../../shared/ui';
+} from '@fssrepository/myscoutee-components';
 import {
   EventPromoCodePopupStore,
   type EventPromoCodeAddPopupState

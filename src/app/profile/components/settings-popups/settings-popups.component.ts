@@ -1,4 +1,4 @@
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   ChangeDetectorRef,
   computed,
@@ -10,29 +10,33 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
-import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
-import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
+} from '../../../shared/core/common/app-static-data';
+import { HelpCenterService } from '../../../shared/core/base/services/help/help-center.service';
+import { PrivacyPolicyService } from '../../../shared/core/base/services/help/privacy-policy.service';
+import {
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSection as HelpCenterSectionDto,
+  PopupComponent,
+  type PopupModel
+} from '@fssrepository/myscoutee-components';
 import { DocumentViewerComponent } from '../../../shared/ui/components/document-viewer/document-viewer.component';
 import { type DocumentViewerAction, type DocumentViewerActionEvent, type DocumentViewerActionVisibility, type DocumentViewerConfig } from '../../../shared/ui/components/document-viewer';
-import { PopupComponent } from '../../../shared/ui/components/core/popup/popup.component';
-import { type PopupModel } from '../../../shared/ui/components/core/popup';
-import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
+
+import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/app/help-center-revision-document-viewer.converter';
 import {
   ProfileStore,
   type ProfileSettingsPopup
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import {
   ProfileFeedbackPopupComponent
 } from '../feedback-popup/feedback-popup.component';
 import {
   ProfileReportUserPopupComponent
 } from '../report-user-popup/report-user-popup.component';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 @Component({
   selector: 'app-profile-settings-popups',

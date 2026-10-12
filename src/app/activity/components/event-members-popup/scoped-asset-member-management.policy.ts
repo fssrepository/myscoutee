@@ -1,4 +1,4 @@
-import type { ActivityMemberDTO } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../shared/core/contracts/common/activity.interface';
 
 export function canManageScopedAssetMembers(
   activeUserId: string,

@@ -1,13 +1,3 @@
-export * from './core/image-gallery/image-gallery.component';
-export * from './core/image-carousel';
-export * from './core/deployment-brand';
-export * from './core/indicator';
-export * from './core/accordion';
 export * from './document-viewer';
-export * from './core/popup';
-export * from './core/prompt';
-export * from './core/menu';
-export * from './core/smart-list';
-export * from './core/form';
 
-export * from './core/dialog';
+export * from './core/form';

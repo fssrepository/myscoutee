@@ -1,6 +1,21 @@
-import { scheduleAfterPaint } from '../../../shared/ui/scheduler/after-paint';
+import {
+  scheduleAfterPaint,
+  ExplanationGuideService,
+  AppMenuComponent,
+  FormFlowComponent,
+  I18nPipe,
+  PopupComponent,
+  type FormFlowMenuControlConfig,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuTrigger,
+  type PopupControl,
+  type PopupModel
+} from '@fssrepository/myscoutee-components';
 import { resolveSideMenuPresentation } from '../../../shared/ui/components/side-menu/side-menu-presenters';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -17,22 +32,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
-import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile-form-flow.converter';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import {
-  AppMenuComponent,
-  FormFlowComponent,
-  I18nPipe,
-  PopupComponent,
-  type FormFlowMenuControlConfig,
-  type AppMenuGroup,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuTrigger,
-  type PopupControl,
-  type PopupModel
-} from '../../../shared/ui';
+import { ProfileFormFlowConverter } from '../../../shared/ui/converters/profile/profile-form-flow.converter';
+
 import {
   GameFilterForm,
   cloneGameFilter,

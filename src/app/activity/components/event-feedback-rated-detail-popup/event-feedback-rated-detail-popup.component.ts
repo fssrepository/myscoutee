@@ -3,19 +3,20 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { MatIconModule } from '@angular/material/icon';
 
 import { EventsService } from '../../../shared/core/base';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import { EventFeedbackDetailDto } from '../../../shared/core/contracts/activity.interface';
 import {
-  EventFeedbackDetailConverter,
+  ExplanationGuideService,
   IndicatorComponent,
   PopupComponent,
   type PopupModel
-} from '../../../shared/ui';
-import type { EventFeedbackCard } from '../../../shared/ui/models';
+} from '@fssrepository/myscoutee-components';
+import { EventFeedbackDetailDto } from '../../../shared/core/contracts/common/activity.interface';
+
+import { EventFeedbackDetailConverter } from '../../../shared/ui';
+import type { EventFeedbackCard } from '../../../shared/ui/converters/event/event-feedback.model';
 import {
   ActivitiesPopupStore,
   type EventFeedbackRatedDetailPopupSession
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 
 @Component({
   selector: 'app-event-feedback-rated-detail-popup',

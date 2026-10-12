@@ -1,8 +1,28 @@
-import { PopupPresenceStore } from '../../../shared/ui/context/stores/popup-presence.store';
-import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
-import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
-import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/group-type-menu';
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
+import {
+  PopupPresenceStore,
+  DeploymentBrandComponent,
+  InfoCardComponent,
+  WarpImageCardComponent,
+  type InfoCardData,
+  type WarpImageCardData,
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListItemRenderState,
+  type SmartListLoadPage,
+  PopupComponent,
+  type PopupModel,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuModel,
+  type AppMenuItemSelectEvent,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
+import { LandingContentService } from '../../../shared/core/base/services/content/landing-content.service';
+import { baseGroupId, type GroupType } from '../../../shared/core/contracts/groups/group-type';
+import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/converters/community/group-type-menu';
+import { LandingGuideSurfaceDirective } from './landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, effect, inject } from '@angular/core';
@@ -11,31 +31,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
 
 import type { AuthMode } from '../../../shared/core/common/constants';
-import type { IdeaArticleDetailDto, SupportedCountryDto } from '../../../shared/core/contracts/content.interface';
-import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
-import { AppUtils } from '../../../shared/app-utils';
-import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { PwaService } from '../../../shared/core/base/services/pwa.service';
-import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
-import {
-  InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
-} from '../../../shared/ui/components/core/smart-list/card';
-import {
-  SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
-} from '../../../shared/ui/components/core/smart-list';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuModel,
-  type AppMenuItemSelectEvent
-} from '../../../shared/ui/components/core/menu';
-import { I18nPipe } from '../../../shared/ui';
+import type { IdeaArticleDetailDto, SupportedCountryDto } from '../../../shared/core/contracts/content/content.interface';
+import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/accounts/user.interface';
+import { AppUtils } from '../../../shared/core/base/app-utils';
+import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { PwaService } from '../../../shared/core/base/services/platform/pwa.service';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 type EntryHeroCtaId = 'explore' | 'join';

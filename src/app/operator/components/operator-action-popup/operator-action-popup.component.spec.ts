@@ -1,7 +1,7 @@
 import { signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import type {
   OperatorCommunityStatusDto,
   OperatorDeploymentUpdateDto,
@@ -10,16 +10,12 @@ import type {
   OperatorTlsConfigurationDto,
   OperatorTlsConfigurationUpdateDto,
   OperatorSettlementDto
-} from '../../../shared/core/contracts/operator.interface';
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuTrigger
-} from '../../../shared/ui/components/core/menu';
-import { OperatorLeaderboardStore } from '../../../shared/ui/context/stores/operator-leaderboard.store';
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+} from '../../../shared/core/contracts/operator/operator.interface';
+import { AppMenuComponent, type AppMenuItem, type AppMenuTrigger } from '@fssrepository/myscoutee-components';
+import { OperatorLeaderboardStore } from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
+import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 import { OperatorActionPopupComponent } from './operator-action-popup.component';
 
 describe('OperatorActionPopupComponent', () => {

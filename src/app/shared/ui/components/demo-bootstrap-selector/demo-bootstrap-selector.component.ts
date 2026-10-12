@@ -1,4 +1,4 @@
-import { LandingGuideSurfaceDirective } from '../../directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../../../../entry/components/entry-landing/landing-guide-surface.directive';
 import {
   ChangeDetectorRef,
   Component,
@@ -24,24 +24,19 @@ import {
 import {
   type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState
-} from '../../context/stores/demo-bootstrap-selector.store';
-import { AppUtils } from '../../../app-utils';
+} from '../../context/stores/app/demo-bootstrap-selector.store';
+import { AppUtils } from '../../../core/base/app-utils';
 import {
-  IndicatorComponent
-} from '../core/indicator';
-import {
+  IndicatorComponent,
   type AppMenuItem,
-  type AppMenuTrigger
-} from '../core/menu';
-import {
+  type AppMenuTrigger,
   PopupComponent,
   type PopupControl,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../core/popup';
-import {
+  type PopupModel,
   I18nPipe
-} from '../../pipes';
+} from '@fssrepository/myscoutee-components';
+
 import {
   UsersService,
   type BootstrapProcessState,
@@ -51,7 +46,7 @@ import {
 import {
   UserProfileState
 } from '../../../core/common/user-profile-state';
-import { DemoBootstrapSelectorStore } from '../../context/stores/demo-bootstrap-selector.store';
+import { DemoBootstrapSelectorStore } from '../../context/stores/app/demo-bootstrap-selector.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
 type DemoSelectorRoleMenuItemId = DemoBootstrapSelectorMode;
@@ -597,7 +592,7 @@ export class DemoBootstrapSelectorComponent {
 
   private async localSeedBootstrap() {
     const { SeedDemoBootstrapService } = await import(
-      '../../../core/local/seed/services/demo-bootstrap.service'
+      '../../../core/local/seed/services/platform/demo-bootstrap.service'
     );
     return this.injector.get(SeedDemoBootstrapService);
   }
@@ -611,9 +606,8 @@ export class DemoBootstrapSelectorComponent {
     if (!request || !this.isCurrentContextRequest(requestToken)) {
       return;
     }
-    // Session preparation has finished. Keep the selected, disabled list under
-    // any permission/onboarding popup opened by the entry flow.
-    this.commit(() => { this.loading = false; });
+    // Keep the completed progress visible until the store closes the selector
+    // after successful entry. Only a failed selection resets the loading state.
     try {
       const result = await request.onSelect(userId, mode, this.users.find(user => user.id === userId));
       if (!this.isCurrentContextRequest(requestToken)) {

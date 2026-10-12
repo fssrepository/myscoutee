@@ -3,7 +3,7 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import type { AppSession } from '../../../core/base/services/session.service';
+import type { AppSession } from '../../../core/base/services/accounts/session.service';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 
 describe('installSessionActiveUserSync', () => {

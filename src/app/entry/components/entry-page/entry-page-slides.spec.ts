@@ -2,14 +2,14 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
-import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { PwaService } from '../../../shared/core/base/services/pwa.service';
+import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { PwaService } from '../../../shared/core/base/services/platform/pwa.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
-import { baseGroupId, type GroupType } from '../../../shared/core/contracts/group-type';
-import type { LandingSlideDto } from '../../../shared/core/contracts/content.interface';
-import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
+import { baseGroupId, type GroupType } from '../../../shared/core/contracts/groups/group-type';
+import type { LandingSlideDto } from '../../../shared/core/contracts/content/content.interface';
+import { LandingContentService } from '../../../shared/core/base/services/content/landing-content.service';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

@@ -21,18 +21,18 @@ import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   AppUtils
-} from '../../../shared/app-utils';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { ContentModerationService } from '../../../shared/core/base/services/content-moderation.service';
-import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community-groups.store';
+} from '../../../shared/core/base/app-utils';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { ContentModerationService } from '../../../shared/core/base/services/content/content-moderation.service';
+import { CommunityGroupsStore } from '../../../shared/ui/context/stores/community/community-groups.store';
 import { CommunityGroupEditorComponent } from '../../../shared/ui/components/community-groups-popup/community-group-editor.component';
-import type { CommunityGroup } from '../../../shared/core/contracts/community-group.interface';
+import type { CommunityGroup } from '../../../shared/core/contracts/groups/community-group.interface';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
@@ -46,7 +46,6 @@ import {
 import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
-  ActivityChatSingleRowConverter,
   ImageCardComponent,
   I18nPipe,
   SingleRowComponent,
@@ -60,39 +59,36 @@ import {
   type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage
-} from '../../../shared/ui';
-import type {
-  AppMenuModel,
-  AppMenuPalette
-} from '../../../shared/ui/components/core/menu';
-import {
+  type SmartListLoadPage,
+  type AppMenuModel,
+  type AppMenuPalette,
   PopupComponent,
   type PopupActionEvent,
   type PopupControl,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import {
+  type PopupModel,
   DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '@fssrepository/myscoutee-components';
+import { ActivityChatSingleRowConverter } from '../../../shared/ui';
+
+import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/administration/admin-workspace-data.service';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
+
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import {
   AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin-workspace.store';
+} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 import {
   AdminChatReviewPopupComponent
 } from '../chat-review-popup/admin-chat-review-popup.component';
 import {
   AdminItemPreviewPopupComponent
 } from '../item-preview-popup/admin-item-preview-popup.component';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 interface AdminReportListItem {
   id: string;

@@ -48,15 +48,6 @@
   text-decoration: none;
   color: var(--deployment-brand-text);
   font-weight: 900;
-  background-image: linear-gradient(
-    90deg,
-    var(--deployment-brand-primary),
-    var(--deployment-brand-secondary),
-    var(--deployment-brand-accent)
-  );
-  background-repeat: no-repeat;
-  background-size: 100% 3px;
-  background-position: 0 100%;
   --deployment-brand-logo-size: 38px;
   font-size: 2rem;
   line-height: 0.8;

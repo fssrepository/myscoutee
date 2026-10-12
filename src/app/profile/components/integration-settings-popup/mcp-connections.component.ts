@@ -1,13 +1,17 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 import { IntegrationAccessButtonComponent } from './integration-access-button.component';
-import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
-import { CopyLinkComponent } from '../../../shared/ui/components/core/copy-link/copy-link.component';
-import { AppMenuComponent, type AppMenuItem } from '../../../shared/ui/components/core/menu';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import {
+  DialogStore,
+  CopyLinkComponent,
+  AppMenuComponent,
+  type AppMenuItem,
+  PopupComponent,
+  type PopupModel,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-mcp-connections', standalone: true,

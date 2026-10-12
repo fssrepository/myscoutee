@@ -1,21 +1,21 @@
-import { SERVICE_OFFERINGS_TABLE_NAME, SERVICE_PROVIDER_CALENDARS_TABLE_NAME } from '../local/source/entity/service-offering.entity';
-import { COMMUNITY_ANNOUNCEMENTS_TABLE_NAME } from '../local/source/entity/community-announcement.entity';
-import { COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME } from '../local/source/entity/community-case.entity';
-import { CAMPAIGNS_TABLE_NAME } from '../local/source/entity/campaign.entity';
+import { SERVICE_OFFERINGS_TABLE_NAME, SERVICE_PROVIDER_CALENDARS_TABLE_NAME } from '../local/source/entity/community/service-offering.entity';
+import { COMMUNITY_ANNOUNCEMENTS_TABLE_NAME } from '../local/source/entity/community/community-announcement.entity';
+import { COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME } from '../local/source/entity/community/community-case.entity';
+import { CAMPAIGNS_TABLE_NAME } from '../local/source/entity/campaigns/campaign.entity';
 import { projectCampaignRateRecords } from '../base/campaign-rate-aggregation';
-import { COMMUNITY_GROUPS_TABLE_NAME } from '../local/source/entity/community-group.entity';
-import { CONTENT_MODERATION_TABLE_NAME, emptyContentModeration } from '../local/source/entity/content-moderation.entity';
-import { maintainContentModeration } from '../local/source/builders/content-moderation.builder';
-import { PHOTO_FEED_TABLE_NAME } from '../local/source/entity/photo-feed.entity';
-import { maintainFollowingState } from '../local/source/builders/following-state.builder';
-import { MINGLE_SESSIONS_TABLE_NAME } from '../local/source/entity/mingle.entity';
-import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
-import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/event.entity';
-import { EVENT_TICKETS_TABLE_NAME } from '../local/source/entity/event-ticket.entity';
-import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../local/source/entity/content.entity';
-import { NOTIFICATIONS_TABLE_NAME } from '../local/source/entity/notification.entity';
-import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../local/source/entity/profile.entity';
-import { SHARE_TOKENS_TABLE_NAME } from '../local/source/entity/sharing.entity';
+import { COMMUNITY_GROUPS_TABLE_NAME } from '../local/source/entity/groups/community-group.entity';
+import { CONTENT_MODERATION_TABLE_NAME, emptyContentModeration } from '../local/source/entity/content/content-moderation.entity';
+import { maintainContentModeration } from '../local/source/builders/content/content-moderation.builder';
+import { PHOTO_FEED_TABLE_NAME } from '../local/source/entity/content/photo-feed.entity';
+import { maintainFollowingState } from '../local/source/builders/accounts/following-state.builder';
+import { MINGLE_SESSIONS_TABLE_NAME } from '../local/source/entity/events/mingle.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat/chat.entity';
+import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/events/event.entity';
+import { EVENT_TICKETS_TABLE_NAME } from '../local/source/entity/events/event-ticket.entity';
+import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../local/source/entity/content/content.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../local/source/entity/notifications/notification.entity';
+import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../local/source/entity/accounts/profile.entity';
+import { SHARE_TOKENS_TABLE_NAME } from '../local/source/entity/content/sharing.entity';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
   USER_RATES_TABLE_NAME,
@@ -24,19 +24,19 @@ import {
   type ActivityRateRecordQueryResult,
   type UserRateOutboxRecord,
   type UserRateRecord
-} from '../local/source/entity/rate.entity';
-import { USERS_TABLE_NAME } from '../local/source/entity/user.entity';
-import { ASSET_REQUESTS_TABLE_NAME, ASSETS_TABLE_NAME } from '../local/source/entity/asset.entity';
+} from '../local/source/entity/affinity/rate.entity';
+import { USERS_TABLE_NAME } from '../local/source/entity/accounts/user.entity';
+import { ASSET_REQUESTS_TABLE_NAME, ASSETS_TABLE_NAME } from '../local/source/entity/assets/asset.entity';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   ACTIVITY_RESOURCES_TABLE_NAME,
   ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME,
   ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME
-} from '../local/source/entity/activity.entity';
+} from '../local/source/entity/common/activity.entity';
 import type { AppMemorySchema } from '../local/common/memory.schema';
 import { Injectable, signal } from '@angular/core';
 
-import type { ContactMethodDraft, ContactMethodType, StoredContact } from '../contracts/contact.interface';
+import type { ContactMethodDraft, ContactMethodType, StoredContact } from '../contracts/accounts/contact.interface';
 import { type AppStorageScope, APP_STORAGE_SCOPE, APP_SCOPED_INDEXED_DB_VERSION, APP_I18N_BUNDLES_STORE, APP_TABLES_STORE, appMemoryDbStorageKey, appScopedIndexedDbName, createAppScopedObjectStores, removeScopedStorageEntries } from './storage-scope';
 
 interface ActivityRateCursorPayload {

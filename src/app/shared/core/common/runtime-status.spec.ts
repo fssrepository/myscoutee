@@ -64,6 +64,59 @@ describe('landing runtime status', () => {
     expect(failover.demoFailoverLocalUser()).toBeNull();
   });
 
+  it.each(['/game', '/admin', '/operator'])('retains a selected local demo on workspace reload at %s', async path => {
+    snapshot(false);
+    vi.stubGlobal('location', { pathname: path, reload: vi.fn() });
+    const selected = JSON.stringify({ kind: 'demo', userId: 'selected-local-demo' });
+    localStorage.setItem('myscoutee.demo.session.v1', selected);
+    await failover.prepareDemoFailover();
+    expect(mode.activitiesDataSource).toBe('local');
+    expect(localStorage.getItem('myscoutee.demo.session.v1')).toBe(selected);
+    expect(localStorage.getItem('myscoutee.http.session.v1')).toBeNull();
+    expect(fetchStatus).not.toHaveBeenCalled();
+  });
+
+  it('keeps a retained real HTTP identity authoritative over a local demo on reload', async () => {
+    snapshot(false);
+    vi.stubGlobal('location', { pathname: '/admin', reload: vi.fn() });
+    const real = JSON.stringify({ kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session' });
+    localStorage.setItem('myscoutee.http.session.v1', real);
+    localStorage.setItem('myscoutee.demo.session.v1', JSON.stringify({ kind: 'demo', userId: 'selected-local-demo' }));
+    await failover.prepareDemoFailover();
+    expect(mode.activitiesDataSource).toBe('http');
+    expect(localStorage.getItem('myscoutee.http.session.v1')).toBe(real);
+  });
+
+  it('ends the paired HTTP demo on local logout and retains a newly selected local actor on reload', async () => {
+    snapshot(false);
+    const [httpId, localId] = [...await failover.demoSeedUserIds()][0];
+    localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({ kind: 'demo', userId: httpId }));
+    await failover.prepareDemoFailover();
+    expect(JSON.parse(localStorage.getItem('myscoutee.demo.session.v1')!).userId).toBe(localId);
+    failover.endDemoFailoverSession();
+    localStorage.removeItem('myscoutee.demo.session.v1');
+    expect(localStorage.getItem('myscoutee.http.session.v1')).toBeNull();
+    expect(localStorage.getItem('myscoutee.demo.failover.pair')).toBeNull();
+    const next = JSON.stringify({ kind: 'demo', userId: 'selected-local-admin' });
+    localStorage.setItem('myscoutee.demo.session.v1', next);
+    mode.activitiesDataSource = 'http';
+    vi.stubGlobal('location', { pathname: '/admin', reload: vi.fn() });
+    await failover.prepareDemoFailover();
+    expect(mode.activitiesDataSource).toBe('local');
+    expect(localStorage.getItem('myscoutee.demo.session.v1')).toBe(next);
+  });
+
+  it('does not clear a different real identity when ending a local demo pair', async () => {
+    snapshot(false);
+    const [httpId] = [...await failover.demoSeedUserIds()][0];
+    localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({ kind: 'demo', userId: httpId }));
+    await failover.prepareDemoFailover();
+    const real = JSON.stringify({ kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session' });
+    localStorage.setItem('myscoutee.http.session.v1', real);
+    failover.endDemoFailoverSession();
+    expect(localStorage.getItem('myscoutee.http.session.v1')).toBe(real);
+  });
+
   it('returns from local landing to HTTP through one fresh bootstrap after recovery', async () => {
     snapshot(false);
     await failover.prepareDemoFailover();

@@ -5,6 +5,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
+const auditPolicy = require('./i18n-audit-policy.json');
 
 const frontendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendRoot, '..');
@@ -93,21 +94,7 @@ function validateUiModelReferences() {
 // contracts, so extending an option list also requires both translations.
 function validateProductOptionReferences() {
   const contracts = path.join(frontendRoot, 'src/app/shared/core/contracts');
-  const definitions = [
-    ['group-type.ts', 'GROUP_TYPES', 'group.type.'],
-    ['campaign.interface.ts', 'CAMPAIGN_KINDS', 'campaign.kind.'],
-    ['campaign.interface.ts', 'CAMPAIGN_CATEGORIES', 'campaign.category.'],
-    ['campaign.interface.ts', 'CampaignStatus', 'campaign.status.'],
-    ['campaign.interface.ts', 'CampaignAction', 'campaign.action.'],
-    ['community-case.interface.ts', 'CASE_TYPES', 'case.type.'],
-    ['community-case.interface.ts', 'CaseStatus', 'case.status.'],
-    ['community-case.interface.ts', 'TaskFrequency', 'case.frequency.'],
-    ['service-offering.interface.ts', 'SERVICE_CATEGORIES', 'service.category.'],
-    ['service-offering.interface.ts', 'ServiceStatus', 'service.status.'],
-    ['service-offering.interface.ts', 'ServiceAction', 'service.action.'],
-    ['community-announcement.interface.ts', 'VOTE_CHOICES', 'announcement.choice.'],
-    ['community-announcement.interface.ts', 'AnnouncementStatus', 'announcement.status.']
-  ];
+  const definitions = auditPolicy.optionDefinitions;
   for (const [file, name, prefix] of definitions) {
     const source = fs.readFileSync(path.join(contracts, file), 'utf8');
     const declaration = source.match(new RegExp(`(?:const|type) ${name}\\b[^=]*=([^;]+);`));
@@ -123,36 +110,7 @@ function validateProductOptionReferences() {
 
 function validateGeneratedNotificationKinds() {
   const javaRoot = path.join(repoRoot, 'server/projects/profile/src/main/java');
-  const kinds = new Set([
-    'asset-admin-join-request',
-    'asset-invitation-declined',
-    'asset-member-invitation-withdrawn',
-    'asset-member-invite',
-    'asset-member-left',
-    'asset-member-removed',
-    'asset-member-request-accepted',
-    'asset-member-request-declined',
-    'asset-review',
-    'event-admin-join-request',
-    'event-admin-join-request-cancelled',
-    'event-member-disqualified',
-    'event-member-left',
-    'event-member-reinstated',
-    'event-random-groups',
-    'event-restored',
-    'event-review',
-    'event-stage-closed',
-    'event-stage-finalized',
-    'event-stage-review',
-    'event-stage-scores-under-review',
-    'event-tournament-not-won',
-    'event-tournament-start-review',
-    'event-tournament-started',
-    'event-tournament-suspended',
-    'event-tournament-won',
-    'event-unavailable',
-    'payment-refund-requested'
-  ]);
+  const kinds = new Set(auditPolicy.additionalNotificationKinds);
   const expressions = [
     /new\s+NotificationIntent\s*\(\s*"([a-z][a-z0-9-]+)"/g,
     /enqueueEventNotification\s*\(\s*"([a-z][a-z0-9-]+)"/g
@@ -169,7 +127,7 @@ function validateGeneratedNotificationKinds() {
 
   // These carry user-authored or database-template content, not translatable
   // application copy.
-  for (const dynamicKind of ['chat-message', 'feedback-resolved', 'scheduled-template']) {
+  for (const dynamicKind of auditPolicy.dynamicNotificationKinds) {
     kinds.delete(dynamicKind);
   }
 

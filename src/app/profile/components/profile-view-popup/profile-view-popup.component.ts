@@ -2,20 +2,19 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, input, resource, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppMenuComponent, I18nPipe, IndicatorComponent } from '../../../shared/ui';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
+import { AppUtils } from '../../../shared/core/base/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
 import {
-  ContactsService,
-  ExplanationGuideService,
-  type ExperienceEntry,
-  type ProfileViewData,
-  type ProfileDetailFormGroup,
-  type ProfileDetailFormRow,
-  type UserDto
-} from '../../../shared/core';
-import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile.store';
+  AppMenuComponent,
+  I18nPipe,
+  IndicatorComponent,
+  PopupComponent,
+  type PopupModel,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
+
+import { ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
+import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile/profile.store';
 
 interface ProfileViewRow {
   label: string;

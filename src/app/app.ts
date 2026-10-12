@@ -11,19 +11,19 @@ import {
 } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AppSetupPopupComponent } from './shared/ui/components/app-setup-popup/app-setup-popup.component';
-import { PwaService } from './shared/core/base/services/pwa.service';
-import { I18nService } from './shared/core/base/services/i18n.service';
-import { AppLocationService } from './shared/core/base/services/app-location.service';
-import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
+import { PwaService } from './shared/core/base/services/platform/pwa.service';
+import { I18nService } from './shared/core/base/services/localization/i18n.service';
+import { AppLocationService } from './shared/core/base/services/accounts/app-location.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
-import { SessionService } from './shared/core/base/services/session.service';
+import { SessionService } from './shared/core/base/services/accounts/session.service';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
-import type { AppMenuItem } from './shared/ui/components/core/menu/menu.types';
-import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
-import { DialogComponent } from './shared/ui/components/core/dialog';
-import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/demo-bootstrap-selector.store';
-import { AppUtils } from './shared/app-utils';
+import { AppMenuComponent, type AppMenuItem, DialogComponent } from '@fssrepository/myscoutee-components';
+
+import { OfflineCacheService } from './shared/core/base/services/platform/offline-cache.service';
+
+import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/app/demo-bootstrap-selector.store';
+import { AppUtils } from './shared/core/base/app-utils';
 
 @Component({
   selector: 'app-root',

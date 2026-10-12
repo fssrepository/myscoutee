@@ -17,56 +17,44 @@ import {
 
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import {
   HelpCenterService,
   I18nService
 } from '../../../shared/core';
 import * as AppConstants from '../../../shared/core/common/constants';
-import type {
-  ExplainableSurface,
-  HelpCenterDocumentKind,
-  HelpCenterGuideFieldDto,
-  HelpCenterHeaderColor,
-  HelpCenterPresentation,
-  HelpCenterRevisionDto,
-  HelpCenterSectionPanelSpan,
-  HelpCenterSectionDto,
-  HelpCenterStateDto
-} from '../../../shared/core/contracts';
 import {
-  ImageCarouselComponent
-} from '../../../shared/ui/components/core/image-carousel';
-import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
-import {
+  type GuideDocumentKind as HelpCenterDocumentKind,
+  type GuideField as HelpCenterGuideFieldDto,
+  type GuideHeaderColor as HelpCenterHeaderColor,
+  type GuidePresentation as HelpCenterPresentation,
+  type GuideRevision as HelpCenterRevisionDto,
+  type GuideSectionPanelSpan as HelpCenterSectionPanelSpan,
+  type GuideSection as HelpCenterSectionDto,
+  ImageCarouselComponent,
+  IndicatorComponent,
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuPalette,
-  type AppMenuTrigger
-} from '../../../shared/ui/components/core/menu';
-import {
+  type AppMenuTrigger,
   PopupComponent,
   type PopupActionEvent,
   type PopupMenuSelectEvent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
-import {
-  LazyBgImageDirective
-} from '../../../shared/ui/directives';
-import {
+  type PopupModel,
+  LazyBgImageDirective,
   DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '@fssrepository/myscoutee-components';
+import type { ExplainableSurface, HelpCenterStateDto } from '../../../shared/core/contracts';
+
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
 
 type EditorTab = 'html' | 'preview';
 

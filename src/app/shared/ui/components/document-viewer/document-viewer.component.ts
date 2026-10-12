@@ -1,26 +1,32 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute } from '@angular/router';
 
-import { AppUtils } from '../../../app-utils';
-import { APP_STATIC_DATA } from '../../../app-static-data';
+import { AppUtils } from '../../../core/base/app-utils';
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
-import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
-import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
-import { LazyBgImageDirective } from '../../directives';
+import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import {
+  type GuideDocumentKind as HelpCenterDocumentKind,
+  type GuideRevision as HelpCenterRevisionDto,
+  LazyBgImageDirective,
   AccordionComponent,
   type UiAccordionItem,
   type UiAccordionModel,
   type UiAccordionSelectionToggleEvent,
-  type UiAccordionToggleEvent
-} from '../core/accordion';
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../core/menu';
-import { IndicatorComponent } from '../core/indicator';
-import { DeploymentBrandComponent } from '../core/deployment-brand';
-import { PopupComponent, type PopupModel } from '../core/popup';
+  type UiAccordionToggleEvent,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  IndicatorComponent,
+  DeploymentBrandComponent,
+  PopupComponent,
+  type PopupModel
+} from '@fssrepository/myscoutee-components';
+
 import type {
   DocumentViewerAction,
   DocumentViewerActionEvent,
@@ -67,7 +73,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   private selectionInputSignature = '';
   private sectionSignature = '';
   private openSectionSignature = '';
-  private routeConfig: DocumentViewerConfig | null = null;
+  private readonly routeConfig = signal<DocumentViewerConfig | null>(null);
 
   ngOnInit(): void {
     if (!this.config) {
@@ -366,20 +372,20 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   protected activeConfig(): DocumentViewerConfig | null {
-    return this.config ?? this.routeConfig;
+    return this.config ?? this.routeConfig();
   }
 
   private async prepareRouteDocument(): Promise<void> {
     const data = this.route.snapshot.data as DocumentViewerRouteData;
     const kind = this.normalizeDocumentKind(data.documentKind);
-    this.routeConfig = this.createRouteConfig(data, null, true);
+    this.routeConfig.set(this.createRouteConfig(data, null, true));
     try {
       await this.helpCenter.preload(kind);
-      this.routeConfig = this.createRouteConfig(data, this.activeRevision(kind), false);
+      this.routeConfig.set(this.createRouteConfig(data, this.activeRevision(kind), false));
       this.syncSelectionFromConfig();
       this.syncOpenSection();
     } catch {
-      this.routeConfig = this.createRouteConfig(data, null, false);
+      this.routeConfig.set(this.createRouteConfig(data, null, false));
     }
   }
 

@@ -1,4 +1,3 @@
-
 import {
   Component,
   OnDestroy,
@@ -11,17 +10,24 @@ import {
 } from '@angular/forms';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
-import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/users.service';
-import { AppMenuComponent } from '../../../shared/ui/components/core/menu/menu.component';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
-import { type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type FormFlowControlModel, type FormFlowModel } from '../../../shared/ui';
-import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
+} from '../../../shared/core/common/app-static-data';
+import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core/base/services/accounts/users.service';
+import {
+  AppMenuComponent,
+  I18nPipe,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type FormFlowControlModel,
+  type FormFlowModel,
+  FormFlowComponent
+} from '@fssrepository/myscoutee-components';
+
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 interface ReportUserFormValue {
   handle: string;

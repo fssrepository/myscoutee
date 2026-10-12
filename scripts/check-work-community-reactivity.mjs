@@ -212,7 +212,7 @@ const LocalCommunityCasesService=await compiledSymbol('LocalCommunityCasesServic
 const LocalCommunityCasesRepository=await compiledSymbol('LocalCommunityCasesRepository');
 const local=Object.create(LocalCommunityCasesService.prototype);
 // Use the canonical contract, without scanning retained watch artifacts or copying a group ID.
-const communityId=readFileSync(new URL('../src/app/shared/core/contracts/group-type.ts',import.meta.url),'utf8').match(/COMMUNITY_BASE_GROUP_ID = '([^']+)'/)?.[1];
+const communityId=readFileSync(new URL('../src/app/shared/core/contracts/groups/group-type.ts',import.meta.url),'utf8').match(/COMMUNITY_BASE_GROUP_ID = '([^']+)'/)?.[1];
 assert.ok(communityId,'canonical community base id');
 let records=Array.from({length:28},(_,i)=>({...exampleCase,id:'r'+i,baseGroupId:communityId,participantAccountIds:['work-member'],attentionAccountIds:['work-member'],recommendations:[],offers:[],status:i<21?'open':'completed',caseType:i%2?'fault':'maintenance'}));
 records.push({...records[0],id:'invisible',participantAccountIds:['someone'],communityId:'other'});

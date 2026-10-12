@@ -1,15 +1,10 @@
 import { signal, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import {
-  DEFAULT_DEPLOYMENT_BRANDING,
-  DEFAULT_DEPLOYMENT_PRIVACY_CONTACT,
-  DEFAULT_DEPLOYMENT_SOCIAL_LINKS,
-  type DeploymentBrandingDto
-} from './shared/core/contracts';
-import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
-import { I18nService } from './shared/core/base/services/i18n.service';
-import type { PromptModel } from './shared/ui/components/core/prompt';
+import { type UiBranding as DeploymentBrandingDto } from '@fssrepository/myscoutee-components';
+import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_PRIVACY_CONTACT, DEFAULT_DEPLOYMENT_SOCIAL_LINKS } from './shared/core/contracts';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
+
 import { App } from './app';
 import { routes } from './app.routes';
 
@@ -26,6 +21,7 @@ describe('App', () => {
           provide: DeploymentConfigurationService,
           useValue: {
             branding,
+            firebaseMessagingConfigured: signal(false),
             socialLinks: signal(DEFAULT_DEPLOYMENT_SOCIAL_LINKS),
             privacyContact: signal(DEFAULT_DEPLOYMENT_PRIVACY_CONTACT),
             initialize: vi.fn().mockResolvedValue(DEFAULT_DEPLOYMENT_BRANDING)
@@ -53,31 +49,4 @@ describe('App', () => {
       .toBe(DEFAULT_DEPLOYMENT_BRANDING.productName);
   });
 
-  it('uses the active deployment brand in the install prompt', () => {
-    const fixture = TestBed.createComponent(App);
-    const i18nService = TestBed.inject(I18nService);
-    vi.spyOn(i18nService, 'translateParams')
-      .mockImplementation((key, values) => `${key}:${values['productName']}`);
-    branding.set({
-      ...DEFAULT_DEPLOYMENT_BRANDING,
-      productName: 'Community Hub',
-      logoUrl: '/api/assets/community-logo.webp',
-      revision: 2
-    });
-
-    const model = (fixture.componentInstance as unknown as {
-      installPromptModel: () => PromptModel;
-    }).installPromptModel();
-
-    expect(model.icon).toEqual({
-      kind: 'image',
-      src: '/api/assets/community-logo.webp',
-      alt: ''
-    });
-    expect(model.title)
-      .toBe('add.myscoutee.to.your.home.screen:Community Hub');
-    expect(model.description)
-      .toBe('install.prompt.description:Community Hub');
-    expect(model.ariaLabel).toBe(model.title);
-  });
 });

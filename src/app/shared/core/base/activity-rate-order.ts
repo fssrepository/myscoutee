@@ -1,5 +1,6 @@
-import type { ActivitiesFeedFilters, ListQuery } from '../contracts';
-import type { ActivitiesSecondaryFilter, ActivityRateDTO } from '../contracts/activity.interface';
+import type { ListQuery } from '@fssrepository/myscoutee-components';
+import type { ActivitiesFeedFilters } from '../contracts';
+import type { ActivitiesSecondaryFilter, ActivityRateDTO } from '../contracts/common/activity.interface';
 
 export type ActivityRateSort = 'happenedAt' | 'distance' | 'relevance';
 

@@ -17,20 +17,14 @@ import {
 
 import {
   AdminMenuStore
-} from '../../../shared/ui/context/stores/admin-menu.store';
+} from '../../../shared/ui/context/stores/admin/admin-menu.store';
 import {
   AdminAffinityGraphService
 } from '../../../shared/core';
-import {
-  LazyBgImageDirective
-} from '../../../shared/ui/directives';
-import {
-  IndicatorComponent,
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { LazyBgImageDirective, IndicatorComponent, PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
+
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 
 @Component({
   selector: 'app-admin-affinity-graph-popup',

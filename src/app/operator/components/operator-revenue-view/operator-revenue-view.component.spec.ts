@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import type { OperatorRevenueDto } from '../../../shared/core/contracts/operator.interface';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import type { OperatorRevenueDto } from '../../../shared/core/contracts/operator/operator.interface';
 import { OperatorRevenueViewComponent } from './operator-revenue-view.component';
 
 describe('OperatorRevenueViewComponent', () => {

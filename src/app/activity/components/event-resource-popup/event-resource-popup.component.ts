@@ -1,4 +1,15 @@
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import {
+  clampNumber,
+  UiDateUtils,
+  ExplanationGuideService,
+  type CardMenuActionEvent,
+  type InfoCardData,
+  PopupComponent,
+  type PopupModel,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import {
   CommonModule
 } from '@angular/common';
@@ -17,57 +28,53 @@ import {
 } from '@angular/forms';
 import {
   ActivityResourceBuilder
-} from '../../../shared/core/base/builders/activity-resource.builder';
+} from '../../../shared/core/base/builders/events/activity-resource.builder';
 import {
   AssetCardBuilder
-} from '../../../shared/core/base/builders/asset-card.builder';
+} from '../../../shared/core/base/builders/assets/asset-card.builder';
 import {
   AssetDefaultsBuilder
-} from '../../../shared/core/base/builders/asset-defaults.builder';
+} from '../../../shared/core/base/builders/assets/asset-defaults.builder';
 import {
   PricingBuilder
-} from '../../../shared/core/base/builders/pricing.builder';
+} from '../../../shared/core/base/builders/payments/pricing.builder';
 import {
   ActivityResourcesService
-} from '../../../shared/core/base/services/activity-resources.service';
+} from '../../../shared/core/base/services/events/activity-resources.service';
 import {
   ChatsService
-} from '../../../shared/core/base/services/chats.service';
+} from '../../../shared/core/base/services/chat/chats.service';
 import {
   AssetsService as SharedAssetsService
-} from '../../../shared/core/base/services/assets.service';
+} from '../../../shared/core/base/services/assets/assets.service';
 import {
   EventsService
-} from '../../../shared/core/base/services/events.service';
+} from '../../../shared/core/base/services/events/events.service';
 import {
   DeploymentConfigurationService
-} from '../../../shared/core/base/services/deployment-configuration.service';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
+} from '../../../shared/core/base/services/platform/deployment-configuration.service';
+
 import {
   PaymentAuthorizationService
-} from '../../../shared/core/base/services/payment-authorization.service';
+} from '../../../shared/core/base/services/payments/payment-authorization.service';
 import {
-} from '../../../shared/core/base/services/share-tokens.service';
+} from '../../../shared/core/base/services/content/share-tokens.service';
 import {
   UsersService
-} from '../../../shared/core/base/services/users.service';
+} from '../../../shared/core/base/services/accounts/users.service';
 import {
   I18nService
-} from '../../../shared/core/base/services/i18n.service';
+} from '../../../shared/core/base/services/localization/i18n.service';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
+import type { UserDto } from '../../../shared/core/contracts/accounts/user.interface';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
-import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
-import {
-  PopupComponent,
-  type PopupModel
-} from '../../../shared/ui/components/core/popup';
+} from '../../../shared/core/common/app-static-data';
+
 import {
   ActivityChatSingleRowConverter,
   ActivitySubEventResourceInfoCardConverter,
@@ -76,35 +83,33 @@ import {
 } from '../../../shared/ui/converters';
 import {
   type ActivitiesNavigationRequest
-} from '../../../shared/ui/context/stores/member-menu.store';
+} from '../../../shared/ui/context/stores/app/member-menu.store';
 import {
   AssetStore,
   type AssetEditorCheckoutState,
   type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../../shared/ui/context/stores/asset/asset.store';
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../../shared/ui/context/stores/asset/asset-popup.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
   ActivityStore,
   type ActivityMembersSyncState
-} from '../../../shared/ui/context/stores/activity.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceAssignmentQuantityUpdate
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
 import type {
   AssignedAssetJoinDialogState,
   AssignedAssetJoinPricingPreview,
@@ -114,8 +119,8 @@ import type {
   ResourcePopupContext,
   SubEventResourcePopupPresentationHeader,
   SubEventResourcePopupRequest
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+} from '../../../shared/ui/context/stores/event/sub-event-resource-popup.store';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
 import {
   EventResourceListComponent,
   type EventResourceListModel
@@ -123,8 +128,8 @@ import {
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import * as AppConstants from '../../../shared/core/common/constants';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
 
 interface ResourceAssignmentRemovalRequest {
   assetId: string;
@@ -774,8 +779,8 @@ export class EventResourcePopupComponent {
     const now = new Date();
     const end = new Date(now);
     end.setHours(end.getHours() + 2);
-    const startAtIso = `${request.startAtIso ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(now);
-    const endAtIso = `${request.endAtIso ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(end);
+    const startAtIso = `${request.startAtIso ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(now);
+    const endAtIso = `${request.endAtIso ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(end);
     const subEvent: ContractTypes.SubEventDTO = {
       id: `asset-explore-${this.activeUser().id || 'user'}`,
       name: 'Asset Explore',
@@ -1879,8 +1884,8 @@ export class EventResourcePopupComponent {
       .filter(request => request.status === 'accepted' || request.status === 'pending')
       .filter(request => AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedManagerUserId)
       .sort((left, right) => {
-        const leftTime = AppUtils.dateTimeMs(left.requestedAtIso) ?? 0;
-        const rightTime = AppUtils.dateTimeMs(right.requestedAtIso) ?? 0;
+        const leftTime = UiDateUtils.dateTimeMs(left.requestedAtIso) ?? 0;
+        const rightTime = UiDateUtils.dateTimeMs(right.requestedAtIso) ?? 0;
         return leftTime - rightTime || left.id.localeCompare(right.id);
       });
   }
@@ -2486,7 +2491,7 @@ export class EventResourcePopupComponent {
     dialog: AssignedAssetJoinDialogState,
     amount: number,
     hasError: boolean
-  ): readonly import('../../../shared/ui/components/core/menu').AppMenuItem<string>[] {
+  ): readonly import('@fssrepository/myscoutee-components').AppMenuItem<string>[] {
     const takeOver = dialog.mode === 'takeover';
     const paymentRequired = takeOver && amount > 0;
     const requiresPaymentMethod = paymentRequired && dialog.paymentStep && !this.cashOnly();
@@ -3045,10 +3050,10 @@ export class EventResourcePopupComponent {
     left: AppDTOs.AssetMemberRequestDTO,
     right: AppDTOs.AssetMemberRequestDTO
   ): boolean {
-    const leftStart = AppUtils.isoLocalDateTimeToDate(`${left.booking?.startAtIso ?? ''}`.trim());
-    const leftEnd = AppUtils.isoLocalDateTimeToDate(`${left.booking?.endAtIso ?? ''}`.trim());
-    const rightStart = AppUtils.isoLocalDateTimeToDate(`${right.booking?.startAtIso ?? ''}`.trim());
-    const rightEnd = AppUtils.isoLocalDateTimeToDate(`${right.booking?.endAtIso ?? ''}`.trim());
+    const leftStart = UiDateUtils.isoLocalDateTimeToDate(`${left.booking?.startAtIso ?? ''}`.trim());
+    const leftEnd = UiDateUtils.isoLocalDateTimeToDate(`${left.booking?.endAtIso ?? ''}`.trim());
+    const rightStart = UiDateUtils.isoLocalDateTimeToDate(`${right.booking?.startAtIso ?? ''}`.trim());
+    const rightEnd = UiDateUtils.isoLocalDateTimeToDate(`${right.booking?.endAtIso ?? ''}`.trim());
     if (leftStart && leftEnd && rightStart && rightEnd) {
       return leftStart.getTime() < rightEnd.getTime() && rightStart.getTime() < leftEnd.getTime();
     }
@@ -3395,8 +3400,8 @@ export class EventResourcePopupComponent {
       }
       const previous = existing[assetId];
       const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = AppUtils.clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = AppUtils.clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
         capacityMin,
         capacityMax,
@@ -3974,7 +3979,7 @@ export class EventResourcePopupComponent {
           ? (pendingRequiresAdminApproval ? 'invite' : 'join')
           : null;
         const seed = AppUtils.hashText(`asset-members:${card.id}:${request.id}:${userId}`);
-        const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
+        const actionAtIso = UiDateUtils.toIsoDateTime(UiDateUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
         return {
           id: request.id,
           userId,
@@ -4255,7 +4260,7 @@ export class EventResourcePopupComponent {
 
   private subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
     return this.subEventSupplyContributionEntries(subEventId, cardId)
-      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+      .reduce((sum, entry) => sum + clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
   private subEventDisplayName(subEvent: ContractTypes.SubEventDTO | null | undefined): string {

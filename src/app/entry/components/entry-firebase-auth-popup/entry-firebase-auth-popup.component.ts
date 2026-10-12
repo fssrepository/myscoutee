@@ -1,4 +1,4 @@
-import { LandingGuideSurfaceDirective } from '../../../shared/ui/directives/landing-guide-surface.directive';
+import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
@@ -8,8 +8,8 @@ import type {
   FirebaseAuthProvider,
   FirebaseAuthRequestDto,
   FirebaseEmailAuthMode
-} from '../../../shared/core/contracts/user.interface';
-import { I18nPipe } from '../../../shared/ui';
+} from '../../../shared/core/contracts/accounts/user.interface';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 
 @Component({
   selector: 'app-entry-firebase-auth-popup',

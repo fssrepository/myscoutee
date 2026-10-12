@@ -1,11 +1,16 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
-import { ExplanationGuideService } from '../../../shared/core/base/services/explanation-guide.service';
-import type { IntegrationAccessMode } from '../../../shared/core/contracts/integration.interface';
-import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/integration-settings.store';
-import { AppMenuComponent, type AppMenuItem, type AppMenuRateConfig } from '../../../shared/ui/components/core/menu';
-import { RateComponent } from '../../../shared/ui/components/core/menu/items/rate/rate.component';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
-import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import {
+  ExplanationGuideService,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuRateConfig,
+  RateComponent,
+  PopupComponent,
+  type PopupModel,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
+import type { IntegrationAccessMode } from '../../../shared/core/contracts/integrations/integration.interface';
+import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 
 const MODES: readonly IntegrationAccessMode[] = ['blocked', 'write', 'read', 'full'];
 const STYLE = {

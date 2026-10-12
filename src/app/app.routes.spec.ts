@@ -5,8 +5,8 @@ import { RouterTestingHarness } from '@angular/router/testing';
 
 import { routes } from './app.routes';
 import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
-import { type AppSession, SessionService } from './shared/core/base/services/session.service';
-import { UsersService } from './shared/core/base/services/users.service';
+import { type AppSession, SessionService } from './shared/core/base/services/accounts/session.service';
+import { UsersService } from './shared/core/base/services/accounts/users.service';
 
 @Component({ template: 'Page' })
 class TestPage {}

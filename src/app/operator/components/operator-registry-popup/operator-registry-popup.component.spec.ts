@@ -4,13 +4,12 @@ import { TestBed } from '@angular/core/testing';
 import type {
   OperatorMeasurementSyncDto,
   OperatorRegistryStatusDto
-} from '../../../shared/core/contracts/operator.interface';
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
-import type { LinkInputConfig } from '../../../shared/ui/components/core/form/inputs/link-input';
-import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
-import type { PopupModel } from '../../../shared/ui/components/core/popup';
+} from '../../../shared/core/contracts/operator/operator.interface';
+import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
+import { type LinkInputConfig, type AppMenuItem, type PopupModel } from '@fssrepository/myscoutee-components';
+
 import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';
 
 describe('OperatorRegistryPopupComponent', () => {
@@ -94,7 +93,7 @@ describe('OperatorRegistryPopupComponent', () => {
 
     expect(componentView.popupModel().size).toBe('small');
     expect(componentView.popupModel().height).toBe('auto');
-    expect(componentView.popupModel().bodyLayout).toBe('overflow');
+    expect(componentView.popupModel().bodyLayout).toBe('default');
     expect(componentView.registryUrlConfig().panelMode).toBe('auto');
     expect(componentView.registryUrlConfig().availableUrls).toEqual([
       expect.objectContaining({

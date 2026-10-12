@@ -1,7 +1,32 @@
-import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community-group-changes.store';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
-import { MingleStore } from '../../../shared/ui/context/stores/mingle.store';
-import { GroupWorkspaceContextService } from '../../../shared/core/base/services/group-workspace-context.service';
+import {
+  UiDateUtils,
+  ExplanationGuideService,
+  ImageCardComponent,
+  PopupComponent,
+  SmartListComponent,
+  UiPollCoordinator,
+  UiTaskScheduler,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type ImageCardData,
+  type ImageCardMediaAction,
+  type ImageCardMediaActionEvent,
+  type ListQuery,
+  type PageResult,
+  type PopupActionEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListItemTemplateContext,
+  type SmartListLoaders,
+  type SmartListStateChange,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+import { CommunityGroupChangesStore } from '../../../shared/ui/context/stores/community/community-group-changes.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
+import { MingleStore } from '../../../shared/ui/context/stores/activity/mingle.store';
+import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   CommonModule
 } from '@angular/common';
@@ -24,67 +49,35 @@ import {
   from
 } from 'rxjs';
 
-import type * as AppUiTypes from '../../../shared/ui/models';
+import type * as AppUiTypes from '../../../shared/ui/converters/chat/popup-header.model';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../shared/core/base/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
-import {
-  ActivityMembersService,
-  ActivityInviteCandidatesService,
-  AssetsService,
-  ChatsService,
-  ExplanationGuideService,
-  EventsService,
-  I18nService,
-  UsersService
-} from '../../../shared/core';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+
+import { ActivityMembersService, ActivityInviteCandidatesService, AssetsService, ChatsService, EventsService, I18nService, UsersService } from '../../../shared/core';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/common/activity.interface';
 import { tournamentParticipationLocked } from '../../../shared/core/common/tournament-group-count';
-import {
-  ImageCardComponent,
-  PopupComponent,
-  SmartListComponent,
-  UiPollCoordinator,
-  UiTaskScheduler,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type ImageCardData,
-  type ImageCardMediaAction,
-  type ImageCardMediaActionEvent,
-  type ListQuery,
-  type PageResult,
-  type PopupActionEvent,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListItemTemplateContext,
-  type SmartListLoaders,
-  type SmartListStateChange
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+
 import {
   ActivityMemberImageCardConverter
 } from '../../../shared/ui/converters';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
 import type { ActivityMemberOwnerType, AssetType } from '../../../shared/core/common/constants';
-import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/asset.interface';
-import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/common/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
+import type { AssetMemberStatusChangeDTO } from '../../../shared/core/contracts/assets/asset.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/accounts/user.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
   type ActivityCounters
-} from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+} from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { canManageScopedAssetMembers } from './scoped-asset-member-management.policy';
 
 interface MembersSmartListFilters {
@@ -1274,7 +1267,7 @@ export class EventMembersPopupComponent implements OnDestroy {
           status: 'accepted' as const,
           pendingSource: null,
           requestKind: null,
-          actionAtIso: AppUtils.toIsoDateTime(new Date())
+          actionAtIso: UiDateUtils.toIsoDateTime(new Date())
         }
       : member);
     await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
@@ -1405,7 +1398,7 @@ export class EventMembersPopupComponent implements OnDestroy {
             pendingSource: null,
             requestKind: null,
             managerGrantedByUserId: actorUserId,
-            actionAtIso: AppUtils.toIsoDateTime(new Date())
+            actionAtIso: UiDateUtils.toIsoDateTime(new Date())
           }
         : member);
     this.applyCommittedMembers(nextMembers, previousMembers);
@@ -1437,7 +1430,7 @@ export class EventMembersPopupComponent implements OnDestroy {
             role: 'Member' as const,
             status: 'accepted' as const,
             managerGrantedByUserId: null,
-            actionAtIso: AppUtils.toIsoDateTime(new Date())
+            actionAtIso: UiDateUtils.toIsoDateTime(new Date())
           }
         : member);
     this.applyCommittedMembers(nextMembers, previousMembers);
@@ -1644,7 +1637,6 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     return 'Delete invitation';
   }
-
 
   private async applyInvites(
     selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]
@@ -2110,7 +2102,6 @@ export class EventMembersPopupComponent implements OnDestroy {
       memberStatusChange: change
     });
   }
-
 
   private syncVisibleMembers(
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[],
@@ -2644,8 +2635,8 @@ export class EventMembersPopupComponent implements OnDestroy {
       .filter(member => member.userId !== entry.userId)
       .filter(member => member.status === 'accepted' && member.role === 'Admin')
       .sort((left, right) =>
-        AppUtils.toSortableDate(left.actionAtIso)
-        - AppUtils.toSortableDate(right.actionAtIso)
+        UiDateUtils.toSortableDate(left.actionAtIso)
+        - UiDateUtils.toSortableDate(right.actionAtIso)
       )[0] ?? null;
   }
 
@@ -2659,8 +2650,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         && (member.role === 'Admin' || member.role === 'Manager')
       )
       .sort((left, right) =>
-        AppUtils.toSortableDate(left.actionAtIso)
-        - AppUtils.toSortableDate(right.actionAtIso)
+        UiDateUtils.toSortableDate(left.actionAtIso)
+        - UiDateUtils.toSortableDate(right.actionAtIso)
       )[0] ?? null;
   }
 

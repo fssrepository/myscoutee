@@ -4,7 +4,7 @@ import {
   untracked
 } from '@angular/core';
 
-import type { AppSession } from '../../../core/base/services/session.service';
+import type { AppSession } from '../../../core/base/services/accounts/session.service';
 
 export function installSessionActiveUserSync(
   session: Signal<AppSession | null>,

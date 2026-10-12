@@ -5,14 +5,15 @@ import { By } from '@angular/platform-browser';
 import { NavigationCancel, NavigationCancellationCode, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { App } from './app';
+import { DEFAULT_DEPLOYMENT_BRANDING } from './shared/core/contracts/platform/deployment-configuration.interface';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent } from './shared/ui/components/core/menu/menu.component';
-import { SessionService } from './shared/core/base/services/session.service';
-import { OfflineCacheService } from './shared/core/base/services/offline-cache.service';
-import { PwaService } from './shared/core/base/services/pwa.service';
-import { I18nService } from './shared/core/base/services/i18n.service';
-import { AppLocationService } from './shared/core/base/services/app-location.service';
-import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
+import { AppMenuComponent } from '@fssrepository/myscoutee-components';
+import { SessionService } from './shared/core/base/services/accounts/session.service';
+import { OfflineCacheService } from './shared/core/base/services/platform/offline-cache.service';
+import { PwaService } from './shared/core/base/services/platform/pwa.service';
+import { I18nService } from './shared/core/base/services/localization/i18n.service';
+import { AppLocationService } from './shared/core/base/services/accounts/app-location.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 
 @Component({ selector: 'router-outlet', template: '' })
 class TestOutlet { @Output() activate = new EventEmitter<void>(); }
@@ -20,6 +21,8 @@ class TestOutlet { @Output() activate = new EventEmitter<void>(); }
 class TestSetup {}
 @Component({ selector: 'app-payment-authorization-popup', template: '' })
 class TestPayment {}
+@Component({ selector: 'app-dialog', template: '' })
+class TestDialog {}
 
 describe('application startup loading handoff', () => {
   let events: Subject<unknown>;
@@ -47,7 +50,7 @@ describe('application startup loading handoff', () => {
       { provide: DeploymentConfigurationService, useValue: {
         initialize: vi.fn(), branding: signal({ productName: 'MyScoutee', logoUrl: '' })
       } }
-    ] }).overrideComponent(App, { set: { imports: [NgComponentOutlet, TestOutlet, TestSetup, TestPayment, HomeHeaderComponent, AppMenuComponent] } });
+    ] }).overrideComponent(App, { set: { imports: [NgComponentOutlet, TestOutlet, TestSetup, TestPayment, HomeHeaderComponent, AppMenuComponent, TestDialog] } });
   });
 
   afterEach(() => {
@@ -64,6 +67,43 @@ describe('application startup loading handoff', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  it('shows the default logo and releases the page before branding finishes', () => {
+    const loading = signal(true);
+    const initialize = vi.fn(() => new Promise<void>(() => {}));
+    TestBed.overrideProvider(DeploymentConfigurationService, { useValue: {
+      initialize, loading, branding: signal({ ...DEFAULT_DEPLOYMENT_BRANDING })
+    } });
+    const fixture = create();
+    expect(initialize).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup img').getAttribute('src'))
+      .toBe('assets/logo/heart.webp');
+    expect(fixture.nativeElement.querySelector('.app-route-warmup__label').textContent)
+      .toBe('MyScoutee');
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    fixture.detectChanges();
+    expect(loading()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
+  });
+
+  it('uses configured branding when ready and respects an intentionally empty logo', () => {
+    const loading = signal(true);
+    const branding = signal({ productName: DEFAULT_DEPLOYMENT_BRANDING.productName, logoUrl: DEFAULT_DEPLOYMENT_BRANDING.logoUrl });
+    TestBed.overrideProvider(DeploymentConfigurationService, { useValue: {
+      initialize: vi.fn(), loading, branding
+    } });
+    const fixture = create();
+    branding.set({ productName: 'Configured name', logoUrl: 'assets/configured-logo.png' });
+    loading.set(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup img').getAttribute('src'))
+      .toBe('assets/configured-logo.png');
+    expect(fixture.nativeElement.querySelector('.app-route-warmup__label').textContent)
+      .toBe('Configured name');
+    branding.set({ productName: 'Configured name', logoUrl: '' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup img')).toBeNull();
+  });
 
   it.each(['/', '/entry', '/game'])('covers the empty initial route until activation without a saved session on %s', url => {
     const fixture = create(url);
@@ -144,7 +184,6 @@ describe('application startup loading handoff', () => {
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
   });
 
-
   it.each(['/', '/game'])('shows the shared header and avatar loader before guards finish on %s', url => {
     currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'cached-user' } });
     const fixture = create(url);
@@ -164,11 +203,17 @@ describe('application startup loading handoff', () => {
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
   });
 
-  it('removes the game preview when validation redirects to entry', () => {
+  it('removes the retained loading avatar when the validation redirect to entry commits', () => {
     currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'expired-user' } });
     const fixture = create('/game');
     events.next(new NavigationCancel(1, '/game', 'Redirect', NavigationCancellationCode.Redirect));
     events.next(new NavigationStart(2, '/entry'));
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar button').disabled).toBe(true);
+    router.url = '/entry';
+    router.navigated = true;
+    events.next(new NavigationEnd(2, '/entry', '/entry'));
+    // The Subject router stub does not schedule Angular's navigation render.
+    fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
     expect(fixture.nativeElement.querySelector('.game-startup-avatar')).toBeNull();

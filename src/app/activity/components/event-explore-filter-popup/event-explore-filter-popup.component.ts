@@ -1,8 +1,16 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output } from '@angular/core';
-import type { EventExploreFilterPreferences } from '../../../shared/core/contracts/activity.interface';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppMenuComponent, I18nPipe, PopupComponent, buildTabbedMenuModel, type AppMenuItem, type AppMenuItemSelectEvent, type PopupModel } from '../../../shared/ui';
-import { EventModeMenuConverter } from '../../../shared/ui/converters/event-mode-menu.converter';
+import type { EventExploreFilterPreferences } from '../../../shared/core/contracts/common/activity.interface';
+import { APP_STATIC_DATA } from '../../../shared/core/common/app-static-data';
+import {
+  AppMenuComponent,
+  I18nPipe,
+  PopupComponent,
+  buildTabbedMenuModel,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type PopupModel
+} from '@fssrepository/myscoutee-components';
+import { EventModeMenuConverter } from '../../../shared/ui/converters/event/event-mode-menu.converter';
 
 @Component({
   selector: 'app-event-explore-filter-popup',

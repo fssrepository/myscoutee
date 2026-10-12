@@ -1,4 +1,4 @@
-import type { ChatReadAvatar } from '../../../shared/core/contracts/chat.interface';
+import type { ChatReadAvatar } from '../../../shared/core/contracts/chat/chat.interface';
 
 export function mergeChatReadAvatars(
   ...readerGroups: ReadonlyArray<readonly ChatReadAvatar[] | null | undefined>

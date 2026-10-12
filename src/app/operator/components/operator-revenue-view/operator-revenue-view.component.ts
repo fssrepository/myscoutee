@@ -8,21 +8,21 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import type {
   OperatorRevenueAssetCategoryDto,
   OperatorRevenueCurrencyDto,
   OperatorRevenueDto,
   OperatorRevenueTimelinePointDto,
   OperatorRevenueTone
-} from '../../../shared/core/contracts/operator.interface';
+} from '../../../shared/core/contracts/operator/operator.interface';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuTrigger
-} from '../../../shared/ui/components/core/menu';
-import { I18nPipe } from '../../../shared/ui/pipes';
+  type AppMenuTrigger,
+  I18nPipe
+} from '@fssrepository/myscoutee-components';
 
 type OperatorRevenueTimelineMetric =
   | 'projectedEventMinor'

@@ -1,6 +1,6 @@
-@use '../../../shared/ui/styles/contextual-colors' as colors;
+@use '@fssrepository/myscoutee-components/styles/contextual-colors' as colors;
 
-:host { display: contents; }
+:host { display: inline-flex; }
 .access-editor { padding: .8rem; display: grid; gap: .65rem; }
 .access-editor p, .access-editor small { margin: 0; line-height: 1.45; }
 .access-editor small { color: var(--text-muted); }

@@ -1,19 +1,30 @@
+import {
+  UiDateUtils,
+  PopupComponent,
+  PopupModel,
+  PopupControl,
+  SmartListComponent,
+  InfoCardComponent,
+  InfoCardData,
+  SmartListConfig,
+  SmartListLoadPage,
+  AppMenuItemSelectEvent,
+  I18nPipe,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
 import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect, untracked } from '@angular/core';
-import { AppUtils } from '../../../app-utils';
 import { defer, map } from 'rxjs';
-import { PopupComponent, PopupModel, PopupControl } from '../core/popup';
-import { SmartListComponent, InfoCardComponent, InfoCardData, SmartListConfig, SmartListLoadPage } from '../core/smart-list';
-import { AppMenuItemSelectEvent } from '../core/menu';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { I18nPipe } from '../../pipes/i18n.pipe';
-import { CommunityGroupsStore } from '../../context/stores/community-groups.store';
-import { ProfileStore } from '../../context/stores/profile.store';
-import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community-group.converter';
-import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort, groupMembershipBucket } from '../../../core/contracts/community-group.interface';
+
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+
+import { CommunityGroupsStore } from '../../context/stores/community/community-groups.store';
+import { ProfileStore } from '../../context/stores/profile/profile.store';
+import { CommunityGroupConverter, GROUP_BUCKET_STYLE, GROUP_CATEGORY_ICON, GROUP_CATEGORY_PALETTE } from '../../converters/community/community-group.converter';
+import { GROUP_CATEGORIES, CommunityGroupSummary, GroupBucket, GroupFilters, GroupCategory, GroupSort, groupSort, groupMembershipBucket } from '../../../core/contracts/groups/community-group.interface';
 import { CommunityGroupEditorComponent } from './community-group-editor.component';
-import { ContentModerationStore } from '../../context/stores/content-moderation.store';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
-import { isBaseGroupId } from '../../../core/contracts/group-type';
+import { ContentModerationStore } from '../../context/stores/content/content-moderation.store';
+
+import { isBaseGroupId } from '../../../core/contracts/groups/group-type';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
@@ -81,7 +92,7 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
   }
   private card(group: CommunityGroupSummary, sort: GroupSort = groupSort(this.query.filters.bucket, this.query.sort)) {
     const card = CommunityGroupConverter.card(this.withModeration(group), key => this.i18n.translate(key));
-    if (sort === 'updated' && !isBaseGroupId(group.id)) card.groupLabel = AppUtils.smartListDayLabel(new Date(group.updatedAtIso));
+    if (sort === 'updated' && !isBaseGroupId(group.id)) card.groupLabel = UiDateUtils.smartListDayLabel(new Date(group.updatedAtIso));
     return card;
   }
   constructor() {

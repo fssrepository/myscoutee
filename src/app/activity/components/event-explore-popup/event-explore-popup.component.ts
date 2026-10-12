@@ -1,7 +1,39 @@
-import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
+import {
+  UiLinkUtils,
+  UiDateUtils,
+  ExplanationGuideService,
+  AppMenuDispatcher,
+  AppMenuComponent,
+  AppMenuOutletComponent,
+  appMenuPaletteFromToneClass,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  CARD_MENU_ACTIONS,
+  InfoCardComponent,
+  PopupComponent,
+  type PageResult,
+  SmartListComponent,
+  type InfoCardData,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardMenuAction,
+  type ListQuery,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadContext,
+  type SmartListItemTemplateContext,
+  type SmartListLocalSortKey,
+  type SmartListStateChange,
+  DialogStore
+} from '@fssrepository/myscoutee-components';
+
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 import { untracked } from '@angular/core';
-import { ChatShareStore } from '../../../shared/ui/context/stores/chat-share.store';
-import { FollowingStore } from '../../../shared/ui/context/stores/following.store';
+import { ChatShareStore } from '../../../shared/ui/context/stores/chat/chat-share.store';
+import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
 import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
   ChangeDetectionStrategy,
@@ -33,80 +65,44 @@ import type { EventExploreFilterPreferences, EventExploreFeedFilters } from '../
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import {
   APP_STATIC_DATA
-} from '../../../shared/app-static-data';
+} from '../../../shared/core/common/app-static-data';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   ActivityEventDetailDTO
-} from '../../../shared/core/contracts/activity.interface';
+} from '../../../shared/core/contracts/common/activity.interface';
 import {
   AppUtils
-} from '../../../shared/app-utils';
-import {
-  ActivityMembersBuilder,
-  ActivityMembersService,
-  ActivitiesService,
-  ExplanationGuideService,
-  EventsService,
-  GameService,
-  UsersService,
-  type UserDto
-} from '../../../shared/core';
+} from '../../../shared/core/base/app-utils';
+
+import { ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
   ActivitiesPopupStore,
   eventChatHeaderStateFromChat,
   eventChatPopupRequestFromChat
-} from '../../../shared/ui/context/stores/activities-popup.store';
-import {
-  AppMenuDispatcher,
-  AppMenuComponent,
-  AppMenuOutletComponent,
-  appMenuPaletteFromToneClass,
-  EventExploreInfoCardConverter,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  CARD_MENU_ACTIONS,
-  InfoCardComponent,
-  PopupComponent,
-  type PageResult,
-  SmartListComponent,
-  type InfoCardData,
-  type CardMenuActionEvent,
-  type CardMenuRequestEvent,
-  type CardMenuAction,
-  type ListQuery,
-  type PopupModel,
-  type SmartListConfig,
-  type SmartListLoadContext,
-  type SmartListItemTemplateContext,
-  type SmartListLocalSortKey,
-  type SmartListStateChange
-} from '../../../shared/ui';
-import {
-  DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '../../../shared/ui/context/stores/activity/activities-popup.store';
+
+import { EventExploreInfoCardConverter } from '../../../shared/ui';
+
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
-} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-draft.store';
 import {
   EventCheckoutDialogStore
-} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+} from '../../../shared/ui/context/stores/event/event-checkout-dialog.store';
 import {
   ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
-import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+} from '../../../shared/ui/context/stores/profile/profile.store';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/common/activity.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat/chat.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/accounts/user.interface';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/common/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/common/activity.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity/activity.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event/event-subevents-popup.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -929,7 +925,7 @@ export class EventExplorePopupComponent implements OnDestroy {
 
   protected onEventExploreCardMenuAction(record: ActivityEventRecord, action: CardMenuActionEvent<InfoCardData>): void {
     if (action.actionId === 'externalInfo') {
-      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(record.sourceLink));
+      UiLinkUtils.openExternalUrl(UiLinkUtils.normalizeHttpUrl(record.sourceLink));
       return;
     }
     if (action.actionId === 'view') {
@@ -1080,7 +1076,7 @@ export class EventExplorePopupComponent implements OnDestroy {
   }
 
   private checkoutDraftTimeframeLabel(entry: CheckoutDraftEntry): string {
-    return AppUtils.normalizeDateTimeRangeText(
+    return UiDateUtils.normalizeDateTimeRangeText(
       entry.draft.eventTimeframe || entry.record?.timeframe,
       'Pending checkout'
     );
@@ -1651,7 +1647,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     if (Number.isNaN(parsed.getTime())) {
       return 'Date unavailable';
     }
-    return AppUtils.smartListDayLabel(parsed);
+    return UiDateUtils.smartListDayLabel(parsed);
   }
 
   private runEventExploreServiceChatAction(record: ActivityEventRecord): void {
@@ -2447,10 +2443,10 @@ export class EventExplorePopupComponent implements OnDestroy {
       case 'most-relevant':
         return (Number(right.affinity) || 0) - (Number(left.affinity) || 0);
       case 'past-events':
-        return AppUtils.toSortableDate(right.startAtIso) - AppUtils.toSortableDate(left.startAtIso);
+        return UiDateUtils.toSortableDate(right.startAtIso) - UiDateUtils.toSortableDate(left.startAtIso);
       case 'upcoming':
       default:
-        return AppUtils.toSortableDate(left.startAtIso) - AppUtils.toSortableDate(right.startAtIso);
+        return UiDateUtils.toSortableDate(left.startAtIso) - UiDateUtils.toSortableDate(right.startAtIso);
     }
   }
 

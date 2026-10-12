@@ -1,14 +1,24 @@
-import { AppUtils } from '../../../app-utils';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import { SLOTS_INPUT_LABELS } from '../core/form/flow/slots-input-labels';
+import {
+  SlotsInputComponent,
+  type SlotsInputConfig,
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowActionEvent
+} from '@fssrepository/myscoutee-components';
+import { AppUtils } from '../../../core/base/app-utils';
+
 import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { FormFlowComponent, type FormFlowModel, type FormFlowActionEvent } from '../core/form/flow';
-import { CommunityCasesStore, type CaseEditorState } from '../../context/stores/community-cases.store';
-import { CommunityCaseConverter } from '../../converters/community-case.converter';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { SlotsInputComponent, type SlotsInputConfig } from '../core/form/inputs/slots-input/slots-input.component';
-import { CASE_TYPES, type SaveCommunityScheduledTask, type CommunityCase, type TaskFrequency } from '../../../core/contracts/community-case.interface';
+
+import { CommunityCasesStore, type CaseEditorState } from '../../context/stores/community/community-cases.store';
+import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+
+import { CASE_TYPES, type SaveCommunityScheduledTask, type CommunityCase, type TaskFrequency } from '../../../core/contracts/community/community-case.interface';
 
 @Component({ selector: 'app-community-case-editor', standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent, SlotsInputComponent],
@@ -42,6 +52,9 @@ export class CommunityCaseEditorComponent implements OnChanges, OnDestroy {
   }
   @ViewChild('scheduleInput') private scheduleInput?: SlotsInputComponent;
   protected readonly scheduleConfig: SlotsInputConfig = {
+    labels: SLOTS_INPUT_LABELS,
+    frequencyLabel: frequency => 'case.frequency.' + (frequency === 'One-time' ? 'once' : frequency.toLowerCase()),
+
     scheduleOnly:true,title:'case.schedule',startAtIso:()=>this.form().startAtIso,frequency:()=>this.form().frequency,
     frequencyOptions:['One-time','Monthly','Quarterly','Yearly'],
     scheduleChange:value=>this.form.update(form=>({...form,startAtIso:value.startAtIso,frequency:(value.frequency==='One-time'?'once':value.frequency.toLowerCase()) as TaskFrequency}))

@@ -1,35 +1,34 @@
 import { signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
-import type { ListQuery } from '../../../shared/core/contracts/list.interface';
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
+import { type ListQuery, type AppMenuItem } from '@fssrepository/myscoutee-components';
 import type {
   OperatorClaimStatusDto,
   OperatorLeaderboardEntryDto,
   OperatorRegistryStatusDto
-} from '../../../shared/core/contracts/operator.interface';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+} from '../../../shared/core/contracts/operator/operator.interface';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   OperatorLeaderboardStore,
   type OperatorLeaderboardCacheMutation,
   type OperatorLeaderboardFilters
-} from '../../../shared/ui/context/stores/operator-leaderboard.store';
+} from '../../../shared/ui/context/stores/operator/operator-leaderboard.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
-} from '../../../shared/ui/context/stores/operator-menu.store';
-import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+} from '../../../shared/ui/context/stores/operator/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator/operator-workspace.store';
 import { OperatorPageComponent } from './operator-page.component';
-import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
 
 describe('OperatorPageComponent', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
   });
 
-  it('keeps the leaderboard mounted while registration refreshes and the popup closes', () => {
+  it('keeps the leaderboard mounted while registration refreshes and the popup closes', async () => {
     const registryStatus = signal<OperatorRegistryStatusDto | null>(
       registeredStatus()
     );
@@ -84,6 +83,7 @@ describe('OperatorPageComponent', () => {
             busyAction: workspaceBusyAction.asReadonly(),
             deploymentUpdate: signal(null).asReadonly(),
             claimStatus: claimStatus.asReadonly(),
+            loadInitialWorkspace: vi.fn().mockResolvedValue(undefined),
             loadDeploymentUpdate: vi.fn()
           }
         },
@@ -94,7 +94,7 @@ describe('OperatorPageComponent', () => {
             latestCacheMutation: leaderboardCacheMutation.asReadonly(),
             consumeCacheMutation,
             invalidate: invalidateLeaderboard,
-            queryPage: vi.fn()
+            queryPage: vi.fn().mockResolvedValue({ items: [], total: 0 })
           }
         },
         {
@@ -106,6 +106,7 @@ describe('OperatorPageComponent', () => {
         {
           provide: I18nService,
           useValue: {
+            revision: () => 0,
             currentLanguage: () => 'en',
             translate: (value: string) => value
           }
@@ -115,6 +116,7 @@ describe('OperatorPageComponent', () => {
 
     const fixture = TestBed.createComponent(OperatorPageComponent);
     const componentView = fixture.componentInstance as unknown as {
+      loadInitialWorkspace: () => Promise<void>;
       loading: Signal<boolean>;
       leaderboardQuery: Signal<Partial<ListQuery<OperatorLeaderboardFilters>>>;
       actionItems: Signal<readonly AppMenuItem<string>[]>;
@@ -140,6 +142,7 @@ describe('OperatorPageComponent', () => {
         adjustVisibleTotal: (delta: number) => boolean;
       };
     };
+    await componentView.loadInitialWorkspace();
     const initialQuery = componentView.leaderboardQuery();
 
     registryBusyAction.set('load');
@@ -153,9 +156,9 @@ describe('OperatorPageComponent', () => {
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
     expect(componentView.actionItems().map(item => item.id)).toEqual([
       'updates',
+      'configuration',
       'registration',
       'claim',
-      'configuration',
       'revenue'
     ]);
     expect(componentView.actionItems().at(-1)).toEqual(expect.objectContaining({

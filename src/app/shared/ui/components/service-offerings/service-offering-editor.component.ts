@@ -1,16 +1,22 @@
-import { AppUtils } from '../../../app-utils';
-import { ServiceFeedbackService } from '../../../core/base/services/service-feedback.service';
-import type { ServiceFeedbackStats } from '../../../core/contracts/service-feedback.interface';
-import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/rating-snapshot';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
+import { AppUtils } from '../../../core/base/app-utils';
+import { ServiceFeedbackService } from '../../../core/base/services/community/service-feedback.service';
+import type { ServiceFeedbackStats } from '../../../core/contracts/community/service-feedback.interface';
+import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/affinity/rating-snapshot';
+import {
+  ExplanationGuideService,
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowActionEvent
+} from '@fssrepository/myscoutee-components';
 import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent,type PopupModel } from '../core/popup';
-import { FormFlowComponent,type FormFlowModel,type FormFlowActionEvent } from '../core/form/flow';
-import { ServiceOfferingsStore } from '../../context/stores/service-offerings.store';
-import { SERVICE_CATEGORY_STYLE } from '../../converters/service-offering.converter';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { SERVICE_CATEGORIES,type ServiceOfferingItem,type SaveServiceOffering } from '../../../core/contracts/service-offering.interface';
+
+import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
+import { SERVICE_CATEGORY_STYLE } from '../../converters/services/service-offering.converter';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+import { SERVICE_CATEGORIES,type ServiceOfferingItem,type SaveServiceOffering } from '../../../core/contracts/community/service-offering.interface';
 @Component({selector:'app-service-offering-editor',standalone:true,imports:[FormsModule,PopupComponent,FormFlowComponent],template:`
  <app-popup [model]="popup()" [zIndex]="15100" data-guide-context="community-service-editor">
  <app-form-flow data-guide-field="service-details" [model]="flow()" [ngModel]="form()" (ngModelChange)="form.set($event)" (action)="staffAction($event)" [saving]="store.busy()"></app-form-flow>

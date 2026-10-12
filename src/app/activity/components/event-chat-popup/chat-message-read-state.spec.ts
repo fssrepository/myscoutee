@@ -1,4 +1,4 @@
-import type { ChatReadAvatar } from '../../../shared/core/contracts/chat.interface';
+import type { ChatReadAvatar } from '../../../shared/core/contracts/chat/chat.interface';
 import { mergeChatReadAvatars } from './chat-message-read-state';
 
 const firstReader: ChatReadAvatar = {

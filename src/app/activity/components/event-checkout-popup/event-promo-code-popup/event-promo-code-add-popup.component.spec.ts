@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { I18nService } from '../../../../shared/core/base/services/i18n.service';
+import { I18nService } from '../../../../shared/core/base/services/localization/i18n.service';
 import { EventPromoCodeAddPopupComponent } from './event-promo-code-add-popup.component';
 
 describe('EventPromoCodeAddPopupComponent validation localization', () => {
@@ -18,6 +18,7 @@ describe('EventPromoCodeAddPopupComponent validation localization', () => {
       providers: [{
         provide: I18nService,
         useValue: {
+          currentLanguage: () => 'en',
           revision: vi.fn(),
           translate
         }

@@ -9,9 +9,9 @@ const PREVIOUS_APP_CACHE_LIMIT = 1;
 const DEPLOYMENT_CONFIGURATION_URL = './api/deployment/configuration';
 const DEPLOYMENT_BRANDING_CACHE_KEY = './__deployment-branding__';
 const DEFAULT_DEPLOYMENT_BRANDING = Object.freeze({
-  productName: 'MyScoutee',
-  homeLabel: 'Your preferences come first',
-  logoUrl: './assets/logo/heart.webp'
+  productName: '',
+  homeLabel: '',
+  logoUrl: ''
 });
 const PRECACHE_CORE_URLS = [
   './',
@@ -380,7 +380,7 @@ async function deploymentBranding() {
       return branding;
     }
   } catch {
-    // Offline and cold-worker fallback uses the bundled product identity.
+    // No saved branding is available while offline; leave it absent.
   }
   return { ...DEFAULT_DEPLOYMENT_BRANDING };
 }
@@ -407,8 +407,7 @@ async function persistDeploymentBranding(cache, branding) {
 
 function normalizeDeploymentBranding(value) {
   const source = value && typeof value === 'object' ? value : {};
-  const productName = normalizedText(source.productName, 80)
-    || DEFAULT_DEPLOYMENT_BRANDING.productName;
+  const productName = normalizedText(source.productName, 80);
   const homeLabel = normalizedText(source.homeLabel, 120);
   return {
     productName,
@@ -419,7 +418,7 @@ function normalizeDeploymentBranding(value) {
 
 function normalizedLogoUrl(value) {
   if (typeof value !== 'string') {
-    return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+    return '';
   }
   const normalized = normalizedText(value, 4096);
   if (!normalized) {
@@ -435,9 +434,9 @@ function normalizedLogoUrl(value) {
       return url.toString();
     }
   } catch {
-    // Fall through to the bundled logo.
+    // An invalid logo must not select a different image.
   }
-  return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+  return '';
 }
 
 function normalizedText(value, maximumLength) {

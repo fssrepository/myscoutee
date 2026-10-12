@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ActivityEventDTO } from '../../../../../shared/core/contracts/activity.interface';
-import type { InfoCardData } from '../../../../../shared/ui';
+import type { ActivityEventDTO } from '../../../../../shared/core/contracts/common/activity.interface';
+import type { InfoCardData } from '@fssrepository/myscoutee-components';
 
 import { ActivitiesEventsController } from './activities-event-template.component';
 
@@ -83,7 +83,8 @@ describe('ActivitiesEventsController publication sync', () => {
     expect(emitActivityEventSync).toHaveBeenCalledOnce();
     expect(emitActivityEventSync).toHaveBeenCalledWith({
       ...source,
-      status: expectedStatus
+      status: expectedStatus,
+      ...(action === 'publish' ? { cancelled: false, cancellationRefundsPending: false, canCancelForFullRefund: false } : {})
     });
     expect(patchVisibleItem).not.toHaveBeenCalled();
   });

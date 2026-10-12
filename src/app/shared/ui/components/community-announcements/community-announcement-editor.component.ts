@@ -1,14 +1,21 @@
 import { DocumentAttachments } from '../core/form/flow/document-attachments';
 import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PopupComponent, type PopupModel } from '../core/popup';
-import { FormFlowComponent, type FormFlowModel, type FormFlowActionEvent } from '../core/form/flow';
-import type { AppMenuModel } from '../core/menu';
-import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community-announcements.store';
-import { MediaService } from '../../../core/base/services/media.service';
-import { I18nService } from '../../../core/base/services/i18n.service';
-import { ExplanationGuideService } from '../../../core/base/services/explanation-guide.service';
-import { VOTE_CHOICES, type VoteChoice, type SaveAnnouncement } from '../../../core/contracts/community-announcement.interface';
+import {
+  PopupComponent,
+  type PopupModel,
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowActionEvent,
+  type AppMenuModel,
+  ExplanationGuideService
+} from '@fssrepository/myscoutee-components';
+
+import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community/community-announcements.store';
+import { MediaService } from '../../../core/base/services/media/media.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+
+import { VOTE_CHOICES, type VoteChoice, type SaveAnnouncement } from '../../../core/contracts/community/community-announcement.interface';
 @Component({selector:'app-community-announcement-editor',standalone:true,imports:[FormsModule,PopupComponent,FormFlowComponent],
  template:`<app-popup [model]="popup()" [zIndex]="15000" data-guide-context="community-announcement-editor">
    @if (editor().readOnly && editor().view !== 'voting') {
