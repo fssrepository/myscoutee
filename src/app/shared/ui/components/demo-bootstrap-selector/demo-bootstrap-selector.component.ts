@@ -606,9 +606,8 @@ export class DemoBootstrapSelectorComponent {
     if (!request || !this.isCurrentContextRequest(requestToken)) {
       return;
     }
-    // Session preparation has finished. Keep the selected, disabled list under
-    // any permission/onboarding popup opened by the entry flow.
-    this.commit(() => { this.loading = false; });
+    // Keep the completed progress visible until the store closes the selector
+    // after successful entry. Only a failed selection resets the loading state.
     try {
       const result = await request.onSelect(userId, mode, this.users.find(user => user.id === userId));
       if (!this.isCurrentContextRequest(requestToken)) {
