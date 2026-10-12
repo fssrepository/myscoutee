@@ -29,7 +29,7 @@ import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../../contracts/chat/chat.interf
 import type { IChatsService } from '../../../contracts/common/activity.interface';
 import type { ChatCallEvent, ChatCallRequest } from '../../../contracts/chat/chat-call.interface';
 
-import type { ActivitiesFeedFilters } from '../../../contracts';
+import type { ChatFeedFilters } from '../../../contracts';
 import {
   SessionService
 } from '../../../base/services/accounts/session.service';
@@ -306,7 +306,7 @@ export class HttpChatsService implements IChatsService {
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
+    query: ListQuery<ChatFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
@@ -1000,19 +1000,19 @@ export class HttpChatsService implements IChatsService {
     }));
   }
 
-  private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
+  private activitiesChatContextFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
     return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport' || value === 'campaign' || value === 'cases'
       ? value
       : 'all';
   }
 
-  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+  private activitiesSecondaryFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
     const value = query.filters?.secondaryFilter;
     return value === 'relevant' || value === 'past' ? value : 'recent';
   }
 
-  private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
+  private activitiesSupportCaseFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.SupportCaseFilter {
     const value = query.filters?.supportCaseFilter;
     return value === 'pending' || value === 'warned' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }

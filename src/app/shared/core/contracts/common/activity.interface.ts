@@ -198,7 +198,7 @@ export interface IChatsService {
   queryChatById(chatId: string): Promise<ChatContracts.ChatDTO | null>;
   queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
+    query: ListQuery<ChatContracts.ChatFeedFilters>,
     signal?: AbortSignal
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
   queryChatSharedMessages(chat: ChatContracts.ChatDTO, kind: 'event' | 'asset'): Promise<ChatContracts.ChatMessageDto[]>;
@@ -223,17 +223,13 @@ export interface IRatesService {
   ): Promise<ActivityRatePageResultDTO>;
 }
 
-export interface ActivitiesFeedFilters {
+export interface ActivitiesFeedFilters extends ChatContracts.ChatFeedFilters {
   campaignId?: string | null;
   primaryFilter?: ActivitiesPrimaryFilter;
   eventScopeFilter?: ActivitiesEventScope;
-  secondaryFilter?: ActivitiesSecondaryFilter;
-  chatContextFilter?: ChatContracts.ActivitiesChatContextFilter;
   hostingPublicationFilter?: HostingPublicationFilter;
   rateFilter?: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
-  adminServiceOnly?: boolean;
-  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export interface EventExploreFilterPreferences {

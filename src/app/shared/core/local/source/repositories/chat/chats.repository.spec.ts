@@ -503,8 +503,8 @@ describe('LocalChatsRepository chat pages', () => {
 });
 
 function pageRequest(
-  overrides: Partial<SharedListQuery<ContractTypes.ActivitiesFeedFilters>> = {}
-): SharedListQuery<ContractTypes.ActivitiesFeedFilters> {
+  overrides: Partial<SharedListQuery<ContractTypes.ChatFeedFilters>> = {}
+): SharedListQuery<ContractTypes.ChatFeedFilters> {
   const { filters, ...queryOverrides } = overrides;
   return {
     page: 0,
@@ -513,11 +513,8 @@ function pageRequest(
     direction: 'desc',
     view: 'day',
     filters: {
-      primaryFilter: 'chats',
       secondaryFilter: 'recent',
       chatContextFilter: 'all',
-      hostingPublicationFilter: 'all',
-      rateFilter: 'individual-given',
       ...filters
     },
     ...queryOverrides

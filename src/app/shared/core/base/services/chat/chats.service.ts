@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../app-utils';
 import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
-import type { ActivitiesFeedFilters } from '../../../contracts';
+import type { ChatFeedFilters } from '../../../contracts';
 import type {
   ChatDTO,
   ChatHeaderSyncResponseDTO,
@@ -308,7 +308,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
+    query: ListQuery<ChatFeedFilters>,
     signal?: AbortSignal
   ): Promise<PageResult<ChatDTO, {
     chats?: number;

@@ -19,7 +19,7 @@ import { UserProfileState } from '../../../../common/user-profile-state';
 import { LocalChatMessageMapper, LocalChatThreadMapper } from '../../mappers';
 import type * as ActivityContracts from '../../../../contracts/common/activity.interface';
 
-import type { ActivitiesFeedFilters } from '../../../../contracts';
+import type { ChatFeedFilters } from '../../../../contracts';
 
 @Injectable({
   providedIn: 'root'
@@ -417,7 +417,7 @@ export class LocalChatsRepository {
 
   queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ChatFeedFilters>
   ): { items: ChatThreadRecord[]; total: number; nextCursor: string | null } {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
@@ -1070,7 +1070,7 @@ export class LocalChatsRepository {
 
   private queryUserRecordsForPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ChatFeedFilters>
   ): ChatThreadRecord[] {
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
     return table.ids
@@ -1113,19 +1113,19 @@ export class LocalChatsRepository {
     return 'all';
   }
 
-  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+  private activitiesSecondaryFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
     const value = query.filters?.secondaryFilter;
     return value === 'relevant' || value === 'past' ? value : 'recent';
   }
 
-  private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
+  private activitiesChatContextFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
     return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport' || value === 'contacts' || value === 'groupSupport' || value === 'campaign' || value === 'cases'
       ? value
       : 'all';
   }
 
-  private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
+  private activitiesSupportCaseFilter(query: ListQuery<ChatFeedFilters>): ContractTypes.SupportCaseFilter {
     const value = query.filters?.supportCaseFilter;
     return value === 'pending' || value === 'warned' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }
@@ -1137,7 +1137,7 @@ export class LocalChatsRepository {
 
   private sortChatPageRecords(
     records: readonly ChatThreadRecord[],
-    query: ListQuery<ActivitiesFeedFilters>
+    query: ListQuery<ChatFeedFilters>
   ): ChatThreadRecord[] {
     const direction = query.direction === 'asc' ? 1 : -1;
     const sorted = [...records];
@@ -1237,7 +1237,7 @@ export class LocalChatsRepository {
     };
   }
 
-  private resolvePageStartIndex(query: ListQuery<ActivitiesFeedFilters>, pageSize: number): number {
+  private resolvePageStartIndex(query: ListQuery<ChatFeedFilters>, pageSize: number): number {
     const cursorIndex = Number(query.cursor);
     if (Number.isFinite(cursorIndex)) {
       return Math.max(0, Math.trunc(cursorIndex));

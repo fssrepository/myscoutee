@@ -13,7 +13,7 @@ import { AppUtils } from '../../../../base/app-utils';
 import * as AppConstants from '../../../../common/constants';
 import type { AssetType } from '../../../../common/constants';
 
-import type { ActivitiesFeedFilters } from '../../../../contracts';
+import type { ChatFeedFilters } from '../../../../contracts';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
@@ -100,7 +100,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
+    query: ListQuery<ChatFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivitiesChatPageResultDTO> {
     signal?.throwIfAborted();

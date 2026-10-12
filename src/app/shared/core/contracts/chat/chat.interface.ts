@@ -1,3 +1,4 @@
+import type { ActivitiesSecondaryFilter } from '../common/activity.interface';
 import type * as AppConstants from '../../common/constants';
 import type { ActivityEventStatus } from '../common/activity.interface';
 import type { SubEventDTO } from '../events/event.interface';
@@ -250,4 +251,12 @@ export interface ChatVoiceClip {
   mimeType: string;
   durationSeconds: number;
   sizeBytes: number;
+}
+
+/** Filters shared by the local and HTTP chat feeds; wire field names stay unchanged. */
+export interface ChatFeedFilters {
+  secondaryFilter?: ActivitiesSecondaryFilter;
+  chatContextFilter?: ActivitiesChatContextFilter;
+  adminServiceOnly?: boolean;
+  supportCaseFilter?: SupportCaseFilter;
 }
