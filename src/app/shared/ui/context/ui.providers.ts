@@ -2,8 +2,8 @@ import { MYSCOUTEE_FORM_FLOW_CONTROLS } from '../components/core/form/flow/form-
 import { MediaService } from '../../core/base/services/media/media.service';
 import { DeploymentConfigurationService } from '../../core/base/services/platform/deployment-configuration.service';
 import { MYSCOUTEE_IMAGE_DETAILS } from '../components/photo-feed-popup/image-details';
-import { inject } from '@angular/core';
-import { FORM_FLOW_CONTROLS, UI_BRANDING, UI_IMAGE_DETAILS, UI_IMAGE_UPLOAD, EXPLANATION_GUIDE_OPTIONS, UI_IMAGE_URLS, UI_LIST_DEFAULTS, provideUiTranslations } from '@fssrepository/myscoutee-components';
+import { inject, provideEnvironmentInitializer } from '@angular/core';
+import { OverlayNavigationStore, FORM_FLOW_CONTROLS, UI_BRANDING, UI_IMAGE_DETAILS, UI_IMAGE_UPLOAD, EXPLANATION_GUIDE_OPTIONS, UI_IMAGE_URLS, UI_LIST_DEFAULTS, provideUiTranslations } from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../core/base/services/localization/i18n.service';
 import { HelpCenterService } from '../../core/base/services/help/help-center.service';
 import { APP_STORAGE_KEYS } from '../../core/common/storage-scope';
@@ -13,6 +13,8 @@ import { ROUTE_CONFIG } from '../../core/base/config';
 
 /** Bind the shared UI to the application's existing translation state. */
 export const MYSCOUTEE_UI_PROVIDERS = [
+  // Register same-route popup history before Router's window popstate listener.
+  provideEnvironmentInitializer(() => { inject(OverlayNavigationStore); }),
   provideUiTranslations(I18nService),
   { provide: FORM_FLOW_CONTROLS, useValue: MYSCOUTEE_FORM_FLOW_CONTROLS },
   { provide: UI_IMAGE_UPLOAD, useExisting: MediaService },
