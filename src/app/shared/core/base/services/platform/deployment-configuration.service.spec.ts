@@ -137,7 +137,7 @@ describe('DeploymentConfigurationService', () => {
   it('uses the sized app icons rather than the small inline logo for the bundled brand', async () => {
     const service = TestBed.inject(DeploymentConfigurationService);
 
-    service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING });
+    service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING, productName: 'MyScoutee', logoUrl: 'assets/logo/heart.webp' });
 
     const manifest = JSON.parse(await readBlob(createObjectUrl.mock.calls[0][0]));
     expect(manifest.icons).toEqual([192, 512].map(size => ({
@@ -333,6 +333,20 @@ describe('DeploymentConfigurationService', () => {
     })).toBe(true);
     expect(service.paymentProviderId()).toBeNull();
     expect(loadLocalBranding).not.toHaveBeenCalled();
+  });
+
+  it('does not invent branding before loading or after absent/invalid fields', () => {
+    const service = TestBed.inject(DeploymentConfigurationService);
+    expect(service.branding().productName).toBe('');
+    expect(service.branding().logoUrl).toBe('');
+    const missing = service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING });
+    expect(missing.productName).toBe('');
+    expect(missing.homeLabel).toBe('');
+    expect(missing.logoUrl).toBe('');
+    const invalid = service.applyBranding({ ...DEFAULT_DEPLOYMENT_BRANDING, productName: 'Configured', logoUrl: 'javascript:alert(1)' });
+    expect(invalid.productName).toBe('Configured');
+    expect(invalid.logoUrl).toBe('');
+    expect(linkHref('link[rel~="icon"]')).toBeNull();
   });
 
   function addHeadFixture(

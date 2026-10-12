@@ -143,10 +143,8 @@ export class DeploymentConfigurationService
   }
 
   private normalize(value: DeploymentBrandingDto): DeploymentBrandingDto {
-    const productName = `${value?.productName ?? ''}`.trim().slice(0, 80)
-      || DEFAULT_DEPLOYMENT_BRANDING.productName;
-    const homeLabel = `${value?.homeLabel ?? ''}`.trim().slice(0, 120)
-      || productName;
+    const productName = `${value?.productName ?? ''}`.trim().slice(0, 80);
+    const homeLabel = `${value?.homeLabel ?? ''}`.trim().slice(0, 120);
     const logoCharacterIndex = this.logoCharacterIndex(
       value?.logoCharacterIndex,
       productName
@@ -191,9 +189,9 @@ export class DeploymentConfigurationService
       const url = new URL(normalized);
       return url.protocol === 'https:' && !url.username && !url.password
         ? url.toString()
-        : DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+        : '';
     } catch {
-      return DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
+      return '';
     }
   }
 
@@ -262,7 +260,7 @@ export class DeploymentConfigurationService
     const logoMediaType = logoUrl
       ? this.logoMediaType(branding.logoUrl) || 'image/png'
       : '';
-    const usesBundledLogo = logoUrl === this.absoluteLogoUrl(DEFAULT_DEPLOYMENT_BRANDING.logoUrl);
+    const usesBundledLogo = logoUrl === this.absoluteLogoUrl('assets/logo/heart.webp');
     const manifest = {
       name: branding.productName,
       short_name: Array.from(branding.productName).slice(0, 24).join(''),

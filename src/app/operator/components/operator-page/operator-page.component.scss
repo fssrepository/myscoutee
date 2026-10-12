@@ -54,15 +54,6 @@
   font-weight: 900;
   line-height: 0.8;
   text-decoration: none;
-  background-image: linear-gradient(
-    90deg,
-    var(--deployment-brand-primary),
-    var(--deployment-brand-secondary),
-    var(--deployment-brand-accent)
-  );
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  background-size: 100% 3px;
   --deployment-brand-logo-size: 38px;
   font-size: 2rem;
 }
@@ -105,6 +96,7 @@
 .operator-actions {
   flex: 0 0 auto;
   min-width: 0;
+  --app-menu-row-width: 100%;
 }
 
 .operator-leaderboard {
