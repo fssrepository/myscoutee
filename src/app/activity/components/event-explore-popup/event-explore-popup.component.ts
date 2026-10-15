@@ -34,6 +34,7 @@ import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/acti
 import { untracked } from '@angular/core';
 import { ChatShareStore } from '../../../shared/ui/context/stores/chat/chat-share.store';
 import { FollowingStore } from '../../../shared/ui/context/stores/activity/following.store';
+import { ActivityEventInfoCardMenuConverter } from '../../../shared/ui/converters/event/activity-event-info-card-menu.converter';
 import { EventExploreFilterPopupComponent } from '../event-explore-filter-popup/event-explore-filter-popup.component';
 import {
   ChangeDetectionStrategy,
@@ -703,8 +704,7 @@ export class EventExplorePopupComponent implements OnDestroy {
         id: actionId,
         label: config.label,
         icon: config.icon,
-        palette: actionId === 'addWatchlist' || actionId === 'removeWatchlist'
-          ? 'blue' : this.infoCardActionPalette(config.tone),
+        palette: ActivityEventInfoCardMenuConverter.actionPalette(actionId, config.tone),
         surface: 'tinted',
         context: {
           menu: 'info-card',
@@ -714,23 +714,6 @@ export class EventExplorePopupComponent implements OnDestroy {
         }
       }];
     })];
-  }
-
-  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
-    switch (tone) {
-      case 'accent':
-        return 'green';
-      case 'share':
-        return 'teal';
-      case 'review':
-        return 'violet';
-      case 'warning':
-        return 'warning';
-      case 'destructive':
-        return 'danger';
-      default:
-        return 'neutral';
-    }
   }
 
   protected eventExploreOrderLabel(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {

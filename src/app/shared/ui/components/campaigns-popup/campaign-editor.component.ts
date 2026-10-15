@@ -36,16 +36,17 @@ export function campaignViewControl(view: CampaignView): PopupMenuControl {
   } @else {
     <app-popup [model]="popupModel()" [zIndex]="14500">
       <ng-container [ngTemplateOutlet]="body"></ng-container>
-      @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
     </app-popup>
   }
   <ng-template #body>
-    @if (readOnly() && view() === 'organizer' && campaign(); as c) {
+    @if (store.error() === 'campaign.load.failed') {
+      <!-- The popup's shared error block owns failed detail loads. -->
+    } @else if (readOnly() && view() === 'organizer' && campaign(); as c) {
       <app-profile-view-popup [embedded]="true" [profileTarget]="{userId:c.ownerUserId,label:c.ownerName}"></app-profile-view-popup>
     } @else {
       <input #files type="file" hidden multiple accept=".pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.odt,.ods" (change)="documents.upload($event)">
-      <app-form-flow data-guide-field="campaign-details" [model]="flowModel()" [ngModel]="formView()" (ngModelChange)="formChanged($event)"
-        (action)="formAction($event,files)" [disabled]="store.busy()" [saving]="store.busy()||documents.uploading()"></app-form-flow>
+      <app-form-flow data-guide-field="campaign-details" [model]="flowModel()" [ngModel]="form()" (ngModelChange)="form.set($event)"
+        (action)="formAction($event,files)" [loading]="loading()" [disabled]="loading()||store.busy()" [saving]="(!loading()&&store.busy())||documents.uploading()"></app-form-flow>
     }
   </ng-template>`,
   styles:[`:host { --form-flow-grouped-media-image-height:100%; --form-flow-grouped-media-image-align:stretch; --form-flow-grouped-media-image-width:100%; }
@@ -54,14 +55,13 @@ export function campaignViewControl(view: CampaignView): PopupMenuControl {
 export class CampaignEditorComponent implements OnChanges, OnDestroy {
    readonly campaign = input<Campaign | null>(null);
    readonly readOnly = input(false);
+   readonly loading = input(false);
    readonly embedded = input(false);
   protected readonly store = inject(CampaignsStore);
   private readonly i18n = inject(I18nService);
   private readonly media = inject(MediaService);
   protected readonly view = signal<'details'|'organizer'>('details');
   protected readonly form = signal<SaveCampaign>(null!);
-  protected readonly formView = computed(() => ({...this.form(),attachmentNames:this.form().attachments.map(f=>f.name).join(', ')}));
-  protected formChanged(value:SaveCampaign & {attachmentNames:string}):void{const {attachmentNames,...form}=value;this.form.set(form);}
   protected formAction(event: FormFlowActionEvent, files: HTMLInputElement): void {
     const campaign = this.campaign();
     if (event.sourceEvent.id === 'ask' && this.readOnly() && campaign) void this.store.ask(campaign);
@@ -81,10 +81,10 @@ export class CampaignEditorComponent implements OnChanges, OnDestroy {
       description: c?.description ?? '', imageUrls: [...(c?.imageUrls ?? [])], attachments:[...(c?.attachments??[])], kind: c?.kind ?? 'work', category: c?.category ?? 'other' });
   }
   protected readonly popupModel = computed<PopupModel>(() => {
-    return { errorMessage:this.documents.error(), title: this.readOnly() ? 'campaign.view' : this.campaign() ? 'campaign.edit' : 'campaign.create',
+    return { errorMessage:this.store.error() || this.documents.error(), title: this.readOnly() ? 'campaign.view' : this.campaign() ? 'campaign.edit' : 'campaign.create',
       size: 'wide', height: 'full', mobilePresentation: 'fullscreen', bodyLayout:this.readOnly()&&this.view()==='organizer'?'fill':undefined,
       onClose: () => this.store.closeEditor(), headerControls: this.readOnly() ? [campaignViewControl(this.view())] : [{ id: 'save', kind: 'menu', menuKind: 'inline', items: [
-        { id: 'save', icon: 'done', ariaLabel: 'save', kind: 'action', palette: 'success', disabled: this.store.busy() || this.documents.uploading() || !this.form().title.trim(),
+        { id: 'save', icon: 'done', ariaLabel: 'save', kind: 'action', palette: 'success', disabled: this.loading() || this.store.error() === 'campaign.load.failed' || this.store.busy() || this.documents.uploading() || !this.form().title.trim(),
           progress: this.store.busy() ? { state: 'loading', shape: 'circle' } : null }
       ] }], onMenuSelect: event => { if(this.readOnly()){if(event.itemSelect.id==='details'||event.itemSelect.id==='organizer')this.view.set(event.itemSelect.id);}else if(!this.documents.uploading())void this.store.save(this.form()); } };
   });

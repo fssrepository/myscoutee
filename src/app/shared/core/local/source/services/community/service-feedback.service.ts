@@ -63,7 +63,10 @@ export class LocalServiceFeedbackService extends LocalRouteDelayService implemen
               return {feedback:structuredClone(feedback),providerName:this.users.queryUserById(feedback.providerAccountId)?.name??'',reviewerName:this.users.queryUserById(feedback.viewerAccountId)?.name??'',
                 serviceTitle:visible?offering.title:null,serviceImageUrl:visible?offering.imageUrls[0]??null:null};
             });
-            return {items,total:rows.length,nextCursor:(page+1)*size<rows.length?String(page+1):null,context:Object.fromEntries(['pending','feedbacked','removed','received'].map(b=>[b,all.filter(r=>matches(r,b)).length]))};
+            const stored = this.users.queryUserById(actor)?.menuCounters ?? {};
+            const context = Object.fromEntries(['pending','feedbacked','removed','received'].map(b=>[b,stored[`serviceFeedback_${b}`] ?? 0]));
+            const total = context[bucket];
+            return {items,total,nextCursor:(page+1)*size<total?String(page+1):null,context};
       })()
     ]);
     signal?.throwIfAborted();

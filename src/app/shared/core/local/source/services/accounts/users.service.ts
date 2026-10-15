@@ -1,7 +1,5 @@
 import { LocalRoleNotificationsService } from '../notifications/role-notifications.service';
-import { LocalCommunityAccessService } from '../community/community-access.service';
-import { LocalCommunityCasesRepository } from '../../repositories/community/community-cases.repository';
-import { LocalCommunityGroupsRepository } from '../../repositories/groups/community-groups.repository';
+import { SEED_PAYMENT_EXCHANGE_RATES } from '../../../seed/payment-exchange-rates';
 import { LocalCommunityGroupsService } from '../groups/community-groups.service';
 import { LocalContentModerationRepository } from '../../repositories/content/content-moderation.repository';
 import { LocalIntegrationRepository } from '../../repositories/integrations/integration.repository';
@@ -65,9 +63,6 @@ import { APP_STORAGE_KEYS } from '../../../../common/storage-scope';
 })
 export class LocalUsersService extends LocalRouteDelayService implements UserService {
   private readonly roleNotifications = inject(LocalRoleNotificationsService);
-  private readonly communityCases = inject(LocalCommunityCasesRepository);
-  private readonly communityAccess = inject(LocalCommunityAccessService);
-  private readonly communityGroups = inject(LocalCommunityGroupsRepository);
   private readonly groups = inject(LocalCommunityGroupsService);
   private readonly contentModeration = inject(LocalContentModerationRepository);
   private readonly integrationRepository = inject(LocalIntegrationRepository);
@@ -337,12 +332,21 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const snapshot = LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
       suppressImpressionChangeFlags: !advanced
     });
+    if (currentUser) {
+      snapshot.counters = {
+        ...snapshot.counters,
+        ...this.buildInitialMenuCounterOverrides(LocalUsersMapper.toDto(currentUser))
+      };
+    }
     snapshot.contentModeration = currentUser?.admin ? this.contentModeration.snapshot() : null;
     snapshot.following = currentUser?.following ?? { organizerIds: [], eventCount: 0 };
     snapshot.feedCounters = currentUser?.feedCounters ?? { revision: 0, counts: {} };
     const payment = (await this.operatorRegistryRepository.read())?.configuration.payment;
     snapshot.paymentCardsAvailable = payment?.credentialConfigured === true
       && payment.availableProviders.some(provider => provider.id === payment.providerId);
+    snapshot.paymentCurrencies = Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort();
+    snapshot.paymentExchangeRates = Object.fromEntries(Object.entries(SEED_PAYMENT_EXCHANGE_RATES).map(([currency, rate]) => [currency, 1 / rate]));
+    snapshot.paymentSummaryCurrency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${normalizedUserId}`) || 'EUR';
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
       userId: normalizedUserId,
       page: 0,
@@ -459,17 +463,18 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async saveUserProfile(user: UserDto, _requestTimeoutMs?: number): Promise<UserDto | null> {
-    if (!user?.id?.trim()) {
-      return null;
-    }
-    await this.validateLocationForSave(user.locationCoordinates);
-    const previous = this.usersRepository.queryUserById(user.id);
-    const savedUser = this.upsertUser(user);
-    await this.roleNotifications.memberJoined(previous, savedUser);
-    this.clearRealtimeState(savedUser.id);
-    await this.usersRepository.flushToIndexedDb();
-    await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
-    return savedUser;
+    return this.withRouteDelay(LocalUsersService.USER_BY_ID_ROUTE, async (): Promise<UserDto | null> => {
+      if (!user?.id?.trim()) {
+        return null;
+      }
+      await this.validateLocationForSave(user.locationCoordinates);
+      const previous = this.usersRepository.queryUserById(user.id);
+      const savedUser = this.upsertUser(user);
+      await this.roleNotifications.memberJoined(previous, savedUser);
+      this.clearRealtimeState(savedUser.id);
+      await this.usersRepository.flushToIndexedDb();
+      return savedUser;
+    });
   }
 
   async patchUserActivityCounters(userId: string, patch: UserMenuCountersDto): Promise<UserDto | null> {
@@ -665,25 +670,26 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     signal?: AbortSignal,
     _requestTimeoutMs?: number
   ): Promise<UserSubmitActionResponseDto> {
-    await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE, signal);
-    const normalizedUserId = request.userId.trim();
-    const user = this.usersRepository.queryUserById(normalizedUserId);
-    if (user) {
-      const previousProfileStatus = user.profileStatus === 'deleted'
-        ? (user.previousProfileStatus ?? 'public')
-        : user.profileStatus;
-      this.upsertUser(LocalUsersMapper.toDto({
-        ...user,
-        profileStatus: 'deleted',
-        previousProfileStatus,
-        deletedAtIso: new Date().toISOString()
-      }));
-      this.clearRealtimeState(normalizedUserId);
-    }
-    return {
-      submitted: true,
-      message: null
-    };
+    return this.withRouteDelay(LocalUsersService.USER_BY_ID_ROUTE, async (): Promise<UserSubmitActionResponseDto> => {
+      const normalizedUserId = request.userId.trim();
+      const user = this.usersRepository.queryUserById(normalizedUserId);
+      if (user) {
+        const previousProfileStatus = user.profileStatus === 'deleted'
+          ? (user.previousProfileStatus ?? 'public')
+          : user.profileStatus;
+        this.upsertUser(LocalUsersMapper.toDto({
+          ...user,
+          profileStatus: 'deleted',
+          previousProfileStatus,
+          deletedAtIso: new Date().toISOString()
+        }));
+        this.clearRealtimeState(normalizedUserId);
+      }
+      return {
+        submitted: true,
+        message: null
+      };
+    }, signal);
   }
 
   private async validateLocationForSave(coordinates?: LocationCoordinates | null): Promise<void> {
@@ -702,7 +708,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     current: UserDto['activities'],
     patch: UserMenuCountersDto
   ): UserDto['activities'] {
-    const next = { ...current } as UserDto['activities'] & Record<string, unknown>;
+    const next = { ...current, menuCounters: { ...(patch.menuCounters ?? current.menuCounters) } } as UserDto['activities'] & Record<string, unknown>;
     const scalarKeys = [
       'game',
       'chats',
@@ -716,7 +722,6 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'contacts',
       'feedback',
       'notifications',
-      'cases',
       'paymentRefundsPending',
       'contactRequestsPending',
       'adminJobs',
@@ -762,7 +767,6 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'contacts',
       'feedback',
       'notifications',
-      'cases',
       'paymentRefundsPending',
       'contactRequestsPending',
       'adminJobs',
@@ -950,10 +954,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       supplies,
       tickets,
       contacts: normalizeCounter(notificationActivities?.contacts),
-      feedback:feedback+(profile?.workspaceGroupId==='myscoutee-community'?this.communityCases.countFeedback(accountId??user.id):0),
+      feedback,
       notifications: normalizeCounter(notificationActivities?.notifications),
-      cases: profile?.workspaceGroupId && this.communityGroups.find(profile.workspaceGroupId)?.groupType === 'community'
-        ? this.communityCases.countVisible(accountId ?? user.id, this.communityAccess.managedGroups(accountId ?? user.id)) : 0,
+      menuCounters: { ...(accountId ? this.usersRepository.queryUserById(accountId)?.menuCounters : {}), ...profile?.menuCounters },
       paymentRefundsPending: normalizeCounter(activities?.paymentRefundsPending),
       contactRequestsPending: normalizeCounter(notificationActivities?.contactRequestsPending),
       chat: {
@@ -1021,6 +1024,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         contacts: counters.contacts ?? user.activities.contacts,
         feedback: counters.feedback ?? user.activities.feedback,
         notifications: counters.notifications ?? user.activities.notifications,
+        menuCounters: { ...(counters.menuCounters ?? user.activities.menuCounters) },
         paymentRefundsPending: counters.paymentRefundsPending ?? user.activities.paymentRefundsPending,
         contactRequestsPending: counters.contactRequestsPending ?? user.activities.contactRequestsPending,
         chat: counters.chat ?? user.activities.chat,

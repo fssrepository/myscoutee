@@ -22,6 +22,14 @@ describe('Community membership writes and recipient attention', () => {
   const notices = () => Object.values(state[NOTIFICATIONS_TABLE_NAME].byId);
   const member = (userId: string) => state[ACTIVITY_MEMBERS_TABLE_NAME].byId[`community:group:${userId}`];
 
+  it('stores group counts on the account at mutation time, retaining workspace attention separately', async () => {
+    await service.join('guest', 'group');
+    expect(state.users.byId['guest'].menuCounters).toMatchObject({ groups_pending: 1, groups_participation: 0 });
+    const rows = await service.page('guest', { page: 0, pageSize: 10, filters: { bucket: 'pending' } });
+    expect(rows.context).toMatchObject({ pending: 1, participation: 0, trash: 0 });
+    expect((await service.detail('guest', 'group')).menuCounters).toMatchObject({ groups_pending: 1 });
+  });
+
   beforeEach(() => {
     const users = Object.fromEntries(['admin', 'member', 'guest'].map(id => [id, {
       id, name: id, initials: id[0], gender: 'man', city: '', languages: [], activities: {}, images: []
@@ -428,7 +436,7 @@ describe('Community membership writes and recipient attention', () => {
       page: 0, pageSize: 10, filters: { bucket }
     });
     expect((await page('invitations')).items.map(row => row.id)).toEqual(['group']);
-    expect((await page('invitations')).context).toEqual({ hosting: 0, participation: 0, pending: 0, invitations: 1 });
+    expect((await page('invitations')).context).toEqual({ hosting: 0, participation: 0, pending: 0, invitations: 1, trash: 0 });
     expect((await page('participation')).items).toEqual([]);
     expect((await page('hosting')).items).toEqual([]);
     expect((await page('explore')).items).toEqual([]);

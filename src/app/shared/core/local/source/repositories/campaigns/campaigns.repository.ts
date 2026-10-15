@@ -11,6 +11,25 @@ export class LocalCampaignsRepository {
     const table = this.db.read()[CAMPAIGNS_TABLE_NAME];
     return table.ids.map(id => table.byId[id]).filter(record => record?.workspaceGroupId === workspaceGroupId);
   }
+  counts(workspaceGroupId: string | undefined, ownerUserId: string) {
+    const user = this.db.read().users.byId[ownerUserId];
+    const counts = user?.workspaceGroupId === workspaceGroupId ? user.menuCounters : undefined;
+    return { published: counts?.['campaignsPublished'] ?? 0, draft: counts?.['campaignsDrafts'] ?? 0, trash: counts?.['campaignsTrash'] ?? 0 };
+  }
+  static withCounterWrite(state: import('../../../common/memory.schema').AppMemorySchema, record: CampaignRecord) {
+    const previous = state.campaigns.byId[record.id];
+    const owner = state.users.byId[record.ownerUserId];
+    if (!owner || owner.workspaceGroupId !== record.workspaceGroupId) throw new Error('Campaign owner not found');
+    const values = { ...owner.menuCounters };
+    const key = (status: CampaignRecord['status']) => ({ published: 'campaignsPublished', draft: 'campaignsDrafts', trash: 'campaignsTrash' })[status];
+    if (previous?.counterApplied) values[key(previous.status)] = (values[key(previous.status)] ?? 0) - 1;
+    values[key(record.status)] = (values[key(record.status)] ?? 0) + 1;
+    return { ...state,
+      users: { ...state.users, byId: { ...state.users.byId, [owner.id]: { ...owner, menuCounters: values } } },
+      campaigns: { byId: { ...state.campaigns.byId, [record.id]: { ...structuredClone(record), counterApplied: true } },
+        ids: previous ? state.campaigns.ids : [...state.campaigns.ids, record.id] }
+    };
+  }
   interactionDates(userId: string, targetUserId: string): Map<string, string> {
     const state = this.db.read();
     const dates = new Map<string, string>();
@@ -53,10 +72,7 @@ export class LocalCampaignsRepository {
     this.db.write(state => {
       const table = state[CAMPAIGNS_TABLE_NAME];
       if (table.byId[record.id]?.version !== expectedVersion) throw new Error('Campaign changed');
-      return { ...state, [CAMPAIGNS_TABLE_NAME]: {
-        byId: { ...table.byId, [record.id]: structuredClone(record) },
-        ids: table.byId[record.id] ? table.ids : [...table.ids, record.id]
-      } };
+      return LocalCampaignsRepository.withCounterWrite(state, record);
     });
     return record;
   }

@@ -256,6 +256,9 @@ export class HttpUsersService implements UserService {
         following?: UserRealtimeLongPollResponseDto['following'];
         feedCounters?: UserRealtimeLongPollResponseDto['feedCounters'];
         paymentCardsAvailable?: boolean;
+        paymentCurrencies?: readonly string[];
+        paymentExchangeRates?: UserRealtimeLongPollResponseDto['paymentExchangeRates'];
+        paymentSummaryCurrency?: string;
         userId?: string;
         profileStatus?: UserRealtimeLongPollResponseDto['profileStatus'];
         locationCoordinates?: UserRealtimeLongPollResponseDto['locationCoordinates'];
@@ -289,6 +292,9 @@ export class HttpUsersService implements UserService {
         following: response.following,
         feedCounters: response.feedCounters,
         paymentCardsAvailable: response.paymentCardsAvailable === true,
+        paymentCurrencies: response.paymentCurrencies,
+        paymentExchangeRates: response.paymentExchangeRates,
+        paymentSummaryCurrency: response.paymentSummaryCurrency,
         notificationDevices: response.notificationDevices?.map(device => ({
           deviceId: device.deviceId, notificationsEnabled: device.notificationsEnabled === true
         })),
@@ -756,7 +762,7 @@ export class HttpUsersService implements UserService {
       contacts: this.normalizeInitialCounterValue(overrides?.contacts, user.activities?.contacts),
       feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback),
       notifications: this.normalizeInitialCounterValue(overrides?.notifications, user.activities?.notifications),
-      cases: this.normalizeInitialCounterValue(overrides?.cases, user.activities?.cases),
+      menuCounters: { ...(overrides?.menuCounters ?? user.activities?.menuCounters) },
       paymentRefundsPending: this.normalizeInitialCounterValue(
         overrides?.paymentRefundsPending,
         user.activities?.paymentRefundsPending

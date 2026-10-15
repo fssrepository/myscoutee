@@ -92,7 +92,7 @@ export class LocalServiceOfferingsService extends LocalRouteDelayService impleme
         const actor=await this.actor(userId),s=this.visible(actor,id);if(s.ownerAccountId!==actor)throw new Error('Forbidden');
             const transitions={publish:['draft','published'],unpublish:['published','draft'],trash:[s.status,'trash'],restore:['trash','draft']} as const;
             const next=transitions[action];if(!next||s.status!==next[0]||action==='trash'&&s.status==='trash')throw new Error('Invalid transition');
-            const saved=this.services.save({...s,status:next[1],updatedAtIso:new Date().toISOString(),version:version+1},version);
+            const saved=this.services.save({...s,status:next[1],updatedAtIso:new Date().toISOString(),version:s.version+1},s.version);
             await this.services.flush();return this.dto(actor,saved,new Map());
       })()
     ]);

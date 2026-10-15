@@ -7,6 +7,8 @@ export type AnnouncementAttachment = DocumentAttachment;
 export interface AnnouncementFields { communityId: string; title: string; body: string; attachments: AnnouncementAttachment[]; voting: boolean; deadlineIso: string | null; }
 export interface CommunityAnnouncement extends AnnouncementFields {
   id: string; authorAccountId: string; status: AnnouncementStatus; closed: boolean;
+  votesCount?: number | null;
+  menuCounters?: Record<string, number>;
   canVote: boolean; myBallot: VoteChoice | null; results: Record<VoteChoice, number>;
   eligibleMembers: number; castVotes: number; canManage: boolean;
   publishedAtIso: string | null; createdAtIso: string; updatedAtIso: string; version: number;

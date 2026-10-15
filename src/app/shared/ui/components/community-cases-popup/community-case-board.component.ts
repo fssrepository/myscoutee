@@ -21,6 +21,7 @@ import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
+import { PaymentMethodsService } from '../../../core/base/services/payments/payment-methods.service';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
@@ -78,6 +79,7 @@ interface TaskRow { id: string; icon:string; task: CaseBoardTask; title: string;
 export class CommunityCaseBoardComponent {
   protected readonly store = inject(CommunityCasesStore);
   private readonly i18n = inject(I18nService);
+  private readonly paymentMethods = inject(PaymentMethodsService);
   private readonly guide = inject(ExplanationGuideService);
   private readonly lists = viewChildren<SmartListComponent<TaskRow>>('columnList');
   protected readonly task = signal<CaseBoardTask | null>(null);
@@ -88,7 +90,7 @@ export class CommunityCaseBoardComponent {
     return !!c && ['open','in-progress'].includes(c.status) && c.canManage;
   });
   protected readonly config: SmartListConfig<TaskRow> = { pageSize: 200, mobilePageSizeCap: null, trackBy: (_, r) => r.id,
-    cacheable: { identity: r => r.id }, showStickyHeader: false, showGroupMarker: () => false, emptyLabel: 'case.board.empty', headerProgress: { enabled: true } };
+    cacheable: { identity: r => r.id }, showStickyHeader: false, showGroupMarker: () => false, emptyLabel: 'case.board.empty', emptyPlacement: 'start', headerProgress: { enabled: true } };
   protected readonly dependencyConfig: SmartListConfig<CaseBoardTask> = { pageSize: 200, mobilePageSizeCap: null, trackBy: (_, r) => r.id,
     showStickyHeader: false, showGroupMarker: () => false, emptyLabel: 'case.board.dependencies.empty' };
   protected readonly columns = STAGES.map(stage => ({ ...stage, label: `case.board.${stage.id}`,
@@ -104,6 +106,7 @@ export class CommunityCaseBoardComponent {
     const tasks = new Map(c.boardTasks.map(t => [t.id, t]));
     const offers = new Map(c.offers.map(offer => [offer.id, offer]));
     const active = ['open','in-progress'].includes(c.status);
+    const numberFormat = new Intl.NumberFormat(this.i18n.currentLanguage(), { maximumFractionDigits: 2 });
     return c.boardTasks.map(task => {
       const editable = active && c.canManage;
       const menu: AppMenuItem[] = [
@@ -112,9 +115,10 @@ export class CommunityCaseBoardComponent {
         ...(editable ? [{id:'task-progress',label:`case.board.action.${task.status==='todo'?'start':task.status==='in-progress'?'complete':'reopen'}`,icon:task.status==='todo'?'play_arrow':task.status==='in-progress'?'done':'restore',palette:task.status==='in-progress'?'green' as const:'blue' as const,surface:'tinted' as const,context:task}] : []),
         ...(c.canManage && task.status !== 'deleted' ? [{ id: 'task-delete', label: 'delete', icon: 'delete', palette: 'danger' as const, surface: 'tinted' as const, context: task }] : [])
       ];
-      const totals=new Map<string,number>();
-      for(const id of task.offerIds??[]){const offer=offers.get(id);if(offer)totals.set(offer.currency,(totals.get(offer.currency)??0)+offer.amount);}
-      const price=[...totals].map(([currency,amount])=>`${new Intl.NumberFormat(this.i18n.currentLanguage(),{maximumFractionDigits:2}).format(amount)} ${currency}`).join(' · ');
+      const assignedOffers = (task.offerIds ?? []).map(id => offers.get(id)).filter((offer): offer is CaseOffer => !!offer);
+      const total = this.paymentMethods.displayTotal(assignedOffers);
+      const price = !assignedOffers.length ? '' : total.amount === null ? `— ${total.currency}`
+        : `${total.converted ? '≈ ' : ''}${numberFormat.format(total.amount)} ${total.currency}`;
       return { id: task.id, price, icon:task.status==='deleted'?'delete':STAGES.find(s=>s.id===task.status)!.icon, task, title: task.title,
         subtitle: task.startAtIso ? task.endAtIso ? UiDateUtils.dateTimeRangeLabel(task.startAtIso, task.endAtIso, '')
           : `${UiDateUtils.shortMonthDayLabel(new Date(task.startAtIso))}, ${UiDateUtils.clockTimeLabel(new Date(task.startAtIso))}` : '',

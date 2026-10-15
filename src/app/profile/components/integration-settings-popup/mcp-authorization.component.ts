@@ -34,7 +34,6 @@ import { MatIconModule } from '@angular/material/icon';
         {{ ('integration.access.' + value.accessMode + '.description') | i18n }}</p>
       <app-menu class="authorization-actions" data-guide-field="mcp-authorize-actions" kind="inline" layout="row" [items]="actions()" (itemSelect)="decide($event.id === 'approve')"></app-menu>
     } @else if (!error()) { <p class="authorization-message">{{ 'integration.loading' | i18n }}</p> }
-    @if (error()) { <p class="authorization-error" role="alert">{{ error() | i18n }}</p> }
     </div>
   </app-popup>`
 })
@@ -56,7 +55,7 @@ export class McpAuthorizationComponent {
     try { this.context.set(await this.api.mcpAuthorization(this.request)); }
     catch { this.error.set('mcp.authorization.failed'); }
   }
-  protected model(): PopupModel { return {title: 'mcp.authorize', size: 'small', height: 'auto', backdropTone: 'dim',
+  protected model(): PopupModel { return {errorMessage: this.error(), title: 'mcp.authorize', size: 'small', height: 'auto', backdropTone: 'dim',
     onClose: () => { if (!this.busy()) { if (this.context()) void this.decide(false); else void this.router.navigateByUrl('/game'); } }}; }
   protected actions(): AppMenuItem[] { return [
     {id: 'cancel', label: 'cancel', palette: 'slate', layout: 'action', disabled: this.busy()},

@@ -29,14 +29,13 @@ import { CampaignHistoryPopupComponent } from '../../../../activity/components/c
   template: `
     @if (store.session()) {
       <app-popup [model]="model()" [zIndex]="14000">
-        @if (store.error() && !store.editor()) { <p role="alert">{{ store.error() | i18n }}</p> }
         <app-smart-list data-guide-field="campaign-list" [config]="config" [loadPage]="loadPage" [query]="query()" [itemTemplate]="cardTemplate" (menuItemSelect)="action($event)"></app-smart-list>
         <ng-template #cardTemplate let-card>
           <app-image-card [card]="card" [menuId]="'campaign:'+card.id" [sharedMenuItems]="cardMenu(card.eagerDetail)" (mediaAction)="store.toggleSelection(card.eagerDetail)"></app-image-card>
         </ng-template>
       </app-popup>
     }
-    @if (store.editor(); as editor) { <app-campaign-editor [campaign]="editor.campaign" [readOnly]="editor.readOnly"></app-campaign-editor> }
+    @if (store.editor(); as editor) { <app-campaign-editor [campaign]="editor.campaign" [readOnly]="editor.readOnly" [loading]="editor.loading === true"></app-campaign-editor> }
     @if (store.historyTarget()) { <app-campaign-history-popup></app-campaign-history-popup> }
   `
 })
@@ -91,11 +90,12 @@ export class CampaignsPopupComponent {
   protected readonly model = computed<PopupModel>(() => {
     const selecting = !!this.store.session()?.select; const status = this.query().filters.status ?? 'published';
     const selected = this.store.selected();
-    return { title: selecting ? 'campaign.select' : 'campaign.title', size: 'wide', height: 'full', bodyLayout: 'fill',
+    return { errorMessage: this.store.editor() ? null : this.store.error(), title: selecting ? 'campaign.select' : 'campaign.title', size: 'wide', height: 'full', bodyLayout: 'fill',
       onClose: () => this.store.close(),
       headerControls: [...(selecting ? [] : [{ id: 'status', kind: 'menu' as const, menuKind: 'select' as const,
-        trigger: { label: `campaign.status.${status}`, ...CAMPAIGN_STATUS_STYLE[status], layout: 'pill' as const },
+        trigger: { counter: { value: this.store.counters()[status], max: 99 }, counterTone: 'alert' as const, label: `campaign.status.${status}`, ...CAMPAIGN_STATUS_STYLE[status], layout: 'pill' as const },
         items: (['published', 'draft', 'trash'] as CampaignStatus[]).map(id => ({ id, label: `campaign.status.${id}`,
+          counter: { value: this.store.counters()[id], max: 99 }, counterTone: 'alert' as const,
           ...CAMPAIGN_STATUS_STYLE[id], kind: 'radio' as const, showCheck: true, active: id === status, checked: id === status, surface: 'tinted' as const })) }]), { id: 'actions', kind: 'menu', menuKind: 'inline', closeOnSelect: false, panelAlign: 'end', items: selecting
         ? [...(selected ? [{ id: 'basket', icon: 'shopping_basket', openIcon: 'shopping_basket', kind: 'branch' as const, palette: 'blue' as const,
             counter: 1, ariaLabel: 'campaign.select', items: [{ id: 'selected-campaign', label: selected.title, description: selected.ownerName,

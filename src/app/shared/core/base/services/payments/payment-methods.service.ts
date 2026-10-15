@@ -20,9 +20,37 @@ export class PaymentMethodsService extends BaseRouteModeService {
   private readonly localService = inject(LocalPaymentMethodsService);
   private readonly httpService = inject(HttpPaymentMethodsService);
 
+  private readonly displayExchangeRef = signal<{ currency: string; eurRates: Readonly<Record<string, number>> }>(
+    { currency: 'EUR', eurRates: { EUR: 1 } },
+    { equal: (a, b) => a.currency === b.currency && Object.keys(a.eurRates).length === Object.keys(b.eurRates).length
+      && Object.entries(a.eurRates).every(([key, value]) => b.eurRates[key] === value) }
+  );
+  readonly displayExchange = this.displayExchangeRef.asReadonly();
+
+  applyDisplayExchangeRates(eurRates: Readonly<Record<string, number>> | undefined, currency: string | undefined): void {
+    this.displayExchangeRef.set({ currency: currency || 'EUR', eurRates: eurRates ?? { EUR: 1 } });
+  }
+
+  /** Informational total only; original quotation amounts and payment accounting remain unchanged. */
+  displayTotal(rows: readonly { amount: number; currency: string }[]): { amount: number | null; currency: string; converted: boolean } {
+    const { currency, eurRates } = this.displayExchange();
+    let amount = 0;
+    const converted = rows.some(row => row.currency !== currency);
+    for (const row of rows) {
+      if (row.currency === currency) { amount += row.amount; continue; }
+      const source = eurRates[row.currency], target = eurRates[currency];
+      if (!(source > 0 && target > 0 && Number.isFinite(source) && Number.isFinite(target))) {
+        return { amount: null, currency, converted };
+      }
+      amount += row.amount * source / target;
+    }
+    return { amount, currency, converted };
+  }
+
   readonly summaryCurrencyRevision = signal(0);
   async selectSummaryCurrency(userId: string, currency: string): Promise<void> {
     await this.service.selectSummaryCurrency(userId, currency);
+    this.displayExchangeRef.update(value => ({ ...value, currency }));
     this.summaryCurrencyRevision.update(value => value + 1);
   }
 

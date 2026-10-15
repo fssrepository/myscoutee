@@ -623,6 +623,8 @@ export interface ActivityEventDTO {
 }
 
 export interface ActivityEventSubEventsQueryDTO {
+  calendarCellLimit?: number | null;
+  calendarTimeZone?: string | null;
   userId: string;
   eventId: string;
   order?: 'upcoming' | 'past' | string;
@@ -637,6 +639,7 @@ export interface ActivityEventSubEventsQueryDTO {
 }
 
 export interface SubEventsSlotDTO {
+  currentStage?: EventContracts.TournamentCurrentStageDTO | null;
   id: string;
   parentEventId: string;
   slotSourceId?: string | null;
@@ -648,7 +651,14 @@ export interface SubEventsSlotDTO {
   subEventItems: EventContracts.SubEventDTO[];
 }
 
+export interface ActivityEventSubEventsCalendarCellDTO {
+  startAt: string;
+  endAt: string;
+  count: number;
+}
+
 export interface ActivityEventSubEventsResultDTO {
+  calendarCells?: ActivityEventSubEventsCalendarCellDTO[];
   mode: EventContracts.EventMode;
   canAccessResources?: boolean;
   slots: SubEventsSlotDTO[];

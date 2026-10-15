@@ -6,7 +6,7 @@
     "title": "Water leak in the entrance hall",
     "description": "Water is leaking near the lift. Maya can show the damp patch to the assigned technician.",
     "caseType": "fault",
-    "status": "open",
+    "status": "in-progress",
     "audienceAll": false,
     "audienceNames": [
       "Maya Stone"

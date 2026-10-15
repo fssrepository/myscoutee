@@ -14,6 +14,11 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   type SmartListConfig,
+  type SmartListItemSelectEvent,
+  type SmartListCalendarDay,
+  type SmartListCalendarCounter,
+  type DateInputModel,
+  type PopupDateInputChangeEvent,
   type SmartListLoadPage,
   ExplanationGuideService,
   DialogStore
@@ -32,6 +37,7 @@ import {
   ViewChild,
   ViewChildren,
   effect,
+  computed,
   inject,
   untracked
 } from '@angular/core';
@@ -174,7 +180,14 @@ export class EventSubeventsListPopupComponent {
   protected event: EventSubeventsParentContext | null = null;
   protected items: SubEventDTO[] = [];
   protected slotSections: EventSubeventsSlotModel[] = [];
-  protected view: EventSubeventsListView = 'day';
+  protected get view(): EventSubeventsListView { return this.eventSubeventsStore.calendarSelection().view; }
+  private readonly calendarDateModel: DateInputModel = {mode: 'range', precision: 'date', valueFormat: 'iso-date',
+    range: {layout: 'compact', start: {placeholder: 'Start date'}, end: {placeholder: 'End date'}}};
+  private readonly calendarDateControls = computed<PopupControl<EventSubeventsListPopupMenuContext>[]>(() => {
+    const selection = this.eventSubeventsStore.calendarSelection();
+    return selection.view === 'day' && selection.dateRange
+      ? [{kind: 'date-input', id: 'calendar-date-range', model: this.calendarDateModel, value: selection.dateRange}] : [];
+  });
   protected order: EventSubeventsListOrder = 'upcoming';
   protected participantOnly = false;
   protected isMobileView = false;
@@ -227,7 +240,10 @@ export class EventSubeventsListPopupComponent {
       initialAnchor: () => this.calendarInitialAnchor(),
       resolveDateRange: section => this.slotSectionCalendarRange(section),
       badgeLabel: section => section.title,
-      badgeToneClass: section => `event-subevents-calendar-badge--${section.tone}`
+      density: {monthMaxBadges: 5, weekMaxBadgesPerHour: 1},
+      dayCounter: day => this.calendarCellCounter(day),
+      hourCounter: (day, hour) => this.calendarCellCounter(day, hour),
+      badgeColors: {palette: EventSubeventsSlotConverter.calendarColors, resolveKey: section => this.calendarColorKey(section)}
     },
     showStickyHeader: true,
     emptyLabel: 'event.subevents.empty.label',
@@ -528,7 +544,9 @@ export class EventSubeventsListPopupComponent {
       bodyLayout: 'fill',
       headerControls: this.popupHeaderControls(),
       toolbarControls: this.popupToolbarControls(),
+      toolbarMobileAlign: 'end',
       onClose: () => this.close(),
+      onDateInputChange: event => this.onCalendarDateChange(event),
       onMenuSelect: event => this.onPopupMenuSelect(event)
     };
   }
@@ -579,6 +597,7 @@ export class EventSubeventsListPopupComponent {
 
   private popupToolbarControls(): PopupControl<EventSubeventsListPopupMenuContext>[] {
     return [
+      ...this.calendarDateControls(),
       {
         kind: 'menu',
         id: 'context',
@@ -685,8 +704,41 @@ export class EventSubeventsListPopupComponent {
     ];
   }
 
+  protected onCalendarItemSelect(event: SmartListItemSelectEvent<EventSubeventsSlotModel, EventSubeventsListFilters>): void {
+    if (event.currentViewMode !== 'month' && event.currentViewMode !== 'week') return;
+    const date = event.calendarDate ?? UiDateUtils.parseDate(event.item.startAt);
+    if (!date) return;
+    const key = event.calendarDateIso ?? UiDateUtils.toIsoDate(date);
+    this.eventSubeventsStore.selectCalendarRange(key);
+    this.bumpQuery();
+  }
+
+  private onCalendarDateChange(event: PopupDateInputChangeEvent<EventSubeventsListPopupMenuContext>): void {
+    if (event.control.id !== 'calendar-date-range' || !event.value || typeof event.value !== 'object'
+      || !('startAt' in event.value) || !('endAt' in event.value)) return;
+    const start = UiDateUtils.parseDateOnlyLocal(event.value.startAt), end = UiDateUtils.parseDateOnlyLocal(event.value.endAt);
+    if (!start || !end || end < start) return;
+    const startAt = UiDateUtils.toIsoDate(start), endAt = UiDateUtils.toIsoDate(end);
+    const current = this.eventSubeventsStore.calendarSelection().dateRange;
+    if (current?.startAt === startAt && current.endAt === endAt) return;
+    this.eventSubeventsStore.selectCalendarRange(startAt, endAt);
+    this.bumpQuery();
+  }
+
+  private calendarCellCounter(day: SmartListCalendarDay<EventSubeventsSlotModel>, hour?: number): SmartListCalendarCounter | null {
+    const section = day.items.find(item => item.calendarCount != null && (hour == null
+      || UiDateUtils.parseDate(item.startAt)?.getHours() === hour));
+    return section ? {label: `${section.calendarCount}`, ariaLabel: `${section.calendarCount} slots`, colorKey: section.tone} : null;
+  }
+
+  private calendarColorKey(section: EventSubeventsSlotModel): string {
+    return EventSubeventsSlotConverter.calendarColorKey(section, {
+      event: this.event, mode: this.event?.mode, mingleState: this.mingleStore.state()
+    });
+  }
+
   private selectView(view: EventSubeventsListView): void {
-    this.view = view;
+    this.eventSubeventsStore.selectListView(view);
     this.bumpQuery();
   }
 
@@ -696,7 +748,8 @@ export class EventSubeventsListPopupComponent {
       participantOnly: this.participantOnly,
       editorAction,
       pendingMembers: this.eventPendingMembersCount(),
-      membersDisabled: this.membersDisabled()
+      membersDisabled: this.membersDisabled(),
+      compactOnMobile: this.calendarDateControls().length > 0
     });
   }
 
@@ -749,7 +802,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected membersDisabled(): boolean {
-    return this.isLoading || !`${this.event?.id ?? ''}`.trim();
+    return !`${this.event?.id ?? ''}`.trim();
   }
 
   protected eventPendingMembersCount(): number {
@@ -974,6 +1027,12 @@ export class EventSubeventsListPopupComponent {
     item.stageFinalizedAt = `${result.stageFinalizedAt ?? ''}`.trim() || null;
     item.stageFinalizedByUserId = `${result.stageFinalizedByUserId ?? ''}`.trim() || null;
     item.stageResultRevision = Math.max(0, Math.trunc(Number(result.stageResultRevision) || 0));
+    const section = this.slotSectionForItem(item);
+    if (section) {
+      section.slot.currentStage = tournamentCurrentStageFromSubEvents(section.items);
+      Object.assign(section, EventSubeventsSlotConverter.convert(section.slot, 0, {event: this.event, order: this.order}));
+      this.syncSlotSectionHeaderLabels(this.slotSections);
+    }
     if (this.event && result.autoInviter !== undefined && result.autoInviter !== null) {
       this.event.autoInviter = result.autoInviter === true;
     }
@@ -1634,7 +1693,8 @@ export class EventSubeventsListPopupComponent {
     }
     const config: SmartListConfig<SubEventDTO, EventSubeventsListFilters> = section.isSlot
       ? { ...this.baseSlotSectionSmartListConfig }
-      : { ...this.flatSubEventsSmartListConfig };
+      : { ...this.flatSubEventsSmartListConfig,
+          ...(section.slot.currentStage ? {showStickyHeader: true, groupBy: (item: SubEventDTO) => this.slotHeaderLabel(item)} : {}) };
     this.slotSectionConfigs.set(sectionId, config);
     return config;
   }
@@ -1647,6 +1707,9 @@ export class EventSubeventsListPopupComponent {
       return { items: [], total: 0, nextCursor: null };
     }
     await this.ensureSubEventsLoaded(eventId, query);
+    if (query.view === 'week' || query.view === 'month') {
+      return {items: this.slotSections, total: this.slotSections.length, nextCursor: null};
+    }
     if (this.loadedPageTotal !== null) {
       return {
         items: this.slotSections,
@@ -1728,6 +1791,11 @@ export class EventSubeventsListPopupComponent {
       event,
       order: this.order
     });
+    for (const cell of result?.calendarCells ?? []) {
+      const section = EventSubeventsSlotConverter.convert({id: `calendar:${cell.startAt}`, parentEventId: eventId,
+        startAt: cell.startAt, endAt: cell.endAt, subEventItems: []}, 0, {event});
+      this.slotSections.push({...section, calendarCount: cell.count});
+    }
     this.syncSlotSectionHeaderLabels(this.slotSections);
     this.items = this.slotSections.flatMap(section => section.items);
     this.loadedPageTotal = Number.isFinite(result?.total)
@@ -1864,7 +1932,7 @@ export class EventSubeventsListPopupComponent {
     }
     return {
       start,
-      end: end.getTime() >= start.getTime() ? end : start
+      end: end.getTime() > start.getTime() ? new Date(end.getTime() - 1) : start
     };
   }
 
@@ -1914,8 +1982,10 @@ export class EventSubeventsListPopupComponent {
       order: this.order,
       view: (query.view as EventSubeventsListView | undefined) ?? this.view,
       anchorDate: query.anchorDate ?? null,
-      rangeStart: query.rangeStart ?? null,
-      rangeEnd: query.rangeEnd ?? null,
+      rangeStart: (query.view ?? this.view) === 'day' ? this.eventSubeventsStore.calendarSelection().dateRange?.startAt ?? null : query.rangeStart ?? null,
+      rangeEnd: (query.view ?? this.view) === 'day' ? this.eventSubeventsStore.calendarSelection().dateRange?.endAt ?? null : query.rangeEnd ?? null,
+      calendarCellLimit: query.view === 'month' ? 5 : query.view === 'week' ? 1 : null,
+      calendarTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       participantOnly: this.participantOnly,
       page: query.page,
       pageSize: query.pageSize,
@@ -1956,7 +2026,7 @@ export class EventSubeventsListPopupComponent {
     const revisionFilter = { revision: this.revision };
     this.query = {
       ...this.query,
-      view: this.view,
+      view: untracked(() => this.view),
       direction: this.order === 'past' ? 'desc' : 'asc',
       filters: revisionFilter
     };

@@ -167,14 +167,16 @@
 }
 
 .event-policy-summary-actions {
-  display: contents;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
 }
 
 .event-policy-summary-badge {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-  justify-self: end;
   flex: 0 0 auto;
   min-height: 24px;
   padding: 0.22rem 0.48rem;
@@ -196,8 +198,6 @@
 }
 
 .event-policy-summary-approval {
-  grid-column: 2;
-  grid-row: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,7 +237,7 @@
 }
 
 .event-policy-summary-card-head .event-slots-summary-note {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 2;
 }
 

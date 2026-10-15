@@ -37,6 +37,19 @@ describe('Community service ownership, discovery and provider priorities',()=>{
   await db.flushToIndexedDb();TestBed.inject(SeedServiceOfferingsRepository).seedDefaults();
   expect((await service.detail(anna,item.service.id)).service.title).toBe('Scheduled meter service');
  });
+ it('uses current service data for every lifecycle command but protects editor saves and ownership',async()=>{
+  const original=await service.detail(anna,'service-anna-meters');
+  await service.save({...original.service,userId:anna,title:'Updated title'});
+  for(const action of ['unpublish','publish','trash','restore'] as const){
+   await expect(service.action(alex,original.service.id,action,original.service.version)).rejects.toThrow();
+   const result=await service.action(anna,original.service.id,action,original.service.version);
+   expect(result.service.title).toBe('Updated title');
+   expect(result.service.version).toBeGreaterThan(original.service.version);
+   expect(result.service.status).toBe(action==='publish'?'published':action==='trash'?'trash':'draft');
+   await expect(service.action(anna,original.service.id,action,original.service.version)).rejects.toThrow('Invalid transition');
+  }
+  await expect(service.save({...original.service,userId:anna})).rejects.toThrow('service.changed');
+ });
  it('uses the existing person rating for every service offered by that provider',async()=>{
   const from=`group:${COMMUNITY_BASE_GROUP_ID}:${alex}`,to=`group:${COMMUNITY_BASE_GROUP_ID}:${anna}`;
   const rate=BaseUserRatesMapper.toRecord({kind:'game-card',raterUserId:from,ratedUserId:to,rating:7})!;

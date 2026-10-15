@@ -7,8 +7,32 @@ import {
 } from '../../../core/contracts/common/activity.interface';
 import { EventFeedbackDetailConverter } from './event-feedback-detail.converter';
 import { EventFeedbackInfoCardConverter } from './event-feedback-info-card.converter';
+import type { ServiceFeedbackItem } from '../../../core/contracts/community/service-feedback.interface';
 
 describe('EventFeedbackInfoCardConverter submitted feedback', () => {
+  const service: ServiceFeedbackItem = {
+    providerName: 'Provider', reviewerName: 'Reviewer', serviceTitle: 'Plumbing', serviceImageUrl: '/service.webp',
+    feedback: { id: 'review', baseGroupId: 'myscoutee-community', caseId: 'case', caseTitle: 'Meter replacement',
+      serviceId: 'service', providerAccountId: 'provider', viewerAccountId: 'reviewer', status: 'removed',
+      criteria: {}, average: null, comment: '', createdAtIso: '2026-10-14T10:00:00Z', submittedAtIso: null }
+  };
+
+  it('shows service identity and uses the shared danger badge for removed reviews', () => {
+    const card = EventFeedbackInfoCardConverter.convertService(service, false);
+    expect(card).toMatchObject({ title: 'Plumbing', imageUrl: '/service.webp',
+      metaRows: ['Provider', 'Meter replacement'], mediaEnd: { label: 'Removed', tone: 'danger', interactive: false } });
+    expect(card.menuActions).toEqual(['restoreFeedback']);
+  });
+
+  it('leaves unavailable service images empty for the shared placeholder and retains received identities', () => {
+    const card = EventFeedbackInfoCardConverter.convertService({ ...service, serviceImageUrl: null, serviceTitle: null }, true);
+    expect(card.imageUrl).toBe('');
+    expect(card.mediaMode).toBeUndefined();
+    expect(card.title).toBe('Meter replacement');
+    expect(card.metaRows).toEqual(['Provider', 'Reviewer', 'Meter replacement']);
+    expect(card.menuActions).toEqual(['viewSubmittedFeedback']);
+  });
+
   it('preserves an empty event image so the shared card renders its neutral placeholder', () => {
     const eventId = 'manual-event';
     const [card] = EventFeedbackDetailConverter.convert(new EventFeedbackDetailDto({

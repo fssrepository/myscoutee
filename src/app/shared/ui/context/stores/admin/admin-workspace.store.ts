@@ -45,6 +45,9 @@ export class AdminWorkspaceStore {
 
   readonly dashboard = this.dashboardRef.asReadonly();
   readonly reviewCounts = computed(() => this.dashboardRef()?.reviewCounts ?? null);
+  reviewCountsForScope(groupId: string | null) {
+    return this.dashboardRef()?.reviewCountsByScope?.[groupId ?? 'main'] ?? null;
+  }
   readonly menuReviewCounts = computed(() => {
     const counts = this.reviewCounts();
     return {
@@ -258,6 +261,7 @@ export class AdminWorkspaceStore {
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => this.normalizeReportedUser(user)),
       blockedUsers: (dashboard.blockedUsers ?? []).map(user => this.normalizeReportedUser(user, true)),
       feedback: (dashboard.feedback ?? []).map(item => this.normalizeFeedback(item)),
+      reviewCountsByScope: dashboard.reviewCountsByScope,
       reviewCounts: dashboard.reviewCounts
         ? {
             reportsUnresolved: this.nonNegativeInteger(dashboard.reviewCounts.reportsUnresolved),

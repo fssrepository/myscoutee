@@ -1068,9 +1068,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventIntelMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
     const items: AppMenuItem<string, EventEditorMenuContext>[] = [
-      ...(this.workspace.isWork() ? [{ id: 'event-campaign', label: this.eventDetailDTO.campaignId
-        ? this.campaigns.known()[this.eventDetailDTO.campaignId]?.title ?? 'campaign.title' : 'campaign.select',
-        icon: 'campaign', kind: 'action' as const, layout: 'big' as const, palette: 'blue' as const,
+      ...(this.workspace.isWork() ? [{ id: 'event-campaign', label: 'event.editor.campaign',
+        detail: this.eventDetailDTO.campaignId
+          ? this.campaigns.known()[this.eventDetailDTO.campaignId]?.title ?? 'campaign.select' : 'campaign.select',
+        icon: 'campaign', kind: 'select-trigger' as const, layout: 'big' as const, palette: 'blue' as const,
+        trailingIcon: 'chevron_right', ariaLabel: 'campaign.select',
         disabled: this.eventStructureReadOnly(), active: !!this.eventDetailDTO.campaignId }] : []),
       {
         id: 'event-blind-mode',

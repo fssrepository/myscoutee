@@ -32,10 +32,10 @@
 :host ::ng-deep .explanation-guide-overlay__body p { margin: 0; }
 @keyframes explanation-guide-overlay-pulse { 50% { box-shadow: 0 0 0 7px rgba(255, 229, 138, 0.3), 0 0 34px rgba(255, 213, 79, 0.82); } }
 @media (max-width: 760px) {
-  .explanation-guide-overlay__card--menu { min-height: min(204px, calc(100dvh - 24px)); padding: 10px 12px; }
-  .explanation-guide-overlay__card--menu h3 { min-height: 1.22em; max-height: 2.44em; margin: 5px 0 3px; font-size: 15px; }
-  .explanation-guide-overlay__card--menu p { font-size: 12px; line-height: 1.35; }
-  .explanation-guide-overlay__card--menu .explanation-guide-overlay__body { min-height: 0; font-size: 12px; line-height: 1.35; }
-  .explanation-guide-overlay__card--menu .explanation-guide-overlay__controls { gap: 4px; margin-top: auto; padding-top: 8px; }
+  .explanation-guide-overlay__card--compact { min-height: min(204px, calc(100dvh - 24px)); padding: 10px 12px; }
+  .explanation-guide-overlay__card--compact h3 { min-height: 1.22em; max-height: 2.44em; margin: 5px 0 3px; font-size: 15px; }
+  .explanation-guide-overlay__card--compact p { font-size: 12px; line-height: 1.35; }
+  .explanation-guide-overlay__card--compact .explanation-guide-overlay__body { min-height: 0; font-size: 12px; line-height: 1.35; }
+  .explanation-guide-overlay__card--compact .explanation-guide-overlay__controls { gap: 4px; margin-top: auto; padding-top: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .explanation-guide-overlay__focus { animation: none; } }

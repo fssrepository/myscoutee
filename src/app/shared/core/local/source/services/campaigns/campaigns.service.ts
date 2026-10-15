@@ -120,7 +120,8 @@ export class LocalCampaignsService extends LocalRouteDelayService implements ICa
               title: request.title.trim(), description: request.description.trim(), kind: request.kind, category: request.category,
               imageUrls: [...request.imageUrls], attachments:structuredClone(request.attachments),
               status: existing?.status ?? 'draft', createdAtIso: existing?.createdAtIso ?? now, updatedAtIso: now, version: (existing?.version ?? -1) + 1 };
-            return this.dto(actor, this.campaigns.save(record, existing?.version));
+            const saved = this.campaigns.save(record, existing?.version);
+            return { ...this.dto(actor, saved), ownCounters: this.campaigns.counts(actor.workspaceGroupId, actor.id) };
       })()
     ]);
     return response;
@@ -134,7 +135,8 @@ export class LocalCampaignsService extends LocalRouteDelayService implements ICa
             const transitions = { publish: ['draft', 'published'], unpublish: ['published', 'draft'], trash: [record.status, 'trash'], restore: ['trash', 'draft'] } as const;
             const next = transitions[action];
             if (!next || record.status !== next[0] || (action === 'trash' && record.status === 'trash')) throw new Error('Invalid campaign action');
-            return this.dto(actor, this.campaigns.save({ ...record, status: next[1], updatedAtIso: new Date().toISOString(), version: version + 1 }, version));
+            const saved = this.campaigns.save({ ...record, status: next[1], updatedAtIso: new Date().toISOString(), version: record.version + 1 }, record.version);
+            return { ...this.dto(actor, saved), ownCounters: this.campaigns.counts(actor.workspaceGroupId, actor.id) };
       })()
     ]);
     return response;

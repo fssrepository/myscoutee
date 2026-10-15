@@ -9,7 +9,7 @@ export class SeedCampaignsBuilder {
     return templates.map(({ ownerName, ...template }) => {
       const ownerUserId = owners.get(ownerName);
       if (!ownerUserId) throw new Error(`Missing Work campaign owner: ${ownerName}`);
-      return { ...template, workspaceGroupId: WORK_BASE_GROUP_ID, ownerUserId, imageUrls: [], attachments: [],
+      return { ...template, workspaceGroupId: WORK_BASE_GROUP_ID, ownerUserId, imageUrls: [...template.imageUrls], attachments: [],
         createdAtIso: '2026-10-01T10:00:00.000Z', updatedAtIso: '2026-10-01T10:00:00.000Z', version: 0 } as CampaignRecord;
     });
   }

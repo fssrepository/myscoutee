@@ -508,7 +508,8 @@ export class AssetMemberPickerPopupComponent {
     const dateLabel = Number.isNaN(parsed.getTime())
       ? ''
       : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    return dateLabel ? `${entry.metWhere} · ${dateLabel}` : entry.metWhere;
+    const placeLabel = this.ownerType === 'community' ? '' : entry.metWhere;
+    return [placeLabel, dateLabel].filter(Boolean).join(' · ');
   }
 
   protected inviteCandidateCard(candidate: ActivityContracts.ActivityMemberDTO): ImageCardData {

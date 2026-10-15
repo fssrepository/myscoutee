@@ -1,5 +1,6 @@
 @if (!guide.loading() && (guide.noGuide() || guide.loadError() || frame())) {
-<div class="explanation-guide-overlay" role="dialog" [attr.aria-label]="heading()">
+<div class="explanation-guide-overlay" role="dialog" [attr.aria-label]="heading()"
+  [style.visibility]="hasPresented() || positionReady() || waitingForAnimation() || guide.noGuide() || guide.loadError() ? null : 'hidden'">
   @if (guide.noGuide() || guide.loadError()) {
     <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
     <section class="explanation-guide-overlay__card explanation-guide-overlay__card--center" [class.explanation-guide-overlay__card--message]="guide.noGuide()" (pointerdown)="$event.stopPropagation()">
@@ -14,13 +15,16 @@
       }
     </section>
   } @else if (frame(); as focus) {
+    @if (waitingForAnimation() && !hasPresented()) {
+      <div class="explanation-guide-overlay__shade" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
+    }
     @for (shade of focus.shades; track $index) {
-      <div class="explanation-guide-overlay__shade" [style.left.px]="shade.left" [style.top.px]="shade.top" [style.width.px]="shade.width" [style.height.px]="shade.height" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
+      <div class="explanation-guide-overlay__shade" [style.visibility]="hasPresented() || positionReady() ? null : 'hidden'" [style.left.px]="shade.left" [style.top.px]="shade.top" [style.width.px]="shade.width" [style.height.px]="shade.height" (pointerdown)="$event.stopPropagation()" (click)="closeFromShade($event)"></div>
     }
     @for (target of focus.targets; track $index) {
-      <div class="explanation-guide-overlay__focus" [style.left.px]="target.left" [style.top.px]="target.top" [style.width.px]="target.width" [style.height.px]="target.height"></div>
+      <div class="explanation-guide-overlay__focus" [style.visibility]="positionReady() ? null : 'hidden'" [style.left.px]="target.left" [style.top.px]="target.top" [style.width.px]="target.width" [style.height.px]="target.height"></div>
     }
-    <section class="explanation-guide-overlay__card" [class.explanation-guide-overlay__card--menu]="insideMenu()" [style.left.px]="focus.cardLeft" [style.top.px]="focus.cardTop" [style.width.px]="focus.cardWidth" (pointerdown)="$event.stopPropagation()">
+    <section class="explanation-guide-overlay__card" [style.visibility]="hasPresented() || positionReady() ? null : 'hidden'" [class.explanation-guide-overlay__card--compact]="compactCard()" [style.left.px]="focus.cardLeft" [style.top.px]="focus.cardTop" [style.width.px]="focus.cardWidth" (pointerdown)="$event.stopPropagation()">
       <ng-container *ngTemplateOutlet="tourContent"></ng-container>
     </section>
   }

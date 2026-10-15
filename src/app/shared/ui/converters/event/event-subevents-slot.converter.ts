@@ -1,7 +1,8 @@
-import { normalizeScheduleFrequency, UiDateUtils } from '@fssrepository/myscoutee-components';
+import { normalizeScheduleFrequency, UiDateUtils, type SmartListCalendarBadgeColors } from '@fssrepository/myscoutee-components';
 
 import { ActivityEventDetailDTO, type SubEventsSlotDTO } from '../../../core/contracts/common/activity.interface';
 import type { EventSlotTemplateDTO, SubEventDTO } from '../../../core/contracts/events/event.interface';
+import { EventSubeventRuntimeInfoCardConverter, type EventSubeventRuntimeInfoCardConverterOptions } from './event-subevent-runtime-info-card.converter';
 
 export type EventSubeventsSlotTone = 'blue' | 'green' | 'cyan' | 'violet' | 'amber' | 'gold';
 
@@ -16,6 +17,7 @@ export interface EventSubeventsSlotConverterOptions {
 }
 
 export interface EventSubeventsSlotModel {
+  calendarCount?: number;
   id: string;
   title: string;
   subtitle: string;
@@ -28,6 +30,23 @@ export interface EventSubeventsSlotModel {
 }
 
 export class EventSubeventsSlotConverter {
+  static calendarColorKey(model: EventSubeventsSlotModel, options: EventSubeventRuntimeInfoCardConverterOptions): string {
+    const current = model.slot.currentStage;
+    const item = current ? model.items.find(item => item.id === current.id) : model.items.length === 1 ? model.items[0] : null;
+    const tone = item ? EventSubeventRuntimeInfoCardConverter.convert(item, options).mediaEnd?.tone : null;
+    return tone && this.calendarColors[tone] ? tone : model.tone;
+  }
+
+  static readonly calendarColors: Readonly<Record<string, SmartListCalendarBadgeColors>> = {
+    'stage-active': {badgeTone: 'stage-active'}, 'stage-blocked': {badgeTone: 'stage-blocked'},
+    'stage-start': {badgeTone: 'stage-start'}, 'stage-review': {badgeTone: 'stage-review'},
+    'stage-scheduled': {badgeTone: 'stage-scheduled'}, 'stage-finalized': {badgeTone: 'stage-finalized'},
+    'stage-suspended': {badgeTone: 'stage-suspended'}, public: {badgeTone: 'public'}, blocked: {badgeTone: 'blocked'},
+    blue: {surfaceTone: 'subevent-light', accentHue: 215}, green: {surfaceTone: 'subevent-light', accentHue: 150},
+    cyan: {surfaceTone: 'subevent-light', accentHue: 185}, violet: {surfaceTone: 'subevent-light', accentHue: 265},
+    amber: {surfaceTone: 'subevent-light', accentHue: 35}, gold: {surfaceTone: 'subevent-light', accentHue: 45}
+  };
+
   static convertList(
     slots: readonly SubEventsSlotDTO[],
     options: EventSubeventsSlotConverterOptions = {}
@@ -46,7 +65,10 @@ export class EventSubeventsSlotConverter {
     const items = Array.isArray(slot.subEventItems) ? slot.subEventItems : [];
     const firstItem = items[0] ?? null;
     const isSlot = this.isGeneratedSlot(slot);
-    const title = this.isMainEventRuntime(firstItem)
+    const currentStage = slot.currentStage;
+    const title = currentStage?.name
+      ? `${currentStage.name} · ${currentStage.stageNumber}/${currentStage.totalStages}`
+      : this.isMainEventRuntime(firstItem)
       ? 'Event'
       : isSlot
       ? this.slotTitle(slot, index + 1, options.event)

@@ -432,7 +432,7 @@ export class AdminIdeaEditorPopupComponent {
       height: 'full',
       headerLayout: 'article',
       bodyLayout: 'flush',
-      headerActions: post.imageUrls.length ? [{ id: 'gallery', icon: '', variant: 'badge',
+      headerActions: post.imageUrls.length ? [{ id: 'gallery', guideFieldId: 'image-gallery-expand', icon: '', variant: 'badge',
         label: `${post.imageUrls.length} / ${AdminIdeaEditorPopupComponent.IMAGE_LIMIT}`,
         ariaLabel: 'image.carousel.expand' }] : [],
       onAction: () => this.openArticleGallery(post),
@@ -485,6 +485,7 @@ export class AdminIdeaEditorPopupComponent {
         },
         {
           id: 'article-close',
+          guideFieldId: 'close',
           icon: 'close',
           ariaLabel: 'Close editor',
           palette: 'neutral',

@@ -10,6 +10,8 @@ export function myScouteeGuideOptions(
     ...options,
     isExplainableContext: contextKey => APP_STATIC_DATA.explainableSurfaces
       .some(surface => surface.enabled && surface.key === contextKey),
+    contextPriority: contextKey => contextKey === null || APP_STATIC_DATA.explainableSurfaces
+      .some(surface => surface.key === contextKey && surface.owner === 'popup') ? 1 : 0,
     introduction: {
       contextKey: 'landing.guide',
       shouldOffer: () => {

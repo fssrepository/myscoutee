@@ -1,3 +1,5 @@
+import type { AppMemorySchema } from '../../../common/memory.schema';
+import { GROUP_COUNTER_BUCKETS, groupMembershipBucket } from '../../../../contracts/groups/community-group.interface';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../../entity/events/mingle.entity';
 import { EVENTS_TABLE_NAME } from '../../entity/events/event.entity';
 import { Injectable, inject } from '@angular/core';
@@ -29,6 +31,25 @@ type LocalGameSocialCardsByMode = Record<LocalGameSocialMode, UserGameSocialCard
   providedIn: 'root'
 })
 export class LocalActivityMembersRepository {
+  static withGroupCounterWrite(state: AppMemorySchema, accounts?: ReadonlySet<string>): AppMemorySchema {
+    const byId = { ...state.users.byId };
+    const counts = new Map<string, Record<string, number>>();
+    for (const user of Object.values(byId)) if (!user.workspaceGroupId && (!accounts || accounts.has(user.id)))
+      counts.set(user.id, Object.fromEntries(GROUP_COUNTER_BUCKETS.map(bucket => [`groups_${bucket}`, 0])));
+    for (const member of Object.values(state.activityMembers.byId)) {
+      if (member.ownerType !== 'community' || !counts.has(member.userId)) continue;
+      const group = state.communityGroups.byId[member.ownerId];
+      if (!group) continue;
+      const restorable = member.status === 'blocked' || member.status === 'deleted' && !member.requestKind
+        && member.communityAction === 'remove' && member.communityActor === member.userId;
+      if (!restorable && !['accepted', 'pending'].includes(member.status)) continue;
+      const bucket = groupMembershipBucket({ role: member.role, membershipStatus: restorable ? 'deleted' : member.status as 'accepted' | 'pending', requestKind: member.requestKind });
+      if (bucket === 'explore' || group.lifecycleStatus === 'deleted' && bucket !== 'trash') continue;
+      counts.get(member.userId)![`groups_${bucket}`]++;
+    }
+    for (const [id, values] of counts) byId[id] = { ...byId[id], menuCounters: { ...byId[id].menuCounters, ...values } };
+    return { ...state, users: { ...state.users, byId } };
+  }
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly localUsersRepository = inject(LocalUsersRepository);
   private readonly ownerCapacityByKey = new Map<string, number>();
@@ -801,7 +822,7 @@ export class LocalActivityMembersRepository {
           return !previous || member.updatedAtIso !== previous.updatedAtIso || member.status !== previous.status
             || member.role !== previous.role || member.organizerOnly !== previous.organizerOnly || member.votingEligible !== previous.votingEligible;
         }));
-      return {
+      const nextState = {
         ...state,
         ...(group && groupChanged ? { communityGroups: { ...state.communityGroups, byId: { ...state.communityGroups.byId,
           [group.id]: { ...group, updatedAtIso: new Date().toISOString(), pendingMembers: Math.max(0, (group.pendingMembers ?? 0) + pendingDelta), version: group.version + 1 }
@@ -812,6 +833,9 @@ export class LocalActivityMembersRepository {
           idsByOwnerKey: nextIdsByOwnerKey
         }
       };
+      return group ? LocalActivityMembersRepository.withGroupCounterWrite(nextState, new Set([
+        ...normalizedRecords.map(m => m.userId), ...(table.idsByOwnerKey[ownerKey] ?? []).map(id => table.byId[id].userId)
+      ])) : nextState;
     });
 
     const acceptedMembers = normalizedRecords

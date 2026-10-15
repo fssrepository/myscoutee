@@ -23,6 +23,17 @@ describe('UserProfileState operator visibility', () => {
     expect(UserProfileState.isActivityRateVisibleProfile(admin)).toBe(true);
   });
 
+  it('excludes lifecycle-deleted, blocked and inactive profiles even when an older local seed retained a visible profileStatus', () => {
+    for (const status of ['D', 'B', 'I'] as const) {
+      for (const profileStatus of ['public', 'friends only'] as const) {
+        const user = { ...profile(profileStatus), status };
+        expect(UserProfileState.isPublicGameProfile(user)).toBe(false);
+        expect(UserProfileState.isInsideNetworkGameProfile(user)).toBe(false);
+        expect(UserProfileState.isActivityRateVisibleProfile(user)).toBe(false);
+      }
+    }
+  });
+
   it('preserves hard-hidden status handling for non-operators', () => {
     const blocked = profile('blocked');
 

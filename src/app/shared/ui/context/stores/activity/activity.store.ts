@@ -42,7 +42,6 @@ export type ActivityCounterKey =
   | 'tickets'
   | 'contacts'
   | 'feedback'
-  | 'cases'
   | 'notifications'
   | 'paymentRefundsPending'
   | 'contactRequestsPending'
@@ -62,7 +61,7 @@ export interface ActivityCounters {
   contacts: number;
   feedback: number;
   notifications?: number;
-  cases?: number;
+  menuCounters?: Record<string, number>;
   paymentRefundsPending?: number;
   contactRequestsPending?: number;
   chat?: ActivityChatCounters;
@@ -200,7 +199,6 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'contacts',
   'feedback',
   'notifications',
-  'cases',
   'paymentRefundsPending',
   'contactRequestsPending',
   'adminJobs',
@@ -341,7 +339,7 @@ export class ActivityStore {
       contacts: normalizeCounterValue(counters.contacts),
       feedback: normalizeCounterValue(counters.feedback),
       notifications: normalizeCounterValue(counters.notifications),
-      cases: normalizeCounterValue(counters.cases),
+      menuCounters: { ...counters.menuCounters },
       chat: cloneChatCounters(counters.chat),
       event: cloneEventCounters(counters.event),
       asset: cloneAssetCounters(counters.asset),
@@ -362,6 +360,10 @@ export class ActivityStore {
         continue;
       }
       normalizedPatch[key] = normalizeCounterValue(value);
+    }
+    if (patch.menuCounters) {
+      normalizedPatch.menuCounters = Object.fromEntries(Object.entries(patch.menuCounters)
+        .map(([key, value]) => [key, normalizeCounterValue(value)]));
     }
     if (patch.event) {
       normalizedPatch.event = cloneEventCounters(patch.event);
@@ -394,7 +396,8 @@ export class ActivityStore {
     }
     this._counterOverridesByUserId.update(state => ({
       ...state,
-      [userId]: { ...state[userId], ...profilePatch },
+      [userId]: { ...state[userId], ...profilePatch,
+        ...(profilePatch.menuCounters ? { menuCounters: { ...state[userId]?.menuCounters, ...profilePatch.menuCounters } } : {}) },
       ...(Object.keys(accountPatch).length ? { [accountId]: { ...state[accountId], ...accountPatch } } : {})
     }));
   }

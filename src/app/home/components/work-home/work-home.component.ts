@@ -68,7 +68,7 @@ export class WorkHomeComponent implements OnDestroy {
         items:([{id:'all',label:'groups.category.all',icon:'category',palette:'teal' as const},
           ...CAMPAIGN_CATEGORIES.map(id=>({id,label:`campaign.category.${id}`,...CAMPAIGN_CATEGORY_STYLE[id]}))]).map(item=>({...item,kind:'radio',surface:'tinted',
             checked:item.id===(this.store.filters().category??'all'),active:item.id===(this.store.filters().category??'all')}))},
-      { id: 'rates', label: 'ratings', icon: 'history', palette: 'gold', layout: 'pill', kind: 'action',
+      { id: 'rates', label: 'ratings', icon: 'history', palette: 'gold', layout: 'pill', counterTone: 'alert', kind: 'action', compactOnMobile: true,
         counter: this.profile.activeUserProfile()?.activities?.game ?? 0 }];
   });
   protected headerAction(event: AppMenuItemSelectEvent): void {

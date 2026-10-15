@@ -92,13 +92,13 @@ export class LocalCaseAppointmentsService extends LocalRouteDelayService impleme
   await this.repository.ready();const actor=this.access.actor(userId),range=this.range(rangeStart,rangeEnd);
   const cases=this.caseRecords.cases(),byId=new Map(cases.map(c=>[c.id,c]));
   const appointments:CaseAppointmentCalendarEntry[]=this.repository.find(actor).appointments.filter(a=>a.status==='booked'&&Date.parse(a.startAtIso)<range.end.getTime()&&Date.parse(a.endAtIso)>range.start.getTime()&&!!byId.get(a.caseId)&&activeCaseParticipantIds(byId.get(a.caseId)!).includes(actor))
-    .map(a=>({appointment:a,caseId:a.caseId,task:null,caseTitle:byId.get(a.caseId)!.title,serviceTitle:this.offerings.find(a.serviceId)?.title??'',customerName:this.users.queryUserById(a.customerAccountId)?.name??''}));
+    .map(a=>({appointment:a,caseId:a.caseId,caseType:byId.get(a.caseId)!.caseType,caseStatus:byId.get(a.caseId)!.status,task:null,caseTitle:byId.get(a.caseId)!.title,serviceTitle:this.offerings.find(a.serviceId)?.title??'',customerName:this.users.queryUserById(a.customerAccountId)?.name??''}));
   for(const c of cases){
    if(['cancelled','trash'].includes(c.status)||!activeCaseParticipantIds(c).includes(actor))continue;
    for(const task of c.boardTasks??[]){
     if(task.status==='deleted'||!task.assigneeAccountIds.includes(actor)||!task.startAtIso)continue;
     const start=Date.parse(task.startAtIso),end=task.endAtIso?Date.parse(task.endAtIso):start;
-    if(start<range.end.getTime()&&(end>range.start.getTime()||start>=range.start.getTime()))appointments.push({appointment:null,caseId:c.id,task,caseTitle:c.title,serviceTitle:task.title,customerName:''});
+    if(start<range.end.getTime()&&(end>range.start.getTime()||start>=range.start.getTime()))appointments.push({appointment:null,caseId:c.id,caseType:c.caseType,caseStatus:c.status,task,caseTitle:c.title,serviceTitle:task.title,customerName:''});
    }
   }
   return appointments.sort((a,b)=>(a.task?.startAtIso??a.appointment!.startAtIso).localeCompare(b.task?.startAtIso??b.appointment!.startAtIso));

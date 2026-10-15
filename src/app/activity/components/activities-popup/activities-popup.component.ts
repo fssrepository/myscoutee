@@ -466,7 +466,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       anchorRadius: 2,
       resolveDateRange: row => this.activityCalendarDateRange(row),
       badgeLabel: row => row.title,
-      badgeToneClass: row => this.calendarBadgeToneClass(row)
+      badgeToneClass: row => this.calendarBadgeToneClass(row),
+      badgeColors: {palette: ActivityEventInfoCardConverter.calendarColors,
+        resolveKey: row => this.isEventStyleActivity(row) ? ActivityEventInfoCardConverter.calendarColorKey(row) : null}
     },
     emptyLabel: () => this.activitiesEmptyLabel,
     emptyStickyLabel: () => (this.activitiesView === 'distance' ? '0 km' : 'No items'),
@@ -1304,6 +1306,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private onActivitiesPopupAction(event: PopupActionEvent): void {
     switch (event.action.id) {
+      case 'campaign-filter':
+        void this.campaigns.open(campaign => this.campaigns.activityCampaign.set(campaign), this.campaigns.activityCampaign()?.id);
+        return;
       case 'event-explore':
         this.requestOpenEventExplore();
         return;
@@ -1359,6 +1364,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activitiesPopupHeaderControls(): PopupControl<ActivitiesPopupMenuContext>[] {
     const controls: PopupControl<ActivitiesPopupMenuContext>[] = [];
+    if (this.workspace.isWork() && this.isEventActivitiesPrimaryFilter()) {
+      controls.push({
+        id: 'campaign-filter', icon: 'campaign', ariaLabel: 'campaign.select', palette: 'blue',
+        counter: this.campaigns.activityCampaign() ? 1 : 0, active: !!this.campaigns.activityCampaign()
+      });
+    }
     if (this.activitiesPrimaryFilter === 'chats' && this.isAdminServiceChatMode()) {
       controls.push({
         kind: 'menu',

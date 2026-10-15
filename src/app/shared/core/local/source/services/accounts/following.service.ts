@@ -19,21 +19,22 @@ export class LocalFollowingService extends LocalRouteDelayService implements IFo
     });
   }
   async change(userId: string, organizerId: string, followed: boolean): Promise<FollowingChangeResult> {
-    await this.waitForRouteDelay('/activities/events');
-    await this.db.whenReady();
-    const users = this.db.read()[USERS_TABLE_NAME];
-    if (userId === organizerId || !users.byId[userId] || (followed && !users.byId[organizerId])) throw new Error('Invalid organizer');
-    const previousCount = users.byId[userId].following?.eventCount ?? 0;
-    this.db.write(state => {
-      const table = state[USERS_TABLE_NAME];
-      const user = table.byId[userId];
-      const ids = new Set(user.following?.organizerIds ?? []);
-      if (followed) ids.add(organizerId); else ids.delete(organizerId);
-      return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
-        [userId]: { ...user, following: { organizerIds: [...ids], eventCount: 0 } } } } };
+    return this.withRouteDelay('/activities/events', async (): Promise<FollowingChangeResult> => {
+      await this.db.whenReady();
+      const users = this.db.read()[USERS_TABLE_NAME];
+      if (userId === organizerId || !users.byId[userId] || (followed && !users.byId[organizerId])) throw new Error('Invalid organizer');
+      const previousCount = users.byId[userId].following?.eventCount ?? 0;
+      this.db.write(state => {
+        const table = state[USERS_TABLE_NAME];
+        const user = table.byId[userId];
+        const ids = new Set(user.following?.organizerIds ?? []);
+        if (followed) ids.add(organizerId); else ids.delete(organizerId);
+        return { ...state, [USERS_TABLE_NAME]: { ...table, byId: { ...table.byId,
+          [userId]: { ...user, following: { organizerIds: [...ids], eventCount: 0 } } } } };
+      });
+      const following = this.db.read()[USERS_TABLE_NAME].byId[userId].following!;
+      return { ...following, eventCountDelta: following.eventCount - previousCount };
     });
-    const following = this.db.read()[USERS_TABLE_NAME].byId[userId].following!;
-    return { ...following, eventCountDelta: following.eventCount - previousCount };
   }
   async members(userId: string): Promise<ActivityMemberDTO[]> {
     const [, response] = await Promise.all([

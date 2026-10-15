@@ -38,10 +38,10 @@ describe('Guide launcher loading indication', () => {
     expect(overlay?.querySelector('.app-indicator--spinner-ring')).toBeNull();
     expect(fixture.debugElement.query(By.directive(IndicatorComponent)).componentInstance.durationMs).toBe(3000);
     expect(fixture.nativeElement.querySelector('app-explanation-popup')).toBeNull();
-    // The data response precedes the tour's first positioned frame.
+    // Positioning already loaded content must not flash the loading backdrop.
     loading.set(false);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).toBe(overlay);
+    expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).toBeNull();
     visible.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).toBeNull();

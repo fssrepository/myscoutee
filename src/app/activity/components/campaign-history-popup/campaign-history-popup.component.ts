@@ -64,7 +64,7 @@ export class CampaignHistoryPopupComponent {
   @ViewChild(SmartListComponent) private list?: SmartListComponent<CampaignHistoryItem>;
   protected readonly query = computed(() => ({ filters: { targetUserId: this.store.historyTarget()?.targetUserId } }));
   protected readonly config: SmartListConfig<CampaignHistoryItem> = {
-    pageSize: 5, initialPageSize: 5, listLayout: 'stack', snapMode: 'none',
+    pageSize: 5, initialPageSize: 5, listLayout: 'stack', snapMode: 'mandatory',
     trackBy: (_index, row) => row.campaign.id, cacheable: { identity: row => row.campaign.id },
     headerProgress: { enabled: true, placement: 'inline' },
     sortable: { sortKey: row => [-Date.parse(row.lastInteractionAtIso), row.campaign.id] },

@@ -29,12 +29,13 @@ export class LocalContactsService extends LocalRouteDelayService {
   }
 
   async changeChatAccess(userId: string, action: ContactChatAccessAction, version?: number): Promise<ContactChatAccessSnapshot> {
-    const actor = this.sessionService.activeUserId();
-    await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    if (!actor || actor !== this.sessionService.activeUserId()) throw new Error('Contact session changed.');
-    this.contactsRepository.changeChatAccess(actor, userId, action, version);
-    await this.contactsRepository.flushToIndexedDb();
-    return this.chatAccessSnapshot(actor);
+    return this.withRouteDelay(LocalContactsService.CONTACTS_ROUTE, async (): Promise<ContactChatAccessSnapshot> => {
+      const actor = this.sessionService.activeUserId();
+      if (!actor || actor !== this.sessionService.activeUserId()) throw new Error('Contact session changed.');
+      this.contactsRepository.changeChatAccess(actor, userId, action, version);
+      await this.contactsRepository.flushToIndexedDb();
+      return this.chatAccessSnapshot(actor);
+    });
   }
 
   private chatAccessSnapshot(actor: string): ContactChatAccessSnapshot {
@@ -105,9 +106,10 @@ export class LocalContactsService extends LocalRouteDelayService {
   }
 
   async deleteContact(userId: string, contactId: string): Promise<StoredContact[]> {
-    const savedContacts = this.contactsRepository.deleteContactRecord(userId, contactId);
-    await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    return LocalContactsMapper.cloneContacts(savedContacts);
+    return this.withRouteDelay(LocalContactsService.CONTACTS_ROUTE, async (): Promise<StoredContact[]> => {
+      const savedContacts = this.contactsRepository.deleteContactRecord(userId, contactId);
+      return LocalContactsMapper.cloneContacts(savedContacts);
+    });
   }
 
   private emptyProfileViewData(): ProfileViewData {

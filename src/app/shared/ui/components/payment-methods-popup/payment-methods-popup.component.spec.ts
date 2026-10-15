@@ -55,3 +55,25 @@ describe('Payment history mutation reconciliation', () => {
     expect(component.revisionRef()).toBe(7);
   });
 });
+
+
+describe('Payment history status semantics', () => {
+  it.each([
+    ['approved', 'success'], ['authorized', 'success'], ['captured', 'success'], ['succeeded', 'success'],
+    ['pending', 'warning'], ['authorization_pending', 'warning'], ['customer_action_required', 'warning'],
+    ['requires_action', 'warning'], ['requires_capture', 'warning'], ['refund_requested', 'warning'],
+    ['failed', 'danger'], ['declined', 'danger'], ['expired', 'danger'], ['cancelled', 'danger'], ['deleted', 'danger'],
+    ['released', 'accent'], ['refunded', 'accent'], ['partially_refunded', 'accent'],
+    ['created', 'info'], ['unknown', 'muted']
+  ])('%s has the same %s status badge for payer and recipient', (status, tone) => {
+    const component = Object.assign(Object.create(PaymentMethodsPopupComponent.prototype), {
+      i18n: { translate: (key: string) => key }, formatSignedCurrency: () => 'EUR 25.00'
+    });
+    for (const direction of ['income', 'expense']) {
+      const row = component.historyRow({ id: 'receipt', provider: 'bank-transfer', amount: 25,
+        currency: 'EUR', createdAtIso: '2026-10-14T12:00:00Z', status, direction });
+      expect(row.badges.find((badge: any) => badge.position === 'top-right')).toMatchObject({ tone });
+      expect(row.surfaceTone).toBe(status === 'deleted' ? 'muted' : direction === 'income' ? 'success' : 'danger');
+    }
+  });
+});

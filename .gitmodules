@@ -2,4 +2,4 @@
 	path = components
 	url = https://github.com/fssrepository/myscoutee-components.git
 	branch = master
-	update = merge
+	update = checkout

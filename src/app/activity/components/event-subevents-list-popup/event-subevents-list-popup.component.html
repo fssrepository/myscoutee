@@ -8,6 +8,7 @@
       [loadPage]="loadSubEventsPage"
       [itemTemplate]="slotSectionTemplate"
       [query]="query"
+      (itemSelect)="onCalendarItemSelect($event)"
     ></app-smart-list>
 
     <ng-template #slotSectionTemplate let-section>

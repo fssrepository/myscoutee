@@ -15,6 +15,7 @@ import { SessionService } from '../../../../core/base/services/accounts/session.
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
 import { profileMenuBadgeCount } from '../app/app-context-store.utils';
+import type { UserDto } from '../../../../core/contracts/accounts/user.interface';
 
 import type { GroupCategory, GroupBucket, GroupWorkspace } from '../../../../core/contracts/groups/community-group.interface';
 import { groupMembershipBucket } from '../../../../core/contracts/groups/community-group.interface';
@@ -43,15 +44,30 @@ export class GroupWorkspaceStore {
       const attention = workspace.role === 'Admin' && workspace.membershipStatus === 'accepted'
         ? this.moderation.attention(workspace.groupId, previousPending, workspace.moderationQueueRevision)
         : { pending: 0, revision: 0 };
-      const activity = workspace.membershipStatus === 'accepted' && active?.groupId === workspace.groupId && profile?.id === workspace.profileId
-        ? profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id), 'group') + (profile.admin ? 0 : workspace.membersActivity ?? 0)
+      let activity = workspace.membershipStatus === 'accepted' && active?.groupId === workspace.groupId && profile?.id === workspace.profileId
+        ? (profile.admin ? this.adminMenuCount(profile, workspace.groupId)
+          : profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id), 'group')) + (profile.admin ? 0 : workspace.membersActivity ?? 0)
         : Math.max(0, workspace.activity - previousPending);
+      if (profile?.admin && active?.groupId !== workspace.groupId && isBaseGroupId(workspace.groupId)) {
+        const reviews = this.admin.reviewCountsForScope(workspace.groupId);
+        const cachedProfile = this.profile.getUserProfile(workspace.profileId ?? '');
+        activity = cachedProfile?.id === workspace.profileId
+          ? this.adminMenuCount(cachedProfile, workspace.groupId)
+          : Math.max(0, activity - (workspace.membersActivity ?? 0))
+            + (reviews?.reportsUnresolved ?? 0) + (reviews?.feedbackUnresolved ?? 0);
+      }
       return { ...workspace, activity: activity + attention.pending, moderationPending: attention.pending, moderationQueueRevision: attention.revision };
     });
   });
   readonly workspaces = computed(() => this.attentionRows().filter(workspace => workspace.membershipStatus === 'accepted' && workspace.policy.workspace && !!workspace.profileId));
   private readonly accountAttention = computed(() => {
     const account = this.profile.getUserProfile(this.context.accountUserId());
+    if (this.profile.activeUserProfile()?.admin) {
+      const reviews = this.admin.reviewCountsForScope(null);
+      const count = account ? this.adminMenuCount(account, null)
+        : (reviews?.reportsUnresolved ?? 0) + (reviews?.feedbackUnresolved ?? 0);
+      return count + (this.moderation.forScope(null)?.pendingCount ?? 0);
+    }
     if (!account) return 0;
     const flags = this.profile.getUserImpressionChangeFlags(account.id);
     return profileMenuBadgeCount(account, this.activities.getUserCounterOverrides(account.id), flags)
@@ -59,6 +75,13 @@ export class GroupWorkspaceStore {
   });
   readonly avatarBadgeCount = computed(() => this.accountAttention()
     + this.attentionRows().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId)).reduce((sum, workspace) => sum + workspace.activity, 0));
+  private adminMenuCount(profile: UserDto, groupId: string | null): number {
+    const reviews = this.admin.reviewCountsForScope(groupId);
+    return profileMenuBadgeCount({ ...profile, admin: true }, {
+      ...this.activities.getUserCounterOverrides(profile.id),
+      ...(reviews ? { game: reviews.reportsUnresolved, feedback: reviews.feedbackUnresolved } : {})
+    }, { host: false, member: false }, 'group');
+  }
   readonly error = signal('');
   readonly counters = computed(() => this.attentionRows().reduce((counts, workspace) => {
     const bucket = groupMembershipBucket(workspace);
@@ -176,6 +199,11 @@ export class GroupWorkspaceStore {
         const updated = workspaces.find(w => w.groupId === active.groupId && w.membershipStatus === 'accepted' && w.policy.workspace && w.profileId);
         if (updated) this.context.active.set(updated);
         else await this.select(null);
+      } else if (this.profile.activeUserProfile()?.admin) {
+        // Admin sessions can restore a scoped dashboard before the selector.
+        const restored = workspaces.find(workspace => workspace.profileId === this.profile.activeUserId()
+          && workspace.membershipStatus === 'accepted' && workspace.policy.workspace);
+        if (restored) this.context.active.set(restored);
       }
     }
   }
@@ -188,7 +216,9 @@ export class GroupWorkspaceStore {
     if (adminMode) this.adminMenu.closePopup();
     this.error.set(''); this.context.switching.set(true);
     try {
-      this.workspaceSnapshots.set(this.attentionRows());
+      // Admin review counts remain derived from the dashboard; persisting them
+      // into the workspace baseline would add them again on the next switch.
+      if (!adminMode) this.workspaceSnapshots.set(this.attentionRows());
       const selected = await this.users.loadProfileExtById(this.context.accountUserId(), undefined, groupId);
       if (generation !== this.generation) return false;
       if (!selected) { this.error.set('groups.switch.failed'); return false; }

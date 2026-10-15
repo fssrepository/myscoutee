@@ -523,11 +523,12 @@ export class SeedDemoBootstrapService {
         if (this.communityGroupsSeed.seedDefaults(this.usersSeed.seedDefaults())) {
           await this.flushBootstrapTables([COMMUNITY_GROUPS_TABLE_NAME, ACTIVITY_MEMBERS_TABLE_NAME, USERS_TABLE_NAME]);
         }
-        if (this.campaignsSeed.seedDefaults()) await this.flushBootstrapTables([CAMPAIGNS_TABLE_NAME]);
+        if (this.campaignsSeed.seedDefaults()) await this.flushBootstrapTables([CAMPAIGNS_TABLE_NAME, USERS_TABLE_NAME]);
         if (this.serviceOfferingsSeed.seedDefaults()) await this.flushBootstrapTables(['serviceOfferings']);
-        if (this.communityCasesSeed.seedDefaults()) await this.flushBootstrapTables([COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME, CHATS_TABLE_NAME]);
-        if (this.communityAnnouncementsSeed.seedDefaults()) await this.flushBootstrapTables(['communityAnnouncements']);
+        if (this.communityCasesSeed.seedDefaults()) await this.flushBootstrapTables([COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME, CHATS_TABLE_NAME, USERS_TABLE_NAME]);
+        if (this.communityAnnouncementsSeed.seedDefaults()) await this.flushBootstrapTables(['communityAnnouncements', USERS_TABLE_NAME]);
         this.workActivitySeed.seedDefaults();
+        this.communityGroupsSeed.refreshCounters();
         await this.flushBootstrapTables([USER_RATES_TABLE_NAME, EVENTS_TABLE_NAME, ACTIVITY_MEMBERS_TABLE_NAME, USERS_TABLE_NAME]);
       });
       await this.runBootstrapStep('activityResources', async () => {

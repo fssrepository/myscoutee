@@ -14,6 +14,7 @@
           data-guide-field="chat-list"
           [config]="chatThreadSmartListConfig"
           [loadPage]="chatThreadLoadPage"
+          [emptyError]="chatLoadError()"
           [itemTemplate]="chatThreadMessageTemplate"
           [query]="chatThreadQuery"
           (menuItemSelect)="onDispatchedChatMenuSelect($event)"

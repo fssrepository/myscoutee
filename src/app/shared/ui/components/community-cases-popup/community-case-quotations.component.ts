@@ -24,10 +24,12 @@ import { I18nService } from '../../../core/base/services/localization/i18n.servi
 import { CommunityCaseConverter } from '../../converters/community/community-case.converter';
 import type { EventPolicyDTO } from '../../../core/contracts/events/event.interface';
 import type { CaseOffer } from '../../../core/contracts/community/community-case.interface';
+import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 type Row = SingleRowData<CaseOffer>;
 const emptyOffer = () => ({amount:0,currency:'EUR',note:'',workPolicies:[] as EventPolicyDTO[],refundPolicies:[] as EventPolicyDTO[]});
 @Component({selector:'app-community-case-quotations',standalone:true,
  imports:[PopupComponent,FormFlowComponent,FormsModule,SmartListComponent,SingleRowComponent,I18nPipe],
+ styles:[`:host { --policies-open-button-mobile-width: auto; --form-flow-mobile-control-columns: minmax(0, 1fr) auto; }`],
  template:`<app-popup [model]="model()" [zIndex]="14900" data-guide-context="community-case-quotations">
    @if (store.quotations()?.canReviewOffers) {
      <app-smart-list data-guide-field="case-quotations" #list [config]="config" [query]="query()" [loadPage]="loadPage" [itemTemplate]="rowTemplate" (menuItemSelect)="action($event)"></app-smart-list>
@@ -42,6 +44,7 @@ const emptyOffer = () => ({amount:0,currency:'EUR',note:'',workPolicies:[] as Ev
 export class CommunityCaseQuotationsComponent {
  protected readonly store=inject(CommunityCasesStore);
  private readonly i18n=inject(I18nService);
+ private readonly deployment=inject(DeploymentConfigurationService);
  private readonly guide=inject(ExplanationGuideService);
  private readonly list=viewChild<SmartListComponent<Row>>('list');
  protected readonly editing=signal(false);
@@ -96,14 +99,16 @@ export class CommunityCaseQuotationsComponent {
  protected readonly canSave=computed(()=>this.editingId()?!!this.store.quotations()?.canManage&&['open','in-progress'].includes(this.store.quotations()!.status):this.canOffer());
  protected readonly model=computed<PopupModel>(()=>{
    const c=this.store.quotations(),providers=c?.members.filter(m=>c.support.some(s=>s.accountId===m.accountId&&s.status!=='declined'))??[];
+   const statusItems:AppMenuItem[]=(['all','pending','accepted','rejected'] as const).map(id=>({
+     id,label:`case.offer.${id}`,...CommunityCaseConverter.offerStyle(id),kind:'radio',checked:id===this.status(),active:id===this.status(),surface:'tinted',
+     counter:{value:()=>this.store.quotationCounters()[id],max:99},counterTone:'alert'}));
    return {errorMessage:this.editing()?null:this.store.error(),title:'case.action.offers',subtitle:c?.title,size:'wide',height:'full',bodyLayout:'fill',onClose:()=>this.store.quotations.set(null),
      headerControls:[{id:'providers',kind:'menu',menuKind:'inline',items:[{
        id:'providers',kind:'action',layout:providers.length?'image-stack':'pill',label:providers.length?null:'case.offer.providers',icon:providers.length?null:'home_repair_service',palette:'teal',ariaLabel:'case.offer.providers',
        imageStack:providers.map(m=>({id:m.accountId,imageUrl:m.avatarUrl,imageAlt:m.name,imageFallback:AppUtils.initialsFromText(m.name)})),imageStackMaxVisible:4,
        counter:providers.length>4?providers.length-4:null,trailingIcon:'chevron_right'
      }]}],
-     toolbarControls:[{id:'status',kind:'menu',menuKind:'select',trigger:{label:`case.offer.${this.status()}`,...CommunityCaseConverter.offerStyle(this.status()),layout:'pill'},
-       items:(['all','pending','accepted','rejected'] as const).map(id=>({id,label:`case.offer.${id}`,...CommunityCaseConverter.offerStyle(id),kind:'radio',checked:id===this.status(),active:id===this.status(),surface:'tinted'}))},
+     toolbarControls:[{id:'status',kind:'menu',menuKind:'select',trigger:CommunityCaseConverter.trigger(statusItems.find(item=>item.id===this.status())!),items:statusItems},
        ...(this.canOffer()?[{id:'offer',icon:'add',ariaLabel:'case.offer.create',palette:'green' as const,align:'end' as const}]:[])],
      onAction:()=>{if(this.canOffer()){this.editingId.set(null);this.offer.set(emptyOffer());this.readOnly.set(false);this.editing.set(true);}},
      onMenuSelect:e=>{if(e.control.id==='status')this.status.set(e.itemSelect.id as CaseOffer['status']|'all');else if(c)void this.store.showProviders(c);}};
@@ -113,10 +118,13 @@ export class CommunityCaseQuotationsComponent {
    onAction:()=>{const c=this.store.quotations();if(c&&!this.readOnly()&&this.canSave())void this.store.command(c,{action:this.editingId()?'edit-offer':'offer',offerId:this.editingId()??undefined,...this.offer()}).then(()=>{if(!this.store.error()){this.editing.set(false);this.offer.set(emptyOffer());}});}}));
  protected readonly flow=computed<FormFlowModel>(()=>{
    const t=(key:string)=>this.i18n.translate(key),disabled=this.readOnly();
-   return {title:'',layout:'grouped',header:false,save:null,summary:{enabled:false},steps:[
+   return {title:'',layout:'grouped',header:false,save:null,summary:{enabled:false},allowMenuOverflow:true,steps:[
      {id:'quotation',title:t('case.offer.price'),icon:'request_quote',palette:'gold',controls:[
-       {id:'amount',guideFieldId:'amount',bind:'amount',kind:'number',label:t('case.offer.amount'),min:0,max:100000000,required:true,disabled},
-       {id:'currency',guideFieldId:'currency',bind:'currency',kind:'text',label:t('case.offer.currency'),maxLength:3,required:true,disabled},
+       {id:'amount',guideFieldId:'amount',bind:'amount',kind:'number',layout:'half',label:t('case.offer.amount'),min:0,max:100000000,required:true,disabled},
+       {id:'currency',guideFieldId:'currency',bind:'currency',kind:'menu',layout:'half',label:t('case.offer.currency'),required:true,disabled,
+         config:{kind:'select',trigger:{label:this.offer().currency,icon:'payments',palette:'blue'},
+           items:this.deployment.paymentCurrencies().map(currency=>({id:currency,value:currency,label:currency,kind:'radio',
+             checked:this.offer().currency===currency,palette:'blue'}))}},
        {id:'note',guideFieldId:'note',bind:'note',kind:'textarea',label:t('description'),maxLength:4000,rows:3,layout:'wide',disabled}]},
      ...(['work','refund'] as const).map(kind=>({id:`${kind}-policies`,title:'',chrome:'none' as const,controls:[
        {id:`${kind}-policies`,guideFieldId:`${kind}-policies`,bind:`${kind}Policies`,kind:'policies' as const,layout:'wide' as const,disabled,

@@ -58,9 +58,10 @@ export class LocalPhotoFeedService extends LocalRouteDelayService implements IPh
     return { ...LocalPhotoFeedMapper.toDto(record, point), feedCounters: this.repository.counters(request.userId) };
   }
   async remove(userId: string, id: string) {
-    await this.waitForRouteDelay('/activities/feed');
-    await this.repository.whenReady();
-    return this.repository.remove(userId, id);
+    return this.withRouteDelay('/activities/feed', async () => {
+      await this.repository.whenReady();
+      return this.repository.remove(userId, id);
+    });
   }
   async seen(userId: string, postIds: string[]) {
     await this.waitForRouteDelay('/activities/feed');

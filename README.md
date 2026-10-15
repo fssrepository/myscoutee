@@ -30,8 +30,22 @@ Generic tests live beside the library source and run with `npm test` inside the
 submodule. Application integration tests stay here. The component repository also
 builds independently with `npm ci && npm run build`.
 
-When editing a separate components checkout, commit there and fast-forward the
-submodule's `master` branch. Then commit the updated frontend gitlink. Generated
+Commit a shared change once in the components repository and publish that commit
+to its `origin`. Consume the same published commit in every frontend; never
+cherry-pick or recreate it in another components checkout:
+
+```sh
+git -C components fetch origin
+git -C components checkout --detach <published-components-commit>
+git add components
+```
+
+Verify the commit belongs to `origin/master` before recording the gitlink. Keep
+uncommitted component work in its original checkout until committed; do not
+overwrite a dirty checkout. The versioned submodule update mode is `checkout`,
+so `git submodule update --init components` restores the recorded commit without
+merging component histories. The frontend gitlink commit records a dependency
+revision; it does not duplicate the component implementation commit. Generated
 `dist/` and dependencies are ignored; no npm publication is needed.
 
 ### Source snapshot — 7 October 2026

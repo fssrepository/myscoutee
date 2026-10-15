@@ -14,7 +14,7 @@ import { ExplanationPopupComponent } from './explanation-popup.component';
 @Component({ selector: 'app-explanation-launcher', standalone: true,
   imports: [FloatingLauncherComponent, ExplanationPopupComponent, IndicatorComponent, I18nPipe],
   template: `
-    @if (guide.popupOpen() && (guide.loading() || !guide.hasVisiblePopup())) {
+    @if (guide.popupOpen() && guide.loading()) {
       <div class="explanation-guide-loading" role="status" aria-busy="true"
         [style.z-index]="layer() - 1" [attr.aria-label]="'loading.explanation.content' | i18n">
         <app-indicator kind="load-ring" state="loading" [tone]="loadingTone"></app-indicator>
@@ -22,7 +22,7 @@ import { ExplanationPopupComponent } from './explanation-popup.component';
     }
     @if (guide.launcherVisible()) {
       <div class="floating-launcher-rail" data-guide-surface="landing.guide" [class.is-embedded]="embedded" [style.z-index]="layer()">
-        <app-floating-launcher class="explanation-guide-menu" data-guide-field="guide-launcher" [trigger]="trigger()" [position]="position()" [layer]="layer()"
+        <app-floating-launcher class="explanation-guide-menu" data-guide-field="guide-launcher" [style.visibility]="guide.popupOpen() ? 'visible' : null" [trigger]="trigger()" [position]="position()" [layer]="layer()"
           (positionChange)="position.set($event)" (dismissed)="guide.dismissLauncher()"
           (itemSelect)="$event.sourceEvent.stopPropagation(); guide.openCurrent()"></app-floating-launcher>
       </div>
@@ -60,9 +60,10 @@ export class ExplanationLauncherComponent {
     });
   }
   protected readonly layer = computed(() => Math.max(24060, this.popups.topLayer() + 2));
+  // Opening/loading/positioning are already guide mode; keep its launcher stable.
   protected readonly trigger = computed<AppMenuTrigger>(() => ({
     id: 'explanation-guide', icon: 'tips_and_updates',
-    palette: this.guide.hasVisiblePopup() ? 'brand' : 'neutral-strong', action: 'custom',
+    palette: this.guide.popupOpen() ? 'brand' : 'neutral-strong', action: 'custom',
     hideLabel: true, ariaLabel: 'explanations'
   }));
 }

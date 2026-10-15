@@ -10,6 +10,7 @@ import {
   type ActivityEventRecord,
   type ActivityEventPageResultDTO,
   type ActivityEventSubEventsQueryDTO,
+  type ActivityEventSubEventsCalendarCellDTO,
   type ActivitySubEventStageRuntimeStateDTO,
   type ActivitySubEventStageRuntimeStateRefDTO,
   type ActivitySubEventResourceStateDTO,
@@ -158,7 +159,7 @@ export class LocalActivityEventsMapper {
     const direction = `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? -1 : 1;
     const nowMs = Date.now();
     const sources = this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
-      .filter(source => (!source.slotSourceId && source.definitions.length === 0)
+      .filter(source => (!query?.calendarTimeZone && !source.slotSourceId && source.definitions.length === 0)
         || (this.slotSourceMatchesOrder(source, query, nowMs) && this.slotSourceOverlapsRange(source, query)))
       .sort((left, right) => direction * (this.dateMs(left.startAt) - this.dateMs(right.startAt)));
     const groupCountsBySource = this.stageGroupCountsBySource(sources, parentRecord.capacityMax);
@@ -167,6 +168,30 @@ export class LocalActivityEventsMapper {
       parentRecord,
       groupCountsBySource.get(source) ?? new Map<string, number>()
     ));
+  }
+
+  static compactCalendarSlots(slots: SubEventsSlotDTO[], query?: ActivityEventSubEventsQueryDTO) {
+    const cells: ActivityEventSubEventsCalendarCellDTO[] = [];
+    if (query?.calendarCellLimit == null || !['week', 'month'].includes(query.view ?? '')) return {slots, cells};
+    const first = UiDateUtils.parseDateOnlyLocal(query.rangeStart), last = UiDateUtils.parseDateOnlyLocal(query.rangeEnd);
+    if (!first || !last || last < first || (last.getTime() - first.getTime()) / 86400000 > 42
+      || query.calendarCellLimit < 1 || query.calendarCellLimit > 20) throw new Error('Invalid calendar cell range or limit');
+    const detailed = new Set<SubEventsSlotDTO>();
+    const ranges = slots.map(slot => ({slot, start: this.dateMs(slot.startAt), end: this.dateMs(slot.endAt || slot.startAt)}));
+    const hourly = query.view === 'week';
+    for (let day = new Date(first); day <= last; day.setDate(day.getDate() + 1)) {
+      for (let hour = 0; hour < (hourly ? 24 : 1); hour++) {
+        const start = new Date(day), end = new Date(day);
+        start.setHours(hourly ? hour : 0, 0, 0, 0);
+        if (hourly) end.setHours(hour + 1, 0, 0, 0); else end.setDate(end.getDate() + 1);
+        if (end <= start) continue;
+        const matches = ranges.filter(range => range.start < end.getTime()
+          && (range.end > start.getTime() || (range.end <= range.start && range.start >= start.getTime())));
+        if (matches.length > query.calendarCellLimit) cells.push({startAt: start.toISOString(), endAt: end.toISOString(), count: matches.length});
+        else matches.forEach(range => detailed.add(range.slot));
+      }
+    }
+    return {slots: slots.filter(slot => detailed.has(slot)), cells};
   }
 
   private static toSubEventsSlot(
@@ -291,9 +316,7 @@ export class LocalActivityEventsMapper {
     resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): SubEventsSlotDTO {
     const ownerId = this.subEventResourceOwnerIdFromSlot(slot);
-    return {
-      ...slot,
-      subEventItems: (slot.subEventItems ?? []).map((item, index) => {
+    const subEventItems = (slot.subEventItems ?? []).map((item, index) => {
         const subEventId = `${item.id ?? ''}`.trim() || this.fallbackSubEventId(index);
         const resource = resourcesByKey.get(this.subEventResourceRecordKey({
           ownerId,
@@ -305,8 +328,8 @@ export class LocalActivityEventsMapper {
           subEventId
         })) ?? null;
         return this.withSubEventStageRuntime(this.withSubEventResource(item, resource, resourceMetricsByKey), stageRuntime);
-      })
-    };
+      });
+    return { ...slot, subEventItems, currentStage: tournamentCurrentStageFromSubEvents(subEventItems) };
   }
 
   private static subEventsSlotSources(

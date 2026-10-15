@@ -1,3 +1,4 @@
+import { ActivityStore } from './activity.store';
 import { ChatsService } from '../../../../core/base/services/chat/chats.service';
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from './activities-popup.store';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
@@ -11,6 +12,7 @@ interface CampaignSession { userId: string; scope: 'own' | 'all'; selectedId?: s
 interface CampaignHistorySession { userId: string; targetUserId: string; label?: string | null; }
 @Injectable({ providedIn: 'root' })
 export class CampaignsStore {
+  private readonly activity = inject(ActivityStore);
   private readonly service = inject(CampaignsService);
   private readonly chats = inject(ChatsService);
   private readonly activities = inject(ActivitiesPopupStore);
@@ -21,10 +23,21 @@ export class CampaignsStore {
   readonly known = signal<Record<string, Campaign>>({});
   readonly selectedId = signal<string | null>(null);
   readonly selected = computed(() => this.known()[this.selectedId() ?? ''] ?? null);
+  readonly counters = computed(() => {
+    const id = this.profile.activeUserId();
+    const activities = this.profile.activeUserProfile()?.activities;
+    return {
+      published: this.activity.getUserCounterOverrides(id)?.menuCounters?.['campaignsPublished'] ?? activities?.menuCounters?.['campaignsPublished'] ?? 0,
+      draft: this.activity.getUserCounterOverrides(id)?.menuCounters?.['campaignsDrafts'] ?? activities?.menuCounters?.['campaignsDrafts'] ?? 0,
+      trash: this.activity.getUserCounterOverrides(id)?.menuCounters?.['campaignsTrash'] ?? activities?.menuCounters?.['campaignsTrash'] ?? 0
+    };
+  });
+  readonly count = computed(() => Object.values(this.counters()).reduce((sum, count) => sum + count, 0));
   private contextUserId = '';
   readonly session = signal<CampaignSession | null>(null);
   readonly component = signal<Type<unknown> | null>(null);
-  readonly editor = signal<{ userId: string; campaign: Campaign | null; readOnly: boolean } | null>(null);
+  readonly editor = signal<{ userId: string; campaign: Campaign | null; readOnly: boolean; loading?: boolean } | null>(null);
+  private editorRequest: AbortController | null = null;
   readonly historyTarget = signal<CampaignHistorySession | null>(null);
   readonly changed = signal<Campaign | null>(null);
   readonly busy = signal(false);
@@ -49,8 +62,8 @@ export class CampaignsStore {
     this.session.set({ userId: this.profile.activeUserId(), select, selectedId, scope }); await this.load();
     if (select && selectedId) await this.loadReference(selectedId);
   }
-  close(): void { this.generation++; this.session.set(null); this.selectedId.set(null); this.editor.set(null); this.historyTarget.set(null); this.error.set(''); this.busy.set(false); }
-  closeEditor(): void { this.generation++; this.editor.set(null); this.error.set(''); this.busy.set(false); }
+  close(): void { this.closeEditor(); this.session.set(null); this.selectedId.set(null); this.historyTarget.set(null); }
+  closeEditor(): void { this.generation++; this.editorRequest?.abort(); this.editorRequest = null; this.editor.set(null); this.error.set(''); this.busy.set(false); }
   closeHistory(): void { this.generation++; this.historyTarget.set(null); this.error.set(''); this.busy.set(false); }
   async openHistory(target: { userId: string; label?: string | null }): Promise<void> {
     if (!this.workspace.isWork()) return;
@@ -83,9 +96,17 @@ export class CampaignsStore {
   async page(query: ListQuery<CampaignFilters>, signal?: AbortSignal) {
     const session = this.session();
     if (!session) throw new DOMException('Campaign list closed', 'AbortError');
+    const counterToken = this.activity.captureUserCounterSyncToken(session.userId);
     const result = await this.service.page(session.userId, query, signal);
     signal?.throwIfAborted();
     if (session !== this.session()) throw new DOMException('Workspace changed', 'AbortError');
+    const filters = query.filters ?? {};
+    // Only a complete own-status query has the same scope as its menu bucket.
+    if (filters.scope === 'own' && !filters.search?.trim() && !filters.category
+      && (!filters.kind || filters.kind === 'both') && typeof result.total === 'number') {
+      const key = { published: 'campaignsPublished', draft: 'campaignsDrafts', trash: 'campaignsTrash' }[filters.status ?? 'published'];
+      this.activity.applyRealtimeCounterOverrides(counterToken, { menuCounters: { [key]: result.total } });
+    }
     this.known.update(known => ({ ...known, ...Object.fromEntries(result.items.map(c => [c.id, c])) }));
     return result;
   }
@@ -114,22 +135,40 @@ export class CampaignsStore {
   async edit(campaign?: Campaign, readOnly = false): Promise<void> {
     if (!this.workspace.isWork() || this.busy()) return;
     const userId = this.profile.activeUserId(); const generation = ++this.generation;
+    const controller = new AbortController(); this.editorRequest = controller;
     this.busy.set(true); this.error.set('');
+    this.editor.set({ userId, campaign: campaign ?? null, readOnly, loading: Boolean(campaign) });
     try {
-      const detail = campaign ? await this.service.detail(userId, campaign.id) : null;
-      await this.load();
-      if (generation === this.generation && userId === this.profile.activeUserId()) this.editor.set({ userId, campaign: detail, readOnly });
-    } catch { if (generation === this.generation) this.error.set('campaign.load.failed'); }
-    finally { if (generation === this.generation) this.busy.set(false); }
+      const [, detail] = await Promise.all([
+        this.load(),
+        campaign ? this.service.detail(userId, campaign.id, controller.signal) : Promise.resolve(null)
+      ]);
+      if (!controller.signal.aborted && generation === this.generation && userId === this.profile.activeUserId())
+        this.editor.set({ userId, campaign: detail, readOnly });
+    } catch { if (!controller.signal.aborted && generation === this.generation) {
+      this.editor.update(editor => editor ? { ...editor, loading: false } : null);
+      this.error.set('campaign.load.failed');
+    } }
+    finally { if (generation === this.generation) { this.editorRequest = null; this.busy.set(false); } }
   }
   async save(value: SaveCampaign): Promise<void> {
     const editor = this.editor(); if (!editor || editor.readOnly || this.busy()) return;
     const generation = ++this.generation; this.busy.set(true); this.error.set('');
     try {
       const campaign = await this.service.save({ ...value, userId: editor.userId });
-      if (generation === this.generation && editor.userId === this.profile.activeUserId()) { this.changed.set(campaign); this.editor.set(null); }
+      if (generation === this.generation && editor.userId === this.profile.activeUserId()) { this.publish(campaign); this.editor.set(null); }
     } catch { if (generation === this.generation) this.error.set('campaign.save.failed'); }
     finally { if (generation === this.generation) this.busy.set(false); }
+  }
+  private publish(campaign: Campaign): void {
+    if (campaign.ownerUserId === this.profile.activeUserId() && campaign.ownCounters) {
+      const counts = campaign.ownCounters;
+      this.activity.patchUserCounterOverrides(campaign.ownerUserId, {
+        menuCounters: { campaignsPublished: counts.published, campaignsDrafts: counts.draft, campaignsTrash: counts.trash }
+      });
+    }
+    this.known.update(known => ({ ...known, [campaign.id]: campaign }));
+    this.changed.set(campaign);
   }
   async action(action: string, campaign: Campaign): Promise<void> {
     if (action === 'ratings' && campaign.ownerUserId === this.profile.activeUserId()) {
@@ -147,7 +186,7 @@ export class CampaignsStore {
     this.busy.set(true); this.error.set('');
     try {
       const result = await this.service.action(userId, campaign.id, action as CampaignAction, campaign.version);
-      if (generation === this.generation && userId === this.profile.activeUserId()) this.changed.set(result);
+      if (generation === this.generation && userId === this.profile.activeUserId()) this.publish(result);
     } catch { if (generation === this.generation) this.error.set('campaign.save.failed'); }
     finally { if (generation === this.generation) this.busy.set(false); }
   }

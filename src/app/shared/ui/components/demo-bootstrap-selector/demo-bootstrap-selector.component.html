@@ -20,7 +20,9 @@
                           data-i18n-ignore
                           >
                           @if (userAvatarUrl(user); as avatarUrl) {
-                            <img [src]="avatarUrl" alt="" />
+                            <img [src]="avatarUrl" alt="" loading="lazy" decoding="async"
+                              (load)="$any($event.target).classList.add('is-loaded')"
+                              (error)="$any($event.target).classList.remove('is-loaded')" />
                           } @else {
                             {{ userAvatarLabel(user) }}
                           }
@@ -102,7 +104,9 @@
                       data-i18n-ignore
                       >
                       @if (userAvatarUrl(user); as avatarUrl) {
-                        <img [src]="avatarUrl" alt="" />
+                        <img [src]="avatarUrl" alt="" loading="lazy" decoding="async"
+                              (load)="$any($event.target).classList.add('is-loaded')"
+                              (error)="$any($event.target).classList.remove('is-loaded')" />
                       } @else {
                         {{ userAvatarLabel(user) }}
                       }

@@ -71,6 +71,7 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
 
   async runCommunityTasksTick(): Promise<void> {
     await this.serviceFeedback.drain();
+    await this.announcements.expireVoteCounters();
     if (!(await this.repository.groupIds()).includes(COMMUNITY_BASE_GROUP_ID)) return;
     const state = await this.readNotificationCenter(COMMUNITY_BASE_GROUP_ID);
     for (const rule of state.rules.filter(item => ['community-scheduled-cases', 'community-voting-close'].includes(item.ruleKey))) {

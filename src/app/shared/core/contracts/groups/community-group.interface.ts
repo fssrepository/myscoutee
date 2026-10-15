@@ -22,6 +22,7 @@ export interface GroupPolicy {
   policies?: import('../events/event.interface').EventPolicyDTO[];
 }
 export interface CommunityGroup {
+  menuCounters?: Record<string, number>;
   groupType?: GroupType;
   lifecycleStatus?: 'active' | 'under-review' | 'deleted' | null;
   canTakeOver?: boolean;
@@ -53,7 +54,11 @@ export function communityGroupSummary(group: CommunityGroup | CommunityGroupSumm
   return summary;
 }
 export interface GroupFilters { bucket: GroupBucket; category?: GroupCategory | null; }
-export interface GroupCounters { hosting: number; participation: number; pending: number; invitations: number; }
+export interface GroupCounters { hosting: number; participation: number; pending: number; invitations: number; trash: number; }
+export const GROUP_COUNTER_BUCKETS = ['hosting', 'participation', 'pending', 'invitations', 'trash'] as const;
+export function groupCounters(values: Record<string, number> = {}): GroupCounters {
+  return Object.fromEntries(GROUP_COUNTER_BUCKETS.map(bucket => [bucket, Math.max(0, values[`groups_${bucket}`] ?? 0)])) as unknown as GroupCounters;
+}
 export interface GroupWorkspace {
   groupType?: GroupType;
   membersActivity?: number;

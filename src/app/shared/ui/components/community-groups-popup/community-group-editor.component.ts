@@ -57,7 +57,6 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
     <app-popup [model]="popupModel()" [zIndex]="zIndex">
         <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="loading || store.busy()" [loading]="loading"
           [saving]="store.busy()" (action)="action($event)"></app-form-flow>
-      @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
     </app-popup>
     @if (policyDraft) {
       <app-popup [model]="policyPopupModel()" [zIndex]="zIndex + 40">
@@ -112,7 +111,7 @@ export class CommunityGroupEditorComponent implements OnChanges, OnInit, OnDestr
   private validName(): boolean { return !!this.form.name.trim() && Array.from(this.form.name).length <= 20; }
   protected popupModel(): PopupModel {
     const visibility = this.form.visibility;
-    return { title: this.group || this.loading ? 'groups.edit' : 'groups.create', size: 'wide', height: 'full', mobilePresentation: 'fullscreen',
+    return { errorMessage: this.store.error(), title: this.group || this.loading ? 'groups.edit' : 'groups.create', size: 'wide', height: 'full', mobilePresentation: 'fullscreen',
       onClose: () => this.store.closeEditor(),
       headerControls: this.loading ? [] : [{ id: 'visibility', kind: 'menu', menuKind: 'select',
         trigger: { label: `groups.visibility.${visibility}`, ...GROUP_VISIBILITY_STYLE[visibility], layout: 'pill', disabled: this.readOnly },

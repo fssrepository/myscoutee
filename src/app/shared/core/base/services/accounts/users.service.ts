@@ -665,6 +665,8 @@ export class UsersService extends BaseRouteModeService {
     };
 
     const patch: Partial<ActivityCounters> = {};
+    const menuCounters = counterOverrides.menuCounters ?? fallbackActivities.menuCounters;
+    if (menuCounters) patch.menuCounters = { ...menuCounters };
     const game = normalizeWithFallback(counterOverrides.game, fallbackActivities.game);
     const chats = normalizeWithFallback(counterOverrides.chats, fallbackActivities.chats);
     const invitations = normalizeWithFallback(counterOverrides.invitations, fallbackActivities.invitations);
@@ -814,6 +816,7 @@ export class UsersService extends BaseRouteModeService {
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
         notifications: Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
+        menuCounters: { ...user.activities?.menuCounters },
         paymentRefundsPending: Math.max(0, Math.trunc(Number(user.activities?.paymentRefundsPending) || 0)),
         contactRequestsPending: Math.max(0, Math.trunc(Number(user.activities?.contactRequestsPending) || 0)),
         chat: {

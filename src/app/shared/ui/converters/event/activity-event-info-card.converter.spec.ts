@@ -4,6 +4,23 @@ import type { ActivityEventDTO } from '../../../core/contracts/common/activity.i
 import { ActivityEventInfoCardConverter } from './activity-event-info-card.converter';
 
 describe('ActivityEventInfoCardConverter activity badge', () => {
+  it.each([
+    [{status: 'A', cancelled: true}, 'orange'],
+    [{status: 'UR'}, 'review'], [{status: 'B'}, 'blocked'], [{status: 'T'}, 'deleted'],
+    [{status: 'I'}, 'inactive'], [{status: 'A', moderationStatus: 'under-review'}, 'teal'],
+    [{status: 'A', moderationStatus: 'rejected'}, 'purple'], [{status: 'A', moderationStatus: 'blocked'}, 'danger'],
+    [{status: 'A', full: true}, 'full']
+  ] as const)('calendar respects the displayed status badge %j', (state, tone) => {
+    const card = ActivityEventInfoCardConverter.convert({id: 'event', title: 'Event', ...state} as ActivityEventDTO);
+    const key = ActivityEventInfoCardConverter.calendarColorKey(card);
+    expect(ActivityEventInfoCardConverter.calendarColors[key!]).toEqual({badgeTone: tone});
+    expect(card.mediaEnd?.tone).toBe(tone);
+  });
+  it('keeps configured draft colors and allows the existing random fallback when no palette applies', () => {
+    const card = ActivityEventInfoCardConverter.convert({id: 'event', title: 'Event', status: 'DR'} as ActivityEventDTO);
+    expect(ActivityEventInfoCardConverter.calendarColorKey(card)).toBe('draft');
+    expect(ActivityEventInfoCardConverter.calendarColorKey({id: 'unknown', title: 'Unknown', surfaceTone: 'default'})).toBeNull();
+  });
   it('projects pending event activity onto the three-dot menu badge', () => {
     const card = ActivityEventInfoCardConverter.convert({
       id: 'event-1',

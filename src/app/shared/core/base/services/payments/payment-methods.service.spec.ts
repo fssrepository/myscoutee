@@ -26,6 +26,29 @@ describe('payment history visible window', () => {
   });
   afterEach(() => TestBed.resetTestingModule());
 
+  it('converts informational totals from the profile snapshot without requesting payment data', () => {
+    const service = TestBed.inject(PaymentMethodsService);
+    service.applyDisplayExchangeRates({ EUR: 1, HUF: 0.0025 }, 'EUR');
+    const quotes = [{ amount: 360, currency: 'EUR' }, { amount: 7500, currency: 'HUF' }];
+    expect(service.displayTotal(quotes)).toEqual({ amount: 378.75, currency: 'EUR', converted: true });
+    const cached = service.displayExchange();
+    service.applyDisplayExchangeRates({ HUF: 0.0025, EUR: 1 }, 'EUR');
+    expect(service.displayExchange()).toBe(cached);
+    service.applyDisplayExchangeRates({ EUR: 1, HUF: 0.002 }, 'EUR');
+    expect(service.displayTotal(quotes).amount).toBe(375);
+    service.applyDisplayExchangeRates({ EUR: 1, HUF: 0.0025 }, 'HUF');
+    expect(service.displayTotal(quotes).amount).toBe(151500);
+    expect(quotes[1]).toEqual({ amount: 7500, currency: 'HUF' });
+    expect(queryAllHistory).not.toHaveBeenCalled();
+  });
+
+  it('does not present a partial total when a conversion rate is missing', () => {
+    const service = TestBed.inject(PaymentMethodsService);
+    service.applyDisplayExchangeRates({ EUR: 1 }, 'EUR');
+    expect(service.displayTotal([{ amount: 12, currency: 'EUR' }])).toEqual({ amount: 12, currency: 'EUR', converted: false });
+    expect(service.displayTotal([{ amount: 12, currency: 'EUR' }, { amount: 10, currency: 'USD' }]).amount).toBeNull();
+  });
+
   it('keeps all loaded rows when polling beyond a single adapter page', async () => {
     const result = await TestBed.inject(PaymentMethodsService).queryAllHistory('payer', { page: 0, pageSize: 60 });
     expect(result.items.map(row => row.id)).toEqual(rows.slice(0, 60).map(row => row.id));

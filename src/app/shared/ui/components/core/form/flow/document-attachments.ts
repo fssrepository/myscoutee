@@ -15,24 +15,25 @@ export class DocumentAttachments {
   reset(): void { this.generation++; this.uploading.set(false); this.error.set(''); }
   steps(t: (key: string) => string): FormFlowStepModel[] {
     const files=this.context.files(), readOnly=this.context.readOnly(), busy=this.uploading()||this.context.busy();
-    if(readOnly&&!files.length)return [];
     return [{id:'attachments',title:t('announcement.attachments'),icon:'attach_file',
       headerControl:readOnly?null:{id:'attach',kind:'menu',config:{kind:'inline',items:[
-        {id:'attach',icon:'add',ariaLabel:'announcement.attach',palette:'green',disabled:busy||files.length>=10},
-        ...(files.length?[{id:'attachments-menu',icon:'more_vert',ariaLabel:'announcement.attachments',kind:'branch' as const,palette:'blue' as const,
-          disabled:busy,items:files.map((file,index)=>({id:`attachment-${index}`,label:file.name,icon:'description',context:index,
-            removable:true,removeIcon:'close',removeAriaLabel:'remove',closeOnSelect:false,surface:'tinted' as const,palette:'blue' as const}))}]:[])]}},
-      controls:readOnly?[{id:'attachment-files',guideFieldId:'attachments',kind:'table',layout:'wide',
-        config:{rows:files.map((file,index)=>({id:`attachment-${index}`,label:file.name,value:'',actions:[{id:'download',icon:'download',ariaLabel:'download',palette:'blue' as const,context:index}]}))}}]
-        :[{id:'attachment-names',bind:'attachmentNames',guideFieldId:'attachments',kind:'text',layout:'wide',readOnly:true,placeholder:t('announcement.attachments.empty')}]}];
+        {id:'attach',icon:'add',ariaLabel:'announcement.attach',palette:'green',disabled:busy||files.length>=10}]}},
+      controls:readOnly&&!files.length
+        ? [{id:'attachment-empty',kind:'static',layout:'wide',summary:{value:()=>t('announcement.attachments.empty')}}]
+        : [{id:'attachment-files',guideFieldId:'attachments',kind:'table',layout:'wide',
+        config:{rows:files.map((file,index)=>({id:`attachment-${index}`,label:file.name,value:'',actions:[
+          readOnly
+            ? {id:'download',icon:'download',ariaLabel:'download',palette:'blue' as const,context:index}
+            : {id:'remove',icon:'delete',ariaLabel:'remove',palette:'red' as const,context:index,disabled:busy}
+        ]}))}}]}];
   }
   action(event:FormFlowActionEvent,input:HTMLInputElement):void {
     const action=event.sourceEvent.id, blocked=this.context.readOnly()||this.uploading()||this.context.busy();
     if(action==='attach'){if(!blocked)input.click();return;}
     const index=Number(event.context),files=this.context.files(),file=files[index];
     if(!Number.isInteger(index)||!file)return;
-    if(event.sourceEvent.action==='remove'){if(!blocked)this.context.setFiles(files.filter((_,i)=>i!==index));}
-    else if(action==='download'||action.startsWith('attachment-'))void this.download(file);
+    if(action==='remove'){if(!blocked)this.context.setFiles(files.filter((_,i)=>i!==index));}
+    else if(action==='download')void this.download(file);
   }
   async upload(event:Event):Promise<void> {
     const input=event.target as HTMLInputElement,files=Array.from(input.files??[]);input.value='';
@@ -50,7 +51,7 @@ export class DocumentAttachments {
     finally{if(generation===this.generation)this.uploading.set(false);}
   }
   private async download(file:DocumentAttachment):Promise<void>{
-    const generation=this.generation;
-    try{await this.media.downloadDocument(file.url,file.name);}catch{if(generation===this.generation)this.error.set('announcement.attachment.failed');}
+    const generation=this.generation;this.error.set('');
+    try{await this.media.downloadDocument(file.url,file.name);}catch{if(generation===this.generation)this.error.set('announcement.attachment.open.failed');}
   }
 }

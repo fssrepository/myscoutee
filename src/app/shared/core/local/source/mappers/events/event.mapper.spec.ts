@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ActivityEventDetailDTO,
   type ActivitySubEventResourceStateDTO,
+  type ActivitySubEventStageRuntimeStateDTO,
   type SubEventsSlotDTO
 } from '../../../../contracts/common/activity.interface';
 import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
@@ -201,5 +202,57 @@ describe('Event gallery persistence', () => {
   it('accepts legacy single images but rejects a sixth event image', () => {
     expect(new ActivityEventDetailDTO().apply({ imageUrl: 'old' }).imageUrls).toEqual(['old']);
     expect(() => new ActivityEventDetailDTO().apply({ imageUrls: ['1','2','3','4','5','6'] })).toThrow();
+  });
+});
+
+
+describe('Subevents compact calendar cells', () => {
+  const slot = (id: string, day: number, hour = 10, endHour = 11): SubEventsSlotDTO => ({id, parentEventId: 'event',
+    startAt: new Date(2027, 3, day, hour).toISOString(), endAt: new Date(2027, 3, day, endHour).toISOString(), subEventItems: []});
+  const query = {userId: 'user', eventId: 'event', rangeStart: '2027-04-01', rangeEnd: '2027-04-02'};
+  it('keeps five details, aggregates six and counts all 300 instead of truncating at 240', () => {
+    const sparse = Array.from({length: 5}, (_, i) => slot(`s${i}`, 1));
+    const dense = Array.from({length: 300}, (_, i) => slot(`d${i}`, 2));
+    const result = LocalActivityEventsMapper.compactCalendarSlots([...sparse, ...dense], {...query, view: 'month', calendarCellLimit: 5});
+    expect(result.slots).toEqual(sparse);
+    expect(result.cells).toHaveLength(1);
+    expect(result.cells[0].count).toBe(300);
+    const six = LocalActivityEventsMapper.compactCalendarSlots(dense.slice(0, 6), {...query, view: 'month', calendarCellLimit: 5});
+    expect(six.slots).toEqual([]);
+    expect(six.cells[0].count).toBe(6);
+  });
+  it('preserves sparse portions of slots crossing a dense hour and excludes the exact end boundary', () => {
+    const longer = slot('long', 1, 9, 11);
+    const result = LocalActivityEventsMapper.compactCalendarSlots([longer, slot('short', 1)], {...query, view: 'week', calendarCellLimit: 1});
+    expect(result.slots).toEqual([longer]);
+    expect(result.cells).toHaveLength(1);
+    expect(new Date(result.cells[0].startAt).getHours()).toBe(10);
+    expect(result.cells[0].count).toBe(2);
+  });
+  it('leaves ordinary list data unchanged', () => {
+    const slots = [slot('s', 1)];
+    expect(LocalActivityEventsMapper.compactCalendarSlots(slots, {...query, view: 'day'})).toEqual({slots, cells: []});
+  });
+});
+
+
+describe('Slot current stage after batched runtime hydration', () => {
+  it('keeps two slots with identical stage IDs and different runtime states independent', () => {
+    const items = ['qualifiers', 'finals'].map(id => ({id, name: id, stageStatus: 'RS',
+      optional: false, tournamentLeaderboardType: 'Score'}));
+    const slots = ['slot-a', 'slot-b'].map(id => ({id, parentEventId: 'event', slotSourceId: id,
+      subEventItems: items} as SubEventsSlotDTO));
+    const states = new Map<string, ActivitySubEventStageRuntimeStateDTO>([
+      ['slot-a:qualifiers', {ownerId: 'slot-a', subEventId: 'qualifiers', stageStatus: 'F'}],
+      ['slot-a:finals', {ownerId: 'slot-a', subEventId: 'finals', stageStatus: 'S'}],
+      ['slot-b:qualifiers', {ownerId: 'slot-b', subEventId: 'qualifiers', stageStatus: 'A'}]
+    ].map(([, state]) => {
+      const value = state as ActivitySubEventStageRuntimeStateDTO;
+      return [LocalActivityEventsMapper.subEventStageRuntimeRecordKey(value), value];
+    }));
+    const result = LocalActivityEventsMapper.withSubEventStates(slots, new Map(), states, 'viewer');
+    expect(result[0].currentStage).toEqual({id: 'finals', name: 'finals', stageNumber: 2, totalStages: 2, status: 'S'});
+    expect(result[1].currentStage).toEqual({id: 'qualifiers', name: 'qualifiers', stageNumber: 1, totalStages: 2, status: 'A'});
+    expect(slots[0].subEventItems[0].stageStatus).toBe('RS');
   });
 });

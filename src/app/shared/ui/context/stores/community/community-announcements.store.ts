@@ -1,5 +1,5 @@
-import { ChatsService } from '../../../../core/base/services/chat/chats.service';
-import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../activity/activities-popup.store';
+import { ActivityStore } from '../activity/activity.store';
+import { ActivitiesPopupStore } from '../activity/activities-popup.store';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 import { CommunityAnnouncementsService } from '../../../../core/base/services/community/community-announcements.service';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
@@ -12,7 +12,13 @@ import type { CommunityAnnouncement, AnnouncementAction, AnnouncementFilters, Sa
 export type AnnouncementEditor = { value: CommunityAnnouncement | null; readOnly: boolean; defaultVoting?: boolean; view?: 'details' | 'voting' };
 @Injectable({ providedIn: 'root' })
 export class CommunityAnnouncementsStore {
-  private readonly chats = inject(ChatsService);
+  private readonly activity = inject(ActivityStore);
+  readonly votesCount = computed(() => this.activity.getUserCounterOverrides(this.profile.activeUserId())?.menuCounters?.['votes']
+    ?? this.profile.activeUserProfile()?.activities?.menuCounters?.['votes'] ?? 0);
+  readonly menuCounters = computed(() => ({
+    ...this.profile.activeUserProfile()?.activities?.menuCounters,
+    ...this.activity.getUserCounterOverrides(this.profile.activeUserId())?.menuCounters
+  }));
   private readonly activities = inject(ActivitiesPopupStore);
   private readonly service = inject(CommunityAnnouncementsService);
   private readonly profile = inject(UserProfileStore);
@@ -51,7 +57,7 @@ export class CommunityAnnouncementsStore {
   viewVoting(value: CommunityAnnouncement): void { this.error.set(''); this.editor.set({ value, readOnly: true, view: 'voting' }); }
   async save(value: SaveAnnouncement): Promise<void> {
     await this.mutate(async () => { const result = await this.service.save({ ...value, userId: this.userId(), communityId: this.groupId() });
-      return () => { this.changed.set(result); this.editor.set(null); }; });
+      return () => { this.applyCounters(result); this.changed.set(result); this.editor.set(null); }; });
   }
   async command(item: CommunityAnnouncement, action: AnnouncementAction, choice?: VoteChoice, palette?: AppMenuPalette): Promise<void> {
     const identity = this.identity; let generation = this.generation;
@@ -60,7 +66,7 @@ export class CommunityAnnouncementsStore {
       generation++;
       await this.mutate(async () => {
         const result = await this.service.action(item.id, { userId: this.userId(), version: item.version, action, choice });
-        return () => { this.changed.set(result); this.editor.update(editor => editor?.value?.id === item.id ? { ...editor, value: result } : editor); };
+        return () => { this.applyCounters(result); this.changed.set(result); this.editor.update(editor => editor?.value?.id === item.id ? { ...editor, value: result } : editor); };
       }, true);
     };
     this.dialogs.open({ title: `announcement.confirm.${action}`, message: item.title,
@@ -68,14 +74,21 @@ export class CommunityAnnouncementsStore {
         confirmLabel: action === 'vote' ? `announcement.choice.${choice}` : `announcement.action.${action}`,
         confirmPalette: palette, cancelLabel: 'Cancel', failureMessage: 'announcement.failed', onConfirm: apply });
   }
-  async feedback(item: CommunityAnnouncement): Promise<void> {
-    const key = this.identity, generation = this.generation;
-    this.error.set('');
-    try { const chat = await this.chats.ensureServiceChat({ serviceContext: 'groupSupport', announcementId: item.id, targetUserId: '', title: '', lastMessage: '' });
-      if (key !== this.identity || generation !== this.generation) return;
-      if (!chat) { this.error.set('announcement.feedback.failed'); return; }
-      this.activities.openEventChat({ ...eventChatPopupRequestFromChat(chat), parentZIndex: this.popup() ? 14000 : null }, eventChatHeaderStateFromChat(chat));
-    } catch { if (key === this.identity && generation === this.generation) this.error.set('announcement.feedback.failed'); }
+  feedback(item: CommunityAnnouncement): void {
+    if (!this.groupId() || this.canManage() || item.status !== 'published' || item.communityId !== this.groupId()) return;
+    const request = {
+      chatId: `c-moderation-group-${this.userId()}`,
+      channelType: 'groupSupport' as const,
+      parentZIndex: this.popup() ? 14000 : null,
+      serviceChat: { serviceContext: 'groupSupport' as const, announcementId: item.id, targetUserId: '', title: '', lastMessage: '' }
+    };
+    this.activities.openEventChat(request, { ...request, title: this.workspace.active()?.name });
+  }
+  private applyCounters(result: CommunityAnnouncement): void {
+    this.activity.patchUserCounterOverrides(this.userId(), { menuCounters: {
+      ...result.menuCounters,
+      ...(typeof result.votesCount === 'number' ? { votes: result.votesCount } : {})
+    } });
   }
   private async mutate(work: () => Promise<() => void>, rethrow = false): Promise<void> {
     if (this.busy()) return; const gen = ++this.generation; this.busy.set(true); this.error.set('');

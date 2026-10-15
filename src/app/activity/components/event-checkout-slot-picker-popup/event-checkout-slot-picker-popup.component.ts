@@ -159,7 +159,12 @@ export class EventCheckoutSlotPickerPopupComponent {
       counterGranularity: 'day',
       initialAnchor: query => query.filters?.anchor ?? this.monthAnchor,
       resolveDateRange: item => this.monthDateRange(item),
-      dayCounter: day => this.monthDayCounter(day)
+      dayCounter: day => this.monthDayCounter(day),
+      badgeColors: {
+        palette: {available: {badgeTone: 'stage-scheduled'}, empty: {badgeTone: 'inactive'},
+          unavailable: {badgeTone: 'full'}, booked: {badgeTone: 'stage-finalized'}},
+        resolveKey: () => null
+      }
     },
     headerProgress: {
       enabled: true
@@ -718,7 +723,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         ariaLabel: `${label}, ${slotCount} slots`,
         alertLabel: `${slotCount}`,
         alertAriaLabel: `${slotCount} slots`,
-        toneClass: bookedByViewer ? 'calendar-counter-booked-full' : 'calendar-counter-full'
+        colorKey: bookedByViewer ? 'booked' : 'unavailable'
       };
     }
     return {
@@ -726,7 +731,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       ariaLabel: `${priceLabel}, ${slotCount} slots`,
       alertLabel: `${slotCount}`,
       alertAriaLabel: `${slotCount} slots`,
-      toneClass: slotCount > 0 ? null : 'calendar-counter-empty'
+      colorKey: slotCount > 0 ? 'available' : 'empty'
     };
   }
 

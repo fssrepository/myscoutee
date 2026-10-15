@@ -2,6 +2,8 @@ import type { AnnouncementFields, AnnouncementStatus, VoteChoice } from '../../.
 export const COMMUNITY_ANNOUNCEMENTS_TABLE_NAME = 'communityAnnouncements' as const;
 export interface CommunityBallot { voterAccountId: string; choice: VoteChoice; castAtIso: string; }
 export interface CommunityAnnouncementRecord extends AnnouncementFields {
+  voteCounterOwners?: string[];
+  announcementCounterOwners?: Record<string, string>;
   id: string; authorAccountId: string; status: AnnouncementStatus; closedAtIso: string | null; closureNotifiedAtIso: string | null;
   ballots: CommunityBallot[]; publishedAtIso: string | null; createdAtIso: string; updatedAtIso: string; version: number;
 }

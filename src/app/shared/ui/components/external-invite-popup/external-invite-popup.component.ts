@@ -14,7 +14,6 @@ import { PopupComponent, type PopupModel, CopyLinkComponent, I18nPipe } from '@f
           <p>{{ 'invite.external.description' | i18n }}</p>
           <app-copy-link [value]="url()" label="invite.external.url" [disabled]="loading()"></app-copy-link>
           @if (loading()) { <p role="status">{{ 'loading' | i18n }}</p> }
-          @if (error()) { <p role="alert">{{ 'invite.external.failed' | i18n }}</p> }
         </section>
       </app-popup>
     }
@@ -32,7 +31,7 @@ export class ExternalInvitePopupComponent {
     effect(() => { const target = this.store.externalInvite(); if (target) untracked(() => { void this.load(); }); });
   }
   protected model(): PopupModel {
-    return { title: 'invite.external.title', size: 'small', height: 'auto', backdropTone: 'dim',
+    return { errorMessage: this.error() ? 'invite.external.failed' : null, title: 'invite.external.title', size: 'small', height: 'auto', backdropTone: 'dim',
       onClose: () => this.store.externalInvite.set(null),
       headerActions: this.error() ? [{ id: 'retry', icon: 'refresh', label: 'Retry', palette: 'blue' }] : [],
       onAction: () => { void this.load(); } };

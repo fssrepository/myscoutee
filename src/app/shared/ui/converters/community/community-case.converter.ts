@@ -1,8 +1,10 @@
 import type { ActivityMemberDTO } from '../../../core/contracts/common/activity.interface';
 import { AppUtils } from '../../../core/base/app-utils';
-import { CASE_TYPES, type CaseOffer, type CaseFilters, type CaseListContext, type CaseStatus, type CaseType, type CommunityCase } from '../../../core/contracts/community/community-case.interface';
+import { CASE_TYPES, type CaseBoardTask, type CaseOffer, type CaseFilters, type CaseListContext, type CaseStatus, type CaseType, type CommunityCase } from '../../../core/contracts/community/community-case.interface';
 import {
   type InfoCardData,
+  type ListQuery,
+  type SmartListCalendarBadgeColors,
   type InfoCardOverlayTone,
   type SingleRowData,
   type AppMenuItem,
@@ -10,6 +12,7 @@ import {
   type AppMenuTrigger
 } from '@fssrepository/myscoutee-components';
 
+export type CommunityCaseCalendarCard = InfoCardData<CommunityCase> & {calendarTask?: CaseBoardTask};
 type Presentation = { icon: string; palette: NonNullable<InfoCardData['leadingIcon']>['palette']; hue: number; tone: InfoCardOverlayTone };
 const TYPES: Record<CaseType, Presentation> = {
   fault: { icon: 'report_problem', palette: 'orange', hue: 28, tone: 'orange' },
@@ -19,16 +22,30 @@ const TYPES: Record<CaseType, Presentation> = {
   renovation: { icon: 'construction', palette: 'green', hue: 140, tone: 'stage-finalized' },
   other: { icon: 'category', palette: 'rose', hue: 340, tone: 'woman' }
 };
-const STATUSES: Record<CaseStatus | 'active', { icon: string; palette: AppMenuPalette; tone: InfoCardOverlayTone }> = {
+const STATUSES = {
   active: { icon: 'inbox', palette: 'blue', tone: 'public' },
   open: { icon: 'inbox', palette: 'blue', tone: 'stage-scheduled' },
   'in-progress': { icon: 'play_circle', palette: 'orange', tone: 'orange' },
   completed: { icon: 'check_circle', palette: 'green', tone: 'stage-finalized' },
   cancelled: { icon: 'cancel', palette: 'red', tone: 'stage-suspended' },
   trash: { icon: 'delete', palette: 'danger', tone: 'deleted' }
-};
+} as const satisfies Record<CaseStatus | 'active', { icon: string; palette: AppMenuPalette; tone: InfoCardOverlayTone }>;
 
 export class CommunityCaseConverter {
+  static readonly calendarColors: Readonly<Record<string, SmartListCalendarBadgeColors>> = Object.fromEntries([
+    ...Object.entries(STATUSES).map(([key, style]) => [`status:${key}`, {badgeTone: style.tone}]),
+    ...Object.entries(TYPES).map(([key, style]) => [`category:${key}`, {surfaceTone: 'subevent-light' as const, accentHue: style.hue}])
+  ]);
+  static calendarColorKey(status: CaseStatus | null | undefined, category: CaseType | null | undefined): string | null {
+    return this.calendarColors[`status:${status}`] ? `status:${status}`
+      : this.calendarColors[`category:${category}`] ? `category:${category}` : null;
+  }
+  static calendarCards(c: CommunityCase, query: ListQuery<CaseFilters>): CommunityCaseCalendarCard[] {
+    const from = Date.parse(`${query.rangeStart}T00:00:00Z`), to = Date.parse(`${query.rangeEnd}T00:00:00Z`) + 86400000;
+    return c.boardTasks.filter(task => task.status !== 'deleted' && task.startAtIso && Date.parse(task.startAtIso) < to
+      && (task.endAtIso ? Date.parse(task.endAtIso) > from : Date.parse(task.startAtIso) >= from))
+      .map(task => ({...this.card(c), id: `${c.id}:${task.id}`, calendarTask: task}));
+  }
   static offerStyle(status: CaseOffer['status'] | 'all') {
     return ({all:{icon:'request_quote',palette:'gold',tone:'neutral'},pending:{icon:'hourglass_top',palette:'gold',tone:'warning'},
       accepted:{icon:'check_circle',palette:'green',tone:'success'},rejected:{icon:'cancel',palette:'danger',tone:'danger'}} as const)[status];

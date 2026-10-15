@@ -479,6 +479,7 @@ export class SeedUserBuilder {
     if (index === totalCount - 2) {
       return {
         status: 'B',
+        profileStatus: 'blocked',
         statusText: 'Blocked',
         activities: { game: 0, chats: 1, invitations: 0, events: 0, hosting: 0 }
       };
@@ -486,6 +487,7 @@ export class SeedUserBuilder {
     if (index === totalCount - 1) {
       return {
         status: 'D',
+        profileStatus: 'deleted',
         deletedAtIso: UiDateUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
         statusText: 'Deleted',
         activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }

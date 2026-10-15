@@ -5,6 +5,20 @@ import { RouteDelayService } from '../../../../base/services/platform/route-dela
 export abstract class LocalRouteDelayService {
   private readonly routeDelayService = inject(RouteDelayService);
 
+  /** A local request includes its work in the simulated transport time. */
+  protected async withRouteDelay<T>(
+    route: string | null,
+    operation: () => Promise<T>,
+    signal?: AbortSignal
+  ): Promise<T> {
+    signal?.throwIfAborted();
+    const [, result] = await Promise.all([
+      route ? this.waitForRouteDelay(route, signal) : Promise.resolve(),
+      operation()
+    ]);
+    return result;
+  }
+
   protected async waitForRouteDelay(
     route: string,
     signal?: AbortSignal,

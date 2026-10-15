@@ -181,10 +181,11 @@
                                 <div
                                   class="event-feedback-organizer-message-avatar"
                                   [ngClass]="'user-color-' + message.viewerGender"
+                                  [appLazyBgImage]="message.viewerImageUrl || null"
+                                  [attr.aria-label]="message.viewerName"
+                                  role="img"
                                   >
-                                  @if (message.viewerImageUrl) {
-                                    <img [src]="message.viewerImageUrl" [alt]="message.viewerName" />
-                                  } @else {
+                                  @if (!message.viewerImageUrl) {
                                     <span>{{ message.viewerInitials }}</span>
                                   }
                                 </div>

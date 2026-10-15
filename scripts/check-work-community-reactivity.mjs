@@ -21,6 +21,7 @@ const {ServiceOfferingsPopupComponent}=await load(latest('service-offerings-popu
 const {CommunityAnnouncementsComponent}=await load(latest('community-announcements.component-'));
 const guideFile=dependencies.find(f=>readFileSync(resolve(dir,f),'utf8').includes('var ExplanationGuideService ='));
 const {ExplanationGuideService}=await load(guideFile);
+const UI_TRANSLATIONS=(await load(guideFile)).provideUiTranslations(class TestTranslations {}).provide;
 // A bounded scheduler makes a regression fail instead of hanging the test process.
 // Angular still owns effect tracking, invalidation and cleanup. Domain stores are isolated stubs.
 const pending=new Set(),destroy=[];
@@ -28,13 +29,14 @@ let runs=0;
 const scheduler={add:n=>pending.add(n),schedule:n=>pending.add(n),remove:n=>pending.delete(n)};
 function flush(){let count=0;while(pending.size){if(++count>50)throw Error('Reactive cycle: >50 effect executions');const n=pending.values().next().value;pending.delete(n);n.run();}runs+=count;return count;}
 const store={board:signal(null),quotations:signal(null),quotationFocus:signal(null),session:signal({userId:'work-member',tasks:false,list:true}),changed:signal(null),taskChanged:signal(null),busy:signal(false),error:signal(''),editor:signal(null),groups:signal([]),managedGroups:signal([]),groupId:signal('homes'),userId:signal('member'),canManage:signal(true),unitRows:signal([]),profileId:signal('work-member'),accountId:signal('account'),calendarCancelled:signal(null),staffMembers:signal([])};
-Object.assign(store,{historyTarget:signal(null),selectedId:signal(null),selected:signal(null),taskCounters:signal({total:0,active:0,paused:0,trash:0}),counters:signal({total:0}),activeGroup:signal(null),audienceMembers:signal([]),audienceLoading:signal(false)});
+Object.assign(store,{historyTarget:signal(null),selectedId:signal(null),selected:signal(null),taskCounters:signal({total:0,active:0,paused:0,trash:0}),counters:signal({total:0}),menuCounters:signal({}),activeGroup:signal(null),audienceMembers:signal([]),audienceLoading:signal(false)});
 const otherStores = new Map(['CommunityCasesStore','ServiceOfferingsStore','CommunityAnnouncementsStore'].map(name => [name, {...store, changed: signal(null)}]));
 const i18n={currentLanguage:signal('en'),translate:k=>k};
 let guide;
 const injector={get(token,fallback){
  const name=(token.name??'').replace(/^_/, '');
  if(token===core.Injector)return injector;
+ if(token===UI_TRANSLATIONS)return i18n;
  if(token===core.DestroyRef)return {onDestroy(fn){destroy.push(fn);return()=>{}}};
  if(name==='ViewContext')return null;
  if(name==='ChangeDetectionScheduler')return {notify(){}};
@@ -47,7 +49,7 @@ const injector={get(token,fallback){
  if(fallback!==undefined)return fallback;
  throw Error('Missing test provider '+name+' '+String(token));
 }};
-guide=runInInjectionContext(injector,()=>new ExplanationGuideService({loadState:async()=>null}));
+guide=runInInjectionContext(injector,()=>new ExplanationGuideService({loadState:async()=>null,isExplainableContext:()=>true}));
 let registrations=0; const register=guide.registerContext.bind(guide); guide.registerContext=(...args)=>{registrations++; return register(...args);};
 const home=guide.registerContext('community.services.home');
 flush();
@@ -78,6 +80,15 @@ for(const [Parent,name,inputs,models] of editorChecks){
  assert.notStrictEqual(popup(),initial,name+' responds to a real form edit');
  assert.strictEqual(popup(),popup(),name+' stabilizes after editing');
  if(e.flow)assert.strictEqual(e.flow(),e.flow());if(e.flowModel)assert.strictEqual(e.flowModel(),e.flowModel());
+ if(name==='CommunityAnnouncementEditorComponent'){
+   assert.equal(e.popup().subtitle,'announcement.draft.hint');
+   for(const status of ['draft','published','trash']){
+     e.editor.set({readOnly:false,value:{status}});
+     assert.equal(e.popup().subtitle,status==='draft'?'announcement.draft.hint':null);
+   }
+   e.editor.set({readOnly:true,value:{status:'draft'}});assert.equal(e.popup().subtitle,null);
+   e.editor.set(inputs.editor);
+ }
  e.ngOnDestroy();flush();console.log('PASS',name,'stable form/popup models before and after editing');
 }
 const before=registrations;const closeEditorGuide=guide.registerContext('work.campaign.editor');
@@ -104,12 +115,17 @@ assert.equal(dated.detail,new Date('2026-10-05T09:15:00Z').toLocaleString('en',{
 i18n.currentLanguage.set('hu');
 assert.equal(announcementsPopup.row(dated.eagerDetail).detail,new Date('2026-10-05T09:15:00Z').toLocaleString('hu',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}));
 i18n.currentLanguage.set('en');
-const futureVote={...dated.eagerDetail,voting:true,deadlineIso:'2099-01-01T18:00:00Z',closed:false,canVote:false,myBallot:null};
+const futureVote={...dated.eagerDetail,voting:true,deadlineIso:'2099-01-01T18:00:00Z',closed:false,canVote:true,myBallot:null};
 assert.ok(announcementsPopup.menu(futureVote).some(m=>m.id==='vote'));
 assert.ok(!announcementsPopup.menu(futureVote).some(m=>m.id==='results'));
+for(const unavailable of [{status:'draft'},{status:'trash'},{canVote:false},{myBallot:'yes'},{voting:false}]){
+ assert.ok(!announcementsPopup.menu({...futureVote,...unavailable}).some(m=>m.id==='vote'),JSON.stringify(unavailable)+' hides Vote');
+}
 const expiredVote={...futureVote,deadlineIso:'2020-01-01T18:00:00Z',closed:true};
 assert.ok(announcementsPopup.menu(expiredVote).some(m=>m.id==='results'));
 assert.ok(!announcementsPopup.menu(expiredVote).some(m=>m.id==='vote'));
+assert.equal(announcementsPopup.row(futureVote).badges[0].palette,'blue');
+assert.equal(announcementsPopup.row(expiredVote).badges[0].palette,'violet');
 let viewedVote;announcementStore.viewVoting=a=>viewedVote=a;
 for(const [id,context] of [['vote',futureVote],['results',expiredVote]]){announcementsPopup.action({id,context});assert.equal(viewedVote,context);}
 console.log('PASS resident/admin announcement navigation, voting-only query and localized timestamps with minute precision');
@@ -217,8 +233,10 @@ assert.ok(communityId,'canonical community base id');
 let records=Array.from({length:28},(_,i)=>({...exampleCase,id:'r'+i,baseGroupId:communityId,participantAccountIds:['work-member'],attentionAccountIds:['work-member'],recommendations:[],offers:[],status:i<21?'open':'completed',caseType:i%2?'fault':'maintenance'}));
 records.push({...records[0],id:'invisible',participantAccountIds:['someone'],communityId:'other'});
 records.push({...records[0],id:'wrong-base',baseGroupId:'other'});
-Object.assign(local,{actor:async()=> 'work-member',repository:{cases:()=>records,findCase:id=>records.find(r=>r.id===id),saveCase:c=>{records=records.map(r=>r.id===c.id?c:r);return c;},flush:async()=>{}},
+const storedCaseCounters={communityCases:28,communityCase_open__fault:10,communityCase_open__maintenance:11,communityCase_completed__fault:4,communityCase_completed__maintenance:3};
+Object.assign(local,{routeDelayService:{waitForRouteDelay:async()=>{}},actor:async()=> 'work-member',repository:{db:{read:()=>({users:{byId:{'work-member':{menuCounters:storedCaseCounters}}}})},cases:()=>records,findCase:id=>records.find(r=>r.id===id),saveCase:c=>{records=records.map(r=>r.id===c.id?c:r);return c;},flush:async()=>{}},
  access:{managedGroups:()=>new Set(),admin:()=>false},groups:{find:()=>({name:'Home'})},users:{queryUserById:()=>null}});
+local.repository.context=LocalCommunityCasesRepository.prototype.context.bind(local.repository);
 local.repository.visibleCases=LocalCommunityCasesRepository.prototype.visibleCases.bind(local.repository);
 let page=await local.page('work-member',{pageSize:5,filters:{status:'active'}});
 assert.equal(page.items.length,5);assert.equal(page.total,21);assert.equal(page.context.total,28);assert.equal(page.context['open:fault'],10);
@@ -245,7 +263,7 @@ assert.deepEqual(referenceCalls,{read:2,tasks:1});
 referenceStore.closeBoard();assert.ok(referenceStore.session(),'Closing a board opened from the case list retains that list');
 referenceStore.service.read=async()=>{throw {status:403};};
 await referenceStore.openReference(exampleCase.id,false);
-assert.equal(referenceStore.board(),null);assert.equal(referenceStore.error(),'case.save.forbidden','A failed direct load remains an explicit error');
+assert.equal(referenceStore.board(),null);assert.equal(referenceStore.error(),'case.load.unavailable','A failed direct load remains an explicit error');
 let resolveReference;
 referenceStore.service.read=()=>new Promise(resolve=>resolveReference=resolve);
 const lateReference=referenceStore.openReference(exampleCase.id,false);await Promise.resolve();
@@ -263,7 +281,7 @@ const countStore=Object.create(CommunityCasesStore.prototype),menuCount=signal(1
 const countedCase={...exampleCase,id:'counted',status:'open',caseType:'fault',unread:true};
 Object.assign(countStore,{known:new Map([[countedCase.id,countedCase]]),count:menuCount,
  counters:signal({total:1,'open:fault':1}),profile:{activeUserId:()=> 'work-member'},
- activity:{patchUserCounterOverrides:(_user,value)=>menuCount.set(value.cases)},
+ activity:{patchUserCounterOverrides:(_user,value)=>menuCount.set(value.menuCounters.communityCases)},
  board:signal(null),chatContext:signal(null),quotations:signal(null),changed:signal(null)});
 countStore.publish({...countedCase,unread:false});
 assert.equal(menuCount(),1);assert.equal(countStore.counters()['open:fault'],1);
@@ -278,9 +296,9 @@ assert.equal(menuCount(),2);assert.equal(countStore.counters().total,2);assert.e
 console.log('PASS case response patches preserve viewed counts and move/create/restore bucket and sidebar totals once');
 const HttpUsersService=await compiledSymbol('HttpUsersService');
 const httpUsers=Object.create(HttpUsersService.prototype);
-assert.equal(httpUsers.buildInitialMenuCounterOverrides({activities:{cases:1}},{cases:2}).cases,2,'HTTP profile reload retains the server case count');
-assert.equal(httpUsers.buildInitialMenuCounterOverrides({activities:{cases:1}},{cases:0}).cases,0,'An explicit server zero is authoritative');
-assert.equal(httpUsers.buildInitialMenuCounterOverrides({activities:{cases:1}},null).cases,1);
+assert.equal(httpUsers.buildInitialMenuCounterOverrides({activities:{menuCounters:{communityCases:1}}},{menuCounters:{communityCases:2}}).menuCounters.communityCases,2,'HTTP profile reload retains the server case count');
+assert.equal(httpUsers.buildInitialMenuCounterOverrides({activities:{menuCounters:{communityCases:1}}},{menuCounters:{communityCases:0}}).menuCounters.communityCases,0,'An explicit server zero is authoritative');
+assert.equal(httpUsers.buildInitialMenuCounterOverrides({activities:{menuCounters:{communityCases:1}}},null).menuCounters.communityCases,1);
 const LocalUsersService=await compiledSymbol('LocalUsersService'),LocalAccess=await compiledSymbol('LocalCommunityAccessService');
 for(const db of ['demo_db','e2e_db']){
  const readSeed=name=>JSON.parse(readFileSync(new URL('../../server/docker/conf/mongodb/'+db+'/'+name+'.json',import.meta.url),'utf8'));
@@ -288,10 +306,17 @@ for(const db of ['demo_db','e2e_db']){
  const seedUsers=readSeed('users').map(u=>({...u,id:id(u._id)})),seedGroups=readSeed('communityGroups').map(g=>({...g,id:id(g._id)})),seedMembers=readSeed('activityMembers');
  const seedRepo=Object.create(LocalCommunityCasesRepository.prototype);seedRepo.cases=()=>readSeed('serviceCases').map(c=>({...c,id:id(c._id)}));
  const access=Object.create(LocalAccess.prototype);access.groups={records:()=>seedGroups};access.members={peekRecordsByOwner:o=>seedMembers.filter(m=>m.ownerType===o.ownerType&&m.ownerId===o.ownerId)};
- const users=Object.create(LocalUsersService.prototype);Object.assign(users,{usersRepository:{queryUserById:uid=>seedUsers.find(u=>u.id===uid)},communityGroups:{find:gid=>seedGroups.find(g=>g.id===gid)},communityAccess:access,communityCases:seedRepo});
+ const table=rows=>({ids:rows.map(r=>r.id),byId:Object.fromEntries(rows.map(r=>[r.id,r]))});
+ let seeded={users:table(seedUsers),communityGroups:table(seedGroups),activityMembers:table(seedMembers.map(m=>({...m,id:id(m._id)}))),serviceCases:{ids:[],byId:{}}};
+ // Match the seed owner's write-time counter initialization. Profile reads must not rescan these records.
+ for(const record of seedRepo.cases())seeded=LocalCommunityCasesRepository.withCounterWrite(seeded,record);
+ const users=Object.create(LocalUsersService.prototype);Object.assign(users,{usersRepository:{queryUserById:uid=>seeded.users.byId[uid]},communityGroups:{find:gid=>seedGroups.find(g=>g.id===gid)},communityAccess:access,communityCases:seedRepo});
  const alex=seedUsers.find(u=>u.name==='Alex Turner'&&u.workspaceGroupId===communityId);
- assert.ok(alex);assert.equal(users.buildInitialMenuCounterOverrides(alex).cases,2,db+' seeded profile has case badges before opening Cases');
- seedRepo.cases=()=>[];assert.equal(users.buildInitialMenuCounterOverrides(alex).cases,0,'Counts follow authoritative records, not seeded number literals');
+ assert.ok(alex);assert.equal(users.buildInitialMenuCounterOverrides(alex).menuCounters.communityCases,2,db+' seeded profile has case badges before opening Cases');
+ seedRepo.cases=()=>{throw Error('Profile load must not recount cases');};
+ assert.equal(users.buildInitialMenuCounterOverrides(alex).menuCounters.communityCases,2,'Profile reads reuse write-time account counters');
+ const account=seeded.users.byId[alex.accountUserId];account.menuCounters.communityCases=0;
+ assert.equal(users.buildInitialMenuCounterOverrides(alex).menuCounters.communityCases,0,'A persisted account zero is authoritative');
 }
 console.log('PASS HTTP reload preserves case counts and canonical demo/e2e seed projections show badges before opening Cases');
 let audienceLoads=0,memberPicker;
@@ -331,9 +356,11 @@ const paymentModule=await load(latest('payment-methods-popup.component-'));
 const CashReceiptPopupComponent=paymentModule.PaymentMethodsPopupComponent.ɵcmp.dependencies.find(c=>c.name.replace(/^_/,'')==='CashReceiptPopupComponent');
 assert.ok(CashReceiptPopupComponent);
 const receipt=runInInjectionContext(domainInjector,()=>new CashReceiptPopupComponent());
+receipt.deployment={paymentCurrencies:()=>['EUR','HUF']};
 assert.strictEqual(receipt.formModel(),receipt.formModel());assert.strictEqual(receipt.popupModel(),receipt.popupModel());
 assert.equal(receipt.popupModel().headerControls[0].items[0].disabled,true);
-receipt.form.update(form=>({...form,method:'bank-transfer',amount:12,payerUserId:'payer'}));
+receipt.payer.set({userId:'payer',name:'Payer'});
+receipt.form.update(form=>({...form,method:'bank-transfer',amount:12}));
 const method=receipt.formModel().steps[0].controls[0].config;
 assert.equal(method.trigger.palette,'blue');assert.equal(method.items.find(i=>i.id==='cash').palette,'green');
 assert.ok(method.items.every(i=>i.icon&&i.surface==='tinted'));assert.equal(receipt.popupModel().headerControls[0].items[0].disabled,false);
@@ -366,7 +393,10 @@ assert.deepEqual(publicConfig,initialPublicConfig,'Operator seed and public cata
 seededConfiguration.configuration.socialLinks=[];
 assert.deepEqual((await deployment.loadBranding()).socialLinks,[],'The reader preserves an explicitly empty saved list');
 console.log('PASS public local landing reads its small catalog without demo bootstrap and preserves saved configuration');
-const WorkHomeComponent=await compiledSymbol('WorkHomeComponent'),CommunityServicesHomeComponent=await compiledSymbol('CommunityServicesHomeComponent');
+const HomeComponent=await compiledSymbol('HomeComponent');
+const WorkHomeComponent=HomeComponent.ɵcmp.dependencies.find(c=>c.name.replace(/^_/, '')==='WorkHomeComponent');
+assert.ok(WorkHomeComponent,'Home owns its compiled WorkHome component');
+const CommunityServicesHomeComponent=await compiledSymbol('CommunityServicesHomeComponent');
 const SmartListComponent=await compiledSymbol('SmartListComponent');
 for(const Home of [WorkHomeComponent,CommunityServicesHomeComponent]){
  const home=runInInjectionContext(domainInjector,()=>new Home());
@@ -399,7 +429,7 @@ for(const Home of [WorkHomeComponent,CommunityServicesHomeComponent]){
 flush();
 console.log('PASS Work/Community Home use shared pagination/loading configuration and suppress rating controls for empty data');
 console.log('PASS Community Home exposes only category/Ratings and uses the existing profile eye action without a three-dot menu');
-const HomeComponent=await compiledSymbol('HomeComponent');
+
 const homeHeaderReady=Object.getOwnPropertyDescriptor(HomeComponent.prototype,'homeHeaderControlsReady').get;
 const readyState={isAccountReactivationPending:false,memberActionsAvailable:true,isAvatarProfileSettled:true,isBlockedUser:false,isGameVisibilityPaused:false,homeSmartListQueryReady:true};
 assert.equal(homeHeaderReady.call(readyState),true);
@@ -490,7 +520,8 @@ console.log('PASS labeled All switch in the existing member picker header, off-p
 const Quotations=CommunityCasesPopupComponent.ɵcmp.dependencies.find(C=>C.name?.replace(/^_/,'')==='CommunityCaseQuotationsComponent');
 const quote={id:'q1',providerAccountId:'provider',amount:360,currency:'EUR',note:'Meters',workPolicy:'Start after agreement',refundPolicy:'No advance',status:'pending'};
 const quoteCalls=[];Object.assign(caseStore,{quotations:signal({...exampleCase,canManage:false,offers:[quote]}),openChat:(...args)=>quoteCalls.push(args)});
-const quotations=runInInjectionContext(injector,()=>new Quotations());flush();
+const quotations=runInInjectionContext(injector,()=>new Quotations());
+quotations.deployment={paymentCurrencies:()=>['EUR','HUF']};flush();
 assert.deepEqual(quotations.menu(quote).map(m=>m.id),['view','chat']);
 quotations.action({id:'chat',context:quote});assert.equal(quoteCalls[0][1],'q1','Quotation action targets its own group');
 quotations.action({id:'view',context:quote});flush();
@@ -504,6 +535,7 @@ caseStore.quotations.update(c=>({...c,canManage:true}));assert.ok(quotations.men
 caseStore.quotations.update(c=>({...c,canManage:false,canReviewOffers:false,offers:[],support:[{accountId:'work-member',status:'accepted'}]}));
 assert.equal(quotations.model().toolbarControls.find(c=>c.id==='offer').icon,'add');assert.equal(quotations.rows().length,0);
 console.log('PASS standard quotation form blocks, read-only member view, manager decisions, provider add and quotation group chat routing');
+casesPopup.query.set({view:'list',filters:{status:'active'}});
 let patchedCase;casesPopup.list={patchVisibleItem(_predicate,patch){patchedCase=patch({id:exampleCase.id});return true;}};
 caseStore.changed.set({...exampleCase,boardTasks:[{id:'one'},{id:'two'}]});flush();assert.equal(patchedCase.menuBadgeCount,2,'Live signal update patches existing case card');
 assert.equal(casesPopup.card({...exampleCase,boardTasks:[{id:'one'},{id:'two'}]}).menuBadgeCount,2);
@@ -514,7 +546,9 @@ console.log('PASS task-only case counters through the existing signal-driven Sma
 const Board=CommunityCasesPopupComponent.ɵcmp.dependencies.find(C=>C.name?.replace(/^_/,'')==='CommunityCaseBoardComponent');
 const boardTask={id:'task',title:'Task',description:'Details',status:'todo',assigneeAccountIds:[],dependsOnIds:[],startAtIso:null,endAtIso:null};
 Object.assign(caseStore,{board:signal({...exampleCase,offers:[],boardTasks:[boardTask]}),command:async(_c,command)=>quoteCalls.push(command)});
-const board=runInInjectionContext(injector,()=>new Board());board.task.set(boardTask);flush();
+const board=runInInjectionContext(injector,()=>new Board());
+const PaymentMethodsService=await compiledSymbol('PaymentMethodsService');
+board.paymentMethods=Object.assign(Object.create(PaymentMethodsService.prototype),{displayExchange:()=>({currency:'EUR',eurRates:{EUR:1,HUF:0.0025}})});board.task.set(boardTask);flush();
 const taskFields=board.taskFlow().steps.flatMap(step=>step.controls);
 assert.deepEqual(board.taskFlow().steps.map(step=>step.id),['members','task','date','offers','dependencies'],'Task details/dates and quotations precede dependencies');
 assert.equal(taskFields.some(c=>c.id==='status'),false);assert.equal(taskFields.find(c=>c.id==='date-range').config.model.mode,'range');

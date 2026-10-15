@@ -27,6 +27,22 @@ describe('Community shared cases and scheduled reminders', () => {
   afterEach(() => TestBed.resetTestingModule());
   const notifications = (db: LocalMemoryDb) => Object.values(db.read().notifications.byId);
 
+  it('calendar ranges include visible task dates beyond list paging, without changing list counts or provider visibility', async () => {
+    const month = {...query, pageSize: 1, view: 'month', rangeStart: '2026-10-01', rangeEnd: '2026-10-31'};
+    const rows = await service.page(alex, month);
+    expect(rows.items.map(c => c.id).sort()).toEqual(['community-case-park-meters', 'community-case-riverside-leak']);
+    expect(rows.nextCursor).toBeNull();
+    expect(rows.context?.total).toBe((await service.page(alex, query)).context?.total);
+    expect((await service.page(provider, month)).items.map(c => c.id)).toEqual(['community-case-park-meters']);
+    expect((await service.page(alex, {...month, rangeStart: '2026-10-09', rangeEnd: '2026-10-10'})).items).toHaveLength(0);
+    expect((await service.page(alex, {...month, filters: {caseType: 'fault'}})).items.map(c => c.id)).toEqual(['community-case-riverside-leak']);
+    await expect(service.page(alex, {...month, rangeEnd: '2027-10-01'})).rejects.toThrow('Invalid calendar range');
+    const repository = TestBed.inject(LocalCommunityCasesRepository);
+    const c = structuredClone(repository.findCase('community-case-park-meters')!);
+    c.boardTasks = (c.boardTasks ?? []).map(t => ({...t, status: 'deleted'}));
+    repository.saveCase(c, c.version);
+    expect((await service.page(provider, month)).items).toHaveLength(0);
+  });
   it('creates one shared case exactly 45 days ahead, includes its owner in the reminder and does not duplicate on retry', async () => {
     const due = Date.parse('2026-11-19T09:00:00.000Z');
     expect(await service.createScheduledCases(COMMUNITY_BASE_GROUP_ID, new Date(due - 45 * 86400000 - 1))).toBe(0);
@@ -39,6 +55,42 @@ describe('Community shared cases and scheduled reminders', () => {
     expect(reminder.every(n => n.payload?.['workspaceGroupId'] === COMMUNITY_BASE_GROUP_ID && n.sourceId === cases[0].id)).toBe(true);
     expect(await service.createScheduledCases(COMMUNITY_BASE_GROUP_ID, new Date(due - 45 * 86400000))).toBe(0);
     expect(notifications(db).filter(n => n.kind === 'case-reminder')).toHaveLength(4);
+  });
+  it.each([
+    ['monthly', '2026-01-31T09:00:00.000Z', '2026-02-28T09:00:00.000Z'],
+    ['quarterly', '2026-11-30T09:00:00.000Z', '2027-02-28T09:00:00.000Z'],
+    ['yearly', '2028-02-29T09:00:00.000Z', '2029-02-28T09:00:00.000Z']
+  ] as const)('advances %s through short months without resetting progress on description edits', async (frequency, startAtIso, expectedNext) => {
+    const form = { userId: alex, title: `Recurrence ${frequency}`, description: 'Initial description',
+      communityId: null, caseType: 'maintenance' as const, audienceAll: false, audienceAccountIds: [], startAtIso, nextDueAtIso: startAtIso, frequency, enabled: true };
+    const task = await service.saveTask(form);
+    await service.createScheduledCases(COMMUNITY_BASE_GROUP_ID, new Date(Date.parse(startAtIso) - 45 * 86400000));
+    const advanced = (await service.tasks(alex, {page: 0, pageSize: 20, filters: {status: 'active'}})).items.find(t => t.id === task.id)!;
+    expect(advanced.startAtIso).toBe(startAtIso);
+    expect(advanced.nextDueAtIso).toBe(expectedNext);
+    const edited = await service.saveTask({...form, id: task.id, version: advanced.version, description: 'Edited description'});
+    expect(edited.startAtIso).toBe(startAtIso);
+    expect(edited.nextDueAtIso).toBe(expectedNext);
+    const changed = await service.saveTask({...form, id: task.id, version: edited.version, startAtIso: '2030-03-31T09:00:00.000Z'});
+    expect(changed.nextDueAtIso).toBe('2030-03-31T09:00:00.000Z');
+  });
+  it('applies all schedule commands to current worker progress while preserving editor and permission guards', async () => {
+    const startAtIso = '2026-11-28T12:52:00.000Z';
+    const form = {userId: alex, title: 'Current schedule', description: 'Current description', communityId: null,
+      caseType: 'maintenance' as const, audienceAll: false, audienceAccountIds: [], startAtIso,
+      nextDueAtIso: startAtIso, frequency: 'yearly' as const, enabled: true};
+    const task = await service.saveTask(form);
+    await service.createScheduledCases(COMMUNITY_BASE_GROUP_ID, new Date(Date.parse(startAtIso) - 45 * 86400000));
+    for (const action of ['pause', 'resume', 'trash', 'restore'] as const) {
+      await expect(service.taskAction(maya, task.id, action, task.version)).rejects.toThrow('Forbidden');
+      const changed = await service.taskAction(alex, task.id, action, task.version);
+      expect(changed.version).toBeGreaterThan(task.version);
+      expect(changed.nextDueAtIso).toBe('2027-11-28T12:52:00.000Z');
+      expect(changed.description).toBe(form.description);
+      expect(changed.status).toBe(action === 'trash' ? 'trash' : action === 'pause' ? 'paused' : 'active');
+      await expect(service.taskAction(alex, task.id, action, task.version)).rejects.toThrow('Invalid schedule action');
+    }
+    await expect(service.saveTask({...form, id: task.id, version: task.version, title: 'Stale overwrite'})).rejects.toThrow('case.changed');
   });
   it('aggregates assigned cases across communities without giving an external provider access to private groups', async () => {
     expect((await service.page(alex, query)).items).toHaveLength(2);
@@ -60,6 +112,51 @@ describe('Community shared cases and scheduled reminders', () => {
     expect(read.unread).toBe(false);
     expect((await service.page(alex, query)).context?.total).toBe(before + 1);
     await expect(service.save({ ...form, audienceAll: true })).rejects.toThrow('Forbidden');
+  });
+  it('keeps an open editor version valid when another member marks the case read', async () => {
+    const created = await service.save({userId: alex, title: 'Read without a conflict', description: '',
+      communityId: 'community-park-court', caseType: 'maintenance', audienceAll: false, audienceAccountIds: [maya]});
+    const before = (await service.page(alex, query)).context;
+    expect((await service.detail(maya, created.id)).unread).toBe(true);
+    expect((await service.read(maya, created.id)).version).toBe(created.version);
+    const again = await service.read(maya, created.id);
+    expect(again.version).toBe(created.version);
+    expect(again.unread).toBe(false);
+    expect((await service.page(alex, query)).context).toEqual(before);
+    const started = await service.action(created.id, {userId: alex, action: 'start', version: created.version});
+    expect(started.status).toBe('in-progress');
+    expect(started.version).toBe(created.version + 1);
+    await expect(service.save({userId: alex, id: created.id, version: created.version, title: 'Stale editor',
+      description: '', communityId: 'community-park-court', caseType: 'maintenance', audienceAll: false, audienceAccountIds: [maya]}))
+      .rejects.toThrow('case.changed');
+  });
+  it('uses current membership for leave and takeover even when another member changed the case version', async () => {
+    const created = await service.save({userId: alex, title: 'Independent membership commands', description: '',
+      communityId: 'community-park-court', caseType: 'maintenance', audienceAll: false, audienceAccountIds: [maya]});
+    const joined = await service.action(created.id, {userId: maya, action: 'join', version: created.version});
+    const left = await service.action(created.id, {userId: alex, action: 'leave', version: created.version});
+    expect(left.version).toBe(joined.version + 1);
+    expect(left.ownerAccountId).toBeNull();
+    expect(left.status).toBe('open');
+    expect((await service.detail(maya, created.id)).membershipStatus).toBe('accepted');
+    const claimed = await service.action(created.id, {userId: maya, action: 'take-over', version: joined.version});
+    expect(claimed.ownerAccountId).toBe(maya);
+    await expect(service.action(created.id, {userId: alex, action: 'start', version: created.version})).rejects.toThrow('Forbidden');
+    const finalLeave = await service.action(created.id, {userId: maya, action: 'leave', version: joined.version});
+    expect(finalLeave.status).toBe('trash');
+    expect(finalLeave.ownerAccountId).toBeNull();
+  });
+  it('validates lifecycle against current state while rejecting stale editor snapshots', async () => {
+    const created = await service.save({userId: alex, title: 'Current lifecycle', description: '',
+      communityId: 'community-park-court', caseType: 'maintenance', audienceAll: false, audienceAccountIds: [maya]});
+    await service.action(created.id, {userId: maya, action: 'join', version: created.version});
+    expect((await service.action(created.id, {userId: alex, action: 'start', version: created.version})).status).toBe('in-progress');
+    await expect(service.action(created.id, {userId: alex, action: 'start', version: created.version})).rejects.toThrow('case.changed');
+    await expect(service.action(created.id, {userId: alex, action: 'save-board-task', version: created.version})).rejects.toThrow('case.changed');
+    await expect(service.action(created.id, {userId: alex, action: 'edit-offer', version: created.version})).rejects.toThrow('case.changed');
+    expect((await service.action(created.id, {userId: alex, action: 'cancel', version: created.version})).status).toBe('cancelled');
+    await expect(service.action(created.id, {userId: alex, action: 'complete', version: created.version})).rejects.toThrow('case.changed');
+    expect((await service.action(created.id, {userId: alex, action: 'reopen', version: created.version})).status).toBe('open');
   });
   it('requires acceptance and an explicit chat invitation, then revokes the external provider conversation on leave', async () => {
     // This scenario exercises a pending invitation; the general demo seed is already accepted.

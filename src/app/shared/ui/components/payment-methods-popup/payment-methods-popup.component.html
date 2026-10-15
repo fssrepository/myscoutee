@@ -2,9 +2,6 @@
   @if (!pickerMode()) {
   <app-popup [model]="mainPopupModel()" [zIndex]="22200">
     <section class="payment-methods-popup__body">
-      @if (error()) {
-        <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
-      }
       <app-smart-list #historyList
         data-guide-field="payment-history-list"
         class="payment-methods-popup__list"
@@ -29,9 +26,6 @@
 @if (store.isOpen() && (pickerMode() || cardsOpen())) {
   <app-popup [model]="cardsPopupModel()" [zIndex]="22400">
     <section class="payment-methods-popup__body">
-      @if (error()) {
-        <p class="payment-methods-popup__error" role="alert">{{ error() | i18n }}</p>
-      }
       <app-smart-list
         class="payment-methods-popup__list"
         [config]="cardListConfig"

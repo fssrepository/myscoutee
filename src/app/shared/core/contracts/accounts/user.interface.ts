@@ -110,7 +110,7 @@ export interface UserMenuCountersDto {
   contacts?: number;
   feedback?: number;
   notifications?: number;
-  cases?: number;
+  menuCounters?: Record<string, number>;
   paymentRefundsPending?: number;
   contactRequestsPending?: number;
   chat?: UserChatCountersDto;
@@ -134,7 +134,7 @@ export interface UserMenuCounterDeltasDto {
   contacts?: number;
   feedback?: number;
   notifications?: number;
-  cases?: number;
+  menuCounters?: Record<string, number>;
   paymentRefundsPending?: number;
   contactRequestsPending?: number;
   chat?: UserChatCounterDeltasDto;
@@ -259,6 +259,10 @@ export interface UserRealtimeLongPollResponseDto {
   following?: import('./following.interface').FollowingState;
   feedCounters?: import('../content/photo-feed.interface').PhotoFeedCounters;
   paymentCardsAvailable?: boolean;
+  paymentCurrencies?: readonly string[];
+  /** Current display-only EUR per currency unit, refreshed by profile polling. */
+  paymentExchangeRates?: Readonly<Record<string, number>>;
+  paymentSummaryCurrency?: string;
   userId: string;
   profileStatus?: UserDto['profileStatus'] | null;
   locationCoordinates?: LocationCoordinates | null;
@@ -344,7 +348,7 @@ export class UserDto {
     contacts?: number;
     feedback?: number;
     notifications?: number;
-  cases?: number;
+    menuCounters?: Record<string, number>;
     paymentRefundsPending?: number;
     contactRequestsPending?: number;
     chat?: UserChatCountersDto;

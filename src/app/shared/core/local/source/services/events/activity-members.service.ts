@@ -203,8 +203,52 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
     if (normalizedOwner.ownerType === 'event') {
+      this.eventsRepository.synchronizeEventMemberProjection(normalizedOwner.ownerId);
+      this.synchronizeEventCountersForUsers([
+        ...previousMembers.map(member => member.userId),
+        ...members.map(member => member.userId),
+        actorUserId
+      ]);
+      const previousInvites = new Set(previousMembers
+        .filter(member => member.status === 'pending' && this.isInvitation(member))
+        .map(member => member.userId));
+      const newInvitees = records.filter(member => member.status === 'pending'
+        && member.requestKind === 'invite' && member.userId !== actorUserId
+        && !previousInvites.has(member.userId));
+      if (invitationEvent && newInvitees.length) {
+        const actor = this.localUsersRepository.queryUserById(actorUserId);
+        const occurrenceId = crypto.randomUUID();
+        this.notificationsRepository.append(newInvitees.map(member => ({
+          id: `event-invite:${normalizedOwner.ownerId}:${member.userId}:${occurrenceId}`,
+          recipientUserId: member.userId,
+          kind: 'event-invite',
+          category: 'event',
+          title: invitationEvent.title,
+          message: `You are invited to ${invitationEvent.title}.`,
+          createdAtIso: member.updatedAtIso,
+          readAtIso: null,
+          senderUserId: actorUserId || null,
+          senderName: actor?.name ?? null,
+          senderAvatarUrl: actor?.images?.[0] ?? null,
+          actionPath: '/game',
+          sourceType: 'event',
+          sourceId: normalizedOwner.ownerId,
+          payload: {
+            eventId: normalizedOwner.ownerId,
+            eventTitle: invitationEvent.title,
+            eventScope: 'invitations',
+            invitationOccurrenceId: occurrenceId,
+            location: invitationEvent.location ?? '',
+            startAtIso: invitationEvent.startAtIso ?? '',
+            notification_message_key: invitationEvent.location
+              ? 'notification.kind.event-invite.message.location'
+              : 'notification.kind.event-invite.message'
+          }
+        })));
+      }
       await this.finalizeNewlyAcceptedEventReservations(normalizedOwner, previousMembers, members);
       this.assetTicketsRepository.synchronizeForEvent(normalizedOwner.ownerId);
+      await this.notificationsRepository.flushToIndexedDb();
     }
     if (normalizedOwner.ownerType === 'group') {
       this.eventsRepository.syncTournamentStagePending(

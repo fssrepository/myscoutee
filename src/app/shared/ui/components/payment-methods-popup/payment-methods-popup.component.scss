@@ -18,24 +18,6 @@
 :host ::ng-deep .payment-method-card-list .smart-list__list {
   align-content: start;
 }
-:host ::ng-deep .payment-history-status-badge--success {
-  border-color: #16845b;
-  background: #ccefdc;
-  color: #0e633f;
-  box-shadow: 0 5px 12px rgba(22, 132, 91, .16);
-}
-:host ::ng-deep .payment-history-status-badge--danger {
-  border-color: #c4313c;
-  background: #ffd6da;
-  color: #9f1f2b;
-  box-shadow: 0 5px 12px rgba(196, 49, 60, .16);
-}
-:host ::ng-deep .payment-history-status-badge--refunded {
-  border-color: #6d5bd0;
-  background: #e5dfff;
-  color: #4c3ca7;
-  box-shadow: 0 5px 12px rgba(109, 91, 208, .18);
-}
 :host ::ng-deep .payment-history-avatar {
   border: 1px solid rgba(255, 255, 255, .82);
   box-shadow: 0 4px 11px rgba(31, 54, 88, .16);
@@ -51,4 +33,13 @@
 }
 :host ::ng-deep .payment-history-avatar--refunded {
   background: linear-gradient(180deg, #8b78e8 0%, #5a48bd 100%);
+}
+
+// Keep the amount ahead of supporting method/refund badges on narrow cards.
+:host ::ng-deep [data-guide-field="payment-history-row"] .ui-single-row__headline {
+  flex-wrap: wrap;
+}
+:host ::ng-deep [data-guide-field="payment-history-row"] .ui-single-row__title {
+  flex: 0 0 auto;
+  max-width: 100%;
 }

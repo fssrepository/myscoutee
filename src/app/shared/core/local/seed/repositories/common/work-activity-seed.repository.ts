@@ -6,6 +6,7 @@ import { LocalActivityEventDetailsMapper } from '../../../source/mappers/events/
 import { BaseUserRatesMapper } from '../../../../base/mappers/affinity/rate.mapper';
 import { LocalRatesRepository } from '../../../source/repositories/affinity/rates.repository';
 import { LocalEventsRepository } from '../../../source/repositories/events/events.repository';
+import { SeedUsersRepository } from '../accounts/users-seed.repository';
 import type { ActivityMemberRecord } from '../../../source/entity/common/activity.entity';
 import source from '../../data/work-activity.json';
 
@@ -14,6 +15,7 @@ export class SeedWorkActivityRepository {
   private readonly db = inject(LocalMemoryDb);
   private readonly rates = inject(LocalRatesRepository);
   private readonly events = inject(LocalEventsRepository);
+  private readonly usersSeed = inject(SeedUsersRepository);
   seedDefaults(): void {
     const state = this.db.read();
     const users = new Map(Object.values(state.users.byId).filter(u => u.workspaceGroupId === WORK_BASE_GROUP_ID).map(u => [u.name, u]));
@@ -22,13 +24,11 @@ export class SeedWorkActivityRepository {
       ratedUserId: users.get(r.to)!.id, campaignId: r.campaignId, rating: r.rating })!)
       .filter(r => !state.userRates.byId[r.id]).map(r => ({ ...r, createdAtIso: date, updatedAtIso: date, happenedAtIso: date }));
     this.rates.upsertGameCardRatings(rates);
-    const affectedUsers = new Set<string>();
     for (const template of source.events) {
       if (Object.values(state.events.byId).some(e => e.id === template.id)) continue;
       const campaign = state.campaigns.byId[template.campaignId];
       const owner = state.users.byId[campaign.ownerUserId];
       const roster = [owner, ...template.participants.map(name => users.get(name)!)];
-      roster.forEach(user => affectedUsers.add(user.id));
       const event = new ActivityEventDetailDTO();
       Object.assign(event, template, { userId: owner.id, type: 'hosting', status: 'A', published: true,
         creatorUserId: owner.id, organizerUserId: owner.id, creatorName: owner.name, creatorInitials: owner.initials,
@@ -52,7 +52,14 @@ export class SeedWorkActivityRepository {
           idsByOwnerKey: { ...table.idsByOwnerKey, [`event:${event.id}`]: members.map(m => m.id) } } };
       });
     }
-    const counters = new Map([...affectedUsers].map(id => [id, this.events.queryUserEventCounterSnapshot(id)]));
+    // Work profiles are created after the account seed counters are stamped.
+    // Include retained seed events so their pending feedback is counted on reload too.
+    for (const user of users.values()) {
+      this.usersSeed.stampSeededActivityCountsForUser(user.id);
+    }
+    // The general seed stamp also derives legacy event counts. Finish with the
+    // event repository's current-list counters, including retained seed events.
+    const counters = new Map([...users.values()].map(user => [user.id, this.events.queryUserEventCounterSnapshot(user.id)]));
     if (counters.size) this.db.write(current => ({ ...current, users: { ...current.users, byId: {
       ...current.users.byId, ...Object.fromEntries([...counters].map(([id, eventCounters]) => [id, {
         ...current.users.byId[id], activities: { ...current.users.byId[id].activities, ...eventCounters }

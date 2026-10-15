@@ -54,10 +54,16 @@ describe('HttpUsersService demo authority boundary', () => {
 
   it('preserves separate account counters in the existing group-profile realtime response', async () => {
     post.mockReturnValue(of({ userId: 'group-profile', counters: { game: 2 }, impressions: {},
+      paymentCardsAvailable: true, paymentCurrencies: ['EUR', 'HUF', 'USD'],
+      paymentExchangeRates: { EUR: 1, HUF: 0.0025 }, paymentSummaryCurrency: 'HUF',
       accountCounters: { game: 8, cars: 3, contactRequestsPending: 1 } }));
     const result = await TestBed.inject(HttpUsersService).queryUserRealtimeLongPoll('group-profile');
     expect(result?.counters).toEqual({ game: 2 });
     expect(result?.accountCounters).toEqual({ game: 8, cars: 3, contactRequestsPending: 1 });
+    expect(result?.paymentCardsAvailable).toBe(true);
+    expect(result?.paymentCurrencies).toEqual(['EUR', 'HUF', 'USD']);
+    expect(result?.paymentExchangeRates).toEqual({ EUR: 1, HUF: 0.0025 });
+    expect(result?.paymentSummaryCurrency).toBe('HUF');
     expect(post).toHaveBeenCalledOnce();
     expect(get).not.toHaveBeenCalled();
   });

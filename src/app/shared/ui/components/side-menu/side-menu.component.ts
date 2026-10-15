@@ -97,6 +97,7 @@ import {
   SubEventResourcePopupStore
 } from '../../context/stores/event/sub-event-resource-popup.store';
 
+import { PaymentMethodsService } from '../../../core/base/services/payments/payment-methods.service';
 import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import { HelpCenterService } from '../../../core/base/services/help/help-center.service';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -192,6 +193,7 @@ type NavigatorMenuShortcutId =
   | 'impressions'
   | 'feedback'
   | 'rates'
+  | 'votes'
   | 'chat'
   | 'invitations'
   | 'events'
@@ -282,6 +284,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly operatorMenuStore = inject(OperatorMenuStore);
   private readonly injector = inject(Injector);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  private readonly paymentMethods = inject(PaymentMethodsService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   protected readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
@@ -342,7 +345,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly cases = inject(CommunityCasesStore);
   protected readonly communityGroups = inject(CommunityGroupsStore);
   protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
-    this.communityGroups.counters().hosting + this.communityGroups.counters().participation + this.communityGroups.counters().pending + this.communityGroups.counters().invitations));
+    this.communityGroups.counters().hosting + this.communityGroups.counters().participation));
   protected readonly photoFeedStore = inject(PhotoFeedStore);
   protected readonly navigatorFeedMenuModel = computed(() =>
     navigatorContentMenuModel('feed', this.photoFeedStore.count()));
@@ -354,7 +357,7 @@ export class SideMenuComponent implements OnDestroy {
       items: [
         ...(this.mingleStore.visible() ? [this.navigatorTableMenuModel()] : []),
         this.navigatorFeedMenuModel(), this.navigatorFollowedMenuModel(), this.navigatorGroupsMenuModel(),
-        ...(this.groupWorkspaces.context.isWork() ? [navigatorContentMenuModel('campaigns', 0)] : []),
+        ...(this.groupWorkspaces.context.isWork() ? [navigatorContentMenuModel('campaigns', this.campaigns.count())] : []),
         ...(this.groupWorkspaces.context.isCommunity() ? [navigatorContentMenuModel('cases', this.cases.count()), navigatorContentMenuModel('services', 0)] : [])
       ].flatMap(model => model.nodes?.flatMap(node => node.items ?? []) ?? [])
     }]
@@ -576,6 +579,8 @@ export class SideMenuComponent implements OnDestroy {
     }
     const activityOverrides = this.activityStore.getUserCounterOverrides(activeUser.id);
     const eventCounters = activityOverrides.event ?? activeUser.activities?.event;
+    const eventFeedback = activityOverrides.eventFeedback ?? activeUser.activities?.eventFeedback;
+    const moduleCounters = { ...activeUser.activities?.menuCounters, ...activityOverrides.menuCounters };
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
       chats: activityOverrides.chats ?? activeUser.activities?.chats ?? 0,
@@ -588,7 +593,9 @@ export class SideMenuComponent implements OnDestroy {
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       contactRequestsPending: activityOverrides.contactRequestsPending ?? activeUser.activities?.contactRequestsPending ?? 0,
-      feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
+      feedback: this.groupWorkspaces.context.isCommunity()
+        ? (eventFeedback?.pending ?? 0) + (eventFeedback?.ownEvents ?? 0) + (moduleCounters['serviceFeedback_pending'] ?? 0)
+        : activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
       paymentRefundsPending: activityOverrides.paymentRefundsPending ?? activeUser.activities?.paymentRefundsPending ?? 0,
       chat: {
@@ -761,6 +768,7 @@ export class SideMenuComponent implements OnDestroy {
       impressions: this.impressionShortcutBadgeCount(user),
       feedback: user.activities.feedback,
       rates: user.activities.game,
+      votes: this.announcements.votesCount(),
       chat: user.activities.chats,
       invitations: user.activities.invitations,
       events: user.activities.event?.all ?? 0,
@@ -863,14 +871,21 @@ export class SideMenuComponent implements OnDestroy {
           icon: 'local_activity',
           palette: 'blue',
           items: [
-            {
-              id: 'rates',
-              label: this.announcements.groupId() ? 'announcement.title' : 'Rates',
-              icon: this.announcements.groupId() ? 'how_to_vote' : 'star',
-              palette: 'gold',
-              ariaLabel: this.announcements.groupId() ? 'announcement.title' : 'Open rates',
+            ...(this.announcements.groupId() ? [{
+              id: 'votes' as const,
+              label: 'announcement.title',
+              icon: 'how_to_vote',
+              palette: 'gold' as const,
+              ariaLabel: 'announcement.title',
               disabled: primaryDisabled
-            },
+            }] : [{
+              id: 'rates' as const,
+              label: 'Rates',
+              icon: 'star',
+              palette: 'gold' as const,
+              ariaLabel: 'Open rates',
+              disabled: primaryDisabled
+            }]),
             {
               id: 'chat',
               label: 'Chats',
@@ -1559,8 +1574,10 @@ export class SideMenuComponent implements OnDestroy {
       case 'feedback':
         this.openEventFeedbackPopup(event.sourceEvent);
         return;
+      case 'votes':
+        void this.announcements.open();
+        return;
       case 'rates':
-        if (this.announcements.groupId()) { void this.announcements.open(); return; }
         this.openRatesShortcut(event.sourceEvent);
         return;
       case 'chat':
@@ -2333,6 +2350,8 @@ export class SideMenuComponent implements OnDestroy {
       this.followingStore.applySnapshot(snapshot.userId, snapshot.following, followingRevision);
       this.photoFeedStore.applyCounters(snapshot.userId, snapshot.feedCounters);
       this.deploymentConfiguration.applyPaymentCardsAvailable(snapshot.paymentCardsAvailable);
+      this.deploymentConfiguration.applyPaymentCurrencies(snapshot.paymentCurrencies);
+      this.paymentMethods.applyDisplayExchangeRates(snapshot.paymentExchangeRates, snapshot.paymentSummaryCurrency);
       this.userProfileStore.applyUserRealtimeProfileStatus(snapshot.userId, snapshot.profileStatus);
       this.userProfileStore.applyUserRealtimeLocation(snapshot.userId, snapshot.locationCoordinates, locationSyncToken);
       this.userProfileStore.applyUserRealtimeNotificationDevices(snapshot.userId, snapshot.notificationDevices);
@@ -2355,6 +2374,10 @@ export class SideMenuComponent implements OnDestroy {
           nonNotificationCounters,
           this.activitiesStore.activitiesPrimaryFilter()
         );
+      } else if (this.communityGroups.openUserId()) {
+        this.activityStore.applyRealtimeCounterOverrides(counterSyncToken, { menuCounters: Object.fromEntries(
+          Object.entries(nonNotificationCounters.menuCounters ?? {}).filter(([key]) => key.startsWith('groups_'))
+        ) });
       }
       if (Number.isFinite(nextNotificationCount)) {
         this.notificationCenterStore.applyRealtimeUnreadCount(

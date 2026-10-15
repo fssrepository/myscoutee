@@ -1,7 +1,6 @@
 @if (contactsPopupOpen()) {
   <app-popup [model]="contactsPopupModel()" [zIndex]="contactsPopupZIndex()">
     <div class="contacts-popup-content">
-      @if (chatAccess.error()) { <p class="contact-form-error" role="alert">{{ 'contact.chat.error' | i18n }}</p> }
       <section class="contacts-toolbar">
         <label class="contacts-search-field" data-guide-field="contact-search">
           <mat-icon>search</mat-icon>
@@ -141,9 +140,6 @@
             </button>
           </section>
 
-          @if (formErrorMessage()) {
-            <p class="contact-form-error">{{ formErrorMessage() }}</p>
-          }
 
           @if (contactForm.methods.length === 0) {
             <div class="contact-form-empty">

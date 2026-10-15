@@ -1,4 +1,4 @@
-import type { CaseBoardTask } from './community-case.interface';
+import type { CaseBoardTask, CaseType, CaseStatus } from './community-case.interface';
 import type { ServiceOffering } from './service-offering.interface';
 import type { EventCheckoutPricingSummaryRow, EventCheckoutSlotsQuery, EventCheckoutSlotsResult } from '../common/activity.interface';
 export interface CaseAppointment {
@@ -6,7 +6,7 @@ export interface CaseAppointment {
  slotId:string;slotTemplateId:string;startAtIso:string;endAtIso:string;status:'booked'|'cancelled';
  amount:number;currency:string;pricingSummaryRows:EventCheckoutPricingSummaryRow[];createdAtIso:string;updatedAtIso:string;
 }
-export interface CaseAppointmentCalendarEntry {appointment:CaseAppointment|null;caseId:string;task:CaseBoardTask|null;caseTitle:string;serviceTitle:string;customerName:string;}
+export interface CaseAppointmentCalendarEntry {appointment:CaseAppointment|null;caseId:string;caseType:CaseType;caseStatus:CaseStatus;task:CaseBoardTask|null;caseTitle:string;serviceTitle:string;customerName:string;}
 export interface ServiceProviderCalendar {id:string;appointments:CaseAppointment[];lastOperationId:string|null;lastOperationSignature:string|null;version:number|null;}
 export interface CaseAppointmentSelection {userId:string;serviceId:string;providerAccountId:string;slotIds:string[];version:number|null;operationId:string;}
 export interface CaseAppointmentSlots {service:ServiceOffering;result:EventCheckoutSlotsResult;version:number|null;appointments:CaseAppointment[];}

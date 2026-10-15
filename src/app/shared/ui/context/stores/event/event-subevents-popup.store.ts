@@ -66,6 +66,24 @@ export interface EventSubeventsReloadRequest {
   providedIn: 'root'
 })
 export class EventSubeventsPopupStore {
+  private readonly calendarSelectionRef = signal<{
+    view: 'day' | 'week' | 'month';
+    dateRange: {startAt: string; endAt: string; precision: 'date'} | null;
+  }>({view: 'day', dateRange: null});
+  readonly calendarSelection = this.calendarSelectionRef.asReadonly();
+
+  selectListView(view: 'day' | 'week' | 'month'): void {
+    const current = this.calendarSelectionRef();
+    if (current.view === view && !current.dateRange) return;
+    this.calendarSelectionRef.set({view, dateRange: null});
+  }
+
+  selectCalendarRange(startAt: string, endAt = startAt): void {
+    const current = this.calendarSelectionRef();
+    if (current.view === 'day' && current.dateRange?.startAt === startAt && current.dateRange.endAt === endAt) return;
+    this.calendarSelectionRef.set({view: 'day', dateRange: {startAt, endAt, precision: 'date'}});
+  }
+
   private readonly eventSubeventsListPopupRef = signal<EventSubeventsListPopupRequest | null>(null);
   private readonly eventTournamentGroupsPopupRef = signal<EventTournamentGroupsPopupRequest | null>(null);
   private readonly eventTournamentGroupsUpdateRef = signal<EventTournamentGroupsUpdate | null>(null);
@@ -109,6 +127,7 @@ export class EventSubeventsPopupStore {
       : payload.canEdit === true
         ? 'edit'
         : 'view';
+    this.selectListView('day');
     this.eventSubeventsListPopupRef.set({
       updatedMs: Date.now(),
       host: payload.host ?? 'activities',
@@ -132,6 +151,7 @@ export class EventSubeventsPopupStore {
 
   closeEventSubeventsListPopup(): void {
     this.eventSubeventsListPopupRef.set(null);
+    this.selectListView('day');
   }
 
   updateEventSubeventsEditorAction(eventId: string, editorAction: EventSubeventsEditorAction): void {

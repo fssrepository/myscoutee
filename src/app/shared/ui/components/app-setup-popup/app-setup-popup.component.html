@@ -7,7 +7,6 @@
         @for (item of toggles(); track item.id) {
           <app-menu class="app-setup-toggle" [attr.data-guide-field]="item.id" kind="inline" [items]="[item]" (itemSelect)="toggle($event)"></app-menu>
         }
-        @if (store.error()) { <p class="app-setup-error" role="alert">{{ store.error() }}</p> }
         @if (showPermissionAction()) {
           <app-menu class="app-setup-action" kind="inline" [model]="actionModel" data-guide-field="permissions-save" [items]="permissionActions()" (itemSelect)="action($event)"></app-menu>
         }

@@ -762,11 +762,11 @@ export class EventMembersPopupComponent implements OnDestroy {
         id: `member-action-report-${entry.id}`,
         label: 'Report user',
         icon: 'flag',
-        palette: 'default',
+        palette: 'warning',
         context: { menu: 'member-action', member: entry, action: 'report' }
       });
     }
-    return items.map(item => ({ ...item, guideId: `member-${item.context?.action}` }));
+    return items.map(item => ({ ...item, surface: 'tinted' as const, guideId: `member-${item.context?.action}` }));
   }
 
   protected onMemberActionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {

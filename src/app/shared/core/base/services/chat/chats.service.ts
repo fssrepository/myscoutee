@@ -77,7 +77,9 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     chat: ChatDTO,
     query: ListQuery
   ): Promise<ContractTypes.ChatMessagesPageResultDTO> {
-    const page = await this.chatsService.queryChatMessagesPage(chat, query);
+    const page = await this.routeDelay.withRequestTimeout(
+      ChatsService.CHAT_ROUTE, this.chatsService.queryChatMessagesPage(chat, query)
+    );
     return {
       items: page.items,
       total: page.total,
@@ -175,7 +177,9 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   }
 
   async ensureServiceChat(input: ChatServiceEnsureInput): Promise<ChatDTO | null> {
-    return this.chatsService.ensureServiceChat(input);
+    return this.routeDelay.withRequestTimeout(
+      ChatsService.CHAT_ROUTE, this.chatsService.ensureServiceChat(input)
+    );
   }
 
   async resolveEventServiceChat(input: {

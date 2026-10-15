@@ -1,8 +1,7 @@
 import type { ImageCardData, AppMenuRateConfig } from '@fssrepository/myscoutee-components';
 
 interface ActivitiesRateEditorPresenterDeps {
-  getActivitiesRateFilter: () => string;
-  getSelectedRow: () => ImageCardData | null;
+  getRatingLabel: () => string;
   getFocusedRow: () => ImageCardData | null;
   isFullscreenModeActive: () => boolean;
   isEditorClosing: () => boolean;
@@ -38,23 +37,11 @@ export class ActivitiesRateEditorPresenter {
     };
   }
 
-  private selectedModeLabel(): string {
-    const row = this.deps.getSelectedRow();
-    if (!row) {
-      return this.deps.getActivitiesRateFilter().startsWith('individual') ? 'Single' : 'Pair';
-    }
-    return row.mode === 'pair' ? 'Pair' : 'Single';
-  }
-
-  private selectedTitle(): string {
-    return this.deps.getSelectedRow()?.title ?? 'Rate';
-  }
-
   private selectedBarLabel(): string | null {
     if (this.deps.isFullscreenModeActive()) {
       return null;
     }
-    return `Affinity · ${this.selectedModeLabel()} · ${this.selectedTitle()}`;
+    return this.deps.getRatingLabel();
   }
 
   private isSelectedReadOnly(): boolean {

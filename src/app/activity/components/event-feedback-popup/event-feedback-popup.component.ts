@@ -2,6 +2,7 @@ import {
   UiDateUtils,
   FormFlowComponent,
   IndicatorComponent,
+  LazyBgImageDirective,
   type FormFlowSaveEvent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -56,6 +57,7 @@ import {
 } from '../../../shared/core/base';
 
 import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user-profile.store';
+import { cloneEventFeedbackCounters } from '../../../shared/ui/context/stores/app/app-context-store.utils';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import {
   ActivityStore,
@@ -88,6 +90,7 @@ interface EventFeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'o
   imports: [
     CommonModule,
     FormsModule,
+    LazyBgImageDirective,
     MatIconModule,
     FormFlowComponent,
     IndicatorComponent,
@@ -580,6 +583,23 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       removed: (current.removed ?? 0) + (delta.removed ?? 0)
     }));
     this.eventFeedbackPageResult.set(pageResult?.patchItem(after) ?? null);
+    const activities = this.userProfileStore.activeUserProfile()?.activities;
+    this.activityStore.patchUserCounterDeltas(this.activeUserId(), {
+      feedback: delta.pending ?? 0,
+      eventFeedback: {
+        ownEvents: delta['own-events'] ?? 0,
+        pending: delta.pending ?? 0,
+        feedbacked: delta.feedbacked ?? 0,
+        removed: delta.removed ?? 0
+      }
+    }, {
+      feedback: activities?.feedback ?? 0,
+      eventFeedback: cloneEventFeedbackCounters(activities?.eventFeedback)
+    });
+    // This mutation already updated the visible page; only external counter
+    // changes need the realtime refresh effect to query it again.
+    this.feedbackPendingCounter = this.activityStore.getUserCounterOverride(this.activeUserId(), 'feedback');
+    this.eventFeedbackRealtimeCounters = this.activityStore.getUserCounterOverrides(this.activeUserId()).eventFeedback;
   }
 
   private applyEventFeedbackItemRemoved(item: ActivityContracts.EventFeedbackDto): void {

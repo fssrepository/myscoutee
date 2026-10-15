@@ -73,13 +73,16 @@ export class CommunityAnnouncementsComponent {
   }
   private row(a:CommunityAnnouncement):SingleRowData<CommunityAnnouncement> {
     return {id:a.id,title:a.title,subtitle:a.body,detail:new Date(a.publishedAtIso??a.createdAtIso).toLocaleString(this.i18n.currentLanguage(),{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}),icon:a.voting?'how_to_vote':'campaign',eagerDetail:a,menuActions:this.menu(a).map(item=>item.id),
-      badges:[{label:this.i18n.translate(a.voting?(a.closed?'announcement.closed':'announcement.voting'):'announcement.notice'),tone:a.voting?(a.closed?'muted':'info'):'success',position:'top-right'},
-        ...(a.voting?[{label:`${a.castVotes}/${a.eligibleMembers}`,icon:'how_to_vote',tone:'muted' as const,position:'inline' as const}]:[])]};
+      avatarToneClass:'ui-single-row__avatar--contextual',accentHue:a.voting?42:140,
+      badges:[a.voting
+        ?{label:`${a.castVotes}/${a.eligibleMembers}`,icon:'how_to_vote',palette:a.closed?'violet':'blue',position:'top-right'}
+        :{label:this.i18n.translate('announcement.notice'),tone:'success',position:'top-right'}]};
   }
   private menu(a:CommunityAnnouncement):AppMenuItem[] {
     const items:[string,string][]=[['view','article']];
     if(a.status==='published'&&!this.store.canManage())items.push(['feedback','chat']);
-    if(a.voting)items.push(a.closed?['results','poll']:['vote','how_to_vote']);
+    if(a.voting&&a.closed)items.push(['results','poll']);
+    else if(a.voting&&a.status==='published'&&a.canVote&&!a.myBallot)items.push(['vote','how_to_vote']);
     if(a.canManage){ if(a.status!=='trash')items.push(['edit','edit']); if(a.status==='draft')items.push(['publish','publish']);
       if(a.status==='published')items.push(['unpublish','unpublished']); if(a.status==='trash')items.push(['restore','restore']);else items.push(['trash','delete']);
       if(a.voting&&a.status==='published'&&!a.closed)items.push(['close','lock']); }
@@ -88,8 +91,11 @@ export class CommunityAnnouncementsComponent {
   }
   protected action(e:AppMenuItemSelectEvent):void {const a=e.context as CommunityAnnouncement;
     if(e.id==='feedback')void this.store.feedback(a);else if(e.id==='vote'||e.id==='results')this.store.viewVoting(a);else if(['view','edit'].includes(e.id))this.store.edit(a,e.id!=='edit');else void this.store.command(a,e.id as AnnouncementAction,undefined,this.menu(a).find(item=>item.id===e.id)?.palette);}
-  protected readonly headerItems = computed<AppMenuItem[]>(() => {if(!this.store.canManage())return [];return [
-    {id:'status',label:`announcement.status.${this.status()}`,...ANNOUNCEMENT_STATUS_STYLE[this.status()],kind:'select-trigger',layout:'pill',items:((this.store.canManage()?['published','draft','trash']:['published']) as AnnouncementStatus[]).map(id=>({id,label:`announcement.status.${id}`,...ANNOUNCEMENT_STATUS_STYLE[id],surface:'tinted',kind:'radio',active:id===this.status(),checked:id===this.status()}))},
+  protected readonly headerItems = computed<AppMenuItem[]>(() => {if(!this.store.canManage())return [];
+    const counters=this.store.menuCounters();
+    const count=(id:AnnouncementStatus)=>(counters[`announcement_${id}_votes`]??0)+(this.inline?(counters[`announcement_${id}_notices`]??0):0);
+    return [
+    {id:'status',label:`announcement.status.${this.status()}`,...ANNOUNCEMENT_STATUS_STYLE[this.status()],kind:'select-trigger',layout:'pill',counter:count(this.status()),counterTone:'alert',items:((this.store.canManage()?['published','draft','trash']:['published']) as AnnouncementStatus[]).map(id=>({id,label:`announcement.status.${id}`,...ANNOUNCEMENT_STATUS_STYLE[id],surface:'tinted',kind:'radio',showCheck:true,active:id===this.status(),checked:id===this.status(),counter:count(id),counterTone:'alert'}))},
     ...(this.store.canManage()?[{id:'create',icon:'add',label:'announcement.create',kind:'action' as const,layout:'pill' as const,palette:'green' as const}]:[])]; });
   protected headerAction(e:AppMenuItemSelectEvent):void { if(['published','draft','trash'].includes(e.id))this.status.set(e.id as AnnouncementStatus);else if(e.id==='create')this.store.edit(null,false,!this.inline); }
   protected readonly popupModel = computed<PopupModel>(() => { return {errorMessage:this.store.editor()?null:this.store.error(),title:'announcement.title',size:'wide',height:'full',bodyLayout:'fill',onClose:()=>this.store.close(),showToolbar:this.store.canManage(),

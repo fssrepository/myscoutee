@@ -483,10 +483,9 @@ export class HomeComponent implements OnDestroy {
       return false;
     }
     const status = this.resolvedActiveProfileStatus();
-    return status === 'friends only'
-      || status === 'host only'
-      || status === 'inactive'
-      || status === 'deleted';
+    return status === 'inactive'
+      || status === 'deleted'
+      || (!this.workspace.isCommunity() && (status === 'friends only' || status === 'host only'));
   }
 
   protected get gameVisibilityPausedTitle(): string {
@@ -1681,12 +1680,13 @@ export class HomeComponent implements OnDestroy {
       };
     }
     await this.waitForInitialHomeGameStack(query);
-    await this.ensureHomeSmartListRowsAvailable(query);
     const pageSize = Number.isFinite(query.pageSize)
       ? Math.max(1, Math.trunc(Number(query.pageSize)))
       : this.gameStackPageSizeForCurrentMode();
-    const startIndex = Math.max(0, query.page) * pageSize;
+    // A previous page may have been short before new matching cards appeared.
+    const startIndex = query.page > 0 ? (this.homeSmartList?.visibleItemCount() ?? 0) : 0;
     const endIndex = startIndex + pageSize;
+    await this.ensureHomeSmartListRowsAvailable(query, endIndex);
     const total = this.totalRoundsForCurrentMode();
     return {
       items: this.homeSmartListRowsPage(startIndex, endIndex),
@@ -1726,14 +1726,13 @@ export class HomeComponent implements OnDestroy {
     });
   }
 
-  private async ensureHomeSmartListRowsAvailable(query: ListQuery<HomeSmartListFilters>): Promise<void> {
+  private async ensureHomeSmartListRowsAvailable(
+    query: ListQuery<HomeSmartListFilters>,
+    requiredCount: number
+  ): Promise<void> {
     if (!this.memberActionsAvailable || !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       return;
     }
-    const pageSize = Number.isFinite(query.pageSize)
-      ? Math.max(1, Math.trunc(Number(query.pageSize)))
-      : this.gameStackPageSizeForCurrentMode();
-    const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
     let pageRequestAttempted = false;
     while (this.memberActionsAvailable && this.availableServiceRowsCount() < requiredCount) {
       const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
@@ -1743,7 +1742,9 @@ export class HomeComponent implements OnDestroy {
       }
       const forceRequest = snapshot.nextCursor === null
         && !this.hasUnloadedRemainingServiceRows(snapshot);
-      if (forceRequest && pageRequestAttempted) {
+      // The initial stack already answered page zero; later preloads must query again
+      // even without a cursor, because new matching cards may have appeared.
+      if (forceRequest && (pageRequestAttempted || (query.page === 0 && snapshot.filterCount !== null))) {
         return;
       }
       const previousCursor = snapshot.nextCursor;
@@ -2713,10 +2714,10 @@ export class HomeComponent implements OnDestroy {
     }
 
     this.gameStackPaginating = true;
-    void smartList.preloadNextListPage({ force: true }).then(() => {
+    void smartList.preloadNextListPage({ force: true }).then(loadedMoreCards => {
       const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
       this.gameStackCardsLoaded = smartList.visibleItemCount();
-      this.gameStackExhausted = serviceStack.nextCursor === null
+      this.gameStackExhausted = !loadedMoreCards && serviceStack.nextCursor === null
         && !this.hasUnloadedRemainingServiceRows(serviceStack);
       this.preloadGameImageWindow();
       this.beginCandidateImageLoadingForCurrentSelection(true);

@@ -258,28 +258,33 @@ export class LocalAssetsService extends LocalRouteDelayService {
   }
 
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    await this.assetsRepository.deleteOwnedAsset(userId, assetId);
+    return this.withRouteDelay(LocalAssetsService.ASSETS_ROUTE, async (): Promise<void> => {
+      await this.assetsRepository.deleteOwnedAsset(userId, assetId);
+    });
   }
 
   async leaveOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.leaveOwnedAsset(userId, assetId);
+    return this.withRouteDelay(LocalAssetsService.ASSETS_ROUTE, async (): Promise<AppDTOs.AssetDTO | null> => {
+      return this.assetsRepository.leaveOwnedAsset(userId, assetId);
+    });
   }
 
   async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.takeOverOwnedAsset(userId, assetId);
+    return this.withRouteDelay(LocalAssetsService.ASSETS_ROUTE, async (): Promise<AppDTOs.AssetDTO | null> => {
+      return this.assetsRepository.takeOverOwnedAsset(userId, assetId);
+    });
   }
 
   async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
+    return this.withRouteDelay(LocalAssetsService.ASSETS_ROUTE, async (): Promise<AppDTOs.AssetDTO | null> => {
+      return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
+    });
   }
 
   async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    return this.assetsRepository.revokeAssetManager(userId, assetId, targetUserId);
+    return this.withRouteDelay(LocalAssetsService.ASSETS_ROUTE, async (): Promise<AppDTOs.AssetDTO | null> => {
+      return this.assetsRepository.revokeAssetManager(userId, assetId, targetUserId);
+    });
   }
 
 }

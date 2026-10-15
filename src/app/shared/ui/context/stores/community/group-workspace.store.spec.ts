@@ -14,6 +14,7 @@ import { UiPollCoordinator } from '@fssrepository/myscoutee-components';
 import type { GroupWorkspace } from '../../../../core/contracts/groups/community-group.interface';
 import type { UserDto } from '../../../../core/contracts/accounts/user.interface';
 import { profileMenuBadgeCount } from '../app/app-context-store.utils';
+import { AdminWorkspaceStore } from '../admin/admin-workspace.store';
 
 describe('Group workspace attention scope and live updates', () => {
   let store: GroupWorkspaceStore;
@@ -37,7 +38,7 @@ describe('Group workspace attention scope and live updates', () => {
       { provide: UserProfileStore, useValue: { activeUserProfile: signal(null), activeUserId: signal(''),
         getUserProfile: () => null, getUserImpressionChangeFlags: () => ({ host: true, member: false }) } },
       { provide: ActivityStore, useValue: { getUserCounterOverrides: () => ({}) } },
-      { provide: ContentModerationStore, useValue: { attention: (_id: string, pending: number, revision: number) => ({ pending, revision }) } },
+      { provide: ContentModerationStore, useValue: { attention: (_id: string, pending: number, revision: number) => ({ pending, revision }), forScope: () => null } },
       { provide: UiPollCoordinator, useValue: {} }
     ] });
     store = TestBed.inject(GroupWorkspaceStore);
@@ -101,6 +102,54 @@ describe('Group workspace attention scope and live updates', () => {
     changes.signalAttentionDelta('another-account', 'friends', -1);
     TestBed.tick();
     expect(store.counters()).toEqual({ hosting: 1, participation: 0, pending: 0, invitations: 1 });
+  });
+
+  it('uses the admin review counts after a workspace load replaces the account with its member presentation', async () => {
+    const work = { ...row('myscoutee-work', 'accepted', 'Admin'), activity: 0, membersActivity: 0 };
+    const community = { ...row('myscoutee-community', 'accepted', 'Admin'), activity: 0, membersActivity: 0 };
+    response = async () => [work, community];
+    const users = TestBed.inject(UserProfileStore);
+    users.getUserProfile = () => ({ id: 'account', admin: false,
+      activities: { game: 0, feedback: 0, event: { all: 2 } } } as unknown as UserDto);
+    TestBed.inject(AdminWorkspaceStore).reviewCountsForScope = groupId => ({
+      reportsUnresolved: groupId === null ? 2 : groupId === 'myscoutee-work' ? 1 : 0,
+      feedbackUnresolved: groupId === null ? 2 : groupId === 'myscoutee-community' ? 3 : 0,
+      reportsResolved: 0, feedbackResolved: 0
+    });
+    TestBed.inject(ActivityStore).getUserCounterOverrides = () => ({ game: 0, feedback: 0 });
+    await store.refresh();
+    for (const workspace of [work, community]) {
+      TestBed.inject(GroupWorkspaceContextService).active.set(workspace);
+      (users.activeUserProfile as ReturnType<typeof signal>).set({ id: workspace.profileId, admin: true, activities: {} });
+      const counters = Object.fromEntries(store.menuItems(workspace.groupId).map(item => [item.id, item.counter]));
+      expect(counters).toEqual({ main: 4, 'myscoutee-work': 1, 'myscoutee-community': 3 });
+      expect(store.avatarBadgeCount()).toBe(8);
+    }
+    TestBed.inject(UsersService).loadProfileExtById = async () => null as never;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await store.select(null);
+      expect(store.avatarBadgeCount()).toBe(8);
+    }
+  });
+
+  it('retains Dating review badges when the admin dashboard restores before the account profile', () => {
+    const users = TestBed.inject(UserProfileStore);
+    (users.activeUserProfile as ReturnType<typeof signal>).set({ id: 'group:community:account', admin: true });
+    TestBed.inject(AdminWorkspaceStore).reviewCountsForScope = () => ({
+      reportsUnresolved: 2, feedbackUnresolved: 2, reportsResolved: 0, feedbackResolved: 0
+    });
+    expect(store.menuItems('main').find(item => item.id === 'main')?.counter).toBe(4);
+    expect(store.avatarBadgeCount()).toBe(4);
+  });
+
+  it('restores the selector scope from the already restored admin profile', async () => {
+    const community = row('myscoutee-community', 'accepted', 'Admin');
+    response = async () => [community];
+    const users = TestBed.inject(UserProfileStore);
+    (users.activeUserProfile as ReturnType<typeof signal>).set({ id: community.profileId, admin: true });
+    (users.activeUserId as ReturnType<typeof signal>).set(community.profileId);
+    await store.refresh();
+    expect(store.context.active()?.groupId).toBe(community.groupId);
   });
 
   it('does not grant pending administrators a moderation count or selectable workspace', async () => {

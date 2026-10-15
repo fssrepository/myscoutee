@@ -448,42 +448,38 @@ export class HttpChatsService implements IChatsService {
     const targetMessageId = `${(query.filters as { targetMessageId?: string } | undefined)?.targetMessageId ?? ''}`.trim();
     if (targetMessageId) params = params.set('targetMessageId', targetMessageId);
 
-    try {
-      const response = await this.http
-        .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
-          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
-          { params }
-        )
-        .toPromise();
+    const response = await this.http
+      .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
+        `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
+        { params }
+      )
+      .toPromise();
 
-      if (Array.isArray(response)) {
-        const messages = response.map((message, index) => this.mapChatMessage(message, chat.id, index));
-        return this.buildChatMessagesPage(
-          messages,
-          query
-        );
-      }
-
-      const messages = Array.isArray(response?.items)
-        ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, index))
-        : [];
-      const readReceipt = this.mapChatReadReceipt(response?.read ?? null);
-      return {
-        items: this.sortChatMessagesForThread(messages),
-        total: Number.isFinite(response?.total)
-          ? Math.max(0, Math.trunc(Number(response?.total)))
-          : messages.length,
-        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
-          ? response.nextCursor.trim()
-          : null,
-        readReceipt,
-        notificationUnread: Number.isFinite(response?.notificationUnread)
-          ? Math.max(0, Math.trunc(Number(response?.notificationUnread)))
-          : null
-      };
-    } catch {
-      return { items: [], total: 0, nextCursor: null, readReceipt: null, notificationUnread: null };
+    if (Array.isArray(response)) {
+      const messages = response.map((message, index) => this.mapChatMessage(message, chat.id, index));
+      return this.buildChatMessagesPage(
+        messages,
+        query
+      );
     }
+
+    const messages = Array.isArray(response?.items)
+      ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, index))
+      : [];
+    const readReceipt = this.mapChatReadReceipt(response?.read ?? null);
+    return {
+      items: this.sortChatMessagesForThread(messages),
+      total: Number.isFinite(response?.total)
+        ? Math.max(0, Math.trunc(Number(response?.total)))
+        : messages.length,
+      nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+        ? response.nextCursor.trim()
+        : null,
+      readReceipt,
+      notificationUnread: Number.isFinite(response?.notificationUnread)
+        ? Math.max(0, Math.trunc(Number(response?.notificationUnread)))
+        : null
+    };
   }
 
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {

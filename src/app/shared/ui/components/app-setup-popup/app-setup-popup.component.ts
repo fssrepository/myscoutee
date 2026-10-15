@@ -27,6 +27,7 @@ export class AppSetupPopupComponent {
   readonly helpOpen = signal(false);
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
   readonly model = computed<PopupModel>(() => ({
+    errorMessage: this.store.error(),
     title: 'app.setup.title', size: 'small', height: 'auto',
     mobilePresentation: 'compact', headerTone: 'accent', headerPalette: 'violet',
     showClose: true, closeOnBackdrop: false, backdropTone: 'dim',

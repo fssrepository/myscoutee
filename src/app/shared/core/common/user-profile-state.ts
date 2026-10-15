@@ -2,7 +2,7 @@ import { AppUtils } from '../base/app-utils';
 import type { UserDto } from '../contracts/accounts/user.interface';
 
 export class UserProfileState {
-  private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
+  private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted', 'onboarding']);
   private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
 
   static isFriendOfActiveUser(userId: string, activeUserId: string): boolean {
@@ -18,24 +18,38 @@ export class UserProfileState {
   }
 
   static isPublicGameProfile(
-    user: Pick<UserDto, 'profileStatus' | 'operator'> | null | undefined
+    user: (Pick<UserDto, 'profileStatus' | 'operator'> & { status?: string }) | null | undefined
   ): boolean {
-    return user?.operator !== true && user?.profileStatus === 'public';
+    return Boolean(user) && user?.operator !== true && this.visibilityStatus(user) === 'public';
   }
 
   static isInsideNetworkGameProfile(
-    user: Pick<UserDto, 'profileStatus' | 'operator'> | null | undefined
+    user: (Pick<UserDto, 'profileStatus' | 'operator'> & { status?: string }) | null | undefined
   ): boolean {
-    return user?.operator !== true
-      && this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(user?.profileStatus ?? '');
+    return Boolean(user) && user?.operator !== true
+      && this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(this.visibilityStatus(user));
   }
 
   static isActivityRateVisibleProfile(
-    user: Pick<UserDto, 'profileStatus' | 'operator'> | null | undefined
+    user: (Pick<UserDto, 'profileStatus' | 'operator'> & { status?: string }) | null | undefined
   ): boolean {
     return Boolean(user)
       && user?.operator !== true
-      && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
+      && !this.HARD_HIDDEN_PROFILE_STATUSES.has(this.visibilityStatus(user));
+  }
+
+  private static visibilityStatus(user: (Pick<UserDto, 'profileStatus'> & { status?: string }) | null | undefined): string {
+    if (user?.profileStatus === 'blocked' || user?.profileStatus === 'onboarding') return user.profileStatus;
+    // Match the backend's persisted lifecycle status precedence, including older local seeds.
+    switch (user?.status) {
+      case 'D': return 'deleted';
+      case 'B': return 'blocked';
+      case 'I': return 'inactive';
+      case 'F': return 'friends only';
+      case 'H': return 'host only';
+      case 'A': return 'public';
+      default: return user?.profileStatus ?? '';
+    }
   }
 
   static isEmptyOnboardingProfile(

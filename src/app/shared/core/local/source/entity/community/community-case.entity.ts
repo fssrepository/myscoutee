@@ -3,6 +3,9 @@ export const COMMUNITY_CASES_TABLE_NAME = 'serviceCases' as const;
 export const COMMUNITY_TASKS_TABLE_NAME = 'communityScheduledTasks' as const;
 export interface CommunityCaseFeedbackWork { reviewers:string[]; providers:CaseSupport[]; createdAtIso:string; caseTitle:string; }
 export interface CommunityCaseRecord extends CaseFields {
+  counterOwners?: Record<string, string>;
+  feedbackCounterOwners?: Record<string, number>;
+  feedbackCounterBuckets?: Record<string, Record<string, number>>;
   feedback?:import('../../../../contracts/community/service-feedback.interface').ServiceFeedback[];
   feedbackWork?:CommunityCaseFeedbackWork|null;
   id: string; baseGroupId: string; ownerAccountId: string | null; status: CaseStatus;
@@ -12,7 +15,7 @@ export interface CommunityCaseRecord extends CaseFields {
   recommendations: CaseRecommendation[]; offers: CaseOffer[]; scheduledTaskId: string | null; dueAtIso: string | null;
   createdAtIso: string; updatedAtIso: string; version: number;
 }
-export interface CommunityTaskRecord extends ScheduledTaskFields { deleted?: boolean; id: string; baseGroupId: string; ownerAccountId: string; createdAtIso: string; updatedAtIso: string; version: number; }
+export interface CommunityTaskRecord extends ScheduledTaskFields { counterOwners?: Record<string, string>; deleted?: boolean; id: string; baseGroupId: string; ownerAccountId: string; createdAtIso: string; updatedAtIso: string; version: number; }
 export interface CommunityCasesMemorySchema {
   [COMMUNITY_CASES_TABLE_NAME]: { byId: Record<string, CommunityCaseRecord>; ids: string[] };
   [COMMUNITY_TASKS_TABLE_NAME]: { byId: Record<string, CommunityTaskRecord>; ids: string[] };

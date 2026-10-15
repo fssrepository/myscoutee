@@ -284,7 +284,12 @@ export class AssetAvailabilityPopupComponent {
       counterGranularity: 'day',
       initialAnchor: query => query.filters?.dateIso ?? null,
       resolveDateRange: item => this.availabilityDateRange(item),
-      dayCounter: day => this.availabilityDayCounter(day)
+      dayCounter: day => this.availabilityDayCounter(day),
+      badgeColors: {
+        palette: {empty: {badgeTone: 'inactive'}, occupied: {badgeTone: 'stage-scheduled'},
+          full: {badgeTone: 'full'}, over: {badgeTone: 'danger'}},
+        resolveKey: () => null
+      }
     },
     emptyLabel: 'asset.requests.empty.availability.label',
     emptyDescription: query => this.assetAvailabilityEmptyDescription(query),
@@ -1031,21 +1036,21 @@ export class AssetAvailabilityPopupComponent {
       ariaLabel: `${stat.occupied} occupied of ${capacity} capacity`,
       alertLabel: stat.pendingCount > 0 ? `${stat.pendingCount}` : null,
       alertAriaLabel: stat.pendingCount > 0 ? `${stat.pendingCount} pending` : null,
-      toneClass: this.counterTone(stat, capacity)
+      colorKey: this.counterTone(stat, capacity)
     };
   }
 
   private counterTone(stat: AppDTOs.AssetOccupancyStatDTO, capacity = stat.capacity): string {
     if (stat.occupied <= 0) {
-      return 'calendar-counter-empty';
+      return 'empty';
     }
     if (stat.occupied > capacity) {
-      return 'calendar-counter-over';
+      return 'over';
     }
     if (capacity > 0 && stat.occupied >= capacity) {
-      return 'calendar-counter-full';
+      return 'full';
     }
-    return '';
+    return 'occupied';
   }
 
   private availabilityDateRange(item: AssetAvailabilityListItem): SmartListCalendarDateRange | null {

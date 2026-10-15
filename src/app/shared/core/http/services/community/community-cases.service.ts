@@ -15,7 +15,12 @@ export class HttpCommunityCasesService implements ICommunityCasesService {
     return params;
   }
   async page(userId: string, query: ListQuery<CaseFilters>, signal?: AbortSignal): Promise<PageResult<CommunityCase, CaseListContext>> {
-    signal?.throwIfAborted(); const result = await firstValueFrom(this.http.get<PageResult<CommunityCase, CaseListContext>>(this.url, { params: this.params(userId, query) }));
+    const params = this.params(userId, query);
+    if (query.view === 'week' || query.view === 'month') {
+      if (query.rangeStart) params['rangeStart'] = query.rangeStart;
+      if (query.rangeEnd) params['rangeEnd'] = query.rangeEnd;
+    }
+    signal?.throwIfAborted(); const result = await firstValueFrom(this.http.get<PageResult<CommunityCase, CaseListContext>>(this.url, { params }));
     signal?.throwIfAborted(); return result;
   }
   async detail(userId: string, id: string, signal?: AbortSignal): Promise<CommunityCase> {

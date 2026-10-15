@@ -14,6 +14,7 @@ export interface CampaignFields {
 export interface Campaign extends CampaignFields {
   id: string; workspaceGroupId: string; ownerUserId: string;
   ownerName: string; ownerAvatarUrl: string | null; ownerCity: string; distanceKm: number | null;
+  ownCounters?: Record<CampaignStatus, number>;
   viewerRating?: number;
   viewerRatingSnapshot?: RatingSnapshot;
   status: CampaignStatus; createdAtIso: string; updatedAtIso: string; version: number;

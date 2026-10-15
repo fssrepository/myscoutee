@@ -56,7 +56,7 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
       (async () => {
         const actor = await this.actor(userId); const c = this.visible(actor, id);
             if (!c.attentionAccountIds.includes(actor)) return this.dto(actor, c);
-            const next = this.repository.saveCase({ ...c, attentionAccountIds: c.attentionAccountIds.filter(id => id !== actor), version: c.version + 1 }, c.version);
+            const next = this.repository.saveCase({ ...c, attentionAccountIds: c.attentionAccountIds.filter(id => id !== actor) }, c.version);
             await this.repository.flush(); return this.dto(actor, next);
       })()
     ]);
@@ -72,15 +72,15 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
             if (statuses.some(status => !['open', 'in-progress', 'completed', 'cancelled', 'trash'].includes(status)) || f.caseType && !CASE_TYPES.includes(f.caseType)) throw new Error('Invalid case filter');
             const managed = this.access.managedGroups(actor);
             const visible = this.repository.visibleCases(actor, managed);
-            const rows = visible.filter(c => statuses.includes(c.status) && (!f.caseType || c.caseType === f.caseType))
+            const calendar = query.view === 'week' || query.view === 'month';
+            const from = Date.parse(`${query.rangeStart}T00:00:00Z`), to = Date.parse(`${query.rangeEnd}T00:00:00Z`) + 86400000;
+            if (calendar && (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || to - from > 93 * 86400000)) throw new Error('Invalid calendar range');
+            const rows = visible.filter(c => statuses.includes(c.status) && (!f.caseType || c.caseType === f.caseType)
+              && (!calendar || (c.boardTasks ?? []).some(t => t.status !== 'deleted' && t.startAtIso && Date.parse(t.startAtIso) < to
+                && (t.endAtIso ? Date.parse(t.endAtIso) > from : Date.parse(t.startAtIso) >= from))))
               .sort((a, b) => b.updatedAtIso.localeCompare(a.updatedAtIso) || a.id.localeCompare(b.id));
-            const result = this.pageRows(rows, query);
-            const context: CaseListContext = { total: 0 };
-            for (const c of visible) {
-              const key = `${c.status}:${c.caseType}`;
-              context[key] = (context[key] ?? 0) + 1;
-              if (c.status !== 'trash') context.total++;
-            }
+            const result = calendar ? {items: rows, total: rows.length, nextCursor: null} : this.pageRows(rows, query);
+            const context = this.repository.context(actor);
             return { ...result, items: result.items.map(c => this.dto(actor, c)), context };
       })()
     ]);
@@ -127,7 +127,8 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
       this.waitForRouteDelay('/community-cases'),
       (async (): Promise<CommunityCase> => {
         const actor = await this.actor(r.userId); const old = this.visible(actor, id);
-            if (old.version !== r.version) throw new Error('case.changed');
+            // Commands use current state; editor snapshots retain overwrite protection.
+            if (['save-board-task', 'edit-offer'].includes(r.action) && old.version !== r.version) throw new Error('case.changed');
             const c = structuredClone(old), manager = this.canManage(c, actor);
             c.memberStates ??= {}; c.boardTasks ??= [];
             switch (r.action) {
@@ -195,6 +196,10 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
 
               case 'start': case 'complete': case 'cancel': case 'trash': case 'reopen': {
                 if (!manager) throw new Error('Forbidden');
+                const allowed = r.action === 'start' ? c.status === 'open'
+                  : r.action === 'complete' || r.action === 'cancel' ? ['open', 'in-progress'].includes(c.status)
+                  : r.action === 'trash' ? c.status !== 'trash' : ['completed', 'cancelled', 'trash'].includes(c.status);
+                if (!allowed) throw new Error('case.changed');
                 c.status = ({ start: 'in-progress', complete: 'completed', cancel: 'cancelled', trash: 'trash', reopen: 'open' } as const)[r.action]; break;
               }
               case 'recommend': case 'invite-provider': {
@@ -269,11 +274,13 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
               .sort((a, b) => a.nextDueAtIso.localeCompare(b.nextDueAtIso) || a.id.localeCompare(b.id));
             const status = query.filters?.status ?? 'active';
             if (!['active','paused','trash'].includes(status)) throw new Error('Invalid schedule status');
-            const context: ScheduledTaskCounters = { total: 0, active: 0, paused: 0, trash: 0 };
+            const stored = this.users.queryUserById(actor)?.menuCounters ?? {};
+            const context: ScheduledTaskCounters = { total: 0, active: stored['communityTask_active'] ?? 0,
+              paused: stored['communityTask_paused'] ?? 0, trash: stored['communityTask_trash'] ?? 0 };
+            context.total = context.active + context.paused;
             const taskStatus = (t: CommunityTaskRecord) => t.deleted ? 'trash' : t.enabled ? 'active' : 'paused';
-            for (const task of rows) { context[taskStatus(task)]++; if (!task.deleted) context.total++; }
             const result = this.pageRows(rows.filter(t => taskStatus(t) === status), query);
-            return { ...result, context, items: result.items.map(t => this.taskDto(t, actor)) };
+            return { ...result, total: context[status], context, items: result.items.map(t => this.taskDto(t, actor)) };
       })()
     ]);
     signal?.throwIfAborted();
@@ -313,7 +320,7 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
             if (!task || task.baseGroupId !== COMMUNITY_BASE_GROUP_ID) throw new Error('Task not found');
             if (task.communityId) this.access.requireAdmin(task.communityId, actor);
             else if (task.ownerAccountId !== actor) throw new Error('Forbidden');
-            if (task.version !== version) throw new Error('case.changed');
+            // Apply commands to current state; editor saves retain their snapshot guard.
             if (!(task.deleted ? action === 'restore' : action === 'trash' || action === (task.enabled ? 'pause' : 'resume'))) throw new Error('Invalid schedule action');
             const updated = { ...task, deleted: action === 'trash', enabled: action === 'resume' || action === 'restore', updatedAtIso: new Date().toISOString(), version: task.version + 1 };
             this.repository.saveTask(updated, task.version); await this.repository.flush(); return this.taskDto(updated, actor);

@@ -4,26 +4,38 @@
 }
 
 .entry-shell {
-  min-height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
   padding: 1rem;
-  overflow-x: clip;
   background: var(--deployment-page-background);
   color: var(--deployment-text-main);
 }
 
 .entry-shell-panel {
   max-width: 1160px;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   margin: 0 auto;
   border: 1px solid var(--deployment-panel-border);
   border-radius: 18px;
   padding: 0.9rem;
   background: var(--deployment-panel-background);
   box-shadow: 0 24px 50px color-mix(in srgb, var(--deployment-brand-shadow) 44%, transparent);
+}
+
+.entry-shell-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: clip;
   scroll-behavior: smooth;
 }
 
 .entry-shell-header {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: nowrap;
   justify-content: flex-start;
   align-items: center;
@@ -245,7 +257,9 @@
 }
 
 .entry-hero-thesis-result {
-  white-space: nowrap;
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
 }
 
 .entry-hero-cta-menu {

@@ -1,4 +1,4 @@
-import { UiDateUtils, type InfoCardData, type UiListConverter } from '@fssrepository/myscoutee-components';
+import { UiDateUtils, type InfoCardData, type SmartListCalendarBadgeColors, type UiListConverter } from '@fssrepository/myscoutee-components';
 import { contentModerationBadge } from '../content/content-moderation-badge';
 import { AppUtils } from '../../../core/base/app-utils';
 import type {
@@ -29,6 +29,17 @@ export interface ActivityEventInfoCardSummaryOptions {
 }
 
 export class ActivityEventInfoCardConverter {
+  static readonly calendarColors: Readonly<Record<string, SmartListCalendarBadgeColors>> = Object.fromEntries([
+    ...(['review', 'blocked', 'deleted', 'inactive', 'orange', 'teal', 'purple', 'danger', 'full'] as const)
+      .map(badgeTone => [`badge:${badgeTone}`, {badgeTone}]),
+    ...(['draft', 'system', 'pending', 'published', 'series'] as const)
+      .map(surfaceTone => [surfaceTone, {surfaceTone}])
+  ]);
+  static calendarColorKey(card: InfoCardData): string | null {
+    const badgeKey = `badge:${card.mediaEnd?.tone}`;
+    if (this.calendarColors[badgeKey]) return badgeKey;
+    return card.surfaceTone && this.calendarColors[card.surfaceTone] ? card.surfaceTone : null;
+  }
   static convert(
     dto: ActivityEventDTO,
     options: ActivityEventInfoCardConverterOptions = {}

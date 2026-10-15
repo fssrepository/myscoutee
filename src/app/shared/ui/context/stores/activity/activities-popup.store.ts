@@ -9,6 +9,7 @@ import { UserProfileStore } from '../profile/user-profile.store';
 
 export interface EventChatPopupRequest {
   chatId: string;
+  serviceChat?: ContractTypes.ChatServiceEnsureInput;
   targetMessageId?: string | null;
   ownerId?: string | null;
   channelType?: ContractTypes.ChatChannelType | null;
@@ -729,6 +730,7 @@ export class ActivitiesPopupStore {
     }
     return {
       chatId,
+      serviceChat: request.serviceChat ? { ...request.serviceChat } : undefined,
       targetMessageId: `${request.targetMessageId ?? ''}`.trim() || null,
       ownerId: ownerId || null,
       channelType,

@@ -46,12 +46,12 @@ export class CommunityServicesHomeComponent {
  protected readonly config:SmartListConfig<ServiceHomeCard,ServiceOfferingFilters>={pageSize:10,mobilePageSizeCap:null,presentation:'fullscreen',trackBy:(_,card)=>card.id,showBackgroundLoadingProgress:true,headerProgress:{enabled:true},emptyLabel:'service.empty',emptyDescription:'service.empty.description',
    groupBy:card=>card.eagerDetail?.distanceKm==null?this.i18n.translate('service.title'):AppUtils.activityGroupLabel({distanceMetersExact:card.eagerDetail.distanceKm*1000},'distance',{dateUnavailable:'',weekPrefix:''}),
    pagination:{mode:'rating-stars',ratingBarValue:card=>card?.eagerDetail?this.store.score(card.eagerDetail):0,
-   ratingBarConfig:card=>card?{guideFields:{slider:'rating-input',action:'rating-save'},criteriaDefinition:ratingCriteriaFor(card.ratingDomain),subjectKey:`${this.store.profileId()}:${card.id}`,scale:[1,2,3,4,5,6,7,8,9,10],label:'service.interest',actionLabel:'Go',presentation:'fullscreen',blinkOnSelect:false}:null,
+   ratingBarConfig:card=>card?{guideFields:{slider:'rating-input',action:'rating-save'},criteriaDefinition:ratingCriteriaFor(card.ratingDomain),subjectKey:`${this.store.profileId()}:${card.id}`,scale:[1,2,3,4,5,6,7,8,9,10],label:'Affinity',actionLabel:'Go',presentation:'fullscreen',blinkOnSelect:false}:null,
    onRatingSelect:(card,score,_query,snapshot)=>{if(card?.eagerDetail)this.store.rate(card.eagerDetail,score,snapshot);}}};
  protected readonly loadPage:SmartListLoadPage<ServiceHomeCard,ServiceOfferingFilters>=(q,c)=>defer(()=>this.store.page(q,c?.signal)).pipe(map(p=>({...p,items:p.items.map(item=>ServiceOfferingConverter.imageCard(item,k=>this.i18n.translate(k),'fullscreen'))})));
  protected readonly items = computed<AppMenuItem[]>(() => {const category=this.filters().category;return [
    {id:'category',label:category?`service.category.${category}`:'service.category.all',...(category?SERVICE_CATEGORY_STYLE[category]:{icon:'category',palette:'teal' as const}),kind:'select-trigger',layout:'pill',items:(['',...SERVICE_CATEGORIES] as const).map(id=>({id,label:id?`service.category.${id}`:'service.category.all',...(id?SERVICE_CATEGORY_STYLE[id]:{icon:'category',palette:'teal' as const}),surface:'tinted',kind:'radio',active:id===(category??''),checked:id===(category??'')}))},
-   {id:'rates',label:'ratings',icon:'history',kind:'action',layout:'pill',palette:'gold'}];});
+   {id:'rates',label:'ratings',icon:'history',kind:'action',layout:'pill',palette:'gold',compactOnMobile:true}];});
  protected headerAction(e:AppMenuItemSelectEvent):void{if(e.id==='rates')this.activities.openActivities('rates');else if(!e.id||SERVICE_CATEGORIES.includes(e.id as ServiceCategory))this.filters.update(f=>({...f,category:e.id as ServiceCategory||null}));}
  protected openProfile(userId:string):void{void this.profiles.openProfileView({userId});}
 }

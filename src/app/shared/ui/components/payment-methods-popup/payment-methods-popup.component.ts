@@ -213,6 +213,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
   protected readonly mainPopupModel = computed<PopupModel<PaymentPopupMenuContext>>(() => {
     const member = this.store.counterparty();
     return {
+      errorMessage: this.cardsOpen() ? null : this.error(),
       title: 'payment.history.title',
       subtitle: 'payment.history.subtitle',
       showToolbar:true,
@@ -272,6 +273,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       }));
     }
     return {
+      errorMessage: this.error(),
       title: this.pickerMode() ? 'payment.cards.select.title' : 'payment.cards.title',
       subtitle: this.localMode ? 'payment.cards.subtitle.local' : 'payment.cards.subtitle',
       ariaLabel: this.pickerMode() ? 'payment.cards.select.aria' : 'payment.cards.manage.aria',
@@ -374,10 +376,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     );
     const date = new Date(item.createdAtIso);
     const statusLabel = this.paymentStatusLabel(item.status);
+    const statusTone = this.paymentStatusTone(item.status);
+    const pendingStatus = ['pending', 'authorization_pending', 'customer_action_required',
+      'requires_action', 'requires_capture', 'refund_requested'].includes(item.status);
     return {
       id: item.id,
       title: amount,
-      surfaceTone: item.direction === 'income' ? 'success' : 'danger',
+      surfaceTone: item.status === 'deleted' ? 'muted' : item.direction === 'income' ? 'success' : 'danger',
       subtitle: item.counterpartyName || item.sourceId || this.i18n.translate('payment'),
       detail: item.note || (Number.isNaN(date.getTime()) ? null : date.toLocaleString(undefined, {
         year: 'numeric',
@@ -393,17 +398,16 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       }`,
       badges: [
         {
-          label: ['cash','bank-transfer'].includes(item.provider)?this.i18n.translate(`payment.manual.method.${item.provider}`):item.provider,
+          label: ['cash','bank-transfer'].includes(item.provider)?this.i18n.translate(`payment.manual.method.${item.provider}.short`):item.provider,
           icon: item.provider==='bank-transfer'?'account_balance':item.provider.toLowerCase() === 'stripe' ? 'payment' : 'account_balance_wallet',
-          tone: item.provider.toLowerCase() === 'stripe' ? 'info' : 'accent',
+          tone: item.provider === 'cash' ? 'success' : ['stripe', 'bank-transfer'].includes(item.provider.toLowerCase()) ? 'info' : 'accent',
           position: 'inline'
         },
         {
           label: statusLabel,
-          tone: item.status !== 'deleted' && item.direction === 'income' ? 'success' : 'danger',
-          className: item.status !== 'deleted' && item.direction === 'income'
-            ? 'payment-history-status-badge--success'
-            : 'payment-history-status-badge--danger',
+          tone: statusTone === 'refund' ? 'accent'
+            : statusTone !== 'neutral' ? statusTone
+            : pendingStatus ? 'warning' : item.status === 'created' ? 'info' : 'muted',
           position: 'top-right'
         },
         ...(!refundAudit && item.refundRequestStatus === 'pending'
@@ -742,6 +746,8 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       case 'failed':
       case 'declined':
       case 'expired':
+      case 'cancelled':
+      case 'deleted':
         return 'danger';
       case 'captured':
       case 'approved':
@@ -750,6 +756,7 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         return 'success';
       case 'released':
       case 'refunded':
+      case 'partially_refunded':
         return 'refund';
       default:
         return 'neutral';
@@ -789,11 +796,13 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
         icon: value === 'all' ? 'swap_vert' : value === 'income' ? 'south_west' : 'north_east',
         kind: 'radio',
         palette: value === 'income' ? 'green' : value === 'expenses' ? 'red' : 'blue',
+        surface: 'tinted',
         active: value === direction,
         checked: value === direction,
         counter: value === 'all' || value === 'expenses' ? pendingRefundCount || undefined : undefined,
         context: { action: 'set-history-direction', direction: value }
       }));
+    const selected = items.find(item => item.checked) ?? items[0];
     return {
       kind: 'menu',
       id: 'payment-history-filter',
@@ -802,11 +811,11 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       trigger: {
         id: 'payment-history-filter-trigger',
         collapsible: true,
-        label: labels[direction],
-        icon: 'filter_list',
+        label: selected.label,
+        icon: selected.icon,
         trailingIcon: 'expand_more',
         counter: pendingRefundCount || undefined,
-        palette: direction === 'income' ? 'green' : direction === 'expenses' ? 'red' : 'blue',
+        palette: selected.palette,
         layout: 'pill',
         ariaLabel: 'payment.history.filter.title'
       },

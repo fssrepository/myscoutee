@@ -89,11 +89,11 @@
           <div class="idea-editor-fields">
             <label class="idea-editor-field idea-editor-field-title">
               <span>Title</span>
-              <input type="text" name="ideaTitle" [(ngModel)]="editDraft.title" required />
+              <input type="text" name="ideaTitle" data-guide-field="article-title" [(ngModel)]="editDraft.title" required />
             </label>
             <label class="idea-editor-field idea-editor-field-wide">
               <span>Description</span>
-              <textarea name="ideaExcerpt" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card description"></textarea>
+              <textarea name="ideaExcerpt" data-guide-field="article-description" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card description"></textarea>
             </label>
           </div>
 
@@ -117,7 +117,7 @@
             </div>
             <textarea
               class="idea-editor-html-textarea"
-              name="ideaContentHtml"
+              name="ideaContentHtml" data-guide-field="article-html"
               [(ngModel)]="editDraft.contentHtml"
               spellcheck="false"
               (paste)="formatPastedHtml($event)"

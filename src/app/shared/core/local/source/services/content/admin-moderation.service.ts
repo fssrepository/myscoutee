@@ -46,27 +46,28 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     message: string,
     reportId?: string | null
   ): Promise<AdminModerationActionResult | null> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    const resolvedAdmin = this.resolveAdmin(admin);
-    if (!resolvedAdmin) {
-      return null;
-    }
-    this.requireScope(resolvedAdmin.id, normalizedUserId);
-    await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
-    const normalizedReportId = `${reportId ?? ''}`.trim();
-    if (normalizedReportId) {
-      await this.moderationRepository.whenReady();
-      await this.moderationRepository.setReportWarned(
-        normalizedReportId,
-        resolvedAdmin.id,
-        new Date().toISOString()
-      );
-    }
-    return { userPatch: supportPatch };
+    return this.withRouteDelay(ADMIN_MODERATION_WARN_ROUTE, async (): Promise<AdminModerationActionResult | null> => {
+      const normalizedUserId = userId.trim();
+      if (!normalizedUserId) {
+        return null;
+      }
+      const resolvedAdmin = this.resolveAdmin(admin);
+      if (!resolvedAdmin) {
+        return null;
+      }
+      this.requireScope(resolvedAdmin.id, normalizedUserId);
+      const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
+      const normalizedReportId = `${reportId ?? ''}`.trim();
+      if (normalizedReportId) {
+        await this.moderationRepository.whenReady();
+        await this.moderationRepository.setReportWarned(
+          normalizedReportId,
+          resolvedAdmin.id,
+          new Date().toISOString()
+        );
+      }
+      return { userPatch: supportPatch };
+    });
   }
 
   async blockUser(
@@ -74,69 +75,71 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     admin: AdminUserDto | null | undefined,
     message: string
   ): Promise<AdminModerationActionResult | null> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    const resolvedAdmin = this.resolveAdmin(admin);
-    if (!resolvedAdmin) {
-      return null;
-    }
-    this.requireScope(resolvedAdmin.id, normalizedUserId);
-    await this.waitForRouteDelay(ADMIN_MODERATION_BLOCK_ROUTE);
-    const user = this.supportSession.findUser(normalizedUserId);
-    if (user) {
-      await this.supportSession.saveUser({
-        ...user,
-        previousProfileStatus: user.profileStatus,
-        profileStatus: 'blocked'
-      });
-    }
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'blocked');
-    return {
-      userPatch: {
-        ...supportPatch,
-        profileStatus: 'blocked',
-        blockedAtIso: new Date().toISOString()
+    return this.withRouteDelay(ADMIN_MODERATION_BLOCK_ROUTE, async (): Promise<AdminModerationActionResult | null> => {
+      const normalizedUserId = userId.trim();
+      if (!normalizedUserId) {
+        return null;
       }
-    };
+      const resolvedAdmin = this.resolveAdmin(admin);
+      if (!resolvedAdmin) {
+        return null;
+      }
+      this.requireScope(resolvedAdmin.id, normalizedUserId);
+      const user = this.supportSession.findUser(normalizedUserId);
+      if (user) {
+        await this.supportSession.saveUser({
+          ...user,
+          previousProfileStatus: user.profileStatus,
+          profileStatus: 'blocked'
+        });
+      }
+      const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'blocked');
+      return {
+        userPatch: {
+          ...supportPatch,
+          profileStatus: 'blocked',
+          blockedAtIso: new Date().toISOString()
+        }
+      };
+    });
   }
 
   async unblockUser(
     userId: string,
     admin: AdminUserDto | null | undefined
   ): Promise<AdminModerationActionResult | null> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    const resolvedAdmin = this.resolveAdmin(admin);
-    if (!resolvedAdmin) {
-      return null;
-    }
-    this.requireScope(resolvedAdmin.id, normalizedUserId);
-    await this.waitForRouteDelay(ADMIN_MODERATION_UNBLOCK_ROUTE);
-    const user = this.supportSession.findUser(normalizedUserId);
-    const nextStatus = user?.previousProfileStatus && user.previousProfileStatus !== 'blocked'
-      ? user.previousProfileStatus
-      : 'public';
-    if (user) {
-      await this.supportSession.saveUser({
-        ...user,
-        previousProfileStatus: undefined,
-        profileStatus: nextStatus
-      });
-    }
-    return {
-      userPatch: {
-        userId: normalizedUserId,
-        profileStatus: nextStatus,
-        blockedAtIso: null,
-        hasSupportChat: this.supportChatExists(resolvedAdmin.id, normalizedUserId),
-        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId),
-        supportChatId: this.supportChatId(resolvedAdmin.id, normalizedUserId)
+    return this.withRouteDelay(ADMIN_MODERATION_UNBLOCK_ROUTE, async (): Promise<AdminModerationActionResult | null> => {
+      const normalizedUserId = userId.trim();
+      if (!normalizedUserId) {
+        return null;
       }
-    };
+      const resolvedAdmin = this.resolveAdmin(admin);
+      if (!resolvedAdmin) {
+        return null;
+      }
+      this.requireScope(resolvedAdmin.id, normalizedUserId);
+      const user = this.supportSession.findUser(normalizedUserId);
+      const nextStatus = user?.previousProfileStatus && user.previousProfileStatus !== 'blocked'
+        ? user.previousProfileStatus
+        : 'public';
+      if (user) {
+        await this.supportSession.saveUser({
+          ...user,
+          previousProfileStatus: undefined,
+          profileStatus: nextStatus
+        });
+      }
+      return {
+        userPatch: {
+          userId: normalizedUserId,
+          profileStatus: nextStatus,
+          blockedAtIso: null,
+          hasSupportChat: this.supportChatExists(resolvedAdmin.id, normalizedUserId),
+          supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId),
+          supportChatId: this.supportChatId(resolvedAdmin.id, normalizedUserId)
+        }
+      };
+    });
   }
 
   async sendSupportMessage(

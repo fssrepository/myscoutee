@@ -108,20 +108,25 @@ export class LocalIdeaPostsService {
   }
 
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
-    await this.ideaPostsRepository.whenReady();
-    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
-    const nowIso = new Date().toISOString();
-    const groupId = this.groupId(request.actorUserId);
-    const existing = request.id ? this.table().byId[request.id] : null;
-    if (existing && (existing.workspaceGroupId ?? null) !== groupId) throw new Error('Forbidden');
-    const record = LocalIdeaPostsMapper.toRecord(request, {
-      id: request.id?.trim() || this.ideaPostsRepository.createPostId(),
-      nowIso
-    });
-    record.workspaceGroupId = groupId;
-    const saved = this.ideaPostsRepository.savePostSnapshot(record);
-    await this.ideaPostsRepository.flushToIndexedDb();
-    return LocalIdeaPostsMapper.toDto(saved);
+    const [, result] = await Promise.all([
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE),
+      (async (): Promise<IdeaPostDto> => {
+        await this.ideaPostsRepository.whenReady();
+        const nowIso = new Date().toISOString();
+        const groupId = this.groupId(request.actorUserId);
+        const existing = request.id ? this.table().byId[request.id] : null;
+        if (existing && (existing.workspaceGroupId ?? null) !== groupId) throw new Error('Forbidden');
+        const record = LocalIdeaPostsMapper.toRecord(request, {
+          id: request.id?.trim() || this.ideaPostsRepository.createPostId(),
+          nowIso
+        });
+        record.workspaceGroupId = groupId;
+        const saved = this.ideaPostsRepository.savePostSnapshot(record);
+        await this.ideaPostsRepository.flushToIndexedDb();
+        return LocalIdeaPostsMapper.toDto(saved);
+      })()
+    ]);
+    return result;
   }
 
   async deletePost(postId: string, actorUserId = ''): Promise<IdeaPostDto> {

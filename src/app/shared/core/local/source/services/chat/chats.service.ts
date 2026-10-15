@@ -498,9 +498,10 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   }
 
   async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const record = this.chatsRepository.updateSupportCase(chat, action);
-    return record ? (this.chatDtosWithMetrics([record])[0] ?? LocalChatThreadMapper.toDto(record)) : null;
+    return this.withRouteDelay(LocalChatsService.CHAT_ROUTE, async (): Promise<ChatDTO | null> => {
+      const record = this.chatsRepository.updateSupportCase(chat, action);
+      return record ? (this.chatDtosWithMetrics([record])[0] ?? LocalChatThreadMapper.toDto(record)) : null;
+    });
   }
 
   private chatDtosWithMetrics(records: readonly ChatThreadRecord[]): ChatDTO[] {

@@ -31,7 +31,7 @@
                               <span class="help-editor-version-pill help-editor-draft-version-pill">{{ draftVersionLabel() }}</span>
                               <span class="help-editor-revision-copy help-editor-draft-title-wrap">
                                 <input
-                                  class="help-editor-draft-title-input"
+                                  class="help-editor-draft-title-input" data-guide-field="revision-title"
                                   type="text"
                                   name="helpTitle"
                                   [(ngModel)]="editDraft.title"
@@ -42,7 +42,7 @@
                             </div>
                             <div class="help-editor-revision-actions help-editor-draft-header-actions">
                               @if (documentKind === 'explanation' && editDraft.contextKey === 'activities.rates') {
-                                <button type="button" class="help-editor-presentation-toggle"
+                                <button type="button" class="help-editor-presentation-toggle" data-guide-field="draft-presentation"
                                   [class.is-tour]="editDraft.presentation === 'tour'"
                                   [attr.aria-pressed]="editDraft.presentation === 'tour'"
                                   (click)="toggleDraftPresentation($event)">
@@ -57,7 +57,7 @@
                                 }
                                 <button
                                   type="submit"
-                                  class="help-editor-icon-btn help-editor-confirm-btn"
+                                  class="help-editor-icon-btn help-editor-confirm-btn" data-guide-field="revision-save"
                                   [disabled]="saving"
                                   [attr.aria-label]="saving ? 'Saving revision' : 'Save v' + nextRevisionVersion()"
                                   [title]="saving ? 'Saving revision' : 'Save v' + nextRevisionVersion()"
@@ -70,7 +70,7 @@
                                 class="help-editor-icon-btn"
                                 [disabled]="saving"
                                 (click)="cancelEditing($event)"
-                                aria-label="Cancel editing"
+                                data-guide-field="revision-cancel" aria-label="Cancel editing"
                                 title="Cancel editing"
                                 >
                                 <mat-icon>close</mat-icon>
@@ -80,7 +80,7 @@
                                 class="help-editor-inline-icon-btn help-editor-caret-btn"
                                 [attr.aria-expanded]="draftAccordionOpen"
                                 (click)="toggleDraftRevision($event)"
-                                aria-label="Toggle draft revision"
+                                data-guide-field="draft-toggle" aria-label="Toggle draft revision"
                                 >
                                 <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                               </button>
@@ -95,7 +95,7 @@
                                   <label class="help-editor-inline-field">
                                     <span>Header</span>
                                     <input
-                                      class="help-editor-draft-summary-input"
+                                      class="help-editor-draft-summary-input" data-guide-field="revision-header"
                                       type="text"
                                       name="helpSummary"
                                       [(ngModel)]="editDraft.summary"
@@ -104,7 +104,7 @@
                                     />
                                   </label>
                                   <app-menu
-                                    class="help-editor-summary-color-menu"
+                                    class="help-editor-summary-color-menu" data-guide-field="header-color"
                                     kind="select"
                                     [trigger]="headerColorMenuTrigger(editDraft.headerColor)"
                                     [items]="headerColorMenuItems(editDraft.headerColor)"
@@ -118,7 +118,7 @@
                                     <span>{{ uiText('Canonical screen') }}</span>
                                     <app-menu
                                       kind="select"
-                                      [trigger]="contextMenuTrigger(editDraft)"
+                                      data-guide-field="canonical-screen" [trigger]="contextMenuTrigger(editDraft)"
                                       [items]="contextMenuItems(editDraft)"
                                       panelAlign="start"
                                       [closeOnSelect]="true"
@@ -130,7 +130,7 @@
                                   <label class="help-editor-inline-field help-editor-inline-field-compact">
                                     <span>Description</span>
                                     <textarea
-                                      name="helpDescription"
+                                      name="helpDescription" data-guide-field="revision-description"
                                       [(ngModel)]="editDraft.description"
                                       [placeholder]="descriptionPlaceholder()"
                                       rows="3"
@@ -139,7 +139,7 @@
                                   </label>
                                   <button
                                     type="button"
-                                    class="help-editor-hero-add-section-btn"
+                                    class="help-editor-hero-add-section-btn" data-guide-field="section-add"
                                     (click)="addDraftSection($event)"
                                     [attr.aria-label]="addSectionLabel()"
                                     title="Add section"
@@ -160,7 +160,7 @@
                                   >
                                   <div class="help-editor-edit-section-head">
                                     <app-menu
-                                      class="help-editor-section-icon-menu"
+                                      class="help-editor-section-icon-menu" data-guide-field="section-icon"
                                       kind="select"
                                       title="Search Material icons"
                                       [trigger]="sectionIconMenuTrigger(section)"
@@ -171,7 +171,7 @@
                                       (itemSelect)="onSectionIconMenuSelect(section, $event)"
                                     ></app-menu>
                                     <input
-                                      class="help-editor-section-title-input"
+                                      class="help-editor-section-title-input" data-guide-field="section-title"
                                       type="text"
                                       [name]="'sectionTitle' + sectionIndex"
                                       [(ngModel)]="section.title"
@@ -181,14 +181,14 @@
                                       [attr.aria-label]="sectionTitleAriaLabel()"
                                     />
                                     @if (documentKind === 'explanation' && editDraft.presentation === 'tour' && editDraft.contextKey === 'activities.rates') {
-                                      <app-menu class="help-editor-guide-field-menu" kind="select"
+                                      <app-menu class="help-editor-guide-field-menu" data-guide-field="section-guide-target" kind="select"
                                         [trigger]="guideFieldTrigger(section)"
                                         [model]="guideFieldModel(section)"
                                         panelAlign="end" [closeOnSelect]="true"
                                         (itemSelect)="onGuideFieldSelect(section, $event)"></app-menu>
                                     }
                                     @if (documentKind === 'explanation' && editDraft.presentation !== 'tour') {
-                                      <div class="help-editor-panel-span-toggle" role="group" aria-label="Panel grid span">
+                                      <div class="help-editor-panel-span-toggle" data-guide-field="section-panel-span" role="group" aria-label="Panel grid span">
                                         @for (option of panelSpanOptions; track option.value) {
                                           <button
                                             type="button"
@@ -206,7 +206,7 @@
                                     }
                                     @if (documentKind === 'privacy') {
                                       <label
-                                        class="help-editor-privacy-optional-toggle"
+                                        class="help-editor-privacy-optional-toggle" data-guide-field="section-optional"
                                         [class.is-optional]="section.optional"
                                         [class.is-mandatory]="!section.optional"
                                         (click)="$event.stopPropagation()"
@@ -227,7 +227,7 @@
                                     }
                                     <button
                                       type="button"
-                                      class="help-editor-mode-toggle"
+                                      class="help-editor-mode-toggle" data-guide-field="section-mode"
                                       (click)="toggleDraftSectionMode(section, $event)"
                                       [attr.aria-label]="section.mode === 'html' ? 'Switch to preview' : 'Switch to HTML'"
                                       [title]="section.mode === 'html' ? 'Switch to preview' : 'Switch to HTML'"
@@ -239,7 +239,7 @@
                                       type="button"
                                       class="help-editor-inline-icon-btn help-editor-danger-btn"
                                       (click)="removeDraftSection(section, $event)"
-                                      [attr.aria-label]="removeSectionLabel()"
+                                      data-guide-field="section-remove" [attr.aria-label]="removeSectionLabel()"
                                       title="Remove section"
                                       >
                                       <mat-icon>delete</mat-icon>
@@ -249,7 +249,7 @@
                                       class="help-editor-inline-icon-btn help-editor-caret-btn"
                                       [attr.aria-expanded]="openDraftSectionId === section.localId"
                                       (click)="toggleDraftSection(section, $event)"
-                                      [attr.aria-label]="toggleSectionLabel()"
+                                      data-guide-field="section-toggle" [attr.aria-label]="toggleSectionLabel()"
                                       >
                                       <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                                     </button>
@@ -268,7 +268,7 @@
                                       }
                                       @if (section.mode === 'html') {
                                         <textarea
-                                          class="help-editor-html-textarea"
+                                          class="help-editor-html-textarea" data-guide-field="section-html"
                                           [name]="'sectionHtml' + sectionIndex"
                                           [(ngModel)]="section.contentHtml"
                                           [ngModelOptions]="{ standalone: true }"
@@ -310,7 +310,7 @@
                       <div class="help-editor-revision-head" (click)="toggleRevision(revision, $event)">
                         <button
                           type="button"
-                          class="help-editor-revision-toggle"
+                          class="help-editor-revision-toggle" data-guide-field="revision-toggle"
                           [attr.aria-expanded]="isRevisionOpen(revision)"
                           (click)="toggleRevision(revision, $event)"
                           >
@@ -320,12 +320,12 @@
                             <small>{{ revisionSubtitle(revision) }}</small>
                           </span>
                           @if (revision.active) {
-                            <span class="help-editor-active-badge">Active</span>
+                            <span class="help-editor-active-badge" data-guide-field="revision-active">Active</span>
                           }
                         </button>
                         <div class="help-editor-revision-actions">
                           @if (documentKind === 'explanation') {
-                            <button type="button" class="help-editor-presentation-toggle is-readonly"
+                            <button type="button" class="help-editor-presentation-toggle is-readonly" data-guide-field="revision-presentation"
                               [class.is-tour]="revision.presentation === 'tour'"
                               [disabled]="true" aria-disabled="true">
                               <mat-icon>{{ revision.presentation === 'tour' ? 'lightbulb' : 'article' }}</mat-icon>
@@ -338,7 +338,7 @@
                             class="help-editor-icon-btn"
                             [disabled]="saving || !!activatingRevisionId"
                             (click)="startEditingRevision(revision, $event)"
-                            aria-label="Edit revision"
+                            data-guide-field="revision-edit" aria-label="Edit revision"
                             title="Edit this revision"
                             >
                             <mat-icon>edit</mat-icon>
@@ -352,7 +352,7 @@
                               class="help-editor-icon-btn"
                               [disabled]="revision.active || saving || !!activatingRevisionId"
                               (click)="activateRevision(revision, $event)"
-                              aria-label="Activate revision"
+                              data-guide-field="revision-activate" aria-label="Activate revision"
                               title="Switch to this revision"
                               >
                               <mat-icon>published_with_changes</mat-icon>
@@ -363,7 +363,7 @@
                             class="help-editor-icon-btn help-editor-danger-btn"
                             [disabled]="saving || !!activatingRevisionId"
                             (click)="deleteRevision(revision, $event)"
-                            aria-label="Delete revision"
+                            data-guide-field="revision-delete" aria-label="Delete revision"
                             title="Delete revision"
                             >
                             <mat-icon>delete</mat-icon>
@@ -373,7 +373,7 @@
                             class="help-editor-inline-icon-btn help-editor-caret-btn"
                             [attr.aria-expanded]="isRevisionOpen(revision)"
                             (click)="toggleRevision(revision, $event)"
-                            aria-label="Toggle revision"
+                            data-guide-field="revision-toggle" aria-label="Toggle revision"
                             >
                             <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                           </button>
@@ -392,7 +392,7 @@
                                 >
                                 <button
                                   type="button"
-                                  class="help-editor-preview-section-toggle"
+                                  class="help-editor-preview-section-toggle" data-guide-field="section-preview"
                                   [attr.aria-expanded]="openPreviewSectionId === section.id"
                                   (click)="togglePreviewSection(section.id, $event)"
                                   >
@@ -437,7 +437,7 @@
                   <mat-icon>{{ defaultSectionIcon() }}</mat-icon>
                   <h3>{{ noRevisionsLabel() }}</h3>
                   <p>{{ createRevisionToEnablePopupLabel() }}</p>
-                  <button type="button" class="help-editor-primary-btn" (click)="startNewRevision($event)">
+                  <button type="button" class="help-editor-primary-btn" data-guide-field="help-new-revision" (click)="startNewRevision($event)">
                     <mat-icon>add</mat-icon>
                     <span>Create revision</span>
                   </button>

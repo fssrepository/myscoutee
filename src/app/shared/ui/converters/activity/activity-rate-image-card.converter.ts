@@ -32,7 +32,8 @@ export class ActivityRateImageCardConverter {
 
     return {
       id: dto.id,
-      ratingDomain: dto.ratingDomain,
+      // A campaign average has no single subject or saved criterion breakdown.
+      ratingDomain: dto.ratingDomain === 'campaign' && !dto.campaignId ? undefined : dto.ratingDomain,
       smartListKey: `rates:${dto.id}`,
       status: direction,
       dateIso: dto.happenedAt ?? '',

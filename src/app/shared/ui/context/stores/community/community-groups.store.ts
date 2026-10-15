@@ -5,7 +5,7 @@ import { DialogStore, type ListQuery } from '@fssrepository/myscoutee-components
 import { I18nService } from '../../../../core/base/services/localization/i18n.service';
 import { CommunityGroupConverter } from '../../../converters/community/community-group.converter';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
-import { Injectable, inject, signal, effect, computed, type Type } from '@angular/core';
+import { Injectable, inject, signal, effect, computed, untracked, type Type } from '@angular/core';
 import type { AdminUserDto } from '../../../../core/contracts/administration/admin.interface';
 import { CommunityGroupsService } from '../../../../core/base/services/groups/community-groups.service';
 import { ActivityMembersService } from '../../../../core/base/services/events/activity-members.service';
@@ -14,6 +14,8 @@ import { MemberMenuStore } from '../app/member-menu.store';
 import type { CommunityGroup, CommunityGroupSummary, SaveCommunityGroup, GroupFilters, GroupBucket, GroupCategory, GroupSyncRequest } from '../../../../core/contracts/groups/community-group.interface';
 
 import { canPreviewGroupMembers } from '../../../../core/contracts/groups/community-group.interface';
+import { groupCounters } from '../../../../core/contracts/groups/community-group.interface';
+import { ActivityStore } from '../activity/activity.store';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
   private readonly invites = inject(ActivityInvitePopupStore);
@@ -38,11 +40,24 @@ export class CommunityGroupsStore {
     return change?.accountId === this.openUserId() ? change.group : null;
   });
   private readonly workspaces = inject(GroupWorkspaceStore);
-  readonly counters = this.workspaces.counters;
+  private readonly activity = inject(ActivityStore);
+  readonly counters = computed(() => groupCounters({
+    ...this.profile.activeUserProfile()?.activities?.menuCounters,
+    ...this.activity.getUserCounterOverrides(this.profile.activeUserId()).menuCounters
+  }));
   categoryCount(bucket: GroupBucket, category?: GroupCategory | null): number { return this.workspaces.categoryCount(bucket, category); }
   readonly busy = signal(false);
   readonly error = signal('');
-  constructor() { effect(() => { if (this.openUserId() && this.openUserId() !== this.workspace.accountId(this.profile.activeUserId())) this.close(); }); }
+  constructor() {
+    effect(() => { if (this.openUserId() && this.openUserId() !== this.workspace.accountId(this.profile.activeUserId())) this.close(); });
+    effect(() => {
+      const change = this.changes.change();
+      untracked(() => {
+        if (change?.group.menuCounters && change.accountId === this.workspace.accountId(this.profile.activeUserId()))
+          this.activity.patchUserCounterOverrides(this.profile.activeUserId(), { menuCounters: change.group.menuCounters });
+      });
+    });
+  }
   open(bucket: GroupBucket = 'hosting'): void {
     this.error.set(''); this.initialBucket.set(bucket === 'explore' ? 'hosting' : bucket); this.exploreOpen.set(bucket === 'explore');
     this.openUserId.set(this.workspace.accountId(this.profile.getActiveUserId()));

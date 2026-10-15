@@ -43,10 +43,11 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   }
 
   async deleteCashReceipt(userId: string, paymentId: string): Promise<PaymentHistoryMutationDto> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE);
-    const item = this.affiliateRepository.deleteCashReceipt(userId, paymentId);
-    await this.affiliateRepository.flushToIndexedDb();
-    return { ...this.localMutation(userId, item), items: [item] };
+    return this.withRouteDelay(LocalPaymentMethodsService.ROUTE, async (): Promise<PaymentHistoryMutationDto> => {
+      const item = this.affiliateRepository.deleteCashReceipt(userId, paymentId);
+      await this.affiliateRepository.flushToIndexedDb();
+      return { ...this.localMutation(userId, item), items: [item] };
+    });
   }
 
   async recordCashReceipt(userId: string, request: CashReceiptRequestDto): Promise<PaymentHistoryMutationDto> {
@@ -106,16 +107,17 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   }
 
   async deletePaymentMethod(userId: string, paymentMethodId: string, signal?: AbortSignal): Promise<void> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const ownerId = userId.trim();
-    const methodId = paymentMethodId.trim();
-    const owned = this.seedMethods(ownerId).some(method => method.id === methodId);
-    if (!owned) {
-      throw new Error('Payment card was not found.');
-    }
-    const owner=this.usersRepository.queryUserById(ownerId)!;
-    this.usersRepository.upsertUser({...owner,savedPaymentMethods:this.seedMethods(ownerId).filter(m=>m.id!==methodId)});
-    await this.usersRepository.flushToIndexedDb();
+    return this.withRouteDelay(LocalPaymentMethodsService.ROUTE, async (): Promise<void> => {
+      const ownerId = userId.trim();
+      const methodId = paymentMethodId.trim();
+      const owned = this.seedMethods(ownerId).some(method => method.id === methodId);
+      if (!owned) {
+        throw new Error('Payment card was not found.');
+      }
+      const owner=this.usersRepository.queryUserById(ownerId)!;
+      this.usersRepository.upsertUser({...owner,savedPaymentMethods:this.seedMethods(ownerId).filter(m=>m.id!==methodId)});
+      await this.usersRepository.flushToIndexedDb();
+    }, signal);
   }
 
   async queryHistory(
@@ -183,41 +185,43 @@ export class LocalPaymentMethodsService extends LocalRouteDelayService implement
   }
 
   async requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    if (this.affiliateRepository.requestPolicyRefund(userId, paymentId)) {
-      await this.affiliateRepository.flushToIndexedDb();
-      const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
-      if (!recorded) throw new Error('Refund history was not recorded.');
-      const pending=this.affiliateRepository.paymentHistory(userId).find(row=>row.checkoutSessionId===recorded.checkoutSessionId&&row.refundRequestStatus==='pending');
-      if(pending&&recorded.recipientUserId&&recorded.recipientUserId!==userId){
-        const group=this.usersRepository.queryUserById(recorded.recipientUserId)?.workspaceGroupId;
-        this.notificationsRepository.append([{id:`payment-refund-requested:${pending.id}`,recipientUserId:recorded.recipientUserId,kind:'payment-refund-requested',category:'event',title:'Refund requested',message:'A member requested a refund.',createdAtIso:pending.createdAtIso,readAtIso:null,senderUserId:userId,sourceType:'payment',sourceId:pending.id,actionPath:'/game?payments=1',payload:{paymentId:pending.id,...(group?{workspaceGroupId:group}:{}),notification_title_key:'notification.kind.payment-refund-requested.title',notification_message_key:'notification.kind.payment-refund-requested.message'}}]);
+    return this.withRouteDelay(LocalPaymentMethodsService.ROUTE, async (): Promise<PaymentHistoryMutationDto> => {
+      if (this.affiliateRepository.requestPolicyRefund(userId, paymentId)) {
         await this.affiliateRepository.flushToIndexedDb();
+        const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
+        if (!recorded) throw new Error('Refund history was not recorded.');
+        const pending=this.affiliateRepository.paymentHistory(userId).find(row=>row.checkoutSessionId===recorded.checkoutSessionId&&row.refundRequestStatus==='pending');
+        if(pending&&recorded.recipientUserId&&recorded.recipientUserId!==userId){
+          const group=this.usersRepository.queryUserById(recorded.recipientUserId)?.workspaceGroupId;
+          this.notificationsRepository.append([{id:`payment-refund-requested:${pending.id}`,recipientUserId:recorded.recipientUserId,kind:'payment-refund-requested',category:'event',title:'Refund requested',message:'A member requested a refund.',createdAtIso:pending.createdAtIso,readAtIso:null,senderUserId:userId,sourceType:'payment',sourceId:pending.id,actionPath:'/game?payments=1',payload:{paymentId:pending.id,...(group?{workspaceGroupId:group}:{}),notification_title_key:'notification.kind.payment-refund-requested.title',notification_message_key:'notification.kind.payment-refund-requested.message'}}]);
+          await this.affiliateRepository.flushToIndexedDb();
+        }
+        return this.localMutation(userId, recorded);
       }
-      return this.localMutation(userId, recorded);
-    }
-    throw new Error('This payment can no longer be refunded.');
+      throw new Error('This payment can no longer be refunded.');
+    }, signal);
   }
 
   async approveRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {
-    await this.waitForRouteDelay(LocalPaymentMethodsService.ROUTE, signal);
-    const wasPending = this.affiliateRepository.paymentHistory(userId).some(item => item.id === paymentId && item.refundRequestStatus === 'pending');
-    const payerId = this.affiliateRepository.approveChangedTermsRefund(userId, paymentId);
-    if (payerId) {
-      if (wasPending&&payerId!==userId) this.notificationsRepository.append([{
-        id: `payment-refund-approved:${paymentId}`, recipientUserId: payerId, kind: 'payment-refund-approved',
-        category: 'event' as const, title: 'Refund approved', message: 'Your refund request was approved.',
-        createdAtIso: new Date().toISOString(), readAtIso: null, senderUserId: userId,
-        sourceType: 'payment', sourceId: paymentId, actionPath: '/game?payments=1',
-        payload: { paymentId, ...(this.usersRepository.queryUserById(payerId)?.workspaceGroupId?{workspaceGroupId:this.usersRepository.queryUserById(payerId)!.workspaceGroupId}:{}), notification_title_key: 'notification.kind.payment-refund-approved.title',
-          notification_message_key: 'notification.kind.payment-refund-approved.message' }
-      }]);
-      await this.affiliateRepository.flushToIndexedDb();
-      const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
-      if (!recorded) throw new Error('Refund history was not recorded.');
-      return this.localMutation(userId, recorded);
-    }
-    throw new Error('There is no pending refund request for this payment.');
+    return this.withRouteDelay(LocalPaymentMethodsService.ROUTE, async (): Promise<PaymentHistoryMutationDto> => {
+      const wasPending = this.affiliateRepository.paymentHistory(userId).some(item => item.id === paymentId && item.refundRequestStatus === 'pending');
+      const payerId = this.affiliateRepository.approveChangedTermsRefund(userId, paymentId);
+      if (payerId) {
+        if (wasPending&&payerId!==userId) this.notificationsRepository.append([{
+          id: `payment-refund-approved:${paymentId}`, recipientUserId: payerId, kind: 'payment-refund-approved',
+          category: 'event' as const, title: 'Refund approved', message: 'Your refund request was approved.',
+          createdAtIso: new Date().toISOString(), readAtIso: null, senderUserId: userId,
+          sourceType: 'payment', sourceId: paymentId, actionPath: '/game?payments=1',
+          payload: { paymentId, ...(this.usersRepository.queryUserById(payerId)?.workspaceGroupId?{workspaceGroupId:this.usersRepository.queryUserById(payerId)!.workspaceGroupId}:{}), notification_title_key: 'notification.kind.payment-refund-approved.title',
+            notification_message_key: 'notification.kind.payment-refund-approved.message' }
+        }]);
+        await this.affiliateRepository.flushToIndexedDb();
+        const recorded = this.affiliateRepository.paymentHistory(userId).find(item => item.id === paymentId);
+        if (!recorded) throw new Error('Refund history was not recorded.');
+        return this.localMutation(userId, recorded);
+      }
+      throw new Error('There is no pending refund request for this payment.');
+    }, signal);
   }
 
   private seedMethods(userId:string):SavedPaymentMethodDto[]{return this.usersRepository.queryUserById(userId)?.savedPaymentMethods??[];}

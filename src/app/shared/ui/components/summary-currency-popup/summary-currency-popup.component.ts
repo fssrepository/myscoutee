@@ -12,7 +12,6 @@ import { PopupComponent, PopupModel, AppMenuComponent, AppMenuItem, I18nPipe } f
     <div class="currency-picker">
       <app-menu data-guide-control="summary-currency" kind="select" layout="row" panelMode="auto" [trigger]="{ label: draft(), icon: 'payments', palette: 'blue' }" [items]="items()" [closeOnSelect]="true"
         (itemSelect)="draft.set($event.item.id)"></app-menu>
-      @if (error()) { <p role="alert">{{ 'payment.currency.save.error' | i18n }}</p> }
     </div>
   </app-popup>`,
   styles: [`.currency-picker { padding: 1rem; min-width: 0; }`]
@@ -31,7 +30,7 @@ export class SummaryCurrencyPopupComponent implements OnInit {
       kind: 'radio', checked: this.draft() === currency, palette: 'blue', disabled: this.saving() }));
   }
   protected model(): PopupModel {
-    return { title: 'payment.currency.title', size: 'small', height: 'auto', mobilePresentation: 'compact', bodyLayout: 'overflow', backdropTone: 'dim',
+    return { errorMessage: this.error() ? 'payment.currency.save.error' : null, title: 'payment.currency.title', size: 'small', height: 'auto', mobilePresentation: 'compact', bodyLayout: 'overflow', backdropTone: 'dim',
       headerControls: [{ kind: 'menu', id: 'save', guideFieldId: 'summary-currency-save', menuKind: 'inline', items: [{ id: 'save', icon: 'check',
         palette: 'green', ariaLabel: 'save', disabled: this.saving() }] }],
       onClose: () => { if (!this.saving()) this.closed.emit(); }, onMenuSelect: () => void this.save() };

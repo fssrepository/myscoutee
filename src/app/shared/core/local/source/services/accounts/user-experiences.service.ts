@@ -24,11 +24,12 @@ export class LocalUserExperiencesService extends LocalRouteDelayService implemen
   }
 
   async saveUserExperiences(userId: string, entries: readonly ExperienceEntry[]): Promise<ExperienceEntry[]> {
-    await this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE);
-    const savedEntries = this.repository.replaceUserExperienceRecords(
-      userId,
-      LocalProfileExperiencesMapper.toEntries(entries)
-    );
-    return LocalProfileExperiencesMapper.cloneEntries(savedEntries);
+    return this.withRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE, async (): Promise<ExperienceEntry[]> => {
+      const savedEntries = this.repository.replaceUserExperienceRecords(
+        userId,
+        LocalProfileExperiencesMapper.toEntries(entries)
+      );
+      return LocalProfileExperiencesMapper.cloneEntries(savedEntries);
+    });
   }
 }

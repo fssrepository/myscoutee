@@ -67,58 +67,60 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   }
 
   async setReportResolved(reportId: string, resolved: boolean, adminUserId?: string): Promise<AdminDashboardDto> {
-    await this.waitForRouteDelay(ADMIN_REPORTS_RESOLVE_ROUTE);
-    await this.moderationRepository.whenReady();
-    const admin = this.mergeStoredAdminProfile(this.resolveDemoAdmin(adminUserId));
-    const normalizedReportId = `${reportId ?? ''}`.trim();
-    const storeBefore = await this.moderationRepository.readStore();
-    const reportBefore = storeBefore?.reports?.find(report => report.id === normalizedReportId) ?? null;
-    if (!reportBefore) throw new Error('Report not found');
-    this.moderationService.requireScope(admin.id, reportBefore.reporterUserId || reportBefore.targetUserId);
-    const wasResolved = this.isReviewResolved(reportBefore);
-    const store = await this.moderationRepository.setReportResolved(
-      normalizedReportId,
-      admin.id,
-      resolved ? new Date().toISOString() : null
-    );
-    const report = store?.reports?.find(item => item.id === normalizedReportId) ?? null;
-    if (resolved && !wasResolved && report?.reporterUserId) {
-      await this.moderationService.sendSupportMessage(
-        report.reporterUserId,
-        admin,
-        this.reportResolvedMessage(report),
-        'solved'
+    return this.withRouteDelay(ADMIN_REPORTS_RESOLVE_ROUTE, async (): Promise<AdminDashboardDto> => {
+      await this.moderationRepository.whenReady();
+      const admin = this.mergeStoredAdminProfile(this.resolveDemoAdmin(adminUserId));
+      const normalizedReportId = `${reportId ?? ''}`.trim();
+      const storeBefore = await this.moderationRepository.readStore();
+      const reportBefore = storeBefore?.reports?.find(report => report.id === normalizedReportId) ?? null;
+      if (!reportBefore) throw new Error('Report not found');
+      this.moderationService.requireScope(admin.id, reportBefore.reporterUserId || reportBefore.targetUserId);
+      const wasResolved = this.isReviewResolved(reportBefore);
+      const store = await this.moderationRepository.setReportResolved(
+        normalizedReportId,
+        admin.id,
+        resolved ? new Date().toISOString() : null
       );
-    }
-    return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);
+      const report = store?.reports?.find(item => item.id === normalizedReportId) ?? null;
+      if (resolved && !wasResolved && report?.reporterUserId) {
+        await this.moderationService.sendSupportMessage(
+          report.reporterUserId,
+          admin,
+          this.reportResolvedMessage(report),
+          'solved'
+        );
+      }
+      return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);
+    });
   }
 
   async setFeedbackResolved(feedbackId: string, resolved: boolean, adminUserId?: string): Promise<AdminDashboardDto> {
-    await this.waitForRouteDelay(ADMIN_FEEDBACK_RESOLVE_ROUTE);
-    await this.moderationRepository.whenReady();
-    const admin = this.mergeStoredAdminProfile(this.resolveDemoAdmin(adminUserId));
-    const normalizedFeedbackId = `${feedbackId ?? ''}`.trim();
-    const storeBefore = await this.moderationRepository.readStore();
-    const feedbackBefore = storeBefore?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
-    if (!feedbackBefore) throw new Error('Feedback not found');
-    this.moderationService.requireScope(admin.id, feedbackBefore.userId);
-    const wasResolved = this.isReviewResolved(feedbackBefore);
-    const store = await this.moderationRepository.setFeedbackResolved(
-      normalizedFeedbackId,
-      admin.id,
-      resolved ? new Date().toISOString() : null
-    );
-    const feedback = store?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
-    if (resolved && !wasResolved && feedback?.userId) {
-      await this.moderationService.sendFeedbackResolvedNotification(
-        feedback.id,
-        feedback.userId,
-        admin,
-        this.feedbackResolvedMessage(feedback),
-        feedback.subject
+    return this.withRouteDelay(ADMIN_FEEDBACK_RESOLVE_ROUTE, async (): Promise<AdminDashboardDto> => {
+      await this.moderationRepository.whenReady();
+      const admin = this.mergeStoredAdminProfile(this.resolveDemoAdmin(adminUserId));
+      const normalizedFeedbackId = `${feedbackId ?? ''}`.trim();
+      const storeBefore = await this.moderationRepository.readStore();
+      const feedbackBefore = storeBefore?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
+      if (!feedbackBefore) throw new Error('Feedback not found');
+      this.moderationService.requireScope(admin.id, feedbackBefore.userId);
+      const wasResolved = this.isReviewResolved(feedbackBefore);
+      const store = await this.moderationRepository.setFeedbackResolved(
+        normalizedFeedbackId,
+        admin.id,
+        resolved ? new Date().toISOString() : null
       );
-    }
-    return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);
+      const feedback = store?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
+      if (resolved && !wasResolved && feedback?.userId) {
+        await this.moderationService.sendFeedbackResolvedNotification(
+          feedback.id,
+          feedback.userId,
+          admin,
+          this.feedbackResolvedMessage(feedback),
+          feedback.subject
+        );
+      }
+      return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);
+    });
   }
 
   private async loadDashboardSlice<T>(
@@ -174,6 +176,13 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   private buildDemoDashboard(admin: AdminUserDto, store: AdminModerationStore): AdminDashboardDto {
     const activeAdmin = this.mergeStoredAdminProfile(admin);
     const groupId = this.users.queryUserById(admin.id)?.workspaceGroupId ?? null;
+    const reviewCountsByScope = Object.fromEntries(['main', 'myscoutee-work', 'myscoutee-community'].map(scope => {
+      const baseId = scope === 'main' ? null : scope;
+      return [scope, this.demoReviewCounts({ ...store,
+        reports: store.reports.filter(report => this.moderationService.baseGroupId(report.reporterUserId || report.targetUserId) === baseId),
+        feedback: store.feedback.filter(item => this.moderationService.baseGroupId(item.userId) === baseId)
+      })];
+    }));
     const inScope = (userId: string) => this.moderationService.baseGroupId(userId) === groupId;
     store = { ...store, reports: store.reports.filter(report => inScope(report.reporterUserId || report.targetUserId)),
       feedback: store.feedback.filter(item => inScope(item.userId)) };
@@ -217,7 +226,8 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
       feedback: [...store.feedback].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
       ).map(item => this.enrichDemoFeedback(item)),
-      reviewCounts: this.demoReviewCounts(store)
+      reviewCounts: this.demoReviewCounts(store),
+      reviewCountsByScope
     };
   }
 

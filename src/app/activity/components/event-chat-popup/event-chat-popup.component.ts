@@ -312,6 +312,7 @@ export class EventChatPopupComponent implements OnDestroy {
     parentZIndex: this.currentChatPopupZIndex()
   }));
   protected chatInitialLoadPending = false;
+  protected readonly chatLoadError = signal<string | null>(null);
   protected messages: ContractTypes.ChatMessageDto[] = [];
   protected draftMessage = '';
   protected chatComposeDetachedSpace = 108;
@@ -475,6 +476,15 @@ export class EventChatPopupComponent implements OnDestroy {
       if(key)untracked(()=>void this.communityCases.loadChatContext(chat!.ownerId??''));
     });
     effect(() => {
+      const context = this.communityCases.chatContext();
+      const chat = this.session()?.item;
+      if (chat?.channelType !== 'case' || !context || context.id !== chat.ownerId) return;
+      untracked(() => {
+        this.chatHeaderContext = this.buildSelectedChatHeaderContext(chat, this.selectedChatNavigationState);
+        this.cdr.markForCheck();
+      });
+    });
+    effect(() => {
       const chat = this.session()?.item ?? null;
       const eventChat = Boolean(chat && (
         chat.serviceContext === 'event'
@@ -555,6 +565,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.teardownLiveChatUpdates();
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
+      this.chatLoadError.set(null);
       this.draftMessage = '';
       this.closeTransientMessageUi();
       this.replyTarget = null;
@@ -738,6 +749,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
       || this.session()?.item.channelType === 'groupSupport'
       || this.session()?.item.channelType === 'contact'
+      || this.session()?.item.channelType === 'campaign'
       || this.isServiceChat()
       || this.isBlockedSupportChat()) {
       return controls;
@@ -3729,9 +3741,17 @@ export class EventChatPopupComponent implements OnDestroy {
       return this.emptyChatThreadPage();
     }
     this.chatInitialLoadPending = true;
+    this.chatLoadError.set(null);
     this.cdr.markForCheck();
     try {
-      const chat = session.item;
+      const chat = session.request.serviceChat
+        ? await this.chatsService.ensureServiceChat(session.request.serviceChat)
+        : session.item;
+      if (this.loadedSessionKey !== sessionKey || this.destroyed) return this.emptyChatThreadPage();
+      if (!chat) throw new Error('Chat unavailable');
+      if (session.request.serviceChat) {
+        this.patchCurrentEventChatHeader(header => ({ ...header, ...eventChatHeaderStateFromChat(chat), parentZIndex: header.parentZIndex }));
+      }
       const messagesPage = await this.chatsService.loadChatMessagesResult(chat, query);
       if (this.loadedSessionKey !== sessionKey) {
         return this.emptyChatThreadPage();
@@ -3748,15 +3768,12 @@ export class EventChatPopupComponent implements OnDestroy {
       this.applyLoadedChatReadReceipt(chat, messagesPage);
       await this.startLiveChatUpdates(chat, sessionKey);
       return result;
-    } catch {
+    } catch (error) {
       if (this.loadedSessionKey !== sessionKey) {
         return this.emptyChatThreadPage();
       }
-      this.messages = [];
-      this.rebuildVisibleReadReceipts();
-      this.initialChatLoadedSessionKey = sessionKey;
-      await this.startLiveChatUpdates(session.item, sessionKey);
-      return this.emptyChatThreadPage();
+      this.chatLoadError.set('chat.load.failed');
+      throw error;
     } finally {
       if (this.loadedSessionKey === sessionKey) {
         this.chatInitialLoadPending = false;
@@ -5704,6 +5721,10 @@ export class EventChatPopupComponent implements OnDestroy {
     chat: ChatDTO,
     state: SelectedChatNavigationState | null
   ): number {
+    if (chat.channelType === 'case') {
+      const context = this.communityCases.chatContext();
+      return context && context.id === chat.ownerId ? context.boardTasks.length : 0;
+    }
     if (state?.subEvent && (state.channelType === 'optionalSubEvent' || state.channelType === 'groupSubEvent')) {
       return this.subEventPendingTotal(state.subEvent);
     }

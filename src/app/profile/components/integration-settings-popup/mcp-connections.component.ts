@@ -23,7 +23,6 @@ import {
         <h3 data-guide-field="mcp-purpose">{{ 'mcp.connections' | i18n }}</h3>
         <app-menu data-guide-field="mcp-advanced" kind="inline" layout="row" [items]="advancedActions()" (itemSelect)="advanced.set(true)"></app-menu>
       </div>
-      @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
       @if (store.mcp(); as config) {
         <span class="integration-endpoint-label">{{ 'mcp.url' | i18n }}</span>
         <div class="integration-credential-row"><app-copy-link data-guide-field="mcp-url" [value]="config.resource" label="mcp.url" copyLabel="mcp.copy.url"></app-copy-link>
@@ -56,7 +55,6 @@ import {
             <app-menu data-guide-field="mcp-generate" class="integration-generate-action" kind="inline" layout="row"
               [items]="createActions()" (itemSelect)="generate()"></app-menu>
           </div>
-          @if (store.error()) { <p role="alert">{{ store.error() | i18n }}</p> }
           <div class="integration-token-list">
             @for (client of manualClients(); track client.token.id) {
               <article class="integration-token-row">
@@ -116,7 +114,7 @@ export class McpConnectionsComponent {
   protected readonly oauthClients = computed(() => this.store.mcp()?.clients.filter(client => client.manual === false) ?? []);
   protected readonly advancedActions = computed<AppMenuItem[]>(() => [{id: 'advanced', icon: 'settings', label: 'mcp.advanced',
     layout: 'pill', palette: 'neutral', compactOnMobile: true, counter: this.manualClients().length}]);
-  protected advancedModel(): PopupModel { return {title: 'mcp.advanced', size: 'small', height: 'auto', mobilePresentation: 'fullscreen',
+  protected advancedModel(): PopupModel { return {errorMessage: this.store.error(), title: 'mcp.advanced', size: 'small', height: 'auto', mobilePresentation: 'fullscreen',
     backdropTone: 'dim', onClose: () => this.advanced.set(false)}; }
   protected async generate(): Promise<void> {
     const name = this.i18n.translateParams('integration.token.client.name', {index: this.manualClients().length + 1});

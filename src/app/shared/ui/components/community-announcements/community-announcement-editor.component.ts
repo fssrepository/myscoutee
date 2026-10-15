@@ -25,7 +25,7 @@ import { VOTE_CHOICES, type VoteChoice, type SaveAnnouncement } from '../../../c
      </article>
    }
    <input #files type="file" hidden multiple accept=".pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.odt,.ods" (change)="upload($event)">
-   <app-form-flow data-guide-field="announcement-details" [model]="flow()" [ngModel]="formView()" (ngModelChange)="formChanged($event)" (action)="attachmentAction($event, files)" [saving]="store.busy() || uploading()"></app-form-flow>
+   <app-form-flow data-guide-field="announcement-details" [model]="flow()" [ngModel]="form()" (ngModelChange)="form.set($event)" (action)="attachmentAction($event, files)" [saving]="store.busy() || uploading()"></app-form-flow>
 
  </app-popup>`,styles:[`.announcement-document { padding: 0 12px 12px; }
  .announcement-document h2 { margin: 0 0 16px; font-size: 1.15rem; }
@@ -38,10 +38,6 @@ export class CommunityAnnouncementEditorComponent implements OnChanges, OnDestro
  private readonly guide=inject(ExplanationGuideService);
  private unregister:(()=>void)|null=null;
  protected readonly form = signal<SaveAnnouncement & { deadline:string }>(null!);
- protected readonly formView = computed(() => ({...this.form(),attachmentNames:this.form().attachments.map(file=>file.name).join(', ')}));
- protected formChanged(value: SaveAnnouncement & {deadline:string;attachmentNames:string}): void {
-   const {attachmentNames,...form}=value;this.form.set(form);
- }
  protected readonly choices=VOTE_CHOICES;
  private readonly documents = new DocumentAttachments(this.media, {
    files:()=>this.form().attachments,setFiles:attachments=>this.form.update(form=>({...form,attachments})),
@@ -57,6 +53,7 @@ export class CommunityAnnouncementEditorComponent implements OnChanges, OnDestro
      deadline:new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16)}); }
  ngOnDestroy():void {this.documents.reset();this.unregister?.();}
  protected readonly popup = computed<PopupModel>(() => {return {errorMessage:this.error()||this.documents.error()||this.store.error(),title:this.editor().view==='voting'?(this.deadlinePassed()?'announcement.results':'announcement.voting'):this.editor().readOnly?'announcement.view':'announcement.edit',size:'wide',height:'full',onClose:()=>this.store.closeEditor(),
+   subtitle:!this.editor().readOnly&&(!this.editor().value||this.editor().value?.status==='draft')?'announcement.draft.hint':null,
    headerControls:this.editor().readOnly?[]:[{id:'save',icon:'done',ariaLabel:'save',palette:'success',disabled:this.store.busy()||this.uploading()||!this.form().title.trim()}],
    onAction:()=>{if(this.form().voting&&!Number.isFinite(Date.parse(this.form().deadline))){this.error.set('announcement.failed');return;}
      void this.store.save({...this.form(),deadlineIso:this.form().voting?new Date(this.form().deadline).toISOString():null});}};});

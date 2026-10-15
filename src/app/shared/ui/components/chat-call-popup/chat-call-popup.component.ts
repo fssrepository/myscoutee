@@ -27,7 +27,6 @@ interface CallPage {
     @if (call.open()) {
       <app-popup [model]="model()" [zIndex]="zIndex">
         <section class="call" data-chat-call [attr.data-call-state]="call.status()">
-          @if (call.error(); as error) { <p class="call-error" role="alert">{{ t(error) }}</p> }
           @if (call.notice(); as notice) { <p role="status">{{ t(notice) }}</p> }
           @for (peer of call.tiles(); track peer.id) {
             <audio #remoteMedia [srcObject]="peer.stream" autoplay [muted]="call.speakerMuted() || !!call.peerMuted()[peer.id] || peer.mutedByAdmin"
@@ -334,7 +333,7 @@ export class ChatCallPopupComponent {
     });
   }
   protected t(key: string): string { return this.i18n.translate(key); }
-  protected readonly model = computed<PopupModel>(() => ({ title: this.t('chat.call.title'), subtitle: this.call.title(), translateSubtitle: false,
+  protected readonly model = computed<PopupModel>(() => ({ errorMessage: this.call.error(), title: this.t('chat.call.title'), subtitle: this.call.title(), translateSubtitle: false,
       ariaLabel: this.t('chat.call.title'), closeAriaLabel: this.t('chat.call.close'),
       size: 'wide', height: 'full', bodyLayout: 'fill', headerTone: 'accent', backdropTone: 'dim', closeOnBackdrop: false,
       headerControls: [{ id: 'call-follow-speakers', kind: 'menu', menuKind: 'inline', items: [{

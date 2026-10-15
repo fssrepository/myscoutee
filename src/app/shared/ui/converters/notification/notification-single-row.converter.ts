@@ -4,6 +4,7 @@ import type {
 } from '../../../core/contracts/notifications/notification.interface';
 import * as AppConstants from '../../../core/common/constants';
 import { AppUtils } from '../../../core/base/app-utils';
+import { EventModeMenuConverter } from '../event/event-mode-menu.converter';
 import {
   type SingleRowData,
   type SingleRowSurfaceTone,
@@ -31,7 +32,13 @@ export class NotificationSingleRowConverter implements UiConverter<
     const securityAlert = notification.kind === 'security-login';
     const senderName = securityAlert ? '' : `${notification.senderName ?? ''}`.trim();
     const systemRandomRoom = this.isSystemGeneratedRoom(notification);
-    const systemAvatar = securityAlert || systemRandomRoom;
+    const serviceFeedback = notification.sourceType === 'service-feedback';
+    const mingle = notification.payload?.['mingle'] === 'true';
+    const minglePresentation = mingle ? EventModeMenuConverter.trigger('Mingle') : null;
+    const palette = serviceFeedback ? 'gold' as const : mingle ? 'rose' as const : null;
+    const contextualIcon = serviceFeedback ? 'home_repair_service'
+      : typeof minglePresentation?.icon === 'string' ? minglePresentation.icon : null;
+    const systemAvatar = securityAlert || systemRandomRoom || Boolean(contextualIcon);
     const stageAvatar = this.hasStageAvatar(notification);
     const tournamentRoom = `${notification.payload?.['eventScope'] ?? ''}`.trim() === 'tournament-room';
     const sourceLabel = securityAlert ? 'MyScoutee' : this.sourceLabel(notification.category, options);
@@ -56,14 +63,15 @@ export class NotificationSingleRowConverter implements UiConverter<
       avatarAriaLabel: senderName || sourceLabel,
       avatarToneClass: stageAvatar
         ? this.stageAvatarToneClass(notification)
-        : systemAvatar ? 'notification-system-avatar' : null,
+        : contextualIcon ? 'ui-single-row__avatar--contextual' : systemAvatar ? 'notification-system-avatar' : null,
       accentHue: stageAvatar ? this.stageAccentHue(notification) : null,
-      icon: securityAlert ? 'warning_amber' : stageAvatar
+      icon: contextualIcon || (securityAlert ? 'warning_amber' : stageAvatar
         ? `${notification.payload?.['notification_avatar_icon'] ?? ''}`.trim() || 'emoji_events'
         : systemRandomRoom
         ? tournamentRoom ? 'emoji_events' : 'auto_awesome'
-        : senderName ? null : this.categoryIcon(notification.category),
+        : senderName ? null : this.categoryIcon(notification.category)),
       surfaceTone: this.surfaceTone(notification, read),
+      palette,
       toneClass: `notification-row notification-row--${notification.category}`,
       badges: [
         ...(statusBadgeLabel ? [{
@@ -97,6 +105,7 @@ export class NotificationSingleRowConverter implements UiConverter<
           ariaLabel: timestamp,
           title: timestamp,
           tone: read ? 'muted' : this.badgeTone(notification),
+          palette: read ? null : palette,
           position: 'top-right'
         },
         ...(read ? [{
@@ -121,6 +130,7 @@ export class NotificationSingleRowConverter implements UiConverter<
   static targetActionId(notification: NotificationDto): string | null {
     if (NotificationSingleRowConverter.roleTargetPath(notification)) return 'openNotificationRoleTarget';
     if (notification.sourceType === 'payment') return 'openNotificationPayments';
+    if (notification.sourceType === 'service-feedback') return 'openNotificationFeedback';
     if (notification.sourceType === 'chat' && notification.payload?.['chatId']) return 'openNotificationChat';
     if (notification.sourceType === 'announcement' && notification.sourceId && !['announcement-unpublish', 'announcement-trash'].includes(notification.kind)) return 'openNotificationAnnouncement';
     if (notification.sourceType === 'case' && notification.sourceId) return 'openNotificationCase';

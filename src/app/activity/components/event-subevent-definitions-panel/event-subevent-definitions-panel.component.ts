@@ -220,9 +220,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       anchorRadius: 0,
       rowCount: 1,
       rowHeightPx: 104,
-      minimumLaneDurationMinutes: () => this.mode === 'Mingle'
-        ? 1
-        : this.definitionTimelineStepMinutes,
+      minimumLaneDurationMinutes: this.definitionTimelineStepMinutes,
       useItemTemplate: true,
       resolveRange: item => this.definitionTimelineRange(item),
       badgeLabel: item => item.name,
@@ -337,6 +335,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       icon: timeline ? 'timeline' : 'view_carousel',
       palette: timeline ? 'teal' : 'violet',
       layout: 'pill',
+      hideLabel: true,
       disabled: !this.enabled
     };
   }

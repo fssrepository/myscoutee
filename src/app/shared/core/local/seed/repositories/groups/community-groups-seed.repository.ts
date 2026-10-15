@@ -1,3 +1,4 @@
+import { LocalActivityMembersRepository } from '../../../source/repositories/events/activity-members.repository';
 import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../../common/app.db';
 import { COMMUNITY_GROUPS_TABLE_NAME } from '../../../source/entity/groups/community-group.entity';
@@ -8,6 +9,8 @@ import { SeedCommunityGroupsBuilder } from '../../builders/groups/community-grou
 @Injectable({ providedIn: 'root' })
 export class SeedCommunityGroupsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
+
+  refreshCounters(): void { this.memoryDb.write(state => LocalActivityMembersRepository.withGroupCounterWrite(state)); }
 
   seedDefaults(users: readonly UserRecord[]): boolean {
     const state = this.memoryDb.read();

@@ -5,7 +5,9 @@
     "title": "Meter replacement and plumbing",
     "description": "Shared meter replacement and household plumbing, coordinated through a single case.",
     "category": "plumbing",
-    "imageUrls": [],
+    "imageUrls": [
+      "/assets/articles/community-meter.png"
+    ],
     "maxDistanceKm": null,
     "languages": [],
     "staffNames": [
@@ -29,7 +31,9 @@
     "title": "Electrical repairs",
     "description": "Fault investigation, lighting repairs and planned community maintenance.",
     "category": "electrical",
-    "imageUrls": [],
+    "imageUrls": [
+      "/assets/articles/community-fault.png"
+    ],
     "maxDistanceKm": null,
     "languages": [],
     "staffNames": [
@@ -53,7 +57,9 @@
     "title": "Personal fitness coaching",
     "description": "One-to-one coaching and small-group training sessions coordinated with your community.",
     "category": "fitness",
-    "imageUrls": [],
+    "imageUrls": [
+      "/assets/services/fitness-coaching.webp"
+    ],
     "maxDistanceKm": null,
     "languages": [],
     "staffNames": [

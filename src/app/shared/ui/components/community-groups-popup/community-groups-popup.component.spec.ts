@@ -17,12 +17,17 @@ function model(bucket: string, category: string | null = null) {
     explore: bucket === 'explore',
     query: { filters: { bucket, category } },
     i18n: { translate: (key: string) => key },
-    store: { counters: () => ({ hosting: 5, participation: 4, pending: 1, invitations: 0 }), categoryCount: counts.categoryCount.bind(counts) }
+    store: { editor: () => null, error: () => null, counters: () => ({ hosting: 5, participation: 4, pending: 1, invitations: 0, trash: 2 }), categoryCount: counts.categoryCount.bind(counts) }
   });
   return component.model();
 }
 
 describe('Group selector counters', () => {
+  it('shows stored group cardinalities in every bucket including Trash', () => {
+    const control = model('trash').toolbarControls[0];
+    expect(control.trigger.counter).toBe(2);
+    expect(control.items.map((item: {counter: number}) => item.counter)).toEqual([5, 4, 1, 0, 2]);
+  });
   it('offers only Distance and Recent, with contextual defaults', () => {
     for (const bucket of ['hosting', 'participation', 'pending', 'invitations', 'explore']) {
       const sort = model(bucket).headerControls.find((control: { id: string }) => control.id === 'sort');

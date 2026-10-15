@@ -57,6 +57,7 @@ import {
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activity/activities-popup.store';
 import { EventSubeventsPopupStore } from '../../context/stores/event/event-subevents-popup.store';
 import { NotificationCenterStore } from '../../context/stores/notification/notification-center.store';
+import { ServiceFeedbackStore } from '../../context/stores/services/service-feedback.store';
 
 import { SubEventResourcePopupStore } from '../../context/stores/event/sub-event-resource-popup.store';
 
@@ -92,6 +93,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
   private readonly announcements = inject(CommunityAnnouncementsStore);
   private readonly cases = inject(CommunityCasesStore);
   private readonly campaigns = inject(CampaignsStore);
+  private readonly serviceFeedback = inject(ServiceFeedbackStore);
   private readonly communityGroups = inject(CommunityGroupsStore);
   private readonly groupWorkspaces = inject(GroupWorkspaceStore);
   @ViewChild('notificationsSmartList')
@@ -148,6 +150,8 @@ export class NotificationCenterPopupComponent implements OnDestroy {
       palette: value === 'new' ? 'rose' : 'violet',
       surface: 'tinted',
       active: bucket === value,
+      checked: bucket === value,
+      showCheck: true,
       counter: value === 'new' && unreadCount > 0
         ? { value: unreadCount, max: 99 }
         : null,
@@ -170,10 +174,10 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     defaultFilters: { bucket: 'new' },
     emptyLabel: 'No notifications',
     emptyDescription: 'New messages and updates will appear here.',
-    showStickyHeader: false,
+    showStickyHeader: true,
     listLayout: 'stack',
-    snapMode: 'none',
-    scrollPaddingTop: '0.5rem',
+    snapMode: 'mandatory',
+    scrollPaddingTop: '2.6rem',
     pollIntervalMs: () => this.store.pollIntervalMs(),
     pollDelta: {
       revision: item => item.revision,
@@ -360,6 +364,13 @@ export class NotificationCenterPopupComponent implements OnDestroy {
       await this.markRead(notification); return;
     }
     if(actionId==='openNotificationPayments'){if(!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId']??''}`.trim()||null))return;this.store.close();await this.paymentHistory.openHistory();await this.markRead(notification);return;}
+    if (actionId === 'openNotificationFeedback') {
+      if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
+      this.store.close();
+      this.serviceFeedback.open();
+      await this.markRead(notification);
+      return;
+    }
     if (actionId === 'openNotificationAnnouncement' || actionId === 'openNotificationCase' || actionId === 'openNotificationRatings') {
       if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
       this.store.close();

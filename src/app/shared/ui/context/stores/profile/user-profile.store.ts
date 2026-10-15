@@ -726,7 +726,8 @@ export class UserProfileStore {
     current: UserDto['activities'],
     patch: Partial<ActivityCounters>
   ): UserDto['activities'] {
-    const next: UserDto['activities'] = { ...current };
+    const next: UserDto['activities'] = { ...current,
+      menuCounters: { ...current.menuCounters, ...patch.menuCounters } };
     for (const key of ACTIVITY_COUNTER_KEYS) {
       if (!Object.prototype.hasOwnProperty.call(patch, key)) {
         continue;

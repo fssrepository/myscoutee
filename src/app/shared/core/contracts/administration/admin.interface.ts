@@ -103,6 +103,7 @@ export interface AdminDashboardDto {
   blockedUsers: AdminReportedUserDto[];
   feedback: AdminFeedbackDto[];
   reviewCounts?: AdminReviewCountsDto | null;
+  reviewCountsByScope?: Record<string, AdminReviewCountsDto>;
 }
 
 export type AdminMonitoringHealth = 'ok' | 'watch' | 'alert';

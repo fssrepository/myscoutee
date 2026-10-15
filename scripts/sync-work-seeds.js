@@ -200,7 +200,7 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
   const campaignRecords = campaignTemplates.map(({ id, ownerName, ...campaign }) => {
     const owner = users.find(user => user.workspaceGroupId === group.id && user.name === ownerName);
     if (!owner) throw new Error(`Missing campaign owner ${ownerName}`);
-    return { _id: id, ...campaign, workspaceGroupId: group.id, ownerUserId: owner.userId, imageUrls: [], attachments: [],
+    return { _id: id, ...campaign, workspaceGroupId: group.id, ownerUserId: owner.userId, imageUrls: [...campaign.imageUrls], attachments: [],
       createdAtIso: '2026-10-01T10:00:00.000Z', updatedAtIso: '2026-10-01T10:00:00.000Z', version: 0 };
   });
   write(path.join(dir, 'campaigns.json'), campaignRecords);

@@ -388,7 +388,8 @@ export class LocalEventFeedbackRepository {
       ...user,
       activities: {
         ...user.activities,
-        feedback: nextPending + nextOwnEvents,
+        feedback: Math.max(0, this.counter(user.activities.feedback) + nextPending - this.counter(current?.pending)
+          + nextOwnEvents - this.counter(current?.ownEvents)),
         eventFeedback: {
           ownEvents: nextOwnEvents,
           pending: nextPending,

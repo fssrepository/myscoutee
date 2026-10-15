@@ -6,7 +6,10 @@
     "description": "I am bringing together people who can design, build and introduce a practical digital product. Tell me what you would enjoy contributing. We will prioritise introductions and invite a small team to an initial conversation.",
     "kind": "business",
     "category": "technology",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/business-idea.png"
+    ]
   },
   {
     "id": "work-campaign-company-introductions",
@@ -15,7 +18,10 @@
     "description": "We would like to meet curious engineers, designers and people who understand customers. This is an introduction to the work we do, with room for different strengths. We will arrange a focused event from our mutual priorities.",
     "kind": "work",
     "category": "technology",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/work-opportunity.png"
+    ]
   },
   {
     "id": "work-campaign-alex-draft",
@@ -24,7 +30,10 @@
     "description": "Draft an invitation for a small group to explore how we could work together.",
     "kind": "both",
     "category": "education",
-    "status": "draft"
+    "status": "draft",
+    "imageUrls": [
+      "assets/articles/professional-network.png"
+    ]
   },
   {
     "id": "work-campaign-local-studio",
@@ -33,7 +42,10 @@
     "description": "I am starting a small studio and would like to meet people interested in visual design, storytelling and client work. Share your interest through this campaign; I will invite a few people for a first meeting.",
     "kind": "business",
     "category": "creative",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/business-idea.png"
+    ]
   },
   {
     "id": "work-campaign-service-team",
@@ -42,7 +54,10 @@
     "description": "We are meeting people who enjoy organising projects and helping customers. Priorities will help us put together a useful introduction event without asking everyone to attend.",
     "kind": "work",
     "category": "services",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/work-opportunity.png"
+    ]
   },
   {
     "id": "work-campaign-learning-circle",
@@ -51,7 +66,10 @@
     "description": "I have an idea for short, hands-on workshops and am looking for collaborators with teaching or subject experience. I will invite a small group of interested people to discuss a first session.",
     "kind": "business",
     "category": "education",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/professional-network.png"
+    ]
   },
   {
     "id": "work-campaign-design-intro",
@@ -60,7 +78,10 @@
     "description": "Meet the people behind our design work. We are open to different kinds of experience and will invite a focused group based on mutual interest.",
     "kind": "work",
     "category": "creative",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/team-building.png"
+    ]
   },
   {
     "id": "work-campaign-team-day",
@@ -69,7 +90,10 @@
     "description": "I am organising an introduction for people who could collaborate on community projects. This campaign helps me understand interest before arranging the event.",
     "kind": "both",
     "category": "community",
-    "status": "published"
+    "status": "published",
+    "imageUrls": [
+      "assets/articles/team-building.png"
+    ]
   },
   {
     "id": "work-campaign-alex-archived",
@@ -78,6 +102,9 @@
     "description": "A saved example of a campaign that has been moved to the trash. Restoring it returns it to drafts.",
     "kind": "business",
     "category": "other",
-    "status": "trash"
+    "status": "trash",
+    "imageUrls": [
+      "assets/articles/business-idea.png"
+    ]
   }
 ]

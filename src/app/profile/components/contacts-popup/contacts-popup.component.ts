@@ -349,6 +349,7 @@ export class ContactsPopupComponent implements OnDestroy {
 
   protected contactsPopupModel(): PopupModel<ContactsMenuContext> {
     return {
+      errorMessage: this.chatAccess.error() ? 'contact.chat.error' : null,
       title: 'Contacts',
       subtitle: this.summaryLabel(),
       ariaLabel: 'Contacts',
@@ -378,6 +379,7 @@ export class ContactsPopupComponent implements OnDestroy {
 
   protected contactFormPopupModel(contact: ContactFormValue): PopupModel<ContactsMenuContext> {
     return {
+      errorMessage: this.formErrorMessage(),
       title: 'Edit Contact',
       subtitle: `${contact.name}${contact.city ? ' - ' + contact.city : ''}`,
       ariaLabel: 'Edit Contact',

@@ -5,7 +5,7 @@
  } @else if (workspace.isCommunity() && workspace.active()?.groupId === 'myscoutee-community' && memberActionsAvailable && isAvatarProfileSettled && !isBlockedUser && !isGameVisibilityPaused) {
   @defer (on immediate) { <app-community-services-home [branding]="deploymentBranding()"></app-community-services-home> }
 } @else if (workspace.isWork() && memberActionsAvailable && isAvatarProfileSettled && !isBlockedUser && !isGameVisibilityPaused) {
-  @defer (on immediate) { <app-work-home [branding]="deploymentBranding()"></app-work-home> }
+  <app-work-home [branding]="deploymentBranding()"></app-work-home>
 } @else {
 <div class="game-page" data-guide-surface [ngClass]="gamePageStatusClass()">
   <app-home-header

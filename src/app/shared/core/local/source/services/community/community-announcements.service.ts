@@ -52,7 +52,10 @@ export class LocalCommunityAnnouncementsService extends LocalRouteDelayService i
             if (!Number.isSafeInteger(page) || page < 0 || page > 1000000) throw new Error('Invalid cursor');
             const start = page * size, end = start + size;
             const voters = this.eligibleVoters(group);
-            return { items: rows.slice(start, end).map(a => this.dto(actor, a, voters)), total: rows.length, nextCursor: end < rows.length ? `${page+1}` : null };
+            const counts = this.users.queryUserById(`group:${group}:${actor}`)?.menuCounters ?? {}, voting = query.filters?.voting;
+            const total = (voting === false ? 0 : counts[`announcement_${status}_votes`] ?? 0)
+              + (voting === true ? 0 : counts[`announcement_${status}_notices`] ?? 0);
+            return { items: rows.slice(start, end).map(a => this.dto(actor, a, voters)), total, nextCursor: end < total ? `${page+1}` : null };
       })()
     ]);
     signal?.throwIfAborted();
@@ -88,7 +91,7 @@ export class LocalCommunityAnnouncementsService extends LocalRouteDelayService i
       (async () => {
         if (!['publish', 'unpublish', 'trash', 'restore', 'close', 'vote'].includes(r.action)) throw new Error('Invalid action');
             const actor = await this.actor(r.userId), old = this.visible(actor, id), a = structuredClone(old), now = new Date().toISOString();
-            if (old.version !== r.version) throw new Error('announcement.changed');
+            // Apply commands to current state; editor saves retain their snapshot guard.
             if (r.action === 'vote') {
               if (!this.access.member(a.communityId, actor)?.votingEligible) throw new Error('Forbidden');
               if (a.status !== 'published' || !a.voting || a.closedAtIso || !a.deadlineIso || a.deadlineIso <= now || !r.choice || !VOTE_CHOICES.includes(r.choice)
@@ -111,6 +114,9 @@ export class LocalCommunityAnnouncementsService extends LocalRouteDelayService i
       })()
     ]);
     return response;
+  }
+  async expireVoteCounters(): Promise<void> {
+    await this.repository.ready(); this.repository.expireVotes(); await this.repository.flush();
   }
   async closeDue(groupId: string | null, now = new Date()): Promise<number> {
     if (groupId !== COMMUNITY_BASE_GROUP_ID) return 0;
@@ -141,8 +147,13 @@ export class LocalCommunityAnnouncementsService extends LocalRouteDelayService i
   }
   private dto(actor: string, a: CommunityAnnouncementRecord, voters = this.eligibleVoters(a.communityId)): CommunityAnnouncement {
     const results = { yes: 0, no: 0, abstain: 0 }; a.ballots.forEach(b => results[b.choice]++);
+    const counts = this.users.queryUserById(`group:${a.communityId}:${actor}`)?.menuCounters ?? {};
+    const menuCounters = Object.fromEntries(['published', 'draft', 'trash'].flatMap(status => ['votes', 'notices'].map(kind => {
+      const key = `announcement_${status}_${kind}`; return [key, counts[key] ?? 0];
+    })));
     return { id: a.id, communityId: a.communityId, authorAccountId: a.authorAccountId, title: a.title, body: a.body, attachments: structuredClone(a.attachments), status: a.status,
       voting: a.voting, deadlineIso: a.deadlineIso, closed: !!a.closedAtIso || a.voting && !!a.deadlineIso && Date.parse(a.deadlineIso) <= Date.now(),
+      votesCount: counts['votes'] ?? 0, menuCounters,
       canVote: voters.has(actor), myBallot: a.ballots.find(b => b.voterAccountId === actor)?.choice ?? null, results,
       eligibleMembers: new Set([...voters, ...a.ballots.map(b => b.voterAccountId)]).size, castVotes: a.ballots.length,
       canManage: this.access.admin(a.communityId, actor), publishedAtIso: a.publishedAtIso, createdAtIso: a.createdAtIso, updatedAtIso: a.updatedAtIso, version: a.version };

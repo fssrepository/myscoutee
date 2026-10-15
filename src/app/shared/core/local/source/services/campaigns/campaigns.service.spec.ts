@@ -57,7 +57,11 @@ describe('Independent Work campaigns', () => {
     const published = await service.action(member, own.id, 'publish', own.version);
     expect(published.ownerUserId).toBe(member);
     expect((await service.page(member, { page: 0, pageSize: 20, filters: { scope: 'discover' } })).items.map(c => c.id)).toContain(first.id);
-    expect(db.read().users.byId[member]).toEqual(profileBefore);
+    const {menuCounters: beforeCounters, ...beforeProfile} = profileBefore;
+    const {menuCounters: afterCounters, ...afterProfile} = db.read().users.byId[member];
+    expect(afterProfile).toEqual(beforeProfile);
+    expect(afterCounters?.['campaignsPublished']).toBe((beforeCounters?.['campaignsPublished'] ?? 0) + 1);
+    expect(afterCounters?.['campaignsDrafts']).toBe(beforeCounters?.['campaignsDrafts'] ?? 0);
     expect(profileBefore.admin).not.toBe(true);
     await expect(service.save({ ...draft(), userId: member, id: first.id, version: 1 })).rejects.toThrow('Forbidden');
   });
@@ -70,6 +74,17 @@ describe('Independent Work campaigns', () => {
     await expect(service.detail(rootOwner, campaign.id)).rejects.toThrow('Forbidden');
     const other = Object.values(db.read().users.byId).find(u => u.workspaceGroupId && u.workspaceGroupId !== 'myscoutee-work')!;
     await expect(service.detail(other.id, campaign.id)).rejects.toThrow();
+  });
+  it('applies every lifecycle command to current data without weakening editor or transition guards', async () => {
+    const original = await service.save(draft());
+    const edited = await service.save({...draft(), id: original.id, version: original.version, title: 'Updated title'});
+    for (const action of ['publish', 'unpublish', 'publish', 'trash', 'restore'] as const) {
+      const changed = await service.action(owner, original.id, action, original.version);
+      expect(changed.title).toBe(edited.title);
+      expect(changed.version).toBeGreaterThan(edited.version);
+      await expect(service.action(owner, original.id, action, original.version)).rejects.toThrow('Invalid campaign action');
+    }
+    await expect(service.save({...draft(), id: original.id, version: original.version})).rejects.toThrow('Campaign changed');
   });
   it('stores separate ratings per campaign and queries one person with campaign filtering before aggregation', async () => {
     TestBed.inject(SeedCampaignsRepository).seedDefaults();
@@ -149,6 +164,9 @@ describe('Independent Work campaigns', () => {
   it('seeds campaign events with a matching roster and preserves subsequent edits', () => {
     TestBed.inject(SeedCampaignsRepository).seedDefaults();
     const seed = TestBed.inject(SeedWorkActivityRepository); seed.seedDefaults();
+    expect(db.read().users.byId[member].activities?.event).toEqual(TestBed.inject(LocalEventsRepository).queryUserEventCounterSnapshot(member).event);
+    // A reload also runs the general stamp; retained records must keep the same list counters.
+    seed.seedDefaults();
     const state = db.read();
     const events = Object.values(state.events.byId);
     expect(events).toHaveLength(3);

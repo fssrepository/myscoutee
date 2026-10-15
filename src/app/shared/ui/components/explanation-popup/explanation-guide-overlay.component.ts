@@ -45,7 +45,10 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private readonly i18n = inject(I18nService);
   private readonly overlayNavigation = inject(OverlayNavigationStore);
   protected readonly frame = signal<GuideFrame | null>(null);
-  protected readonly insideMenu = signal(false);
+  protected readonly positionReady = signal(false);
+  protected readonly hasPresented = signal(false);
+  protected readonly waitingForAnimation = signal(false);
+  protected readonly compactCard = signal(false);
   protected readonly steps = signal<HelpCenterGuideFieldDto[]>([]);
   protected readonly step = this.guide.stepIndex;
   private navigationToken: symbol | null = null;
@@ -53,6 +56,8 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   private observer: MutationObserver | null = null;
   private cardObserver: ResizeObserver | null = null;
   private observedCard: HTMLElement | null = null;
+  private measuredCardWidth = 0;
+  private measuredCardHeight = 0;
   private pendingFrame = 0;
   private settleTimer: ReturnType<typeof setTimeout> | null = null;
   private actionTimer: ReturnType<typeof setTimeout> | null = null;
@@ -74,14 +79,19 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       this.guide.visibleRevision();
       this.guide.currentContextKey();
       this.i18n.currentLanguage();
-      if (!popupOpen) this.autoOpenedMenuStepKey = '';
+      this.positionReady.set(false);
+      this.waitingForAnimation.set(false);
+      if (!popupOpen) {
+        this.autoOpenedMenuStepKey = '';
+        this.hasPresented.set(false);
+      }
       if (loading || loadError || noGuide) {
         this.frame.set(null);
       }
       this.schedulePosition();
     });
     effect(() => {
-      const visible = !this.guide.loading() && (this.guide.noGuide() || this.guide.loadError() || Boolean(this.frame()));
+      const visible = !this.guide.loading() && (this.guide.noGuide() || this.guide.loadError() || (Boolean(this.frame()) && (this.hasPresented() || this.positionReady())));
       this.guide.setTourVisible(visible);
       // Register Back only for the actual guide or its stable feedback card.
       if (visible && !this.navigationToken) {
@@ -91,7 +101,13 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.cardObserver = new ResizeObserver(() => this.schedulePosition());
+    this.cardObserver = new ResizeObserver(() => {
+      const rect = this.observedCard?.getBoundingClientRect();
+      if (rect && (rect.width !== this.measuredCardWidth || rect.height !== this.measuredCardHeight)) {
+        this.positionReady.set(false);
+        this.schedulePosition();
+      }
+    });
     this.observer = new MutationObserver(records => {
       if (records.some(record => !(record.target instanceof Element)
         || !record.target.closest('app-explanation-guide-overlay'))) this.fieldsDirty = true;
@@ -119,6 +135,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
 
   @HostListener('window:resize')
   protected onResize(): void {
+    this.positionReady.set(false);
     this.schedulePosition();
   }
 
@@ -247,14 +264,16 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
 
     const currentMenuId = current ? this.menuIdForField(current, root) : null;
     const nextMenuId = this.menuIdForField(next, root);
+    const currentTrigger = currentMenuId && current ? this.menuTriggerForField(current, root) : null;
+    const nextTrigger = nextMenuId ? this.menuTriggerForField(next, root) : null;
     const destination = this.resolveTarget(next, root);
 
-    if (currentMenuId && currentMenuId !== nextMenuId) {
-      this.closeMenu(currentMenuId, root);
+    if (currentTrigger && currentTrigger !== nextTrigger && currentTrigger.getAttribute('aria-expanded') === 'true') {
+      this.clickFromGuide(currentTrigger);
     }
 
     if (nextMenuId && !this.guideMenuTriggerId(next, root)) {
-      const trigger = this.menuTrigger(nextMenuId, root);
+      const trigger = nextTrigger;
       if (trigger && trigger.getAttribute('aria-expanded') !== 'true') {
         this.clickFromGuide(trigger);
         this.guide.setStepIndex(nextIndex);
@@ -318,7 +337,10 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
     this.dismissAfterSurfaceAction();
   };
 
-  private readonly onViewportChange = (): void => this.schedulePosition();
+  private readonly onViewportChange = (): void => {
+    this.positionReady.set(false);
+    this.schedulePosition();
+  };
 
   private readonly onEscape = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape' || !this.guide.hasVisiblePopup()) return;
@@ -418,6 +440,8 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const moving = this.hasPositionAnimation(target.element);
+    if (moving) this.waitingForAnimation.set(true);
     const panelRect = target.menuPanel?.getBoundingClientRect() ?? null;
     const rects = (target.repeatedElements ?? [target.element])
       .map(element => this.visibleTargetRect(element))
@@ -431,7 +455,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       Math.max(...rects.map(r => r.right)) - Math.min(...rects.map(r => r.left)),
       Math.max(...rects.map(r => r.bottom)) - Math.min(...rects.map(r => r.top))
     );
-    this.insideMenu.set(Boolean(target.menuPanel));
+    this.compactCard.set(Boolean(target.menuPanel) || (window.innerWidth <= 760 && window.innerHeight <= 600));
     const pad = 5;
     const left = Math.max(0, rect.left - pad);
     const top = Math.max(0, rect.top - pad);
@@ -448,13 +472,41 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       if (card) this.cardObserver?.observe(card);
       this.observedCard = card;
     }
-    const cardHeight = Math.min(card?.getBoundingClientRect().height || (target.menuPanel && window.innerWidth <= 760 ? 204 : 248), window.innerHeight - 24);
+    const cardRect = card?.getBoundingClientRect();
+    this.measuredCardWidth = cardRect?.width ?? 0;
+    this.measuredCardHeight = cardRect?.height ?? 0;
+    const cardHeight = Math.min(cardRect?.height || (this.compactCard() && window.innerWidth <= 760 ? 204 : 248), window.innerHeight - 24);
     const placement = this.placeCard(rect, panelRect, cardWidth, cardHeight);
     const nextFrame: GuideFrame = { targets, shades: this.shadeRects(targets), left, top, width, height, cardLeft: Math.max(12, Math.min(placement.left, window.innerWidth - cardWidth - 12)), cardTop: Math.max(12, Math.min(placement.top, window.innerHeight - cardHeight - 12)), cardWidth };
     const previous = this.frame();
     if (!previous || JSON.stringify(nextFrame) !== JSON.stringify(previous)) {
+      this.positionReady.set(false);
       this.frame.set(nextFrame);
+      this.schedulePosition();
+      return;
     }
+    // Keep the focus and card hidden until sizing and entry motion have finished.
+    // Only actual animation may reveal the shade before the stable guide.
+    const ready = Boolean(cardRect?.height && cardRect.width === cardWidth) && !moving;
+    this.positionReady.set(ready);
+    if (ready) {
+      this.hasPresented.set(true);
+      this.waitingForAnimation.set(false);
+    }
+    if (!ready) this.schedulePosition();
+  }
+
+  private hasPositionAnimation(element: HTMLElement): boolean {
+    for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+      if ((node.getAnimations?.() ?? []).some(animation => {
+        const effect = animation.effect;
+        return (animation.playState === 'running' || animation.pending)
+          && effect instanceof KeyframeEffect && Number.isFinite(effect.getComputedTiming().endTime)
+          && effect.getKeyframes().some(frame => Object.keys(frame).some(key =>
+            /^(transform|translate|scale|rotate|top|right|bottom|left|width|height|margin|padding|fontSize|lineHeight)/.test(key)));
+      })) return true;
+    }
+    return false;
   }
 
   private shadeRects(targets: GuideRect[]): GuideRect[] {
@@ -503,25 +555,25 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       const target = this.resolveTarget(field, root);
       if (target && this.isRendered(target.element)) return true;
       const menuId = this.menuIdForField(field, root);
-      const trigger = menuId ? this.menuTrigger(menuId, root) : null;
+      const trigger = menuId ? this.menuTriggerForField(field, root) : null;
       if (!trigger || trigger.disabled || !this.isRendered(trigger)) return false;
       const ids = this.menuItemIds(trigger);
       if (ids !== null) return ids.split('\n').includes(field.id.split(':').slice(1).join(':') || field.id);
       return trigger.getAttribute('aria-expanded') !== 'true';
     });
-    const menuOrder = new Map<string, { order: number; ids: string[] }>();
-    const owners = new Map<HelpCenterGuideFieldDto, string | null>();
+    // Closing alone does not explain a screen; use the existing no-guide feedback.
+    if (fields.every(field => field.id === 'close')) fields.length = 0;
+    const menuOrder = new Map<HTMLButtonElement, { order: number; ids: string[] }>();
+    const owners = new Map<HelpCenterGuideFieldDto, HTMLButtonElement | null>();
     for (const field of fields) {
-      const menuId = this.menuIdForField(field, root);
-      owners.set(field, menuId);
-      if (menuId && !menuOrder.has(menuId)) {
-        const trigger = this.menuTrigger(menuId, root);
-        menuOrder.set(menuId, { order: field.order, ids: trigger ? this.menuItemIds(trigger)?.split('\n') ?? [] : [] });
+      const trigger = this.menuTriggerForField(field, root);
+      owners.set(field, trigger);
+      if (trigger && !menuOrder.has(trigger)) {
+        menuOrder.set(trigger, { order: field.order, ids: this.menuItemIds(trigger)?.split('\n') ?? [] });
       }
     }
     const anchors = new Map(fields.map(field => {
-      const owner = owners.get(field);
-      const element = owner ? this.menuTrigger(owner, root) ?? this.resolveTarget(field, root)?.element : this.resolveTarget(field, root)?.element;
+      const element = owners.get(field) ?? this.resolveTarget(field, root)?.element;
       return [field, element?.closest<HTMLElement>('[data-guide-order-group]') ?? element] as const;
     }));
     fields.sort((left, right) => {
@@ -537,8 +589,8 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       const leftGroup = leftMenu ? menuOrder.get(leftMenu) : null;
       const rightGroup = rightMenu ? menuOrder.get(rightMenu) : null;
       if (!leftGroup || leftMenu !== rightMenu) return (leftGroup?.order ?? left.order) - (rightGroup?.order ?? right.order);
-      const index = (field: HelpCenterGuideFieldDto) => field.id === leftMenu || field.id.endsWith(':trigger')
-        ? -1 : leftGroup.ids.indexOf(field.id.includes(':') ? field.id.slice(leftMenu!.length + 1) : field.id);
+      const index = (field: HelpCenterGuideFieldDto) => field.id === this.menuIdForField(field, root) || field.id.endsWith(':trigger')
+        ? -1 : leftGroup.ids.indexOf(field.id.includes(':') ? field.id.slice(field.id.indexOf(':') + 1) : field.id);
       return index(left) - index(right) || left.order - right.order;
     });
     const previous = this.steps();
@@ -562,7 +614,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
 
   private closeGuideWithoutTarget(): void {
     this.frame.set(null);
-    this.insideMenu.set(false);
+    this.compactCard.set(false);
     this.guide.closePopup();
   }
 
@@ -570,15 +622,16 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
     const menuId = this.guideMenuTriggerId(field, root);
     if (menuId) {
       const trigger = this.menuTrigger(menuId, root);
-      const menuPanel = this.menuPanel(menuId, root);
+      const menuPanel = this.menuPanel(menuId, root, trigger);
       return trigger ? { element: menuPanel ?? trigger, menuId, menuPanel } : null;
     }
 
     const menuIdFromField = field.id.includes(':') ? field.id.split(':', 1)[0] : null;
-    const panel = menuIdFromField ? this.menuPanel(menuIdFromField, root) : null;
+    const selectedTrigger = menuIdFromField ? this.menuTriggerForField(field, root) : null;
+    const panel = menuIdFromField ? this.menuPanel(menuIdFromField, root, selectedTrigger) : null;
     const itemId = menuIdFromField ? field.id.slice(menuIdFromField.length + 1) : field.id;
     const elements = this.fieldElements.get(field.id) ?? [];
-    const itemScope = panel ?? (menuIdFromField ? root.querySelector<HTMLElement>(`[data-guide-control="${menuIdFromField}"]`) : null);
+    const itemScope = panel ?? (menuIdFromField ? selectedTrigger?.closest<HTMLElement>('[data-guide-control]') : null);
     const menuItem = itemScope ? Array.from(itemScope.querySelectorAll<HTMLElement>('[data-guide-item]'))
       .find(element => element.getAttribute('data-guide-item') === itemId) : null;
     const element = menuItem ?? elements.find(candidate => this.isRendered(candidate)) ?? null;
@@ -596,7 +649,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       element,
       repeatedElements,
       menuId: ownerMenuId,
-      menuPanel: ownerMenuId ? this.menuPanel(ownerMenuId, root) : element.closest<HTMLElement>('.app-menu__panel:not(.app-menu__panel--inline)[role="menu"]')
+      menuPanel: ownerMenuId ? this.menuPanel(ownerMenuId, root, this.menuTriggerForField(field, root)) : element.closest<HTMLElement>('.app-menu__panel:not(.app-menu__panel--inline)[role="menu"]')
     };
   }
 
@@ -630,31 +683,35 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
     return elements.find(element => this.isRendered(element)) ?? null;
   }
 
-  private menuTrigger(menuId: string, root: HTMLElement): HTMLButtonElement | null {
-    const controlledTrigger = root.querySelector<HTMLElement>(`[data-guide-control="${menuId}"]`)
-      ?.querySelector<HTMLButtonElement>('.app-menu__trigger');
-    if (controlledTrigger?.getAttribute('aria-haspopup') === 'menu') return controlledTrigger;
-    const menuItem = this.findFieldElement(menuId, root);
-    return menuItem instanceof HTMLButtonElement && menuItem.getAttribute('aria-haspopup') === 'menu'
-      && (Boolean(menuItem.closest('app-menu, app-menu-trigger')) || menuItem.hasAttribute('data-guide-items'))
-      ? menuItem
-      : null;
+  private menuTriggerForField(field: HelpCenterGuideFieldDto, root: HTMLElement): HTMLButtonElement | null {
+    const menuId = this.menuIdForField(field, root);
+    const itemId = menuId && field.id.startsWith(menuId + ':') && !this.isMenuTrigger(field)
+      ? field.id.slice(menuId.length + 1) : null;
+    return menuId ? this.menuTrigger(menuId, root, itemId) : null;
   }
 
-  private menuPanel(menuId: string, root: HTMLElement): HTMLElement | null {
-    const control = root.querySelector<HTMLElement>(`[data-guide-control="${menuId}"]`);
-    const owner = control ?? this.menuTrigger(menuId, root)?.closest<HTMLElement>('app-menu') ?? null;
-    const ownPanel = owner?.querySelector<HTMLElement>('.app-menu__panel[role="menu"]');
-    if (ownPanel) return ownPanel;
-    const trigger = this.menuTrigger(menuId, root);
-    return trigger?.getAttribute('aria-expanded') === 'true'
+  private menuTrigger(menuId: string, root: HTMLElement, itemId: string | null = null): HTMLButtonElement | null {
+    this.indexFields(root);
+    const candidates = [...root.querySelectorAll<HTMLElement>(`[data-guide-control="${menuId}"]`)]
+      .map(control => control.querySelector<HTMLButtonElement>('.app-menu__trigger'));
+    candidates.push(...(this.fieldElements.get(menuId) ?? [])
+      .filter((element): element is HTMLButtonElement => element instanceof HTMLButtonElement));
+    const matches = [...new Set(candidates)].filter((trigger): trigger is HTMLButtonElement =>
+      !!trigger && !trigger.disabled && this.isRendered(trigger) && trigger.getAttribute('aria-haspopup') === 'menu'
+      && (Boolean(trigger.closest('app-menu, app-menu-trigger')) || trigger.hasAttribute('data-guide-items'))
+      && (!itemId || this.menuItemIds(trigger)?.split('\n').includes(itemId) !== false));
+    // Stable ownership keeps opening another card from reordering visited steps.
+    return matches[0] ?? null;
+  }
+
+  private menuPanel(menuId: string, root: HTMLElement, trigger = this.menuTrigger(menuId, root)): HTMLElement | null {
+    if (!trigger) return null;
+    const owner = trigger.closest<HTMLElement>('[data-guide-control], app-menu, app-menu-trigger, .ui-info-card__actions');
+    const ownPanel = owner?.querySelector<HTMLElement>('.app-menu__panel[role="menu"], .ui-info-card__menu');
+    if (ownPanel && this.isRendered(ownPanel)) return ownPanel;
+    return trigger.getAttribute('aria-expanded') === 'true'
       ? Array.from(root.querySelectorAll<HTMLElement>('app-menu-outlet .app-menu__panel[role="menu"], .ui-info-card__menu')).filter(panel => this.isRendered(panel)).at(-1) ?? null
       : null;
-  }
-
-  private closeMenu(menuId: string, root: HTMLElement): void {
-    const trigger = this.menuTrigger(menuId, root);
-    if (trigger?.getAttribute('aria-expanded') === 'true') this.clickFromGuide(trigger);
   }
 
   private isMenuTrigger(field: HelpCenterGuideFieldDto): boolean {

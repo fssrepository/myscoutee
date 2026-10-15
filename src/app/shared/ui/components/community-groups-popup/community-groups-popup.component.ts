@@ -29,7 +29,6 @@ import { isBaseGroupId } from '../../../core/contracts/groups/group-type';
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
   template: `
     <app-popup [model]="model()" [zIndex]="explore ? 1200 : null">
-      @if (store.error() && !store.editor()) { <p role="alert">{{ store.error() | i18n }}</p> }
       <app-smart-list data-guide-field="group-list" [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"
         (menuItemSelect)="select($event)"></app-smart-list>
       <ng-template #cardTemplate let-card let-openMenu="openMenu">
@@ -135,11 +134,11 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
     if (!this.explore) toolbarControls.push({
       id: 'bucket', kind: 'menu', align: 'start', menuKind: 'select',
       trigger: { label: bucket === 'trash' ? 'trash' : bucket === 'invitations' ? 'Invitations' : `groups.bucket.${bucket}`, ...GROUP_BUCKET_STYLE[bucket], layout: 'pill',
-        counter: bucket === 'explore' || bucket === 'trash' ? 0 : this.store.counters()[bucket] },
+        counter: bucket === 'explore' ? 0 : this.store.counters()[bucket] },
       items: (['hosting', 'participation', 'pending', 'invitations', 'trash'] as const).map(id => ({ id,
         label: id === 'trash' ? 'trash' : id === 'invitations' ? 'Invitations' : `groups.bucket.${id}`, ...GROUP_BUCKET_STYLE[id],
         kind: 'radio', showCheck: true, active: bucket === id, checked: bucket === id, surface: 'tinted',
-        counter: id === 'trash' ? 0 : this.store.counters()[id], counterTone: 'alert' }))
+        counter: this.store.counters()[id], counterTone: 'alert' }))
     });
     if (this.explore) toolbarControls.push({
       id: 'category', kind: 'menu', align: 'start', menuKind: 'select',
@@ -161,7 +160,7 @@ export class CommunityGroupsPopupComponent implements OnInit, OnDestroy {
         { id: 'create', label: 'groups.create', icon: 'add_circle', palette: 'green', surface: 'tinted' }
       ]
     });
-    return { title: this.explore ? 'groups.explore' : 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
+    return { errorMessage: this.store.editor() ? null : this.store.error(), title: this.explore ? 'groups.explore' : 'groups.title', size: 'wide', height: 'full', bodyLayout: 'fill', showToolbar: true,
       toolbarMobileAlign: 'start', onClose: () => this.explore ? this.store.closeExplore() : this.store.close(),
       headerControls: [{ id: 'sort', kind: 'menu', menuKind: 'select',
         trigger: { label: sort === 'distance' ? 'distance' : 'recent', icon: sort === 'distance' ? 'near_me' : 'schedule', palette: sort === 'distance' ? 'green' : 'violet', layout: 'pill' },

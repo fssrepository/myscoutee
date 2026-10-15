@@ -127,8 +127,7 @@ export class ActivityEventInfoCardMenuConverter {
       id: actionId,
       label: config.label,
       icon: config.icon,
-      palette: actionId === 'cancelEvent' || actionId === 'cancelBooking' ? 'pink' : actionId === 'followOrganizer' || actionId === 'unfollowOrganizer'
-        ? 'cyan' : this.actionPalette(actionId, config.tone),
+      palette: this.actionPalette(actionId, config.tone),
       surface: 'tinted',
       counter: isEventEntryAction && this.pendingActivityCount(subject) > 0
         ? { value: this.pendingActivityCount(subject), max: 99 }
@@ -335,6 +334,27 @@ export class ActivityEventInfoCardMenuConverter {
   }
 
   static actionPalette(actionId: string, tone: CardMenuAction['tone']): AppMenuPalette {
+    if (actionId === 'publish' || actionId === 'restore' || actionId === 'accept') {
+      return 'green';
+    }
+    if (actionId === 'leaveEvent') {
+      return 'danger';
+    }
+    if (actionId === 'cancelEvent' || actionId === 'cancelBooking') {
+      return 'pink';
+    }
+    if (actionId === 'followOrganizer' || actionId === 'unfollowOrganizer') {
+      return 'cyan';
+    }
+    if (actionId === 'askOrganizer') {
+      return 'violet';
+    }
+    if (actionId === 'reportOrganizer') {
+      return 'orange';
+    }
+    if (actionId === 'shareEvent') {
+      return 'green';
+    }
     if (actionId === 'addWatchlist' || actionId === 'removeWatchlist') {
       return 'blue';
     }
@@ -343,10 +363,11 @@ export class ActivityEventInfoCardMenuConverter {
     }
     switch (tone) {
       case 'positive':
-        return 'teal';
+        return 'green';
       case 'accent':
-        return 'brown';
+        return 'blue';
       case 'warning':
+        return 'gold';
       case 'share':
         return 'teal';
       case 'review':
@@ -354,7 +375,7 @@ export class ActivityEventInfoCardMenuConverter {
       case 'destructive':
         return 'danger';
       default:
-        return 'default';
+        return 'blue';
     }
   }
 }

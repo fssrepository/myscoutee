@@ -96,6 +96,7 @@ export interface UserEventFeedbackCountersRecord {
 }
 
 export interface UserRecord {
+  menuCounters?: Record<string, number>;
   activeWorkspaceGroupId?: string | null;
   workspaceGroupId?: string;
   accountUserId?: string;

@@ -1,3 +1,5 @@
+import { LocalCommunityAnnouncementsRepository } from '../../repositories/community/community-announcements.repository';
+import { LocalCommunityCasesRepository } from '../../repositories/community/community-cases.repository';
 import { GROUP_TYPES, baseGroupId, isBaseGroupId, groupType } from '../../../../contracts/groups/group-type';
 import { LocalNotificationsRepository } from '../../repositories/notifications/notifications.repository';
 import { LocalUsersMapper } from '../../mappers/accounts/user.mapper';
@@ -12,14 +14,16 @@ import { LocalAdminModerationRepository } from '../../repositories/content/admin
 import type { CommunityGroupRecord } from '../../entity/groups/community-group.entity';
 import type { ActivityMemberRecord } from '../../entity/common/activity.entity';
 import type { ICommunityGroupsService, GroupSyncRequest, GroupSyncResponse, CommunityGroup, SaveCommunityGroup, GroupFilters, GroupCounters, GroupWorkspace, GroupWorkspaceSelection } from '../../../../contracts/groups/community-group.interface';
-import { GROUP_CATEGORIES, communityGroupSummary, groupSort, groupMembershipBucket, type CommunityGroupSummary } from '../../../../contracts/groups/community-group.interface';
+import { GROUP_CATEGORIES, groupCounters, communityGroupSummary, groupSort, groupMembershipBucket, type CommunityGroupSummary } from '../../../../contracts/groups/community-group.interface';
 import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components';
 import type { ActivityMemberDTO, ActivityMemberActionResultDTO, ActivityMembersSummaryDto, ActivityMembersInviteResultDTO } from '../../../../contracts/common/activity.interface';
 
 @Injectable({ providedIn: 'root' })
 export class LocalCommunityGroupsService extends LocalRouteDelayService implements ICommunityGroupsService {
+  private readonly announcements = inject(LocalCommunityAnnouncementsRepository);
   private readonly notifications = inject(LocalNotificationsRepository);
   private readonly groups = inject(LocalCommunityGroupsRepository);
+  private readonly cases = inject(LocalCommunityCasesRepository);
   private readonly members = inject(LocalActivityMembersRepository);
   private readonly users = inject(LocalUsersRepository);
   private readonly reports = inject(LocalAdminModerationRepository);
@@ -121,10 +125,8 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         if (!Number.isInteger(offset) || offset < 0) throw new Error('Invalid cursor');
         const items = rows.slice(offset, offset + query.pageSize).map(communityGroupSummary);
         return { items, total: rows.length, nextCursor: offset + items.length < rows.length ? `${offset + items.length}` : null,
-          context: (await this.workspaces(userId)).reduce((counts, w) => {
-            const membershipBucket = groupMembershipBucket(w);
-            if (membershipBucket !== 'explore' && membershipBucket !== 'trash') counts[membershipBucket] += w.activity; return counts;
-          }, { hosting: 0, participation: 0, pending: 0, invitations: 0 }) };
+          context: groupCounters(this.users.queryUserById(userId)?.menuCounters) };
+
       })()
     ]);
     signal?.throwIfAborted();
@@ -275,6 +277,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     const target = { ...stored }; const self = userId === targetId;
     const admin = this.admin(this.member(id, userId)); const owner = group.ownerUserId === targetId;
     if (target.communityAction === action && target.communityActor === userId && (['grant-vote', 'revoke-vote'].includes(action) ? admin : self || admin)) {
+      if (group.groupType === 'community') { this.cases.groupAdminsChanged(id); this.announcements.membersChanged(id); }
       this.notifyMemberTransition(group, userId, target, action);
       if (action === 'take-over') this.notifyMembers(group, 'takeover', userId, target, group.takeoverCandidates ?? [], true);
       if (group.lifecycleStatus === 'under-review' && group.ownerUserId === target.userId && group.ownerReleasedAtIso === target.actionAtIso)
@@ -335,6 +338,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
     }
     this.groups.save({ ...group, updatedAtIso: target.actionAtIso!, version: group.version + 1 });
     this.writeMembers(id, next);
+    if (group.groupType === 'community') { this.cases.groupAdminsChanged(id); this.announcements.membersChanged(id); }
     if (group.lifecycleStatus === 'under-review' && group.ownerUserId === target.userId && group.ownerReleasedAtIso === target.actionAtIso)
       this.notifyMembers(group, 'owner-left', userId, target, group.takeoverCandidates ?? [], true);
     if (action === 'take-over') this.notifyMembers(group, 'takeover', userId, target, group.takeoverCandidates ?? [], true);
@@ -422,7 +426,7 @@ export class LocalCommunityGroupsService extends LocalRouteDelayService implemen
         * Math.cos(b.latitude * rad) * Math.sin((b.longitude - a.longitude) * rad / 2) ** 2;
       distanceKm = Math.round(12742 * Math.asin(Math.sqrt(Math.min(1, h))) * 10) / 10;
     }
-    return { ...group, canRestoreGroup: this.canRestoreGroup(group, own), canTakeOver: this.canTakeOver(group, rows, own), ownerName: owner?.name ?? '', ownerAvatarUrl: owner?.images?.[0] ?? null,
+    return { ...group, menuCounters: Object.fromEntries(Object.entries(this.users.queryUserById(userId)?.menuCounters ?? {}).filter(([key]) => key.startsWith('groups_'))), canRestoreGroup: this.canRestoreGroup(group, own), canTakeOver: this.canTakeOver(group, rows, own), ownerName: owner?.name ?? '', ownerAvatarUrl: owner?.images?.[0] ?? null,
       role: own?.role === 'Admin' ? 'Admin' : own ? 'Member' : null,
       membershipStatus: own?.status === 'blocked' ? 'blocked' : own?.status === 'deleted' ? 'deleted' : own?.status === 'accepted' ? 'accepted' : own ? 'pending' : null,
       requestKind: own?.requestKind === 'invite' ? 'invite' : own?.requestKind === 'join' ? 'join' : null, organizerOnly: own?.organizerOnly === true,

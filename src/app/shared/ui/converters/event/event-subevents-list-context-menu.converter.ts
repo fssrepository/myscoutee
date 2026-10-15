@@ -17,6 +17,7 @@ export interface EventSubeventsListContextMenuConverterInput {
   editorAction: 'edit' | 'manage' | 'view';
   pendingMembers: number;
   membersDisabled: boolean;
+  compactOnMobile?: boolean;
 }
 
 export class EventSubeventsListContextMenuConverter
@@ -29,10 +30,12 @@ export class EventSubeventsListContextMenuConverter
   ): readonly AppMenuItem<string, EventSubeventsListContextMenuContext>[] {
     const pendingMembers = this.nonNegativeInteger(input.pendingMembers);
     const canEditEvent = input.editorAction !== 'view';
+    const compactOnMobile = input.compactOnMobile !== false;
     return [
       {
         id: 'participant-filter',
         label: 'event.subevents.my.participation',
+        compactOnMobile,
         icon: input.participantOnly ? 'person_pin_circle' : 'person_pin',
         kind: 'toggle',
         layout: 'pill',
@@ -49,11 +52,13 @@ export class EventSubeventsListContextMenuConverter
         palette: canEditEvent ? 'amber' : 'teal',
         surface: 'tinted',
         layout: 'action',
+        compactOnMobile: compactOnMobile && !canEditEvent,
         context: { menu: 'context', action: input.editorAction }
       },
       {
         id: 'members',
         label: 'members',
+        compactOnMobile,
         icon: 'groups',
         palette: 'violet',
         surface: 'tinted',

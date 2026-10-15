@@ -45,14 +45,22 @@ export class CommunityCasesStore {
   readonly board = signal<CommunityCase | null>(null);
   readonly quotationFocus = signal<string|null>(null);
   readonly quotations = signal<CommunityCase | null>(null);
+  readonly quotationCounters = computed(() => {
+    const counts = { all: 0, pending: 0, accepted: 0, rejected: 0 };
+    for (const offer of this.quotations()?.offers ?? []) {
+      counts.all++;
+      counts[offer.status]++;
+    }
+    return counts;
+  });
   readonly changed = signal<CommunityCase | null>(null);
   readonly chatContext = signal<CommunityCase | null>(null);
   readonly counters = signal<CaseListContext>({ total: 0 });
   readonly taskCounters = signal<ScheduledTaskCounters>({ total: 0, active: 0, paused: 0, trash: 0 });
   private taskRevision = 0;
   readonly taskChanged = signal<CommunityScheduledTask | null>(null);
-  readonly count = computed(() => this.activity.getUserCounterOverride(this.profile.activeUserId(), 'cases')
-    ?? this.profile.activeUserProfile()?.activities?.cases ?? 0);
+  readonly count = computed(() => this.activity.getUserCounterOverrides(this.profile.activeUserId())?.menuCounters?.['communityCases']
+    ?? this.profile.activeUserProfile()?.activities?.menuCounters?.['communityCases'] ?? 0);
   readonly busy = signal(false);
   readonly error = signal('');
   readonly groups = computed(() => this.workspaces.workspaces().filter(g => g.groupType === 'community' && g.groupId !== COMMUNITY_BASE_GROUP_ID && g.membershipStatus === 'accepted'));
@@ -86,7 +94,7 @@ export class CommunityCasesStore {
     await this.mutate(async () => {
       const detail = await this.service.read(session.userId, id);
       return () => { this.publish(detail); this.board.set(detail); };
-    });
+    }, false, 'read');
   }
   close(): void { this.generation++; this.session.set(null); this.board.set(null); this.quotations.set(null); this.quotationFocus.set(null); this.editor.set(null); this.clearAudienceMembers(); this.busy.set(false); this.error.set(''); }
   closeBoard(): void { if (this.session()?.list) this.board.set(null); else this.close(); }
@@ -245,11 +253,11 @@ export class CommunityCasesStore {
   }
   async view(c: CommunityCase): Promise<void> {
     const s = this.session(); if (!s) return;
-    await this.mutate(async () => { const value = await this.service.read(s.userId, c.id); return () => { this.publish(value); this.board.set(value); }; });
+    await this.mutate(async () => { const value = await this.service.read(s.userId, c.id); return () => { this.publish(value); this.board.set(value); }; }, false, 'read');
   }
   async openQuotations(c: CommunityCase, offerId?:string): Promise<void> {
     const s=this.session(); if(!s)return;
-    await this.mutate(async()=>{const value=await this.service.read(s.userId,c.id);return()=>{this.publish(value);this.quotationFocus.set(offerId??null);this.quotations.set(value);};});
+    await this.mutate(async()=>{const value=await this.service.read(s.userId,c.id);return()=>{this.publish(value);this.quotationFocus.set(offerId??null);this.quotations.set(value);};}, false, 'read');
   }
   async loadChatContext(id: string): Promise<void> {
     const actor = this.workspace.accountId(this.profile.activeUserId());
@@ -276,7 +284,7 @@ export class CommunityCasesStore {
       const value = await this.service.detail(actor, id); if (actor !== this.workspace.accountId(this.profile.activeUserId())) return;
       this.publish(value);
       if (action === 'members') await this.openMembers(value); else await this.chooseProvider(value, true, onRecommend);
-    } catch { this.error.set('case.save.failed'); }
+    } catch (error) { this.error.set(this.readError(error)); }
   }
   async showTaskMembers(c: CommunityCase, selection: readonly string[]): Promise<void> {
     await this.activities.ensureEventMembersPopupLoaded();
@@ -338,7 +346,7 @@ export class CommunityCasesStore {
       onApply: selected => { if (session === this.session() && generation === this.generation && selected[0]) apply(selected[0].userId); } });
   }
   private setCount(count: number): void {
-    this.activity.patchUserCounterOverrides(this.profile.activeUserId(), { cases: count });
+    this.activity.patchUserCounterOverrides(this.profile.activeUserId(), { menuCounters: { communityCases: count } });
   }
   private publish(c: CommunityCase, created = false): void {
     const old = this.known.get(c.id);
@@ -359,14 +367,20 @@ export class CommunityCasesStore {
     if (this.quotations()?.id === c.id) this.quotations.set(c);
     this.changed.set(c);
   }
-  private async mutate(work: () => Promise<() => void>, rethrow = false): Promise<void> {
+  private readError(error: unknown): string {
+    const status = (error as { status?: number })?.status;
+    const message = error instanceof Error ? error.message : '';
+    return status === 403 || status === 404 || message === 'Forbidden' || message === 'Case not found'
+      ? 'case.load.unavailable' : 'case.load.failed';
+  }
+  private async mutate(work: () => Promise<() => void>, rethrow = false, operation: 'read' | 'write' = 'write'): Promise<void> {
     if (this.busy()) return; const generation = ++this.generation;
     this.busy.set(true); this.error.set('');
     try { const apply = await work(); if (generation === this.generation) apply(); }
     catch (error) {
       if (generation === this.generation) {
         const status=(error as {status?:number})?.status, message=error instanceof Error?error.message:'';
-        this.error.set(status===403||message==='Forbidden'?'case.save.forbidden':status===409||message==='case.changed'?'case.changed':message==='case.task.dependencies.cycle'?message:'case.save.failed');
+        this.error.set(operation === 'read' ? this.readError(error) : status===403||message==='Forbidden'?'case.save.forbidden':status===409||message==='case.changed'?'case.changed':message==='case.task.dependencies.cycle'?message:'case.save.failed');
       }
       if (rethrow) throw new Error(this.error() || 'case.save.failed');
     }

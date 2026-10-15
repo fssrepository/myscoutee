@@ -35,6 +35,7 @@ describe('Shared case appointment schedule and notifications',()=>{
   const request={userId:alex,serviceId,providerAccountId:anna,slotIds:[page.result.slots[0].id],version:page.version,operationId:'booking-1'};
   const saved=await service.save(caseId,request);expect(saved.appointments).toHaveLength(1);
   expect(await service.save(caseId,request)).toEqual(saved);
+  expect((await service.calendar(anna,'2026-10-12','2026-10-12'))[0]).toMatchObject({caseId,caseType:'meter-replacement',caseStatus:'open'});
   const notifications=Object.values(db.read().notifications.byId).filter(n=>n.kind==='case-appointments-updated');
   expect(notifications.map(n=>n.recipientUserId)).toContain(anna);expect(notifications.map(n=>n.recipientUserId)).not.toContain(alex);
   expect(new Set(notifications.map(n=>n.id)).size).toBe(notifications.length);

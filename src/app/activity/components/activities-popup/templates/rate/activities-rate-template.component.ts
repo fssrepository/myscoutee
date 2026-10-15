@@ -346,8 +346,7 @@ export class ActivitiesRatesController {
 
   constructor(private readonly deps: ActivitiesRatesControllerDeps) {
     this.rateEditorPresenter = new ActivitiesRateEditorPresenter({
-      getActivitiesRateFilter: () => this.deps.getActivitiesRateFilter(),
-      getSelectedRow: () => this.selectedRow(),
+      getRatingLabel: () => this.deps.isWork?.() ? 'campaign.interest' : 'affinity',
       getFocusedRow: () => this.isFullscreenModeActive()
         ? this.currentFullscreenRow()
         : this.selectedRow(),
@@ -373,7 +372,6 @@ export class ActivitiesRatesController {
   }
 
   ratingMenuConfig(row: ImageCardData): AppMenuRateConfig {
-    const modeLabel = row.mode === 'pair' ? 'Pair' : 'Single';
     return {
       subjectKey: row.id,
       criteriaDefinition: ratingCriteriaFor(row?.ratingDomain),
@@ -382,7 +380,7 @@ export class ActivitiesRatesController {
       value: this.ownRatingValue(row),
       guideFields: { slider: 'rating-input', action: 'rating-save' },
       readonly: this.isPairReceivedRow(row),
-      label: `Affinity · ${modeLabel} · ${row.title || 'Rate'}`,
+      label: this.deps.isWork?.() ? 'campaign.interest' : 'affinity',
       actionLabel: 'save',
       blinkOnSelect: false,
       animation: this.isRatingBarBlinking ? 'blink' : 'default',

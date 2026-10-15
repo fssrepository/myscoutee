@@ -419,6 +419,7 @@ export class ProfileEditorComponent implements OnDestroy {
       value: option.value,
       active: option.value === currentStatus,
       checked: option.value === currentStatus,
+      showCheck: true,
       palette: this.profileStatusPalette(option.value),
       surface: 'tinted',
       context: { kind: 'profileStatus', status: option.value }

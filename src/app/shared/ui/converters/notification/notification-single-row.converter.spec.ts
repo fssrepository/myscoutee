@@ -6,6 +6,27 @@ import { NotificationSingleRowConverter } from './notification-single-row.conver
 describe('NotificationSingleRowConverter badges', () => {
   const converter = new NotificationSingleRowConverter();
 
+  it('opens service feedback from the existing notification menu with service presentation', () => {
+    const item = notification({ kind: 'service-feedback-ready', sourceType: 'service-feedback',
+      sourceId: 'review-1', category: 'user', senderAvatarUrl: '/not-a-provider.webp' });
+    const row = converter.convert(item);
+    expect(row.menuActions).toEqual(['markNotificationRead', 'openNotificationFeedback']);
+    expect(row).toMatchObject({ palette: 'gold', icon: 'home_repair_service', avatarUrl: null });
+    expect(row.badges?.[0]?.palette).toBe('gold');
+  });
+
+  it('uses the Speed meeting rose palette and table icon without changing its event target', () => {
+    const item = notification({ kind: 'mingle-table-assignment', category: 'event',
+      payload: { mingle: 'true', eventId: 'meeting-1' } });
+    const row = converter.convert(item);
+    expect(row).toMatchObject({ palette: 'rose', icon: 'table_restaurant', avatarUrl: null });
+    expect(row.badges?.[0]?.palette).toBe('rose');
+    expect(row.menuActions).toContain('openNotificationEvent');
+    const read = converter.convert({ ...item, readAtIso: '2026-10-14T19:00:00Z' });
+    expect(read.surfaceTone).toBe('muted');
+    expect(read.badges?.find(badge => badge.position === 'top-right')?.palette).toBeNull();
+  });
+
   it('opens Contacts for requests and decisions without requiring an event', () => {
     for (const kind of ['contact-chat-requested', 'contact-chat-approved', 'contact-chat-rejected']) {
       expect(NotificationSingleRowConverter.targetActionId(notification({ kind, category: 'chat', sourceType: 'contact' })))

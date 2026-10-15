@@ -41,6 +41,20 @@ describe('Community announcements, member voting and notifications', () => {
     await expect(service.action(a.id,{userId:maya,version:result.version,action:'vote',choice:'no'})).rejects.toThrow();
     await expect(service.action(a.id,{userId:maya,version:result.version,action:'vote',choice:'yes'})).rejects.toThrow();
   });
+  it('accepts independent votes and lifecycle commands from an older view without losing ballots',async()=>{
+    const original=await service.detail(alex,vote);
+    await service.action(vote,{userId:maya,version:original.version,action:'vote',choice:'yes'});
+    const second=await service.action(vote,{userId:alex,version:original.version,action:'vote',choice:'no'});
+    expect(second.results).toEqual({yes:1,no:1,abstain:0});
+    await expect(service.action(vote,{userId:maya,version:original.version,action:'vote',choice:'no'})).rejects.toThrow();
+    await expect(service.action(vote,{userId:maya,version:original.version,action:'close'})).rejects.toThrow('Forbidden');
+    for(const action of ['close','unpublish','publish','trash','restore'] as const){
+      const result=await service.action(vote,{userId:alex,version:original.version,action});
+      expect(result.results).toEqual({yes:1,no:1,abstain:0});
+      expect(result.version).toBeGreaterThan(second.version);
+    }
+    await expect(service.save({...original,userId:alex,title:'Stale overwrite'})).rejects.toThrow('announcement.changed');
+  });
   it('preserves final ballots after revocation and reopening, and sends one automatic closure notification per recipient',async()=>{
     let a=await service.detail(maya,vote);
     a=await service.action(a.id,{userId:maya,version:a.version,action:'vote',choice:'yes'});

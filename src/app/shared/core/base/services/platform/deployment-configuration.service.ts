@@ -30,6 +30,7 @@ export class DeploymentConfigurationService
   );
   private readonly paymentProviderIdRef = signal<string | null>(null);
   private readonly paymentCardsAvailableRef = signal(false);
+  private readonly paymentCurrenciesRef = signal<readonly string[]>(['EUR']);
   private readonly firebaseMessagingConfiguredRef = signal(false);
   private readonly loadingRef = signal(false);
   private loadPromise: Promise<DeploymentBrandingDto> | null = null;
@@ -40,6 +41,10 @@ export class DeploymentConfigurationService
   readonly privacyContact = this.privacyContactRef.asReadonly();
   readonly paymentProviderId = this.paymentProviderIdRef.asReadonly();
   readonly paymentCardsAvailable = this.paymentCardsAvailableRef.asReadonly();
+  readonly paymentCurrencies = this.paymentCurrenciesRef.asReadonly();
+  applyPaymentCurrencies(value: readonly string[] | undefined): void {
+    if (value?.length) this.paymentCurrenciesRef.set(value);
+  }
   applyPaymentCardsAvailable(value: boolean | undefined): void {
     this.paymentCardsAvailableRef.set(value === true);
   }

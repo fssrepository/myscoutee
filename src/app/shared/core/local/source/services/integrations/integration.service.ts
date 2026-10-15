@@ -55,59 +55,60 @@ export class LocalIntegrationService extends LocalRouteDelayService {
   }
 
   async claimExternalInvite(userId: string, token: string) {
-    await this.repository.whenReady();
-    const invite = this.repository.findExternalInvite(token);
-    if (!invite) return null;
-    await this.waitForRouteDelay('/integrations');
-    let user = this.users.queryUserById(userId);
-    if (!user) throw new Error('User unavailable');
-    if (invite.ownerType === 'community') {
-      const actor = user.accountUserId ?? user.id;
-      await this.groups.invite(invite.ownerUserId, invite.entityId, [actor]);
-      const group = await this.groups.readDetail(actor, invite.entityId);
-      if (group.membershipStatus !== 'accepted') {
-        await this.groups.action(group.requestKind === 'invite' ? actor : invite.ownerUserId, invite.entityId, actor, 'accept');
-      }
-      await this.groups.joinWorkspaceBase(actor, invite.entityId);
-      await this.users.selectWorkspace(actor, invite.entityId);
-      await this.repository.flushToIndexedDb();
-      return {groupId: invite.entityId, invitationAvailable: true};
-    }
-    const event = this.requireEventInvite(invite.ownerUserId, invite.entityId);
-    const ownerProfile = this.users.queryUserById(invite.ownerUserId);
-    const workspaceGroupId = ownerProfile?.workspaceGroupId ?? null;
-    if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, workspaceGroupId, invitationAvailable: false};
-    if (workspaceGroupId) {
-      user = await this.groups.claimEventInvite(workspaceGroupId, invite.ownerUserId, user.accountUserId ?? user.id);
-      await this.groups.joinWorkspaceBase(user.accountUserId!, workspaceGroupId);
-    }
-    if (!workspaceGroupId && user.accountUserId) {
-      user = this.users.queryUserById(user.accountUserId);
+    return this.withRouteDelay('/integrations', async () => {
+      await this.repository.whenReady();
+      const invite = this.repository.findExternalInvite(token);
+      if (!invite) return null;
+      let user = this.users.queryUserById(userId);
       if (!user) throw new Error('User unavailable');
-    }
-    if ((ownerProfile?.workspaceGroupId ?? null) !== (user.workspaceGroupId ?? null)) throw new Error('Forbidden');
-    const owner = {ownerType: 'event' as const, ownerId: event.id};
-    const current = this.members.peekMembersByOwner(owner);
-    const inviterCanInvite = event.adminIds?.includes(invite.ownerUserId) || event.creatorUserId === invite.ownerUserId
-      || event.acceptedMemberUserIds?.includes(invite.ownerUserId);
-    if (!inviterCanInvite) {
-      if (!this.events.queryExploreItems(user.id, true).some(item => item.id === event.id)) throw new Error('Forbidden');
-      const result = await this.eventActions.requestJoin(user.id, event.id, { skipLocalRouteDelay: true });
-      if (!result || result.membershipStatus === 'unchanged') throw new Error('Event participation is unavailable');
+      if (invite.ownerType === 'community') {
+        const actor = user.accountUserId ?? user.id;
+        await this.groups.invite(invite.ownerUserId, invite.entityId, [actor]);
+        const group = await this.groups.readDetail(actor, invite.entityId);
+        if (group.membershipStatus !== 'accepted') {
+          await this.groups.action(group.requestKind === 'invite' ? actor : invite.ownerUserId, invite.entityId, actor, 'accept');
+        }
+        await this.groups.joinWorkspaceBase(actor, invite.entityId);
+        await this.users.selectWorkspace(actor, invite.entityId);
+        await this.repository.flushToIndexedDb();
+        return {groupId: invite.entityId, invitationAvailable: true};
+      }
+      const event = this.requireEventInvite(invite.ownerUserId, invite.entityId);
+      const ownerProfile = this.users.queryUserById(invite.ownerUserId);
+      const workspaceGroupId = ownerProfile?.workspaceGroupId ?? null;
+      if (Date.parse(event.endAtIso) <= Date.now() || event.cancelled) return {eventId: event.id, workspaceGroupId, invitationAvailable: false};
+      if (workspaceGroupId) {
+        user = await this.groups.claimEventInvite(workspaceGroupId, invite.ownerUserId, user.accountUserId ?? user.id);
+        await this.groups.joinWorkspaceBase(user.accountUserId!, workspaceGroupId);
+      }
+      if (!workspaceGroupId && user.accountUserId) {
+        user = this.users.queryUserById(user.accountUserId);
+        if (!user) throw new Error('User unavailable');
+      }
+      if ((ownerProfile?.workspaceGroupId ?? null) !== (user.workspaceGroupId ?? null)) throw new Error('Forbidden');
+      const owner = {ownerType: 'event' as const, ownerId: event.id};
+      const current = this.members.peekMembersByOwner(owner);
+      const inviterCanInvite = event.adminIds?.includes(invite.ownerUserId) || event.creatorUserId === invite.ownerUserId
+        || event.acceptedMemberUserIds?.includes(invite.ownerUserId);
+      if (!inviterCanInvite) {
+        if (!this.events.queryExploreItems(user.id, true).some(item => item.id === event.id)) throw new Error('Forbidden');
+        const result = await this.eventActions.requestJoin(user.id, event.id, { skipLocalRouteDelay: true });
+        if (!result || result.membershipStatus === 'unchanged') throw new Error('Event participation is unavailable');
+        return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
+      }
+      if (!current.some(member => member.userId === user.id && ['accepted', 'pending'].includes(member.status))) {
+        const now = new Date().toISOString();
+        const candidate: ActivityMemberDTO = {id: `event:${event.id}:${user.id}`, userId: user.id, name: user.name,
+          initials: user.initials, gender: user.gender, city: user.city, statusText: user.statusText, role: 'Member',
+          status: 'pending', pendingSource: 'admin', requestKind: 'invite', invitedByActiveUser: false,
+          invitedByUserId: invite.ownerUserId, metAtIso: now, actionAtIso: now, metWhere: event.location, avatarUrl: user.images?.[0] ?? ''};
+        const partition = partitionEventInvitesByCapacity(current, [candidate], event.capacityTotal);
+        if (!partition.acceptedAdditions.length) throw new Error('Event invitation could not be created');
+        await this.members.writeMembersByOwner(owner, [...current, candidate], event.capacityTotal, invite.ownerUserId);
+      }
+      await this.repository.flushToIndexedDb();
       return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
-    }
-    if (!current.some(member => member.userId === user.id && ['accepted', 'pending'].includes(member.status))) {
-      const now = new Date().toISOString();
-      const candidate: ActivityMemberDTO = {id: `event:${event.id}:${user.id}`, userId: user.id, name: user.name,
-        initials: user.initials, gender: user.gender, city: user.city, statusText: user.statusText, role: 'Member',
-        status: 'pending', pendingSource: 'admin', requestKind: 'invite', invitedByActiveUser: false,
-        invitedByUserId: invite.ownerUserId, metAtIso: now, actionAtIso: now, metWhere: event.location, avatarUrl: user.images?.[0] ?? ''};
-      const partition = partitionEventInvitesByCapacity(current, [candidate], event.capacityTotal);
-      if (!partition.acceptedAdditions.length) throw new Error('Event invitation could not be created');
-      await this.members.writeMembersByOwner(owner, [...current, candidate], event.capacityTotal, invite.ownerUserId);
-    }
-    await this.repository.flushToIndexedDb();
-    return {eventId: event.id, workspaceGroupId, invitationAvailable: true};
+    });
   }
 
   private requireEventInvite(actor: string, entityId: string) {
@@ -173,22 +174,24 @@ export class LocalIntegrationService extends LocalRouteDelayService {
     name: string,
     expiresInDays: number, admin = false
   ): Promise<IntegrationTokenCreatedDto> {
-    await this.repository.whenReady();
-    await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`);
-    const created = this.repository.createToken(
-      this.requireUserId(admin),
-      name,
-      expiresInDays, admin
-    );
-    await this.repository.flushToIndexedDb();
-    return created;
+    return this.withRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`, async (): Promise<IntegrationTokenCreatedDto> => {
+      await this.repository.whenReady();
+      const created = this.repository.createToken(
+        this.requireUserId(admin),
+        name,
+        expiresInDays, admin
+      );
+      await this.repository.flushToIndexedDb();
+      return created;
+    });
   }
 
   async revokeToken(tokenId: string, admin = false): Promise<void> {
-    await this.repository.whenReady();
-    await this.waitForRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`);
-    this.repository.revokeToken(this.requireUserId(admin), tokenId, admin);
-    await this.repository.flushToIndexedDb();
+    return this.withRouteDelay(`${INTEGRATIONS_ROUTE}/tokens`, async (): Promise<void> => {
+      await this.repository.whenReady();
+      this.repository.revokeToken(this.requireUserId(admin), tokenId, admin);
+      await this.repository.flushToIndexedDb();
+    });
   }
 
   private requireUserId(admin = false): string {
