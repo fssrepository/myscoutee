@@ -1,4 +1,4 @@
-import { ServiceFeedbackStore } from '../../context/stores/services/service-feedback.store';
+import { FeedbackStore } from '../../context/stores/feedback/feedback.store';
 import { EventCheckoutSlotPickerStore } from '../../context/stores/event/event-checkout-slot-picker.store';
 import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
 import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
@@ -341,7 +341,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly announcements = inject(CommunityAnnouncementsStore);
   protected readonly services = inject(ServiceOfferingsStore);
   protected readonly caseSlotPicker = inject(EventCheckoutSlotPickerStore);
-  protected readonly serviceFeedback=inject(ServiceFeedbackStore);
+  protected readonly feedbackStore=inject(FeedbackStore);
   protected readonly cases = inject(CommunityCasesStore);
   protected readonly communityGroups = inject(CommunityGroupsStore);
   protected readonly navigatorGroupsMenuModel = computed(() => navigatorContentMenuModel('groups',
@@ -389,7 +389,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly profileBindings: ProfileBindings = {};
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
-  private lastHandledEventFeedbackRequestMs = 0;
+  private lastHandledFeedbackRequestMs = 0;
   private hydrationRequestVersion = 0;
   private realtimePollingUserId = '';
   private readonly userRealtimeScheduler = new UiTaskScheduler<string>({
@@ -579,8 +579,6 @@ export class SideMenuComponent implements OnDestroy {
     }
     const activityOverrides = this.activityStore.getUserCounterOverrides(activeUser.id);
     const eventCounters = activityOverrides.event ?? activeUser.activities?.event;
-    const eventFeedback = activityOverrides.eventFeedback ?? activeUser.activities?.eventFeedback;
-    const moduleCounters = { ...activeUser.activities?.menuCounters, ...activityOverrides.menuCounters };
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
       chats: activityOverrides.chats ?? activeUser.activities?.chats ?? 0,
@@ -593,9 +591,9 @@ export class SideMenuComponent implements OnDestroy {
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       contactRequestsPending: activityOverrides.contactRequestsPending ?? activeUser.activities?.contactRequestsPending ?? 0,
-      feedback: this.groupWorkspaces.context.isCommunity()
-        ? (eventFeedback?.pending ?? 0) + (eventFeedback?.ownEvents ?? 0) + (moduleCounters['serviceFeedback_pending'] ?? 0)
-        : activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
+      feedback: activeUser.admin
+        ? activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0
+        : this.feedbackStore.counters().attention,
       notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
       paymentRefundsPending: activityOverrides.paymentRefundsPending ?? activeUser.activities?.paymentRefundsPending ?? 0,
       chat: {
@@ -1451,12 +1449,12 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.memberMenuStore.navigatorEventFeedbackRequest();
-      if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
+      const request = this.memberMenuStore.navigatorFeedbackRequest();
+      if (!request || request.updatedMs <= this.lastHandledFeedbackRequestMs) {
         return;
       }
-      this.lastHandledEventFeedbackRequestMs = request.updatedMs;
-      void this.openEventFeedbackPopupFromNavigatorRequest();
+      this.lastHandledFeedbackRequestMs = request.updatedMs;
+      void this.openFeedbackPopupFromNavigatorRequest();
     });
 
   }
@@ -1572,7 +1570,7 @@ export class SideMenuComponent implements OnDestroy {
         this.openImpressions(event.sourceEvent);
         return;
       case 'feedback':
-        this.openEventFeedbackPopup(event.sourceEvent);
+        this.openFeedbackPopup(event.sourceEvent);
         return;
       case 'votes':
         void this.announcements.open();
@@ -1818,12 +1816,12 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
-  protected openEventFeedbackPopup(event?: Event): void {
+  protected openFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
     if (this.serverActionsUnavailable() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorEventFeedbackRequest();
+    this.memberMenuStore.openNavigatorFeedbackRequest();
   }
 
   protected isAdminMode(): boolean {
@@ -2332,6 +2330,7 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     const followingRevision = this.followingStore.captureRevision();
+    const feedbackRevision = this.feedbackStore.captureCounterRevision();
     const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     const counterSyncToken = this.activityStore.captureUserCounterSyncToken(userId);
     const locationSyncToken = this.userProfileStore.captureUserLocationSyncToken(userId);
@@ -2348,6 +2347,7 @@ export class SideMenuComponent implements OnDestroy {
       }
       this.moderationStore.apply(snapshot.contentModeration);
       this.followingStore.applySnapshot(snapshot.userId, snapshot.following, followingRevision);
+      this.feedbackStore.applyRealtimeCounters(snapshot.userId, snapshot.counters, feedbackRevision);
       this.photoFeedStore.applyCounters(snapshot.userId, snapshot.feedCounters);
       this.deploymentConfiguration.applyPaymentCardsAvailable(snapshot.paymentCardsAvailable);
       this.deploymentConfiguration.applyPaymentCurrencies(snapshot.paymentCurrencies);
@@ -2505,7 +2505,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     if (route !== '/game') return;
     const params = this.router.parseUrl(url).queryParams;
-    if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId'] && !params['caseId'] && !params['announcementId'] && !params['payments'] && !params['ratings'] && !params['serviceFeedback']) return;
+    if (!params['chatId'] && !params['mingleEventId'] && !params['communityGroupId'] && !params['caseId'] && !params['announcementId'] && !params['payments'] && !params['ratings'] && !params['feedback']) return;
     const accountId = this.groupWorkspaces.context.accountUserId();
     this.openingNotificationRoute = url;
     try {
@@ -2522,8 +2522,8 @@ export class SideMenuComponent implements OnDestroy {
       if (!await this.groupWorkspaces.select(groupId) || this.router.url !== url
           || this.groupWorkspaces.context.accountUserId() !== accountId) return;
       const userId = this.userProfileStore.activeUserId();
-      if (params['caseId'] || params['announcementId'] || params['payments'] || params['ratings'] || params['serviceFeedback']) {
-        if(params['serviceFeedback'])await this.serviceFeedback.open();
+      if (params['caseId'] || params['announcementId'] || params['payments'] || params['ratings'] || params['feedback']) {
+        if(params['feedback'])await this.feedbackStore.open();
         else if(params['payments'])await this.paymentMethodsPopupStore.openHistory();
         else if (params['announcementId']) await this.announcements.openReference(`${params['announcementId']}`);
         else if (params['caseId']) await this.cases.openReference(`${params['caseId']}`);
@@ -2536,7 +2536,7 @@ export class SideMenuComponent implements OnDestroy {
         }
         if (this.router.url === url && this.userProfileStore.activeUserId() === userId) {
           const tree = this.router.parseUrl(url);
-          for (const key of ['serviceFeedback', 'caseId', 'announcementId', 'payments', 'ratings', 'campaignId', 'workspaceGroupId']) delete tree.queryParams[key];
+          for (const key of ['feedbackEvaluations', 'caseId', 'announcementId', 'payments', 'ratings', 'campaignId', 'workspaceGroupId']) delete tree.queryParams[key];
           await this.router.navigateByUrl(tree, { replaceUrl: true });
         }
         return;
@@ -2703,8 +2703,8 @@ export class SideMenuComponent implements OnDestroy {
     return Number.isFinite(user?.completion) ? Math.max(0, Math.trunc(Number(user?.completion))) : 0;
   }
 
-  private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {
-    await this.activitiesStore.ensureEventFeedbackPopupLoaded();
+  private async openFeedbackPopupFromNavigatorRequest(): Promise<void> {
+    await this.activitiesStore.ensureFeedbackPopupLoaded();
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])

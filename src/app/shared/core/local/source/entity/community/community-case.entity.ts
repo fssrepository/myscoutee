@@ -1,12 +1,9 @@
 import type { CaseFields, CaseStatus, CaseMembershipStatus, CaseBoardTask, CaseSupport, CaseRecommendation, CaseOffer, ScheduledTaskFields } from '../../../../contracts/community/community-case.interface';
 export const COMMUNITY_CASES_TABLE_NAME = 'serviceCases' as const;
 export const COMMUNITY_TASKS_TABLE_NAME = 'communityScheduledTasks' as const;
-export interface CommunityCaseFeedbackWork { reviewers:string[]; providers:CaseSupport[]; createdAtIso:string; caseTitle:string; }
+export type CommunityCaseFeedbackWork = import('../../../../contracts/feedback/feedback.interface').FeedbackPreparationContext;
 export interface CommunityCaseRecord extends CaseFields {
   counterOwners?: Record<string, string>;
-  feedbackCounterOwners?: Record<string, number>;
-  feedbackCounterBuckets?: Record<string, Record<string, number>>;
-  feedback?:import('../../../../contracts/community/service-feedback.interface').ServiceFeedback[];
   feedbackWork?:CommunityCaseFeedbackWork|null;
   id: string; baseGroupId: string; ownerAccountId: string | null; status: CaseStatus;
   chatAccountIds?: string[];

@@ -1,7 +1,6 @@
 import { AppUtils } from '../../../core/base/app-utils';
-import { ServiceFeedbackService } from '../../../core/base/services/community/service-feedback.service';
-import type { ServiceFeedbackStats } from '../../../core/contracts/community/service-feedback.interface';
-import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/affinity/rating-snapshot';
+import { FeedbackService } from '../../../core/base/services/feedback/feedback.service';
+import type { FeedbackStats } from '../../../core/contracts/feedback/feedback.interface';
 import {
   ExplanationGuideService,
   PopupComponent,
@@ -26,14 +25,14 @@ export class ServiceOfferingEditorComponent implements OnChanges, OnDestroy {
   readonly editor = input.required<{value:ServiceOfferingItem|null;readOnly:boolean}>();
  protected readonly store=inject(ServiceOfferingsStore);
  private readonly i18n=inject(I18nService);
- private readonly feedback=inject(ServiceFeedbackService);
- protected readonly stats=signal<ServiceFeedbackStats|null>(null);
+ private readonly feedback=inject(FeedbackService);
+ protected readonly stats=signal<FeedbackStats|null>(null);
  private statsGeneration=0;
  private readonly guide=inject(ExplanationGuideService);
  private unregister:(()=>void)|null=null;
  ngOnDestroy():void{this.statsGeneration++;this.unregister?.();}
  protected readonly form = signal<SaveServiceOffering>(null!);
- private loadStats():void{const owner=this.editor().value?.service.ownerAccountId,generation=++this.statsGeneration;this.stats.set(null);if(owner)void this.feedback.stats(this.store.profileId(),owner).then(stats=>{if(generation===this.statsGeneration)this.stats.set(stats);}).catch(()=>{if(generation===this.statsGeneration)this.store.error.set('service.feedback.failed');});}
+ private loadStats():void{const owner=this.editor().value?.service.ownerAccountId,generation=++this.statsGeneration;this.stats.set(null);if(owner)void this.feedback.stats(this.store.profileId(),owner).then(stats=>{if(generation===this.statsGeneration)this.stats.set(stats);}).catch(()=>{if(generation===this.statsGeneration)this.store.error.set('feedback.evaluation.failed');});}
  ngOnChanges():void{this.loadStats();this.unregister??=this.guide.registerContext('community.service.editor');const s=this.editor().value?.service;this.form.set({userId:this.store.profileId(),id:s?.id,version:s?.version,title:s?.title??'',description:s?.description??'',sourceLink:s?.sourceLink??'',category:s?.category??'maintenance',imageUrls:[...(s?.imageUrls??[])],languages:[...(s?.languages??[])],maxDistanceKm:null,
    staffAccountIds:[...(s?.staffAccountIds??[this.store.accountId()])],slotsEnabled:false,startAtIso:null,endAtIso:null,frequency:'One-time',durationMinutes:60,slotTemplates:[],pricing:null});}
  protected readonly popup = computed<PopupModel>(() => ({errorMessage:this.store.error(),title:this.editor().readOnly?'service.view':'service.edit',size:'wide',height:'full',onClose:()=>this.store.closeEditor(),
@@ -60,10 +59,8 @@ export class ServiceOfferingEditorComponent implements OnChanges, OnDestroy {
    {id:'sourceLink',guideFieldId:'sourceLink',bind:'sourceLink',kind:'link',label:t('service.external.link'),placeholder:'https://...',layout:'wide'},
    {id:'category',guideFieldId:'category',bind:'category',kind:'menu',config:{kind:'select',trigger:{label:`service.category.${this.form().category}`,...SERVICE_CATEGORY_STYLE[this.form().category],layout:'pill'},items:SERVICE_CATEGORIES.map(id=>({id,value:id,label:`service.category.${id}`,...SERVICE_CATEGORY_STYLE[id],surface:'tinted',kind:'radio',active:id===this.form().category,checked:id===this.form().category}))}},
 
- ]},...(this.stats()?[{id:'statistics',title:t('service.feedback.statistics'),icon:'star',palette:'gold',controls:[
+ ]},...(this.stats()?[{id:'statistics',title:t('feedback.evaluation.statistics'),icon:'star',palette:'gold',controls:[
    {id:'statistics-values',kind:'table' as const,layout:'wide' as const,config:{rows:[
-     {label:t('service.feedback.count'),value:String(this.stats()!.count)},
-     ...(this.stats()!.count?[{label:t('service.feedback.average'),value:`${this.stats()!.average.toFixed(2)} / 10`},
-       ...SERVICE_RATING_CRITERIA.criteria.map(c=>({label:t(c.label),value:`${(this.stats()!.criteria[c.id]??0).toFixed(2)} / 10`}))]:[])]}}
+     {label:t('feedback.evaluation.count'),value:String(this.stats()!.count)}]}}
  ]}]:[])]};return {...model,steps:model.steps.map(step=>({...step,controls:step.controls.map(c=>({...c,disabled:this.editor().readOnly&&c.id!=='staff-list'}))}))};});
 }

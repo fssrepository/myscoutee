@@ -6,7 +6,7 @@ import type { PricingConfig } from '../../../../contracts/payments/pricing.inter
 import { LocalActivityResourcesRepository } from '../../repositories/events/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../../repositories/events/activity-sub-event-stage-runtime.repository';
 import { LocalEventCheckoutBasketsRepository } from '../../repositories/events/event-checkout-baskets.repository';
-import { LocalEventFeedbackRepository } from '../../repositories/events/event-feedback.repository';
+import { LocalFeedbackRepository } from '../../repositories/feedback/feedback.repository';
 import { LocalEventsRepository } from '../../repositories/events/events.repository';
 import { LocalChatsRepository } from '../../repositories/chat/chats.repository';
 import { LocalNotificationsRepository } from '../../repositories/notifications/notifications.repository';
@@ -123,7 +123,7 @@ describe('LocalEventsService', () => {
           }
         },
         { provide: LocalEventCheckoutBasketsRepository, useValue: {} },
-        { provide: LocalEventFeedbackRepository, useValue: {} },
+        { provide: LocalFeedbackRepository, useValue: {} },
         { provide: LocalUsersRepository, useValue: { queryUserById } },
         {
           provide: LocalAssetTicketsRepository,

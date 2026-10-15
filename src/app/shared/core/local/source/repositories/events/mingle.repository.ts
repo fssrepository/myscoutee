@@ -1,3 +1,4 @@
+import { completedMinglePeerIds } from '../../mappers/events/mingle.mapper';
 import {groupPriorityEnabled} from '../../../../contracts/groups/group-type';
 import { LocalUserRatesMapper } from '../../mappers/affinity/rate.mapper';
 import { Injectable, inject } from '@angular/core';
@@ -19,6 +20,11 @@ export class LocalMingleRepository {
   private readonly events = inject(LocalEventsRepository);
   private readonly rates = inject(LocalRatesRepository);
   private readonly notifications = inject(LocalNotificationsRepository);
+
+  completedPeers(userId: string, eventIds: readonly string[]): Record<string, string[]> {
+    const sessions = this.db.read()[MINGLE_SESSIONS_TABLE_NAME];
+    return Object.fromEntries(eventIds.map(id => [id, completedMinglePeerIds(sessions.byId[id], userId)]));
+  }
 
   async flushToIndexedDb(): Promise<void> { await this.db.flushToIndexedDb(); }
 

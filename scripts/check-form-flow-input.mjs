@@ -345,45 +345,45 @@ cards=root.querySelectorAll('app-text-card');assert.equal(cards.length,1);assert
 cardActions.unsubscribe();
 console.log('PASS slot-style quotation cards, passive right-hand price badges, menu action routing and in-place list removal');
 // The existing feedback popup owns event and service cards, including the original status menu.
-const FeedbackPopup=await symbol('EventFeedbackPopupComponent');
-const ServiceFeedbackStore=await symbol('ServiceFeedbackStore');
-const eventFeedbackItem={eventId:'event-feedback-one',title:'Community walk',subtitle:'Park Court',timeframe:'Today',imageUrl:'',startAtMs:Date.parse('2026-10-06T01:00:00Z'),pendingCards:1,totalCards:1,isRemoved:false,isFeedbacked:false,feedbackedAtMs:null};
+const FeedbackPopup=await symbol('FeedbackPopupComponent');
+const FeedbackEvaluationStore=await symbol('FeedbackEvaluationStore');
+const feedbackItem={eventId:'feedback-one',title:'Community walk',subtitle:'Park Court',timeframe:'Today',imageUrl:'',startAtMs:Date.parse('2026-10-06T01:00:00Z'),pendingCards:1,totalCards:1,isRemoved:false,isFeedbacked:false,feedbackedAtMs:null};
 const review={feedback:{id:'service-review-one',caseTitle:'Repair',providerAccountId:'provider',viewerAccountId:'reviewer',status:'pending',criteria:{},average:null,comment:'',createdAtIso:'2026-10-06T02:00:00Z',submittedAtIso:null},providerName:'Service provider',reviewerName:'Reviewer'};
 const detailOpens=[],feedbackDialogs=[];
 const mixedFeedback={changed:signal(null),pageAfterEvents:async query=>({items:query.filter===review.feedback.status?[structuredClone(review)]:[],total:query.filter===review.feedback.status?1:0,context:{pending:review.feedback.status==='pending'?1:0,feedbacked:0,removed:review.feedback.status==='removed'?1:0,received:0}}),
  openDetail:async(item,received)=>detailOpens.push({item,received}),action:async(item,command)=>{review.feedback.status=command.action==='remove'?'removed':'pending';mixedFeedback.changed.set({userId:'reviewer',id:item.feedback.id,action:command.action});}};
-const eventPages=async query=>({items:query.filter==='pending'?[eventFeedbackItem]:[],allItems:[eventFeedbackItem],organizerItems:[],total:query.filter==='pending'?1:0,counts:{pending:1,feedbacked:0,removed:0,ownEvents:0}});
+const eventPages=async query=>({items:query.filter==='pending'?[feedbackItem]:[],allItems:[feedbackItem],organizerItems:[],total:query.filter==='pending'?1:0,counts:{pending:1,feedbacked:0,removed:0,ownEvents:0}});
 const providerValues={
- ServiceFeedbackStore:mixedFeedback,CampaignsStore:{feedbackCampaign:signal(null)},GroupWorkspaceContextService:{isWork:()=>false,isCommunity:()=>true},
+ FeedbackEvaluationStore:mixedFeedback,CampaignsStore:{feedbackCampaign:signal(null)},GroupWorkspaceContextService:{isWork:()=>false,isCommunity:()=>true},
  UserProfileStore:{activeUserId:signal('reviewer'),activeUserProfile:()=>({id:'reviewer'})},AppRuntimeStore:{isDataSourceAvailable:()=>true},
- ActivityStore:{counterOverridesByUserId:signal({}),activityEventFeedbackSubmitSync:signal(null),getUserCounterOverride:()=>null},
- MemberMenuStore:{navigatorEventFeedbackRequest:signal(null),clearNavigatorEventFeedbackRequest(){}},ActivitiesPopupStore:{},EventsService:{loadEventFeedbackPage:eventPages},
+ ActivityStore:{counterOverridesByUserId:signal({}),activityFeedbackSubmitSync:signal(null),getUserCounterOverride:()=>null},
+ MemberMenuStore:{navigatorFeedbackRequest:signal(null),clearNavigatorFeedbackRequest(){}},ActivitiesPopupStore:{},EventsService:{loadFeedbackPage:eventPages},
  ExplanationGuideService:{registerContext:()=>()=>{},popupOpen:signal(false)},DialogStore:{open:config=>feedbackDialogs.push(config)}
 };
 const feedbackProviders=[];for(const [name,useValue] of Object.entries(providerValues))feedbackProviders.push({provide:await symbol(name),useValue});
 const feedbackEnv=createEnvironmentInjector(feedbackProviders,app.injector),feedbackHost=document.createElement('div');document.body.append(feedbackHost);
 const feedbackRef=createComponent(FeedbackPopup,{environmentInjector:feedbackEnv,hostElement:feedbackHost});app.attachView(feedbackRef.hostView);await settle();
 feedbackRef.instance.openPopup();await settle();await settle();
-const feedbackModel=feedbackRef.instance.eventFeedbackPopupModel();
+const feedbackModel=feedbackRef.instance.feedbackPopupModel();
 assert.equal(feedbackModel.title,'feedback.list.title');
 assert.equal(feedbackModel.headerControls.length,1,'Only the original status menu remains');
-assert.equal(feedbackModel.headerControls[0].id,'event-feedback-filter');
+assert.equal(feedbackModel.headerControls[0].id,'feedback-filter');
 assert.equal(feedbackModel.headerControls[0].trigger.palette,'amber','Pending retains its original contextual palette');
 assert.equal(feedbackModel.headerControls[0].trigger.counter.value,2,'The existing red count includes event and service rows');
 assert.deepEqual(feedbackModel.headerControls[0].items.map(i=>i.palette),['violet','amber','green','slate']);
 assert.equal(feedbackHost.querySelectorAll('app-info-card').length,2,'Both types share the existing card grid');
-const serviceShell=feedbackHost.querySelector('.is-service-feedback');assert.ok(serviceShell);
+const serviceShell=feedbackHost.querySelector('.is-feedback-evaluation');assert.ok(serviceShell);
 assert.equal(serviceShell.querySelector('.ui-info-card').style.getPropertyValue('--ui-info-card-accent-hue'),'42');
-assert.equal(feedbackHost.querySelectorAll('.event-feedback-info-card-shell:not(.is-service-feedback)').length,1);
-const serviceSummary=feedbackRef.instance.eventFeedbackSmartList.itemsSnapshot().find(c=>c.eagerDetail?.kind==='service-feedback');
-feedbackRef.instance.onEventFeedbackCardPrimaryAction(serviceSummary);await settle();assert.equal(detailOpens[0].item.feedback.id,review.feedback.id);
-feedbackRef.instance.onEventFeedbackCardMenuAction(serviceSummary,{actionId:'removeFeedback'});assert.equal(feedbackDialogs.length,1);
+assert.equal(feedbackHost.querySelectorAll('.feedback-info-card-shell:not(.is-feedback-evaluation)').length,1);
+const serviceSummary=feedbackRef.instance.feedbackSmartList.itemsSnapshot().find(c=>c.eagerDetail?.kind==='feedback-evaluation');
+feedbackRef.instance.onFeedbackCardPrimaryAction(serviceSummary);await settle();assert.equal(detailOpens[0].item.feedback.id,review.feedback.id);
+feedbackRef.instance.onFeedbackCardMenuAction(serviceSummary,{actionId:'removeFeedback'});assert.equal(feedbackDialogs.length,1);
 await feedbackDialogs[0].onConfirm();await settle();await settle();
-assert.equal(feedbackHost.querySelectorAll('app-info-card').length,1,'Removed service feedback leaves Pending without removing event feedback');
-feedbackRef.instance.selectEventFeedbackListFilter('removed');await settle();await settle();
-assert.equal(feedbackHost.querySelectorAll('app-info-card').length,1);assert.ok(feedbackHost.querySelector('.is-service-feedback.is-removed'));
-const removedSummary=feedbackRef.instance.eventFeedbackSmartList.itemsSnapshot()[0];
-feedbackRef.instance.onEventFeedbackCardMenuAction(removedSummary,{actionId:'restoreFeedback'});await feedbackDialogs[1].onConfirm();await settle();await settle();
+assert.equal(feedbackHost.querySelectorAll('app-info-card').length,1,'Removed feedback leaves Pending without removing feedback');
+feedbackRef.instance.selectFeedbackListFilter('removed');await settle();await settle();
+assert.equal(feedbackHost.querySelectorAll('app-info-card').length,1);assert.ok(feedbackHost.querySelector('.is-feedback-evaluation.is-removed'));
+const removedSummary=feedbackRef.instance.feedbackSmartList.itemsSnapshot()[0];
+feedbackRef.instance.onFeedbackCardMenuAction(removedSummary,{actionId:'restoreFeedback'});await feedbackDialogs[1].onConfirm();await settle();await settle();
 assert.equal(feedbackHost.querySelectorAll('app-info-card').length,0,'Restore removes the row from Removed');
 feedbackRef.destroy();feedbackEnv.destroy();feedbackHost.remove();
 console.log('PASS one shared feedback list, original status control/colors/counters, distinct service-card tint, details and remove/restore updates');

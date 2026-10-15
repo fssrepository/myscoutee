@@ -1161,7 +1161,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         supplies: 0,
         tickets: 0
       },
-      eventFeedback: {
+      feedbackCounts: {
         ownEvents: 0,
         pending: 0,
         feedbacked: 0,

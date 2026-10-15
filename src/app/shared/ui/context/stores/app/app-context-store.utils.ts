@@ -13,7 +13,7 @@ import type {
   ActivityAssetCounters,
   ActivityChatCounters,
   ActivityEventCounters,
-  ActivityEventFeedbackCounters,
+  ActivityFeedbackCounters,
   ActivitySupportCaseCounters
 } from '../activity/activity.store';
 import type { UserProfileAdminUserDto } from '../profile/user-profile.store';
@@ -248,7 +248,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       chat: cloneChatCounters(user.activities?.chat),
       event: cloneEventCounters(user.activities?.event),
       asset: cloneAssetCounters(user.activities?.asset),
-      eventFeedback: cloneEventFeedbackCounters(user.activities?.eventFeedback),
+      feedbackCounts: cloneFeedbackCounters(user.activities?.feedbackCounts),
       adminJobs: user.activities?.adminJobs ?? 0,
       adminMetrics: user.activities?.adminMetrics ?? 0
     },
@@ -298,9 +298,9 @@ export function cloneAssetCounters(counters: Partial<ActivityAssetCounters> | un
   };
 }
 
-export function cloneEventFeedbackCounters(
-  counters: Partial<ActivityEventFeedbackCounters> | undefined | null
-): ActivityEventFeedbackCounters {
+export function cloneFeedbackCounters(
+  counters: Partial<ActivityFeedbackCounters> | undefined | null
+): ActivityFeedbackCounters {
   return {
     ownEvents: normalizeCounterValue(Number(counters?.ownEvents) || 0),
     pending: normalizeCounterValue(Number(counters?.pending) || 0),

@@ -43,6 +43,7 @@
           #leaderboardSmartList
           class="operator-leaderboard__list"
           [config]="leaderboardConfig"
+          [emptyError]="leaderboard.error()"
           [loadPage]="loadLeaderboardPage"
           [query]="leaderboardQuery()"
           [itemTemplate]="leaderboardRowTemplate"

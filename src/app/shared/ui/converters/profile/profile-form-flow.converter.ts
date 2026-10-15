@@ -143,7 +143,7 @@ export class ProfileFormFlowDataConverter {
         feedback: user.activities?.feedback ?? 0,
         event: user.activities?.event ? { ...user.activities.event } : undefined,
         asset: user.activities?.asset ? { ...user.activities.asset } : undefined,
-        eventFeedback: user.activities?.eventFeedback ? { ...user.activities.eventFeedback } : undefined,
+        feedbackCounts: user.activities?.feedbackCounts ? { ...user.activities.feedbackCounts } : undefined,
         adminJobs: user.activities?.adminJobs,
         adminMetrics: user.activities?.adminMetrics
       },

@@ -23,34 +23,8 @@ import type { ActivityPendingReason } from '../../../common/constants';
 
 import type { ActivitiesFeedFilters } from '../../../contracts';
 import type { UserEventCountersDto } from '../../../contracts/accounts/user.interface';
-import type {
-  EventCheckoutAssetSelection,
-  EventCheckoutBasket,
-  EventCheckoutBasketItem,
-  EventCheckoutLineItem,
-  EventCheckoutPaymentAudit,
-  EventCheckoutPricingSummaryRow,
-  EventCheckoutPromoCodeValidationRequest,
-  EventCheckoutPromoCodeValidationResult,
-  EventCheckoutRequest,
-  EventCheckoutResultState,
-  EventCheckoutState,
-  EventCheckoutStateChangeRequest,
-  EventCheckoutSession,
-  EventCheckoutSlotsQuery,
-  EventCheckoutSlotsResult,
-  EventFeedbackQueryDto,
-  EventFeedbackDetailDto,
-  EventParticipationActionResultDTO,
-  EventWatchActionResultDTO,
-  EventFeedbackReceivedEventDto,
-  EventFeedbackNoteRequestDto,
-  EventFeedbackPageQueryDto,
-  EventFeedbackPageResultDto,
-  EventFeedbackStatDto,
-  EventFeedbackStatQueryDto,
-  EventFeedbackStateDto
-} from '../../../contracts/common/activity.interface';
+import type { EventCheckoutAssetSelection, EventCheckoutBasket, EventCheckoutBasketItem, EventCheckoutLineItem, EventCheckoutPaymentAudit, EventCheckoutPricingSummaryRow, EventCheckoutPromoCodeValidationRequest, EventCheckoutPromoCodeValidationResult, EventCheckoutRequest, EventCheckoutResultState, EventCheckoutState, EventCheckoutStateChangeRequest, EventCheckoutSession, EventCheckoutSlotsQuery, EventCheckoutSlotsResult, EventParticipationActionResultDTO, EventWatchActionResultDTO } from '../../../contracts/common/activity.interface';
+import type { FeedbackQueryDto, FeedbackDetailDto, FeedbackReceivedEventDto, FeedbackNoteRequestDto, FeedbackPageQueryDto, FeedbackPageResultDto, FeedbackStatDto, FeedbackStatQueryDto, FeedbackStateDto } from '../../../contracts/feedback/feedback.interface';
 import {
   LocalEventsService
 } from '../../../local';
@@ -495,42 +469,6 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   payCheckoutSession(request: EventCheckoutRequest, paymentSessionId: string): Promise<EventCheckoutSession | null> {
     return this.eventsService.payCheckoutSession(request, paymentSessionId);
-  }
-
-  queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
-    return this.eventsService.queryEventFeedbackStates(userId);
-  }
-
-  queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
-    return this.eventsService.queryReceivedEventFeedback(userId);
-  }
-
-  loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
-    return this.eventsService.loadEventFeedbackPage(query);
-  }
-
-  loadEventFeedbackStatById(query: EventFeedbackStatQueryDto): Promise<EventFeedbackStatDto> {
-    return this.eventsService.loadEventFeedbackStatById(query);
-  }
-
-  loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
-    return this.eventsService.loadEventFeedback(query);
-  }
-
-  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto> {
-    return this.eventsService.submitEventFeedback(userId, request);
-  }
-
-  saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
-    return this.eventsService.saveEventFeedbackNote(request);
-  }
-
-  removeEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
-    return this.eventsService.removeEventFeedbackEvent(userId, eventId);
-  }
-
-  restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
-    return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {

@@ -51,7 +51,7 @@ export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
   { stage: 'contacts', percent: 40, label: 'Preparing contacts' },
   { stage: 'profileExperiences', percent: 43, label: 'Preparing profile experiences' },
-  { stage: 'feedback', percent: 46, label: 'Preparing event feedback' },
+  { stage: 'feedback', percent: 46, label: 'Preparing feedback' },
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
   { stage: 'assets', percent: 64, label: 'Preparing owned assets' },
   { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
@@ -71,7 +71,7 @@ export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
 export const SESSION_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'session', percent: 0, label: 'Preparing demo session' },
   { stage: 'sessionChats', percent: 38, label: 'Preparing chat threads' },
-  { stage: 'sessionFeedback', percent: 62, label: 'Preparing event feedback' },
+  { stage: 'sessionFeedback', percent: 62, label: 'Preparing feedback' },
   { stage: 'sessionIndexedDb', percent: 84, label: 'Syncing demo IndexedDB' },
   { stage: 'sessionReady', percent: 100, label: 'Demo session ready' }
 ];

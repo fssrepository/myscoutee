@@ -13,7 +13,7 @@ export class SeedCommunityCasesRepository {
     const state = this.db.read(), records = SeedCommunityCasesBuilder.build(state.users.ids.map(id => state.users.byId[id]));
     const cases = records.cases.filter(c => !state[COMMUNITY_CASES_TABLE_NAME].byId[c.id]);
     const tasks = records.tasks.filter(t => !state[COMMUNITY_TASKS_TABLE_NAME].byId[t.id]);
-    const retained = state[COMMUNITY_CASES_TABLE_NAME].ids.map(id => state[COMMUNITY_CASES_TABLE_NAME].byId[id]).filter(c => !c.counterOwners || !c.feedbackCounterBuckets);
+    const retained = state[COMMUNITY_CASES_TABLE_NAME].ids.map(id => state[COMMUNITY_CASES_TABLE_NAME].byId[id]).filter(c => !c.counterOwners);
     const retainedTasks = state[COMMUNITY_TASKS_TABLE_NAME].ids.map(id => state[COMMUNITY_TASKS_TABLE_NAME].byId[id]).filter(t => !t.counterOwners);
     if (!cases.length && !tasks.length && !retained.length && !retainedTasks.length) return false;
     this.db.write(current => {

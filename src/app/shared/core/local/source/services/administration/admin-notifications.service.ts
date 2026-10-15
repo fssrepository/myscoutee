@@ -1,4 +1,4 @@
-import { LocalServiceFeedbackService } from '../community/service-feedback.service';
+import { LocalFeedbackService } from '../feedback/feedback.service';
 import { LocalCommunityAnnouncementsService } from '../community/community-announcements.service';
 import { LocalCommunityCasesService } from '../community/community-cases.service';
 import { COMMUNITY_BASE_GROUP_ID } from '../../../../contracts/groups/group-type';
@@ -46,7 +46,7 @@ export interface LocalAdminNotificationDelayOptions {
   providedIn: 'root'
 })
 export class LocalAdminNotificationsService extends LocalRouteDelayService {
-  private readonly serviceFeedback=inject(LocalServiceFeedbackService);
+  private readonly feedbackEvaluation=inject(LocalFeedbackService);
   private readonly repository = inject(LocalAdminNotificationsRepository);
   private readonly moderation = inject(LocalContentModerationRepository);
   private readonly moderationRunning = new Set<string | null>();
@@ -70,7 +70,7 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
   }
 
   async runCommunityTasksTick(): Promise<void> {
-    await this.serviceFeedback.drain();
+    await this.feedbackEvaluation.drain();
     await this.announcements.expireVoteCounters();
     if (!(await this.repository.groupIds()).includes(COMMUNITY_BASE_GROUP_ID)) return;
     const state = await this.readNotificationCenter(COMMUNITY_BASE_GROUP_ID);

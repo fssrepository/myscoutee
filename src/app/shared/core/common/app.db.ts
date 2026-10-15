@@ -1,3 +1,4 @@
+import { FEEDBACK_EVALUATIONS_TABLE_NAME } from '../local/source/entity/feedback/feedback.entity';
 import { SERVICE_OFFERINGS_TABLE_NAME, SERVICE_PROVIDER_CALENDARS_TABLE_NAME } from '../local/source/entity/community/service-offering.entity';
 import { COMMUNITY_ANNOUNCEMENTS_TABLE_NAME } from '../local/source/entity/community/community-announcement.entity';
 import { COMMUNITY_CASES_TABLE_NAME, COMMUNITY_TASKS_TABLE_NAME } from '../local/source/entity/community/community-case.entity';
@@ -10,7 +11,8 @@ import { PHOTO_FEED_TABLE_NAME } from '../local/source/entity/content/photo-feed
 import { maintainFollowingState } from '../local/source/builders/accounts/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../local/source/entity/events/mingle.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat/chat.entity';
-import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/events/event.entity';
+import { EVENTS_TABLE_NAME } from '../local/source/entity/events/event.entity';
+import { FEEDBACK_STATES_TABLE_NAME } from '../local/source/entity/feedback/feedback.entity';
 import { EVENT_TICKETS_TABLE_NAME } from '../local/source/entity/events/event-ticket.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../local/source/entity/content/content.entity';
 import { NOTIFICATIONS_TABLE_NAME } from '../local/source/entity/notifications/notification.entity';
@@ -63,6 +65,7 @@ interface NormalizedActivityRateRecordQuery {
 })
 export class AppMemoryDb {
   private static readonly SCHEMA_TABLE_KEYS = [
+    FEEDBACK_EVALUATIONS_TABLE_NAME,
     SERVICE_PROVIDER_CALENDARS_TABLE_NAME,
     SERVICE_OFFERINGS_TABLE_NAME,
     COMMUNITY_ANNOUNCEMENTS_TABLE_NAME,
@@ -83,7 +86,7 @@ export class AppMemoryDb {
     CHATS_TABLE_NAME,
     CHAT_MESSAGES_TABLE_NAME,
     EVENT_TICKETS_TABLE_NAME,
-    EVENT_FEEDBACK_TABLE_NAME,
+    FEEDBACK_STATES_TABLE_NAME,
     MINGLE_SESSIONS_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
@@ -369,7 +372,7 @@ export class AppMemoryDb {
         idsByChatKey: {}
       },
       [MINGLE_SESSIONS_TABLE_NAME]: { byId: {}, ids: [] },
-      [EVENT_FEEDBACK_TABLE_NAME]: {
+      [FEEDBACK_STATES_TABLE_NAME]: {
         byId: {},
         ids: []
       },
@@ -396,6 +399,7 @@ export class AppMemoryDb {
       [SERVICE_PROVIDER_CALENDARS_TABLE_NAME]: {byId:{},ids:[]},
       [SERVICE_OFFERINGS_TABLE_NAME]: { byId: {}, ids: [] },
       [COMMUNITY_ANNOUNCEMENTS_TABLE_NAME]: { byId: {}, ids: [] },
+      [FEEDBACK_EVALUATIONS_TABLE_NAME]: { byId: {}, ids: [] },
       [COMMUNITY_CASES_TABLE_NAME]: { byId: {}, ids: [] },
       [COMMUNITY_TASKS_TABLE_NAME]: { byId: {}, ids: [] },
       [CAMPAIGNS_TABLE_NAME]: { byId: {}, ids: [] },
@@ -918,13 +922,16 @@ export class AppMemoryDb {
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<AppMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const chatMessagesSource = source[CHAT_MESSAGES_TABLE_NAME] as Partial<AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]> | undefined;
     const mingleSource = source[MINGLE_SESSIONS_TABLE_NAME] as Partial<AppMemorySchema[typeof MINGLE_SESSIONS_TABLE_NAME]> | undefined;
-    const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
+    const feedbackSource = source[FEEDBACK_STATES_TABLE_NAME] as Partial<AppMemorySchema[typeof FEEDBACK_STATES_TABLE_NAME]> | undefined;
     const eventTicketsSource = source[EVENT_TICKETS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_TICKETS_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
     const calendarsSource = source[SERVICE_PROVIDER_CALENDARS_TABLE_NAME] as AppMemorySchema[typeof SERVICE_PROVIDER_CALENDARS_TABLE_NAME] | undefined;
     const servicesSource = source[SERVICE_OFFERINGS_TABLE_NAME] as AppMemorySchema[typeof SERVICE_OFFERINGS_TABLE_NAME] | undefined;
     const announcementsSource = source[COMMUNITY_ANNOUNCEMENTS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_ANNOUNCEMENTS_TABLE_NAME] | undefined;
     const casesSource = source[COMMUNITY_CASES_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_CASES_TABLE_NAME] | undefined;
+    const evaluationSource = source[FEEDBACK_EVALUATIONS_TABLE_NAME] as AppMemorySchema[typeof FEEDBACK_EVALUATIONS_TABLE_NAME] | undefined;
+    const evaluationById = { ...(evaluationSource?.byId ?? {}) };
+    const caseById = { ...(casesSource?.byId ?? {}) };
     const tasksSource = source[COMMUNITY_TASKS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_TASKS_TABLE_NAME] | undefined;
     const campaignsSource = source[CAMPAIGNS_TABLE_NAME] as AppMemorySchema[typeof CAMPAIGNS_TABLE_NAME] | undefined;
     const communityGroupsSource = source[COMMUNITY_GROUPS_TABLE_NAME] as AppMemorySchema[typeof COMMUNITY_GROUPS_TABLE_NAME] | undefined;
@@ -1050,13 +1057,13 @@ export class AppMemoryDb {
         byId: mingleSource?.byId && typeof mingleSource.byId === 'object' ? { ...mingleSource.byId } : {},
         ids: Array.isArray(mingleSource?.ids) ? mingleSource.ids.map(String) : []
       },
-      [EVENT_FEEDBACK_TABLE_NAME]: {
-        byId: eventFeedbackSource?.byId && typeof eventFeedbackSource.byId === 'object'
-          ? { ...eventFeedbackSource.byId }
-          : { ...fallback[EVENT_FEEDBACK_TABLE_NAME].byId },
-        ids: Array.isArray(eventFeedbackSource?.ids)
-          ? eventFeedbackSource.ids.map(id => String(id))
-          : [...fallback[EVENT_FEEDBACK_TABLE_NAME].ids]
+      [FEEDBACK_STATES_TABLE_NAME]: {
+        byId: feedbackSource?.byId && typeof feedbackSource.byId === 'object'
+          ? { ...feedbackSource.byId }
+          : { ...fallback[FEEDBACK_STATES_TABLE_NAME].byId },
+        ids: Array.isArray(feedbackSource?.ids)
+          ? feedbackSource.ids.map(id => String(id))
+          : [...fallback[FEEDBACK_STATES_TABLE_NAME].ids]
       },
       [EVENT_TICKETS_TABLE_NAME]: {
         byId: eventTicketsSource?.byId && typeof eventTicketsSource.byId === 'object'
@@ -1107,7 +1114,8 @@ export class AppMemoryDb {
       [SERVICE_PROVIDER_CALENDARS_TABLE_NAME]: {byId:{...(calendarsSource?.byId??{})},ids:[...(calendarsSource?.ids??[])]},
       [SERVICE_OFFERINGS_TABLE_NAME]: { byId: { ...(servicesSource?.byId ?? {}) }, ids: [...(servicesSource?.ids ?? [])] },
       [COMMUNITY_ANNOUNCEMENTS_TABLE_NAME]: { byId: { ...(announcementsSource?.byId ?? {}) }, ids: [...(announcementsSource?.ids ?? [])] },
-      [COMMUNITY_CASES_TABLE_NAME]: { byId: { ...(casesSource?.byId ?? {}) }, ids: [...(casesSource?.ids ?? [])] },
+      [FEEDBACK_EVALUATIONS_TABLE_NAME]: { byId: evaluationById, ids: Object.keys(evaluationById) },
+      [COMMUNITY_CASES_TABLE_NAME]: { byId: caseById, ids: [...(casesSource?.ids ?? [])] },
       [COMMUNITY_TASKS_TABLE_NAME]: { byId: { ...(tasksSource?.byId ?? {}) }, ids: [...(tasksSource?.ids ?? [])] },
       [CAMPAIGNS_TABLE_NAME]: { byId: { ...(campaignsSource?.byId ?? {}) }, ids: [...(campaignsSource?.ids ?? [])] },
       [COMMUNITY_GROUPS_TABLE_NAME]: { byId: { ...(communityGroupsSource?.byId ?? {}) }, ids: [...(communityGroupsSource?.ids ?? [])] },

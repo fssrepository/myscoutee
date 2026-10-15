@@ -32,11 +32,11 @@ export class NotificationSingleRowConverter implements UiConverter<
     const securityAlert = notification.kind === 'security-login';
     const senderName = securityAlert ? '' : `${notification.senderName ?? ''}`.trim();
     const systemRandomRoom = this.isSystemGeneratedRoom(notification);
-    const serviceFeedback = notification.sourceType === 'service-feedback';
+    const feedbackEvaluation = notification.sourceType === 'feedback-evaluation';
     const mingle = notification.payload?.['mingle'] === 'true';
     const minglePresentation = mingle ? EventModeMenuConverter.trigger('Mingle') : null;
-    const palette = serviceFeedback ? 'gold' as const : mingle ? 'rose' as const : null;
-    const contextualIcon = serviceFeedback ? 'home_repair_service'
+    const palette = feedbackEvaluation ? 'gold' as const : mingle ? 'rose' as const : null;
+    const contextualIcon = feedbackEvaluation ? 'home_repair_service'
       : typeof minglePresentation?.icon === 'string' ? minglePresentation.icon : null;
     const systemAvatar = securityAlert || systemRandomRoom || Boolean(contextualIcon);
     const stageAvatar = this.hasStageAvatar(notification);
@@ -130,7 +130,7 @@ export class NotificationSingleRowConverter implements UiConverter<
   static targetActionId(notification: NotificationDto): string | null {
     if (NotificationSingleRowConverter.roleTargetPath(notification)) return 'openNotificationRoleTarget';
     if (notification.sourceType === 'payment') return 'openNotificationPayments';
-    if (notification.sourceType === 'service-feedback') return 'openNotificationFeedback';
+    if (notification.sourceType === 'feedback-evaluation') return 'openNotificationFeedback';
     if (notification.sourceType === 'chat' && notification.payload?.['chatId']) return 'openNotificationChat';
     if (notification.sourceType === 'announcement' && notification.sourceId && !['announcement-unpublish', 'announcement-trash'].includes(notification.kind)) return 'openNotificationAnnouncement';
     if (notification.sourceType === 'case' && notification.sourceId) return 'openNotificationCase';

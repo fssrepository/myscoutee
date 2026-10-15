@@ -26,7 +26,7 @@ import {
   adminUserFromProfile,
   cloneAssetCounters,
   cloneEventCounters,
-  cloneEventFeedbackCounters,
+  cloneFeedbackCounters,
   cloneImpressions,
   cloneProfileExt,
   cloneUserProfile,
@@ -744,8 +744,8 @@ export class UserProfileStore {
     if (patch.asset) {
       next.asset = cloneAssetCounters(patch.asset);
     }
-    if (patch.eventFeedback) {
-      next.eventFeedback = cloneEventFeedbackCounters(patch.eventFeedback);
+    if (patch.feedbackCounts) {
+      next.feedbackCounts = cloneFeedbackCounters(patch.feedbackCounts);
     }
     return next;
   }

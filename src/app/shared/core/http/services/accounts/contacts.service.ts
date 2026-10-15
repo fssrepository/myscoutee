@@ -181,7 +181,7 @@ export class HttpContactsService {
         ...user.activities,
         event: user.activities?.event ? { ...user.activities.event } : undefined,
         asset: user.activities?.asset ? { ...user.activities.asset } : undefined,
-        eventFeedback: user.activities?.eventFeedback ? { ...user.activities.eventFeedback } : undefined
+        feedbackCounts: user.activities?.feedbackCounts ? { ...user.activities.feedbackCounts } : undefined
       }
     };
   }

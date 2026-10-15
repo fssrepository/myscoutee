@@ -31,7 +31,7 @@ export interface NavigatorAssetRequest {
   assetFilter: AssetFilterType;
 }
 
-export interface NavigatorEventFeedbackRequest {
+export interface NavigatorFeedbackRequest {
   updatedMs: number;
 }
 
@@ -114,7 +114,7 @@ export type ActivitiesNavigationRequest =
 export class MemberMenuStore {
   private readonly navigatorActivitiesRequestRef = signal<NavigatorActivitiesRequest | null>(null);
   private readonly navigatorAssetRequestRef = signal<NavigatorAssetRequest | null>(null);
-  private readonly navigatorEventFeedbackRequestRef = signal<NavigatorEventFeedbackRequest | null>(null);
+  private readonly navigatorFeedbackRequestRef = signal<NavigatorFeedbackRequest | null>(null);
   private readonly activitiesNavigationRequestRef = signal<ActivitiesNavigationRequest | null>(null);
   private readonly chatMembersSyncRef = signal<{
     chatId: string;
@@ -124,7 +124,7 @@ export class MemberMenuStore {
 
   readonly navigatorActivitiesRequest = this.navigatorActivitiesRequestRef.asReadonly();
   readonly navigatorAssetRequest = this.navigatorAssetRequestRef.asReadonly();
-  readonly navigatorEventFeedbackRequest = this.navigatorEventFeedbackRequestRef.asReadonly();
+  readonly navigatorFeedbackRequest = this.navigatorFeedbackRequestRef.asReadonly();
   readonly activitiesNavigationRequest = this.activitiesNavigationRequestRef.asReadonly();
   readonly chatMembersSync = this.chatMembersSyncRef.asReadonly();
 
@@ -160,14 +160,14 @@ export class MemberMenuStore {
     this.navigatorAssetRequestRef.set(null);
   }
 
-  openNavigatorEventFeedbackRequest(): void {
-    this.navigatorEventFeedbackRequestRef.set({
+  openNavigatorFeedbackRequest(): void {
+    this.navigatorFeedbackRequestRef.set({
       updatedMs: Date.now()
     });
   }
 
-  clearNavigatorEventFeedbackRequest(): void {
-    this.navigatorEventFeedbackRequestRef.set(null);
+  clearNavigatorFeedbackRequest(): void {
+    this.navigatorFeedbackRequestRef.set(null);
   }
 
   requestActivitiesNavigation(request: ActivitiesNavigationRequest): void {

@@ -1,4 +1,4 @@
-import { LocalServiceFeedbackService } from './service-feedback.service';
+import { LocalFeedbackService } from '../feedback/feedback.service';
 import { LocalServiceOfferingsRepository } from '../../repositories/community/service-offerings.repository';
 import { LocalChatsRepository } from '../../repositories/chat/chats.repository';
 import { caseChatParticipantIds, activeCaseParticipantIds, notifiedCaseParticipantIds, caseMembershipStatus, canTakeOverCase } from '../../entity/community/community-case.entity';
@@ -17,7 +17,12 @@ import type { ListQuery, PageResult } from '@fssrepository/myscoutee-components'
 
 @Injectable({ providedIn: 'root' })
 export class LocalCommunityCasesService extends LocalRouteDelayService implements ICommunityCasesService {
-  private readonly feedback=inject(LocalServiceFeedbackService);
+  private requestFeedback(c:CommunityCaseRecord):void {
+    const active=activeCaseParticipantIds(c);
+    c.feedbackWork={reviewers:active.filter(id=>!c.support.some(s=>s.accountId===id)||c.audienceAccountIds.includes(id)||id===c.ownerAccountId),
+      providers:c.support.filter(s=>s.status==='accepted'&&active.includes(s.accountId)),createdAtIso:c.updatedAtIso,caseTitle:c.title};
+  }
+  private readonly feedback=inject(LocalFeedbackService);
   private readonly offerings = inject(LocalServiceOfferingsRepository);
   private readonly repository = inject(LocalCommunityCasesRepository);
   private readonly access = inject(LocalCommunityAccessService);
@@ -109,7 +114,7 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
               ownerAccountId: old?.ownerAccountId ?? actor, title: r.title.trim(), description: r.description.trim(), caseType: r.caseType,
               status: old?.status ?? 'open', audienceAll: r.audienceAll, audienceAccountIds: audience, participantAccountIds: participants,
               memberStates: { ...(old?.memberStates ?? {}), ...Object.fromEntries(participants.filter(id => !old?.participantAccountIds.includes(id)).map(id => [id, id === actor ? 'accepted' as const : 'invited' as const])) },
-              feedback:structuredClone(old?.feedback??[]),feedbackWork:structuredClone(old?.feedbackWork??null),
+              feedbackWork:structuredClone(old?.feedbackWork??null),
               boardTasks: structuredClone(old?.boardTasks ?? []), chatAccountIds: [...(old?.chatAccountIds ?? [])],
               attentionAccountIds: participants.filter(id => id !== actor), support: structuredClone(old?.support ?? []),
               recommendations: structuredClone(old?.recommendations ?? []), offers: structuredClone(old?.offers ?? []),
@@ -251,7 +256,7 @@ export class LocalCommunityCasesService extends LocalRouteDelayService implement
               default: throw new Error('Invalid case action');
             }
             c.attentionAccountIds = notifiedCaseParticipantIds(c).filter(id => id !== actor); c.updatedAtIso = new Date().toISOString(); c.version++;
-            if(r.action==='complete'&&old.status!=='completed')this.feedback.request(c);
+            if(r.action==='complete'&&old.status!=='completed')this.requestFeedback(c);
             this.repository.saveCase(c, old.version); this.notify(c, actor, r.action === 'leave' && manager ? 'owner-left' : ['join','decline','leave','invite-members','remove-member','invite-chat','save-board-task','delete-board-task','edit-offer','pending-offer'].includes(r.action) ? 'updated' : r.action, `${c.id}:${c.version}`);
             await this.repository.flush(); if(c.feedbackWork)this.feedback.wake(); return this.dto(actor, c);
       })()

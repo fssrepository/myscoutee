@@ -14,7 +14,7 @@ export { SeedAssetsRepository } from './repositories/assets/assets-seed.reposito
 export { SeedChatsRepository } from './repositories/chat/chats-seed.repository';
 export { SeedCleanupService } from './services/platform/cleanup.service';
 export { SeedContactsRepository } from './repositories/accounts/contacts-seed.repository';
-export { SeedEventFeedbackRepository } from './repositories/events/event-feedback-seed.repository';
+export { SeedFeedbackRepository } from './repositories/feedback/feedback-seed.repository';
 export { SeedEventTicketsRepository } from './repositories/events/event-tickets-seed.repository';
 export { SeedEventsRepository } from './repositories/events/events-seed.repository';
 export { SeedHelpCenterRepository } from './repositories/help/help-center-seed.repository';

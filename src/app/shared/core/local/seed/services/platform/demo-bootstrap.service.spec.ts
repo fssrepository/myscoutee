@@ -1,4 +1,5 @@
-import { EVENTS_TABLE_NAME, EVENT_FEEDBACK_TABLE_NAME } from '../../../source/entity/events/event.entity';
+import { EVENTS_TABLE_NAME } from '../../../source/entity/events/event.entity';
+import { FEEDBACK_STATES_TABLE_NAME } from '../../../source/entity/feedback/feedback.entity';
 import { EVENT_TICKETS_TABLE_NAME } from '../../../source/entity/events/event-ticket.entity';
 import { CHATS_TABLE_NAME } from '../../../source/entity/chat/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../../source/entity/accounts/profile.entity';
@@ -119,7 +120,7 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).toContain(CONTACTS_TABLE_NAME);
     expect(flushedTables).toContain(PROFILE_EXPERIENCES_TABLE_NAME);
-    expect(flushedTables).not.toContain(EVENT_FEEDBACK_TABLE_NAME);
+    expect(flushedTables).not.toContain(FEEDBACK_STATES_TABLE_NAME);
     expect(flushedTables).toContain(USER_RATES_TABLE_NAME);
     expect(flushedTables).toContain(ACTIVITY_MEMBERS_TABLE_NAME);
     expect(flushedTables).toContain(EVENTS_TABLE_NAME);
@@ -132,7 +133,7 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables.indexOf(ASSETS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_RESOURCES_TABLE_NAME));
   });
 
-  it('seeds event feedback state for a selected demo session without rewriting events', async () => {
+  it('seeds feedback state for a selected demo session without rewriting events', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
 
@@ -146,11 +147,11 @@ describe('Demo bootstrap seeding', () => {
 
     const state = memoryDb.read();
     const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
-    expect(flushedTables).toContain(EVENT_FEEDBACK_TABLE_NAME);
+    expect(flushedTables).toContain(FEEDBACK_STATES_TABLE_NAME);
     expect(flushedTables).toContain(NOTIFICATIONS_TABLE_NAME);
     expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
-    expect(state[EVENT_FEEDBACK_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[FEEDBACK_STATES_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId['u3']?.length).toBe(33);
     expect(state[USERS_TABLE_NAME].byId['u3']?.activities.notifications).toBe(25);
     expect(state[EVENTS_TABLE_NAME].ids).toEqual(eventIdsBefore);

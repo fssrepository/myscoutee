@@ -8,7 +8,8 @@ import { SeedCampaignsRepository } from '../../repositories/campaigns/campaigns-
 import { CAMPAIGNS_TABLE_NAME } from '../../../source/entity/campaigns/campaign.entity';
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../../source/entity/chat/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../../source/entity/accounts/profile.entity';
-import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../../source/entity/events/event.entity';
+import { EVENTS_TABLE_NAME } from '../../../source/entity/events/event.entity';
+import { FEEDBACK_STATES_TABLE_NAME } from '../../../source/entity/feedback/feedback.entity';
 import { EVENT_TICKETS_TABLE_NAME } from '../../../source/entity/events/event-ticket.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../../source/entity/content/content.entity';
 import { SHARE_TOKENS_TABLE_NAME } from '../../../source/entity/content/sharing.entity';
@@ -31,7 +32,7 @@ import { SeedAssetsRepository } from '../../repositories/assets/assets-seed.repo
 import { SeedChatsRepository } from '../../repositories/chat/chats-seed.repository';
 import { SeedAdminBootstrapRepository } from '../../repositories/administration/admin-bootstrap-seed.repository';
 import { SeedContactsRepository } from '../../repositories/accounts/contacts-seed.repository';
-import { SeedEventFeedbackRepository } from '../../repositories/events/event-feedback-seed.repository';
+import { SeedFeedbackRepository } from '../../repositories/feedback/feedback-seed.repository';
 import { SeedEventsRepository } from '../../repositories/events/events-seed.repository';
 import { SeedEventTicketsRepository } from '../../repositories/events/event-tickets-seed.repository';
 import { SeedNotificationsRepository } from '../../repositories/notifications/notifications-seed.repository';
@@ -55,7 +56,7 @@ export class SeedDemoBootstrapService {
   private readonly eventsSeed = inject(SeedEventsRepository);
   private readonly eventTicketsSeed = inject(SeedEventTicketsRepository);
   private readonly assetsSeed = inject(SeedAssetsRepository);
-  private readonly eventFeedbackSeed = inject(SeedEventFeedbackRepository);
+  private readonly feedbackSeed = inject(SeedFeedbackRepository);
   private readonly usersRatingsSeed = inject(SeedUsersRatingsRepository);
   private readonly usersSeed = inject(SeedUsersRepository);
   private readonly notificationsSeed = inject(SeedNotificationsRepository);
@@ -176,7 +177,7 @@ export class SeedDemoBootstrapService {
     const notificationsChanged = this.notificationsSeed.seedForUser(normalizedUserId);
     const alreadyReady = this.readyUserIds.has(normalizedUserId);
     let contextualChatsChanged = false;
-    let eventFeedbackChanged = false;
+    let feedbackChanged = false;
 
     if (!alreadyReady) {
       onProgress?.(bootstrapProcessStep('session'));
@@ -191,7 +192,7 @@ export class SeedDemoBootstrapService {
 
       onProgress?.(bootstrapProcessStep('sessionFeedback'));
       await this.process.waitForUiYield();
-      eventFeedbackChanged = this.seedEventFeedbackState();
+      feedbackChanged = this.seedFeedbackState();
     }
 
     const chatCountersChanged = this.chatsSeed.stampStoredChatCountersForUsers([normalizedUserId]);
@@ -204,7 +205,7 @@ export class SeedDemoBootstrapService {
       activityCountersChanged,
       impressionsChanged,
       contextualChatsChanged,
-      eventFeedbackChanged
+      feedbackChanged
     });
 
     this.emitSessionReady(onProgress, alreadyReady ? undefined : normalizedUserId);
@@ -584,7 +585,7 @@ export class SeedDemoBootstrapService {
       activityCountersChanged: boolean;
       impressionsChanged: boolean;
       contextualChatsChanged: boolean;
-      eventFeedbackChanged: boolean;
+      feedbackChanged: boolean;
     }
   ): Promise<void> {
     const tableNames = this.sessionFlushTables(options);
@@ -612,7 +613,7 @@ export class SeedDemoBootstrapService {
     activityCountersChanged: boolean;
     impressionsChanged: boolean;
     contextualChatsChanged: boolean;
-    eventFeedbackChanged: boolean;
+    feedbackChanged: boolean;
   }): string[] {
     const tableNames: string[] = [];
     if (options.filterPreferencesChanged) {
@@ -628,13 +629,13 @@ export class SeedDemoBootstrapService {
       tableNames.push(CHATS_TABLE_NAME);
       tableNames.push(CHAT_MESSAGES_TABLE_NAME);
     }
-    if (options.eventFeedbackChanged) {
-      tableNames.push(EVENT_FEEDBACK_TABLE_NAME);
+    if (options.feedbackChanged) {
+      tableNames.push(FEEDBACK_STATES_TABLE_NAME);
     }
     return tableNames;
   }
 
-  private seedEventFeedbackState(): boolean {
+  private seedFeedbackState(): boolean {
     const seededUsers = this.usersSeed.seedDefaults();
     const seededUserIds = seededUsers
       .map(user => user.id.trim())
@@ -645,7 +646,7 @@ export class SeedDemoBootstrapService {
 
     const eventItemsByUserId = this.eventsSeed.queryEventItemsByUsers(seededUserIds);
     const itemsByUserId = this.eventsSeed.queryItemsByUsers(seededUserIds);
-    return this.eventFeedbackSeed.seedDefaults(seededUsers, eventItemsByUserId, itemsByUserId);
+    return this.feedbackSeed.seedDefaults(seededUsers, eventItemsByUserId, itemsByUserId);
   }
 
   private emitProgress(state: BootstrapProcessState): void {

@@ -10,8 +10,10 @@ export function myScouteeGuideOptions(
     ...options,
     isExplainableContext: contextKey => APP_STATIC_DATA.explainableSurfaces
       .some(surface => surface.enabled && surface.key === contextKey),
-    contextPriority: contextKey => contextKey === null || APP_STATIC_DATA.explainableSurfaces
-      .some(surface => surface.key === contextKey && surface.owner === 'popup') ? 1 : 0,
+    // The one-step introduction points at the launcher above the consent popup.
+    contextPriority: contextKey => contextKey === 'landing.guide' ? 2
+      : contextKey === null || APP_STATIC_DATA.explainableSurfaces
+        .some(surface => surface.key === contextKey && surface.owner === 'popup') ? 1 : 0,
     introduction: {
       contextKey: 'landing.guide',
       shouldOffer: () => {

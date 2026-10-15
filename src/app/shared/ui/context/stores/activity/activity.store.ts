@@ -1,13 +1,7 @@
 import { Injectable, signal, untracked } from '@angular/core';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 
-import {
-  EventFeedbackDetailDto,
-  type ActivitiesPrimaryFilter,
-  type ActivitiesEventScope,
-  type EventCheckoutResultState,
-  type ActivityCurrentUserMembershipStatus
-} from '../../../../core/contracts/common/activity.interface';
+import { type ActivitiesPrimaryFilter, type ActivitiesEventScope, type EventCheckoutResultState, type ActivityCurrentUserMembershipStatus } from '../../../../core/contracts/common/activity.interface';
 import type * as AppDTOs from '../../../../core/contracts';
 import {
   ASSET_TYPE_ACCOMMODATION,
@@ -26,7 +20,6 @@ import {
   cloneAssetCounters,
   cloneChatCounters,
   cloneEventCounters,
-  cloneEventFeedbackCounters,
   normalizeCounterValue
 } from '../app/app-context-store.utils';
 
@@ -67,7 +60,7 @@ export interface ActivityCounters {
   chat?: ActivityChatCounters;
   event?: ActivityEventCounters;
   asset?: ActivityAssetCounters;
-  eventFeedback?: ActivityEventFeedbackCounters;
+  feedbackCounts?: ActivityFeedbackCounters;
   adminJobs: number;
   adminMetrics: number;
 }
@@ -116,7 +109,7 @@ export interface ActivityAssetCounters {
   suppliesPending: number;
 }
 
-export interface ActivityEventFeedbackCounters {
+export interface ActivityFeedbackCounters {
   ownEvents: number;
   pending: number;
   feedbacked: number;
@@ -181,11 +174,6 @@ export interface ActivityChatMetricBucketPatch {
   bucket: ChatMetricBucketDTO;
 }
 
-export interface ActivityEventFeedbackSubmitSyncState {
-  updatedMs: number;
-  dto: EventFeedbackDetailDto;
-}
-
 export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'game',
   'chats',
@@ -230,7 +218,6 @@ export class ActivityStore {
   private readonly _activityResourceMemberDeltaSync = signal<ActivityResourceMemberDeltaSyncState | null>(null);
   private readonly _activityEventRuntimeSync = signal<ActivityEventRuntimeSyncState | null>(null);
   private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
-  private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
 
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
@@ -239,7 +226,6 @@ export class ActivityStore {
   readonly activityResourceMemberDeltaSync = this._activityResourceMemberDeltaSync.asReadonly();
   readonly activityEventRuntimeSync = this._activityEventRuntimeSync.asReadonly();
   readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
-  readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
 
   getUserCounterOverride(userId: string, key: ActivityCounterKey): number | null {
     const normalizedUserId = userId.trim();
@@ -343,7 +329,6 @@ export class ActivityStore {
       chat: cloneChatCounters(counters.chat),
       event: cloneEventCounters(counters.event),
       asset: cloneAssetCounters(counters.asset),
-      eventFeedback: cloneEventFeedbackCounters(counters.eventFeedback),
       adminJobs: normalizeCounterValue(counters.adminJobs),
       adminMetrics: normalizeCounterValue(counters.adminMetrics)
     });
@@ -363,6 +348,7 @@ export class ActivityStore {
     }
     if (patch.menuCounters) {
       normalizedPatch.menuCounters = Object.fromEntries(Object.entries(patch.menuCounters)
+        .filter(([key]) => key !== 'feedback' && !key.startsWith('feedbackEvaluation_'))
         .map(([key, value]) => [key, normalizeCounterValue(value)]));
     }
     if (patch.event) {
@@ -374,9 +360,7 @@ export class ActivityStore {
     if (patch.asset) {
       normalizedPatch.asset = cloneAssetCounters(patch.asset);
     }
-    if (patch.eventFeedback) {
-      normalizedPatch.eventFeedback = cloneEventFeedbackCounters(patch.eventFeedback);
-    }
+
     return normalizedPatch;
   }
 
@@ -640,15 +624,6 @@ export class ActivityStore {
       normalizedPatch.asset = asset;
     }
 
-    const eventFeedback = this.applyNestedCounterDeltas<ActivityEventFeedbackCounters>(
-      delta.eventFeedback,
-      currentOverrides.eventFeedback,
-      baseCounters?.eventFeedback,
-      ['ownEvents', 'pending', 'feedbacked', 'removed']
-    );
-    if (eventFeedback) {
-      normalizedPatch.eventFeedback = eventFeedback;
-    }
 
     if (Object.keys(normalizedPatch).length === 0) {
       return;
@@ -973,17 +948,4 @@ export class ActivityStore {
     });
   }
 
-  emitActivityEventFeedbackSubmit(dto: EventFeedbackDetailDto): void {
-    const eventId = dto.eventId.trim();
-    if (!eventId) {
-      return;
-    }
-    this._activityEventFeedbackSubmitSync.set({
-      updatedMs: Date.now(),
-      dto: new EventFeedbackDetailDto({
-        ...dto,
-        eventId
-      })
-    });
-  }
 }

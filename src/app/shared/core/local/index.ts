@@ -39,7 +39,7 @@ export { LocalChatsRepository } from './source/repositories/chat/chats.repositor
 export { LocalCountryPartitionsRepository } from './source/repositories/platform/country-partitions.repository';
 export { LocalEventsRepository } from './source/repositories/events/events.repository';
 export { LocalEventCheckoutBasketsRepository } from './source/repositories/events/event-checkout-baskets.repository';
-export { LocalEventFeedbackRepository } from './source/repositories/events/event-feedback.repository';
+export { LocalFeedbackRepository } from './source/repositories/feedback/feedback.repository';
 export { LocalHelpCenterRepository } from './source/repositories/help/help-center.repository';
 export { LocalIdeaPostsRepository } from './source/repositories/content/idea-posts.repository';
 export { LocalMediaRepository } from './source/repositories/media/media.repository';

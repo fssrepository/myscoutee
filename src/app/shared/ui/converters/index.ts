@@ -95,17 +95,17 @@ export {
   type HelpCenterRevisionDocumentViewerSectionMode
 } from './app/help-center-revision-document-viewer.converter';
 export {
-  EventFeedbackDetailConverter,
-  EventFeedbackDetailImageCardConverter,
-  EventFeedbackDetailInfoCardConverter,
-  eventFeedbackDetailConverter,
-  eventFeedbackDetailImageCardConverter,
-  eventFeedbackDetailInfoCardConverter
-} from './event/event-feedback-detail.converter';
+  FeedbackDetailConverter,
+  FeedbackDetailImageCardConverter,
+  FeedbackDetailInfoCardConverter,
+  feedbackDetailConverter,
+  feedbackDetailImageCardConverter,
+  feedbackDetailInfoCardConverter
+} from './feedback/feedback-detail.converter';
 export {
-  EventFeedbackFormFlowConverter,
-  type EventFeedbackFormFlowConverterOptions
-} from './event/event-feedback-form-flow.converter';
+  FeedbackFormFlowConverter,
+  type FeedbackFormFlowConverterOptions
+} from './feedback/feedback-form-flow.converter';
 export {
   EventSubeventRuntimeInfoCardConverter,
   eventSubeventRuntimeInfoCardConverter,
@@ -166,39 +166,39 @@ export {
   type NotificationSingleRowConverterOptions
 } from './notification/notification-single-row.converter';
 export {
-  EventFeedbackInfoCardConverter,
-  EventFeedbackOrganizerInfoCardConverter,
-  eventFeedbackInfoCardConverter,
-  eventFeedbackOrganizerInfoCardConverter,
-  type EventFeedbackInfoCardConverterOptions,
-  type EventFeedbackOrganizerInfoCardConverterOptions,
-  type EventFeedbackOrganizerInfoCardData
-} from './event/event-feedback-info-card.converter';
+  FeedbackInfoCardConverter,
+  FeedbackOrganizerInfoCardConverter,
+  feedbackInfoCardConverter,
+  feedbackOrganizerInfoCardConverter,
+  type FeedbackInfoCardConverterOptions,
+  type FeedbackOrganizerInfoCardConverterOptions,
+  type FeedbackOrganizerInfoCardData
+} from './feedback/feedback-info-card.converter';
 export {
-  EventFeedbackFilterMenuConverter,
-  EventFeedbackListPresentationConverter,
-  EventFeedbackOrganizerCarouselSectionConverter,
-  EventFeedbackOrganizerItemConverter,
-  EventFeedbackOrganizerMessageGroupConverter,
-  eventFeedbackFilterMenuConverter,
-  eventFeedbackListPresentationConverter,
-  eventFeedbackOrganizerCarouselSectionConverter,
-  eventFeedbackOrganizerItemConverter,
-  eventFeedbackOrganizerMessageGroupConverter,
-  type EventFeedbackFilterMenuContext,
-  type EventFeedbackFilterMenuInput,
-  type EventFeedbackFilterMenuModel,
-  type EventFeedbackFilterOption,
-  type EventFeedbackListPresentationInput,
-  type EventFeedbackListPresentationModel,
-  type EventFeedbackOrganizerCarouselSectionData,
-  type EventFeedbackOrganizerEventInput,
-  type EventFeedbackOrganizerItemData,
-  type EventFeedbackOrganizerItemConverterOptions,
-  type EventFeedbackOrganizerMessageGroupData,
-  type EventFeedbackOrganizerMessageItemData,
-  type EventFeedbackOrganizerStatItemData
-} from './event/event-feedback-page.converter';
+  FeedbackFilterMenuConverter,
+  FeedbackListPresentationConverter,
+  FeedbackOrganizerCarouselSectionConverter,
+  FeedbackOrganizerItemConverter,
+  FeedbackOrganizerMessageGroupConverter,
+  feedbackFilterMenuConverter,
+  feedbackListPresentationConverter,
+  feedbackOrganizerCarouselSectionConverter,
+  feedbackOrganizerItemConverter,
+  feedbackOrganizerMessageGroupConverter,
+  type FeedbackFilterMenuContext,
+  type FeedbackFilterMenuInput,
+  type FeedbackFilterMenuModel,
+  type FeedbackFilterOption,
+  type FeedbackListPresentationInput,
+  type FeedbackListPresentationModel,
+  type FeedbackOrganizerCarouselSectionData,
+  type FeedbackOrganizerEventInput,
+  type FeedbackOrganizerItemData,
+  type FeedbackOrganizerItemConverterOptions,
+  type FeedbackOrganizerMessageGroupData,
+  type FeedbackOrganizerMessageItemData,
+  type FeedbackOrganizerStatItemData
+} from './feedback/feedback-page.converter';
 
-export * from './event/event-feedback.model';
+export * from './feedback/feedback.model';
 export * from './chat/popup-header.model';

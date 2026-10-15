@@ -116,7 +116,7 @@ export interface UserMenuCountersDto {
   chat?: UserChatCountersDto;
   event?: UserEventCountersDto;
   asset?: UserAssetCountersDto;
-  eventFeedback?: UserEventFeedbackCountersDto;
+  feedbackCounts?: UserFeedbackCountersDto;
   adminJobs?: number;
   adminMetrics?: number;
 }
@@ -140,7 +140,7 @@ export interface UserMenuCounterDeltasDto {
   chat?: UserChatCounterDeltasDto;
   event?: UserEventCounterDeltasDto;
   asset?: UserAssetCounterDeltasDto;
-  eventFeedback?: UserEventFeedbackCounterDeltasDto;
+  feedbackCounts?: UserFeedbackCounterDeltasDto;
   adminJobs?: number;
   adminMetrics?: number;
 }
@@ -223,14 +223,14 @@ export interface UserAssetCounterDeltasDto {
   suppliesPending?: number;
 }
 
-export interface UserEventFeedbackCountersDto {
+export interface UserFeedbackCountersDto {
   ownEvents?: number;
   pending?: number;
   feedbacked?: number;
   removed?: number;
 }
 
-export interface UserEventFeedbackCounterDeltasDto {
+export interface UserFeedbackCounterDeltasDto {
   ownEvents?: number;
   pending?: number;
   feedbacked?: number;
@@ -354,7 +354,7 @@ export class UserDto {
     chat?: UserChatCountersDto;
     event?: UserEventCountersDto;
     asset?: UserAssetCountersDto;
-    eventFeedback?: UserEventFeedbackCountersDto;
+    feedbackCounts?: UserFeedbackCountersDto;
     adminJobs?: number;
     adminMetrics?: number;
   } = {

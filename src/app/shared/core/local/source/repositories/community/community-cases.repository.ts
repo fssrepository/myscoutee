@@ -49,37 +49,8 @@ export class LocalCommunityCasesRepository {
       values['communityCases'] = (values['communityCases'] ?? 0) + active(after) - active(before);
       byId[id] = { ...user, menuCounters: values };
     }
-    const feedbackOwners: Record<string, number> = {};
-    const feedbackBuckets: Record<string, Record<string, number>> = {};
-    const contribute = (accountId: string, bucket: string) => {
-      const values = feedbackBuckets[accountId] ??= {};
-      values[bucket] = (values[bucket] ?? 0) + 1;
-    };
-    for (const feedback of record.feedback ?? []) {
-      contribute(feedback.viewerAccountId, feedback.status);
-      if (feedback.status === 'feedbacked') contribute(feedback.providerAccountId, 'received');
-    }
-    for (const id of new Set([...Object.keys(old?.feedbackCounterBuckets ?? {}), ...Object.keys(feedbackBuckets)])) {
-      const user = byId[id];
-      if (!user) continue;
-      const values = { ...user.menuCounters };
-      for (const bucket of ['pending', 'feedbacked', 'removed', 'received']) {
-        const delta = (feedbackBuckets[id]?.[bucket] ?? 0) - (old?.feedbackCounterBuckets?.[id]?.[bucket] ?? 0);
-        if (delta) values[`serviceFeedback_${bucket}`] = (values[`serviceFeedback_${bucket}`] ?? 0) + delta;
-      }
-      byId[id] = { ...user, menuCounters: values };
-    }
-    for (const feedback of record.feedback ?? []) if (feedback.status === 'pending')
-      feedbackOwners[feedback.viewerAccountId] = (feedbackOwners[feedback.viewerAccountId] ?? 0) + 1;
-    for (const id of new Set([...Object.keys(old?.feedbackCounterOwners ?? {}), ...Object.keys(feedbackOwners)])) {
-      const profileId = `group:${COMMUNITY_BASE_GROUP_ID}:${id}`, user = byId[profileId];
-      const delta = (feedbackOwners[id] ?? 0) - (old?.feedbackCounterOwners?.[id] ?? 0);
-      const menuDelta = (feedbackOwners[id] ?? 0) - (old?.feedbackCounterBuckets ? old.feedbackCounterOwners?.[id] ?? 0 : 0);
-      if (user && (delta || menuDelta)) byId[profileId] = { ...user, menuCounters: { ...user.menuCounters, feedback: (user.menuCounters?.['feedback'] ?? 0) + menuDelta },
-        activities: { ...user.activities, feedback: (user.activities.feedback ?? 0) + delta } };
-    }
     return { ...state, users: { ...state.users, byId }, [COMMUNITY_CASES_TABLE_NAME]: {
-      byId: { ...state[COMMUNITY_CASES_TABLE_NAME].byId, [record.id]: { ...structuredClone(record), counterOwners: nextOwners, feedbackCounterOwners: feedbackOwners, feedbackCounterBuckets: feedbackBuckets } },
+      byId: { ...state[COMMUNITY_CASES_TABLE_NAME].byId, [record.id]: { ...structuredClone(record), counterOwners: nextOwners } },
       ids: old ? state[COMMUNITY_CASES_TABLE_NAME].ids : [...state[COMMUNITY_CASES_TABLE_NAME].ids, record.id]
     } };
   }
@@ -115,9 +86,17 @@ export class LocalCommunityCasesRepository {
         .filter(t => t.communityId === groupId).reduce((next, t) => LocalCommunityCasesRepository.withTaskCounterWrite(next, t), cases);
     });
   }
-  saveFeedback(id:string,feedback:NonNullable<CommunityCaseRecord['feedback']>,feedbackWork:CommunityCaseRecord['feedbackWork']):void {
-    this.db.write(state=>{const table=state[COMMUNITY_CASES_TABLE_NAME],current=table.byId[id];if(!current)return state;
-      return LocalCommunityCasesRepository.withCounterWrite(state, {...current,feedback:structuredClone(feedback),feedbackWork:structuredClone(feedbackWork)});
+  pendingFeedbackWork() {
+    return this.cases().filter(c => c.baseGroupId === COMMUNITY_BASE_GROUP_ID && c.feedbackWork)
+      .map(c => ({ caseId: c.id, work: structuredClone(c.feedbackWork!) }));
+  }
+  completeFeedbackWork(id: string): void {
+    this.db.write(state => {
+      const table = state[COMMUNITY_CASES_TABLE_NAME], current = table.byId[id];
+      if (!current) return state;
+      return { ...state, [COMMUNITY_CASES_TABLE_NAME]: { ...table, byId: {
+        ...table.byId, [id]: { ...current, feedbackWork: null }
+      } } };
     });
   }
   findCase(id: string): CommunityCaseRecord | null { return this.db.read()[COMMUNITY_CASES_TABLE_NAME].byId[id] ?? null; }

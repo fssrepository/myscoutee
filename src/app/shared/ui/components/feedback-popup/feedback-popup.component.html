@@ -1,0 +1,276 @@
+<div class="feedback-popup-module">
+  @if (isPopupOpen()) {
+    <div class="feedback-parent-popup">
+      <app-popup [model]="feedbackPopupModel()" [zIndex]="feedbackPopupZIndex()">
+        <div class="support-popup feedback-list-popup">
+          @if (feedbackListSubmitMessage()) {
+            <div class="support-submit-success">{{ feedbackListSubmitMessage() }}</div>
+          }
+          <app-smart-list
+            #feedbackSmartList
+            data-guide-field="feedback-list"
+            class="feedback-list-surface"
+            [config]="feedbackSmartListConfig"
+            [loadPage]="feedbackSmartListLoadPage"
+            [itemTemplate]="feedbackItemTemplate"
+            [query]="feedbackSmartListQuery"
+            (menuItemSelect)="onFeedbackDispatchedMenuSelect($event)"
+          ></app-smart-list>
+          <ng-template #feedbackItemTemplate let-item>
+            <div
+              class="feedback-info-card-shell"
+              [class.is-feedbacked]="item.status === 'feedbacked'"
+              [class.is-removed]="item.status === 'removed'"
+              [class.is-own-event]="item.status === 'own-event'"
+              [class.is-feedback-evaluation]="item.eagerDetail?.kind === 'feedback-evaluation'"
+              [attr.data-guide-field]="item.mediaEnd?.interactive === false ? 'card-badge-end' : null"
+              >
+              <app-info-card
+                [card]="item"
+                [useSharedMenuTrigger]="true"
+                [sharedMenuGuideField]="'card-actions'"
+                [sharedMenuContext]="{ menu: 'info-card', card: item }"
+                (mediaEndClick)="onFeedbackCardPrimaryAction(item)"
+                (menuAction)="onFeedbackCardMenuAction(item, $event)"
+              ></app-info-card>
+            </div>
+          </ng-template>
+        </div>
+      </app-popup>
+    </div>
+  }
+
+  @if (isStackedPopupOpen()) {
+    <app-popup [model]="feedbackStackedPopupModel()" [zIndex]="feedbackStackedPopupZIndex()">
+      <div
+        class="feedback-stacked-content"
+        [class.feedback-stacked-content--detail]="stackedPopupMode() === 'feedbackCounts'"
+        [class.feedback-stacked-content--organizer]="stackedPopupMode() === 'organizerFeedback'"
+        [class.feedback-stacked-content--note]="stackedPopupMode() === 'feedbackNote'"
+        >
+          @if (stackedPopupMode() === 'feedbackCounts') {
+            <div class="support-popup feedback-popup">
+              @if (!feedbackSubmitted()) {
+                @if (feedbackDetailLoading()) {
+                  <article class="editor-list-card support-card feedback-loading-card">
+                    <app-indicator kind="load-ring" state="loading"></app-indicator>
+                    <span>Loading feedback</span>
+                  </article>
+                } @else if (hasFeedbackCards()) {
+                  <article class="editor-list-card support-card feedback-shell feedback-flow-shell">
+                    <app-form-flow
+                      class="feedback-form-flow"
+                      [model]="feedbackFlowModel()"
+                      [ngModel]="feedbackDetailValue()"
+                      [saving]="feedbackSubmitting()"
+                      [disabled]="feedbackSubmitting()"
+                      (save)="onFeedbackFlowSave($event)"
+                    ></app-form-flow>
+                    @if (feedbackSubmitMessage()) {
+                      <div class="support-submit-success">{{ feedbackSubmitMessage() }}</div>
+                    }
+                  </article>
+                } @else {
+                  <article class="editor-list-card support-card feedback-empty-card">
+                    @if (feedbackSubmitMessage()) {
+                      <div class="support-submit-success">{{ feedbackSubmitMessage() }}</div>
+                    }
+                  </article>
+                }
+              } @else {
+                <article class="editor-list-card support-card feedback-empty-card">
+                  @if (feedbackSubmitMessage()) {
+                    <div class="support-submit-success">{{ feedbackSubmitMessage() }}</div>
+                  }
+                </article>
+              }
+            </div>
+          }
+          @if (stackedPopupMode() === 'organizerFeedback') {
+            <div class="support-popup feedback-organizer-popup">
+              @if (selectedOrganizerFeedbackItem(); as item) {
+                <article class="editor-list-card support-card feedback-organizer-shell">
+                  @if (organizerFeedbackStatLoading()) {
+                    <div class="feedback-organizer-loading">
+                      <app-indicator kind="load-ring" state="loading"></app-indicator>
+                    </div>
+                  } @else {
+                  <div class="feedback-organizer-overview-grid">
+                    <div class="feedback-info-card-shell feedback-organizer-info-card-shell">
+                      @if (selectedOrganizerFeedbackInfoCard(); as detailCard) {
+                        <app-info-card
+                          class="feedback-organizer-hero-card"
+                          [card]="detailCard"
+                        ></app-info-card>
+                      }
+                    </div>
+
+                    @if (organizerFeedbackCarouselSections().length > 0) {
+                      <section class="feedback-organizer-carousel-panel">
+                        <div class="feedback-organizer-carousel">
+                          <div class="feedback-organizer-carousel-pill-strip">
+                            @for (section of organizerFeedbackCarouselSections(); track section.key; let index = $index) {
+                              <button
+                                type="button"
+                                class="feedback-organizer-carousel-pill"
+                                [ngClass]="[section.toneClass, organizerFeedbackCarouselIndex() === index ? 'is-active' : '']"
+                                (click)="selectOrganizerFeedbackCarousel(index)"
+                                [attr.aria-label]="'Open organizer feedback section ' + section.label"
+                                >
+                                <span class="feedback-organizer-carousel-pill-head">
+                                  <span class="feedback-organizer-carousel-pill-label">{{ section.label }}</span>
+                                  <span
+                                    class="feedback-organizer-carousel-pill-badge"
+                                    [attr.title]="section.topCount + ' of ' + section.responseCount + ' responses selected this'"
+                                    >
+                                    {{ section.topCount }}
+                                  </span>
+                                </span>
+                              </button>
+                            }
+                          </div>
+
+                          @if (organizerFeedbackActiveCarouselSection(); as section) {
+                            <div class="feedback-organizer-carousel-card" [ngClass]="section.toneClass">
+                              <div class="feedback-organizer-carousel-card-head">
+                                <div class="feedback-organizer-carousel-card-title">
+                                  <span class="feedback-organizer-carousel-card-icon"><mat-icon>{{ section.icon }}</mat-icon></span>
+                                  <div>
+                                    <strong>{{ section.topLabel }}</strong>
+                                    <p>{{ section.subtitle }}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="feedback-organizer-carousel-card-bar">
+                                <span [style.width.%]="section.progressPercent"></span>
+                              </div>
+                              <div class="feedback-organizer-carousel-card-meta">
+                                <span>
+                                  {{ section.topCount }} of {{ section.responseCount }}
+                                  {{ section.responseCount === 1 ? 'response' : 'responses' }}
+                                </span>
+                                <span>
+                                  {{ section.optionCount }}
+                                  {{ section.optionCount === 1 ? 'option' : 'options' }}
+                                </span>
+                              </div>
+                              <div class="feedback-organizer-carousel-card-highlights">
+                                @for (stat of section.items; track stat.key) {
+                                  <span class="feedback-organizer-carousel-chip">
+                                    <mat-icon>{{ stat.icon }}</mat-icon>
+                                    <span>{{ stat.label }}</span>
+                                    <strong>{{ stat.count }}</strong>
+                                  </span>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </section>
+                    }
+                  </div>
+
+                  <section class="feedback-organizer-messages">
+                    @if (organizerFeedbackMessageGroups().length > 0) {
+                      @for (group of organizerFeedbackMessageGroups(); track group.dayKey) {
+                        <div class="feedback-organizer-group-marker">{{ group.label }}</div>
+                        <div class="feedback-organizer-message-list">
+                          @for (message of group.items; track message.id) {
+                            <article class="feedback-organizer-message-card">
+                              <div class="feedback-organizer-message-head">
+                                <div
+                                  class="feedback-organizer-message-avatar"
+                                  [ngClass]="'user-color-' + message.viewerGender"
+                                  [appLazyBgImage]="message.viewerImageUrl || null"
+                                  [attr.aria-label]="message.viewerName"
+                                  role="img"
+                                  >
+                                  @if (!message.viewerImageUrl) {
+                                    <span>{{ message.viewerInitials }}</span>
+                                  }
+                                </div>
+                                <div class="feedback-organizer-message-meta">
+                                  <h5>{{ message.viewerName }}</h5>
+                                  <p>{{ message.timeLabel || 'Recent feedback' }}</p>
+                                </div>
+                              </div>
+                              <div class="feedback-organizer-message-chips">
+                                @if (message.overallLabel) {
+                                  <span class="feedback-organizer-message-chip">{{ message.overallLabel }}</span>
+                                }
+                                @if (message.improveLabel) {
+                                  <span class="feedback-organizer-message-chip">{{ message.improveLabel }}</span>
+                                }
+                                @for (traitLabel of message.traitLabels; track traitLabel) {
+                                  <span class="feedback-organizer-message-chip feedback-organizer-message-chip-trait">{{ traitLabel }}</span>
+                                }
+                              </div>
+                              @if (message.eventComment) {
+                                <div class="feedback-organizer-message-opinion">
+                                  <strong>Event opinion</strong>
+                                  <p>{{ message.eventComment }}</p>
+                                </div>
+                              }
+                              @if (message.organizerNote) {
+                                <div class="feedback-organizer-message-note">
+                                  <strong>Note to organizer</strong>
+                                  <p>{{ message.organizerNote }}</p>
+                                </div>
+                              }
+                            </article>
+                          }
+                        </div>
+                      }
+                    } @else {
+                      <p class="feedback-organizer-empty-copy">No feedback has been submitted for this event yet.</p>
+                    }
+                  </section>
+                  }
+                </article>
+              } @else {
+                <article class="editor-list-card support-card feedback-empty-card">
+                  <p>Choose an own event to review its feedback.</p>
+                </article>
+              }
+            </div>
+          }
+          @if (stackedPopupMode() === 'feedbackNote') {
+            <div class="support-popup">
+              @if (!feedbackNoteSubmitted()) {
+                <article class="editor-list-card support-card">
+                  <h4>Organizer Feedback</h4>
+                  <p>Add textual feedback for the event organizer of {{ feedbackCurrentEventTitle() }}.</p>
+                  @if (feedbackNoteSubmitMessage()) {
+                    <div class="support-submit-error">{{ feedbackNoteSubmitMessage() }}</div>
+                  }
+                  <form class="support-form" (ngSubmit)="submitFeedbackNote()">
+                    <label>
+                      <span>Feedback</span>
+                      <textarea
+                        rows="4"
+                        name="feedbackNoteText"
+                        [ngModel]="feedbackNoteForm().text"
+                        (ngModelChange)="feedbackNoteForm.set({ eventId: feedbackNoteForm().eventId, text: $event })"
+                        placeholder="What should be improved for this event next time?"
+                      ></textarea>
+                    </label>
+                    <div class="popup-actions support-actions">
+                      <button type="button" class="link-btn neutral-btn" (click)="closeStackedPopup()">Cancel</button>
+                      <button type="submit" class="link-btn primary-btn" [disabled]="!canSubmitFeedbackNote()">Submit feedback</button>
+                    </div>
+                  </form>
+                </article>
+              } @else {
+                <article class="editor-list-card support-card feedback-empty-card">
+                  <div class="support-submit-success">{{ feedbackNoteSubmitMessage() }}</div>
+                  <div class="popup-actions support-actions">
+                    <button type="button" class="link-btn primary-btn" (click)="closeStackedPopup()">Done</button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+      </div>
+    </app-popup>
+  }
+</div>

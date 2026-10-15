@@ -7,7 +7,7 @@ import { LocalMingleRepository } from './mingle.repository';
 import { LocalEventsRepository } from './events.repository';
 import { LocalActivityMembersRepository } from './activity-members.repository';
 import { completedMinglePeerIds } from '../../mappers/events/mingle.mapper';
-import { LocalEventFeedbackRepository } from './event-feedback.repository';
+import { LocalFeedbackRepository } from '../feedback/feedback.repository';
 
 const start = Date.parse('2030-04-18T19:00:00Z');
 describe('LocalMingleRepository', () => {
@@ -114,7 +114,7 @@ describe('LocalMingleRepository', () => {
     expect(Object.values(db.read().userRates.byId).some(rate => rate.met && [rate.fromUserId, rate.toUserId].includes('a')
       && [rate.fromUserId, rate.toUserId].includes(replacement) && rate.scoreGiven === 0 && rate.scoreReceived === 0)).toBe(true);
     const event = db.read().events.byId['event'];
-    expect(TestBed.inject(LocalEventFeedbackRepository).queryMinglePeers('a', [event])).toEqual({ event: [replacement] });
+    expect(TestBed.inject(LocalFeedbackRepository).queryMinglePeers('a', [event])).toEqual({ event: [replacement] });
     members.replaceRecordsByOwner({ ownerType: 'group', ownerId: table.memberOwnerId }, []);
     expect(repository.query('a', 'event', 1)?.tables[0].participants.map(user => user.userId).sort()).toEqual(['a', replacement].sort());
   });

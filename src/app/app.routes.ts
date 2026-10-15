@@ -38,11 +38,15 @@ const entryAreaGuard: CanActivateFn = async () => {
   return router.createUrlTree(['/game']);
 };
 
-const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
+const restrictedAreaGuard: CanActivateFn = async (route, state) => {
   const injector = inject(Injector);
   const sessionService = inject(SessionService);
   const router = inject(Router);
   const session = await sessionService.ensureSession();
+  const allowRoleProfiles = route.data['allowRoleProfiles'] === true;
+  if (allowRoleProfiles && session?.kind === 'operator-bootstrap') {
+    return entryRedirect(router, state.url);
+  }
   if (session) {
     const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
     const usersService = injector.get(UsersService);
@@ -55,10 +59,10 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
           session.kind === 'demo' ? session.userId : session.profile.id
         );
         if (isAdminUser(cachedUser)) {
-          return router.createUrlTree(['/admin']);
+          return allowRoleProfiles ? true : router.createUrlTree(['/admin']);
         }
         if (isOperatorUser(cachedUser)) {
-          return router.createUrlTree(['/operator']);
+          return allowRoleProfiles ? true : router.createUrlTree(['/operator']);
         }
         if (requiresProfileOnboarding(cachedUser)) {
           return entryRedirect(router, state.url);
@@ -72,10 +76,10 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
         return entryRedirect(router, state.url);
       }
       if (isAdminUser(user)) {
-        return router.createUrlTree(['/admin']);
+        return allowRoleProfiles ? true : router.createUrlTree(['/admin']);
       }
       if (isOperatorUser(user)) {
-        return router.createUrlTree(['/operator']);
+        return allowRoleProfiles ? true : router.createUrlTree(['/operator']);
       }
       if (requiresProfileOnboarding(user)) {
         return router.createUrlTree(['/entry'], {
@@ -224,10 +228,15 @@ export const routes: Routes = [
       .then(m => m.OperatorPageComponent)
   },
   {
+    path: 'mcp/authorize',
+    canActivate: [restrictedAreaGuard],
+    data: { allowRoleProfiles: true },
+    loadComponent: () => import('./profile/components/integration-settings-popup/mcp-authorization.component').then(m => m.McpAuthorizationComponent)
+  },
+  {
     path: '',
     canActivate: [restrictedAreaGuard],
     children: [
-      { path: 'mcp/authorize', loadComponent: () => import('./profile/components/integration-settings-popup/mcp-authorization.component').then(m => m.McpAuthorizationComponent) },
       { path: 'home', redirectTo: 'game', pathMatch: 'full' },
       {
         path: 'game',

@@ -1,3 +1,4 @@
+import type { FeedbackEvaluationsMemorySchema } from '../source/entity/feedback/feedback.entity';
 import type { ServiceOfferingsMemorySchema } from '../source/entity/community/service-offering.entity';
 import type { CommunityAnnouncementsMemorySchema } from '../source/entity/community/community-announcement.entity';
 import type { CommunityCasesMemorySchema } from '../source/entity/community/community-case.entity';
@@ -15,7 +16,8 @@ import type {
 import type { AssetRequestsMemorySchema, AssetsMemorySchema } from '../source/entity/assets/asset.entity';
 import type { ChatsMemorySchema } from '../source/entity/chat/chat.entity';
 import type { HelpCenterMemorySchema, IdeaPostsMemorySchema } from '../source/entity/content/content.entity';
-import type { ActivityEventsMemorySchema, EventFeedbackMemorySchema } from '../source/entity/events/event.entity';
+import type { ActivityEventsMemorySchema } from '../source/entity/events/event.entity';
+import type { FeedbackStatesMemorySchema } from '../source/entity/feedback/feedback.entity';
 import type { EventTicketsMemorySchema } from '../source/entity/events/event-ticket.entity';
 import type { NotificationsMemorySchema } from '../source/entity/notifications/notification.entity';
 import type { ContactsMemorySchema, ProfileExperiencesMemorySchema } from '../source/entity/accounts/profile.entity';
@@ -23,7 +25,7 @@ import type { UserRatesMemorySchema } from '../source/entity/affinity/rate.entit
 import type { ShareTokensMemorySchema } from '../source/entity/content/sharing.entity';
 import type { UsersMemorySchema } from '../source/entity/accounts/user.entity';
 
-export type AppMemorySchema = ServiceOfferingsMemorySchema & CommunityAnnouncementsMemorySchema & CommunityCasesMemorySchema & CampaignsMemorySchema & CommunityGroupsMemorySchema & UsersMemorySchema
+export type AppMemorySchema = FeedbackEvaluationsMemorySchema & ServiceOfferingsMemorySchema & CommunityAnnouncementsMemorySchema & CommunityCasesMemorySchema & CampaignsMemorySchema & CommunityGroupsMemorySchema & UsersMemorySchema
   & UserRatesMemorySchema
   & AssetsMemorySchema
   & AssetRequestsMemorySchema
@@ -33,7 +35,7 @@ export type AppMemorySchema = ServiceOfferingsMemorySchema & CommunityAnnounceme
   & ActivitySubEventStageRuntimeMemorySchema
   & ChatsMemorySchema
   & NotificationsMemorySchema
-  & EventFeedbackMemorySchema
+  & FeedbackStatesMemorySchema
   & EventTicketsMemorySchema
   & HelpCenterMemorySchema
   & IdeaPostsMemorySchema

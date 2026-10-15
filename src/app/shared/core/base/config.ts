@@ -279,7 +279,7 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
-      routePrefix: '/activities/events/feedback',
+      routePrefix: '/feedback',
       demoDelayMs: 1500
     },
     {

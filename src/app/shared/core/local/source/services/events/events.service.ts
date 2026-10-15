@@ -23,47 +23,15 @@ import type {
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../../../contracts/events/event.interface';
-import type {
-  EventCheckoutAssetSelection,
-  EventCheckoutBasket,
-  EventCheckoutBasketItem,
-  EventCheckoutLineItem,
-  EventCheckoutPaymentAudit,
-  EventCheckoutOptionalSubEvent,
-  EventCheckoutPricingSummaryRow,
-  EventCheckoutPromoCodeValidationRequest,
-  EventCheckoutPromoCodeValidationResult,
-  EventCheckoutRequest,
-  EventCheckoutResultState,
-  EventCheckoutState,
-  EventCheckoutStateChangeRequest,
-  EventCheckoutSession,
-  EventCheckoutSlot,
-  EventCheckoutSlotDay,
-  EventCheckoutSlotsQuery,
-  EventCheckoutSlotsResult,
-  EventParticipationActionResultDTO,
-  EventWatchActionResultDTO,
-  EventFeedbackQueryDto,
-  EventFeedbackReceivedEventDto,
-  EventFeedbackNoteRequestDto,
-  EventFeedbackPageQueryDto,
-  EventFeedbackStatDto,
-  EventFeedbackStatQueryDto,
-  EventFeedbackStateDto
-} from '../../../../contracts/common/activity.interface';
+import type { EventCheckoutAssetSelection, EventCheckoutBasket, EventCheckoutBasketItem, EventCheckoutLineItem, EventCheckoutPaymentAudit, EventCheckoutOptionalSubEvent, EventCheckoutPricingSummaryRow, EventCheckoutPromoCodeValidationRequest, EventCheckoutPromoCodeValidationResult, EventCheckoutRequest, EventCheckoutResultState, EventCheckoutState, EventCheckoutStateChangeRequest, EventCheckoutSession, EventCheckoutSlot, EventCheckoutSlotDay, EventCheckoutSlotsQuery, EventCheckoutSlotsResult, EventParticipationActionResultDTO, EventWatchActionResultDTO } from '../../../../contracts/common/activity.interface';
+import type { FeedbackQueryDto, FeedbackReceivedEventDto, FeedbackNoteRequestDto, FeedbackPageQueryDto, FeedbackStatDto, FeedbackStatQueryDto, FeedbackStateDto } from '../../../../contracts/feedback/feedback.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import type { ActivitiesFeedFilters } from '../../../../contracts';
 import type { UserMenuCounterDeltasDto } from '../../../../contracts/accounts/user.interface';
 import { PricingBuilder } from '../../../../base/builders';
-import {
-  ActivityEventDetailDTO,
-  EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY,
-  EventFeedbackDetailDto,
-  EventFeedbackPageResultDto
-} from '../../../../contracts/common/activity.interface';
+import { ActivityEventDetailDTO, EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY } from '../../../../contracts/common/activity.interface';
+import { FeedbackDetailDto, FeedbackPageResultDto } from '../../../../contracts/feedback/feedback.interface';
 import { LocalRouteDelayService } from '../platform/route-delay.service';
-import { LocalEventFeedbackRepository } from '../../repositories/events/event-feedback.repository';
 import { LocalActivityMembersRepository } from '../../repositories/events/activity-members.repository';
 import { LocalEventsRepository } from '../../repositories/events/events.repository';
 import { LocalChatsRepository } from '../../repositories/chat/chats.repository';
@@ -81,7 +49,7 @@ import {
   LocalActivityResourcesMapper,
   LocalActivityEventsMapper,
   LocalEventCheckoutBasketsMapper,
-  LocalEventFeedbackMapper,
+  LocalFeedbackMapper,
   LocalEventParticipationActionMapper,
   LocalUsersMapper
 } from '../../mappers';
@@ -137,7 +105,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
-  private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly jobGroups = inject(LocalCommunityGroupsRepository);
   private readonly notificationsRepository = inject(LocalNotificationsRepository);
@@ -895,202 +862,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return this.eventsRepository.queryEventExplorePage({
       ...query,
       userId: this.resolveDemoActivityUserId(query.userId)
-    });
-  }
-
-  async queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
-    const [, response] = await Promise.all([
-      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
-      (async (): Promise<EventFeedbackStateDto[]> => {
-        return this.eventFeedbackRepository.queryEventFeedbackStates(userId);
-      })()
-    ]);
-    return response;
-  }
-
-  async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
-    const [, response] = await Promise.all([
-      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
-      (async (): Promise<EventFeedbackReceivedEventDto[]> => {
-        return this.eventFeedbackRepository.queryReceivedEventFeedback(userId);
-      })()
-    ]);
-    return response;
-  }
-
-  async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
-    const normalizedUserId = query.userId.trim();
-    if (!normalizedUserId) {
-      return new EventFeedbackPageResultDto();
-    }
-    const [, response] = await Promise.all([
-      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
-      (async (): Promise<EventFeedbackPageResultDto> => {
-        const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId)
-          .filter(event => !query.campaignId || event.campaignId === query.campaignId);
-        const organizerRecords = this.eventsRepository.queryHostingItemsByUser(normalizedUserId)
-          .filter(event => !query.campaignId || event.campaignId === query.campaignId);
-        const events = LocalActivityEventsMapper.toDtoList(records);
-        const organizerEvents = LocalActivityEventsMapper.toDtoList(organizerRecords);
-        const users = this.usersRepository.queryAllUsers();
-        const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
-        const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
-        if (!activeUser) {
-          return new EventFeedbackPageResultDto();
-        }
-        return LocalEventFeedbackMapper.toPageResult({
-          query,
-          events,
-          organizerEvents,
-          users,
-          activeUser,
-          minglePeersByEventId: this.eventFeedbackRepository.queryMinglePeers(normalizedUserId, records),
-          states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
-          receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId)
-        });
-      })()
-    ]);
-    return response;
-  }
-
-  async loadEventFeedbackStatById(query: EventFeedbackStatQueryDto): Promise<EventFeedbackStatDto> {
-    const normalizedUserId = query.userId.trim();
-    const normalizedEventId = query.eventId.trim();
-    if (!normalizedUserId || !normalizedEventId) {
-      return {
-        eventId: normalizedEventId,
-        totalResponses: 0,
-        sections: []
-      };
-    }
-    const [, response] = await Promise.all([
-      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
-      (async (): Promise<EventFeedbackStatDto> => {
-        return LocalEventFeedbackMapper.toStat({
-          query: {
-            userId: normalizedUserId,
-            eventId: normalizedEventId
-          },
-          records: this.eventFeedbackRepository.queryReceivedEventFeedbackStatRecords(
-            normalizedUserId,
-            normalizedEventId
-          )
-        });
-      })()
-    ]);
-    return response;
-  }
-
-  async loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
-    const [, response] = await Promise.all([
-      this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
-      this.readEventFeedback(query)
-    ]);
-    return response;
-  }
-
-  // Aggregate service calls reuse this projection without a second route delay.
-  async readEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
-    const normalizedUserId = query.userId.trim();
-    const normalizedEventId = query.eventId.trim();
-    if (!normalizedUserId || !normalizedEventId) {
-      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
-    }
-
-    const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId);
-    const events = LocalActivityEventsMapper.toDtoList(records);
-    const users = this.usersRepository.queryAllUsers();
-    const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
-    const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
-    if (!activeUser) {
-      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
-    }
-    const detail = LocalEventFeedbackMapper.toDetail({
-      query: {
-        userId: normalizedUserId,
-        eventId: normalizedEventId
-      },
-      events,
-      users,
-      activeUser,
-      minglePeersByEventId: this.eventFeedbackRepository.queryMinglePeers(normalizedUserId, records)
-    });
-    const state = this.eventFeedbackRepository
-      .queryEventFeedbackStates(normalizedUserId)
-      .find(item => item.eventId === normalizedEventId);
-    return detail.withPersistedState(state);
-  }
-
-  async submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto> {
-    return this.withRouteDelay(LocalEventsService.EVENTS_ROUTE, async (): Promise<EventFeedbackDetailDto> => {
-      const event = this.eventsRepository.queryEventRecordById(userId, request.eventId);
-      const allowed = await this.readEventFeedback({ userId, eventId: request.eventId });
-      if (event?.mode === 'Mingle') {
-        const cards = new Map(allowed.cards.map(card => [card.id, card]));
-        if (request.cards.some(card => {
-          const target = cards.get(card.id);
-          return !target || target.kind !== card.kind || target.targetUserId !== card.targetUserId;
-        })) throw new Error('Invalid feedback target for this event.');
-      }
-      const previous = this.eventFeedbackRepository.queryEventFeedbackStates(userId)
-        .find(item => item.eventId === request.eventId.trim());
-      this.eventFeedbackRepository.submitEventFeedback(userId, request);
-      if (event && (!previous?.submittedAtIso || previous.removed)) {
-        const actorId = userId.trim();
-        const actor = this.usersRepository.queryUserById(actorId);
-        const allowedTargets = new Set(allowed.cards.map(card => card.targetUserId));
-        const recipients = [...new Set(request.cards.map(card => card.targetUserId?.trim() ?? ''))]
-          .filter(id => id && id !== actorId && allowedTargets.has(id));
-        const eventTitle = event.title?.trim() || 'Event';
-        const createdAtIso = new Date().toISOString();
-        this.notificationsRepository.append(recipients.map(recipientUserId => ({
-          id: `event-feedback-submitted:${event.id}:${actorId}:${recipientUserId}`,
-          recipientUserId,
-          kind: 'event-feedback-submitted',
-          category: 'event',
-          title: 'New event feedback',
-          message: `You received feedback for ${eventTitle}.`,
-          createdAtIso,
-          readAtIso: null,
-          senderUserId: actorId,
-          senderName: actor?.name ?? null,
-          senderAvatarUrl: actor?.images?.[0] ?? null,
-          actionPath: '/game',
-          sourceType: 'event',
-          sourceId: event.id,
-          payload: { eventId: event.id, eventTitle, senderUserId: actorId }
-        })));
-      }
-      await this.eventFeedbackRepository.flushToIndexedDb();
-      const normalizedUserId = userId.trim();
-      const persistedState = this.eventFeedbackRepository
-        .queryEventFeedbackStates(normalizedUserId)
-        .find(item => item.eventId === request.eventId.trim());
-      const persisted = new EventFeedbackDetailDto(request).withPersistedState(persistedState);
-      if (!persisted.submittedAtIso) {
-        throw new Error('Local event feedback persistence was not confirmed.');
-      }
-      return persisted;
-    });
-  }
-
-  async saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventFeedbackRepository.saveEventFeedbackNote(request);
-    await this.eventFeedbackRepository.flushToIndexedDb();
-  }
-
-  async removeEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
-    return this.withRouteDelay(LocalEventsService.EVENTS_ROUTE, async (): Promise<void> => {
-      this.eventFeedbackRepository.removeEventFeedbackEvent(userId, eventId);
-      await this.eventFeedbackRepository.flushToIndexedDb();
-    });
-  }
-
-  async restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
-    return this.withRouteDelay(LocalEventsService.EVENTS_ROUTE, async (): Promise<void> => {
-      this.eventFeedbackRepository.restoreEventFeedbackEvent(userId, eventId);
-      await this.eventFeedbackRepository.flushToIndexedDb();
     });
   }
 
@@ -3364,8 +3135,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return this.eventsRepository.countTicketItemsByUser(userId);
   }
 
-  countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
-    return this.eventsRepository.countPendingEventFeedbackByUser(userId, feedbackUnlockDelayMs);
+  countPendingFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
+    return this.eventsRepository.countPendingFeedbackByUser(userId, feedbackUnlockDelayMs);
   }
 
   private resolveDemoActivityUserId(userId: string): string {

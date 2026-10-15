@@ -57,7 +57,7 @@ import {
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from '../../context/stores/activity/activities-popup.store';
 import { EventSubeventsPopupStore } from '../../context/stores/event/event-subevents-popup.store';
 import { NotificationCenterStore } from '../../context/stores/notification/notification-center.store';
-import { ServiceFeedbackStore } from '../../context/stores/services/service-feedback.store';
+import { FeedbackStore } from '../../context/stores/feedback/feedback.store';
 
 import { SubEventResourcePopupStore } from '../../context/stores/event/sub-event-resource-popup.store';
 
@@ -93,7 +93,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
   private readonly announcements = inject(CommunityAnnouncementsStore);
   private readonly cases = inject(CommunityCasesStore);
   private readonly campaigns = inject(CampaignsStore);
-  private readonly serviceFeedback = inject(ServiceFeedbackStore);
+  private readonly feedbackStore = inject(FeedbackStore);
   private readonly communityGroups = inject(CommunityGroupsStore);
   private readonly groupWorkspaces = inject(GroupWorkspaceStore);
   @ViewChild('notificationsSmartList')
@@ -367,7 +367,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     if (actionId === 'openNotificationFeedback') {
       if (!await this.groupWorkspaces.select(`${notification.payload?.['workspaceGroupId'] ?? ''}`.trim() || null)) return;
       this.store.close();
-      this.serviceFeedback.open();
+      this.feedbackStore.open();
       await this.markRead(notification);
       return;
     }

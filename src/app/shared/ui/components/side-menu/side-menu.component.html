@@ -204,10 +204,10 @@
 @if (eventEditorStore.eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
 }
-@if (activitiesStore.eventFeedbackPopupComponent(); as feedbackComponent) {
+@if (activitiesStore.feedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
 }
-@if (activitiesStore.eventFeedbackRatedDetailPopupComponent(); as ratedFeedbackComponent) {
+@if (activitiesStore.feedbackRatedDetailPopupComponent(); as ratedFeedbackComponent) {
   <ng-container *ngComponentOutlet="ratedFeedbackComponent"></ng-container>
 }
 
@@ -257,4 +257,4 @@
   @if(caseSlotPicker.slotPickerPopupComponent(); as component){<ng-container *ngComponentOutlet="component"></ng-container>}
 }
 
-@if(serviceFeedback.opened()) { @if(serviceFeedback.component(); as component) {<ng-container *ngComponentOutlet="component"></ng-container>} }
+@if(feedbackStore.opened()) { @if(feedbackStore.component(); as component) {<ng-container *ngComponentOutlet="component"></ng-container>} }

@@ -66,7 +66,7 @@ export class SeedIdeaPostsBuilder {
         excerpt: 'Profiles, event roles, related chats, and impressions help people understand who they are meeting.',
         contentHtml: `
           <p>A profile can show details that a person chooses to share. An event adds the plan and each member's role or participation, while its event or group chat keeps the conversation connected to that plan.</p>
-          <p>After taking part, hosts and participants can give separate event feedback. It can contribute to the impressions shown about a host or member, providing useful context without guaranteeing how a future meeting will go.</p>
+          <p>After taking part, hosts and participants can give separate feedback. It can contribute to the impressions shown about a host or member, providing useful context without guaranteeing how a future meeting will go.</p>
           <p>This information reduces guesswork, but everyone still decides for themselves whom they want to meet.</p>
         `,
         featured: true,

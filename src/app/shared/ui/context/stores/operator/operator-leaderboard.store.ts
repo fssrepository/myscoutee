@@ -36,6 +36,7 @@ export class OperatorLeaderboardStore {
   private readonly service = inject(OperatorRegistryService);
   private readonly sessionService = inject(SessionService);
   private readonly revisionRef = signal(0);
+  private readonly errorRef = signal<string | null>(null);
   private readonly summariesRef = signal<readonly OperatorLeaderboardGroupSummaryDto[]>([]);
   private readonly latestCacheMutationRef =
     signal<OperatorLeaderboardCacheMutation | null>(null);
@@ -46,6 +47,7 @@ export class OperatorLeaderboardStore {
   private mutationSequence = 0;
 
   readonly revision = this.revisionRef.asReadonly();
+  readonly error = this.errorRef.asReadonly();
   readonly summaries = this.summariesRef.asReadonly();
   readonly latestCacheMutation = this.latestCacheMutationRef.asReadonly();
 
@@ -57,6 +59,7 @@ export class OperatorLeaderboardStore {
       }
       this.contextKey = nextContextKey;
       this.generation += 1;
+      this.errorRef.set(null);
       this.summariesRef.set([]);
       this.resetCacheOverlay();
       this.revisionRef.update(value => value + 1);
@@ -68,11 +71,22 @@ export class OperatorLeaderboardStore {
     signal?: AbortSignal
   ): Promise<OperatorLeaderboardPageDto> {
     const generation = this.generation;
-    const page = await this.service.leaderboardPage(query, signal);
-    if (generation === this.generation && !signal?.aborted) {
-      this.summariesRef.set(page.context?.groupSummaries ?? []);
+    this.errorRef.set(null);
+    try {
+      const page = await this.service.leaderboardPage(query, signal);
+      if (generation === this.generation && !signal?.aborted) {
+        this.summariesRef.set(page.context?.groupSummaries ?? []);
+      }
+      return this.applyCacheOverlay(page, !query.cursor);
+    } catch (error) {
+      if (generation === this.generation && !signal?.aborted
+          && !(error instanceof Error && error.name === 'AbortError')) {
+        const key = error instanceof Error ? error.message : '';
+        this.errorRef.set(key.startsWith('operator.leaderboard.error.')
+          || key === 'operator.request.timeout' ? key : 'operator.request.failed');
+      }
+      throw error;
     }
-    return this.applyCacheOverlay(page, !query.cursor);
   }
 
   async queryDeploymentPage(
@@ -146,6 +160,7 @@ export class OperatorLeaderboardStore {
 
   invalidate(): void {
     this.generation += 1;
+    this.errorRef.set(null);
     this.summariesRef.set([]);
     this.resetCacheOverlay();
     this.revisionRef.update(value => value + 1);

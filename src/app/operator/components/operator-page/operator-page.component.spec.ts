@@ -91,6 +91,7 @@ describe('OperatorPageComponent', () => {
           provide: OperatorLeaderboardStore,
           useValue: {
             revision: leaderboardRevision.asReadonly(),
+            error: signal<string | null>(null).asReadonly(),
             latestCacheMutation: leaderboardCacheMutation.asReadonly(),
             consumeCacheMutation,
             invalidate: invalidateLeaderboard,

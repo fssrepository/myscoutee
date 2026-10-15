@@ -18,9 +18,9 @@ import type {
 
 import type { ExplainableSurface } from '../contracts';
 import type {
-  EventFeedbackOption,
-  EventFeedbackTraitOption
-} from '../../ui/converters/event/event-feedback.model';
+  FeedbackOption,
+  FeedbackTraitOption
+} from '../../ui/converters/feedback/feedback.model';
 import {
   ASSET_CATEGORY_OPTIONS_BY_TYPE as CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE,
   ASSET_FILTER_TYPES,
@@ -29,7 +29,7 @@ import {
   ASSET_TYPE_SUPPLIES,
   ASSET_TYPE_TRANSPORT,
   ASSET_TYPES,
-  EVENT_FEEDBACK_LIST_FILTERS,
+  FEEDBACK_LIST_FILTERS,
   EVENT_VISIBILITIES,
   SUB_EVENT_RESOURCE_FILTERS
 } from './constants';
@@ -38,7 +38,7 @@ import type {
   AssetFilterType,
   AssetType,
   DetailPrivacy,
-  EventFeedbackListFilter,
+  FeedbackListFilter,
   EventVisibility,
   ProfileStatus,
   SubEventResourceFilter
@@ -344,7 +344,7 @@ const PERSONALITY_TRAIT_CATALOG: PersonalityTraitCatalogEntry[] = [
     toneClass: 'trait-tone-playful'
   }
 ];
-const EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS: EventFeedbackTraitOption[] = PERSONALITY_TRAIT_CATALOG.map(trait => ({
+const FEEDBACK_PERSONALITY_TRAIT_OPTIONS: FeedbackTraitOption[] = PERSONALITY_TRAIT_CATALOG.map(trait => ({
   id: trait.id,
   label: trait.label,
   icon: trait.icon,
@@ -465,7 +465,7 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'community.case.board.task', label: 'Board task', icon: 'help_outline', owner: 'popup', order: 62.2, enabled: true },
   { key: 'community.case.quotations', label: 'Case quotations', icon: 'help_outline', owner: 'popup', order: 62.6, enabled: true },
   { key: 'community.case.quotation.editor', label: 'Quotation details', icon: 'help_outline', owner: 'popup', order: 62.7, enabled: true },
-  { key: 'community.service-feedback', label: 'Service feedback', icon: 'help_outline', owner: 'popup', order: 75.1, enabled: true },
+  { key: 'feedback.evaluation', label: 'Feedback', icon: 'help_outline', owner: 'popup', order: 75.1, enabled: true },
   { key: 'community.case.board.offers', label: 'Link quotations', icon: 'help_outline', owner: 'popup', order: 62.4, enabled: true },
   { key: 'community.case.board.dependencies', label: 'Task dependencies', icon: 'help_outline', owner: 'popup', order: 62.5, enabled: true },
   { key: 'policies.list', label: 'Terms', icon: 'policy', owner: 'popup', order: 68.1, enabled: true },
@@ -516,8 +516,8 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'event.tournament.groups', label: 'Tournament groups', icon: 'leaderboard', owner: 'popup', order: 68, enabled: true },
   { key: 'event.editor', label: 'Event editor', icon: 'edit_calendar', owner: 'popup', order: 75, enabled: true },
   { key: 'event.mingle.configuration', label: 'Mingle setup', icon: 'shuffle', owner: 'popup', order: 76, enabled: true },
-  { key: 'event.feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 80, enabled: true },
-  { key: 'event.feedback.detail', label: 'Event feedback details', icon: 'rate_review', owner: 'popup', order: 81, enabled: true }
+  { key: 'feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 80, enabled: true },
+  { key: 'feedback.detail', label: 'Event feedback details', icon: 'rate_review', owner: 'popup', order: 81, enabled: true }
 ];
 const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'public', icon: 'public' },
@@ -1140,38 +1140,38 @@ const FEEDBACK_CATEGORIES = [
   'UX improvement',
   'Performance'
 ];
-const EVENT_FEEDBACK_EVENT_OVERALL_OPTIONS: EventFeedbackOption[] = [
+const FEEDBACK_EVENT_OVERALL_OPTIONS: FeedbackOption[] = [
   { value: 'excellent', label: 'Excellent', icon: 'sentiment_very_satisfied', impressionTag: 'Host vibe' },
   { value: 'good', label: 'Good', icon: 'sentiment_satisfied', impressionTag: 'Host reliability' },
   { value: 'mixed', label: 'Mixed', icon: 'sentiment_neutral', impressionTag: 'Host consistency' },
   { value: 'needs-work', label: 'Needs work', icon: 'sentiment_dissatisfied', impressionTag: 'Host quality' }
 ];
-const EVENT_FEEDBACK_HOST_IMPROVE_OPTIONS: EventFeedbackOption[] = [
+const FEEDBACK_HOST_IMPROVE_OPTIONS: FeedbackOption[] = [
   { value: 'timing', label: 'Improve timing', icon: 'schedule', impressionTag: 'Host organization' },
   { value: 'communication', label: 'Improve communication', icon: 'campaign', impressionTag: 'Host communication' },
   { value: 'resources', label: 'Improve resources', icon: 'inventory_2', impressionTag: 'Host planning' },
   { value: 'none', label: 'No major change', icon: 'verified', impressionTag: 'Host consistency' }
 ];
-const EVENT_FEEDBACK_ATTENDEE_COLLAB_OPTIONS: EventFeedbackOption[] = [
+const FEEDBACK_ATTENDEE_COLLAB_OPTIONS: FeedbackOption[] = [
   { value: 'great', label: 'Great teamwork', icon: 'handshake', impressionTag: 'Attendee teamwork' },
   { value: 'reliable', label: 'Reliable', icon: 'verified_user', impressionTag: 'Attendee reliability' },
   { value: 'neutral', label: 'Neutral', icon: 'sentiment_neutral', impressionTag: 'Attendee neutrality' },
   { value: 'rough', label: 'Needs guidance', icon: 'warning_amber', impressionTag: 'Attendee fit' }
 ];
-const EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS: EventFeedbackOption[] = [
+const FEEDBACK_ATTENDEE_REJOIN_OPTIONS: FeedbackOption[] = [
   { value: 'yes', label: 'Would team up', icon: 'group', impressionTag: 'Attendee trust' },
   { value: 'maybe', label: 'Maybe', icon: 'hourglass_top', impressionTag: 'Attendee compatibility' },
   { value: 'no', label: 'Not now', icon: 'do_not_disturb_alt', impressionTag: 'Attendee risk' },
   { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
 ];
-const EVENT_FEEDBACK_LIST_FILTER_META: Record<EventFeedbackListFilter, { label: string; icon: string }> = {
+const FEEDBACK_LIST_FILTER_META: Record<FeedbackListFilter, { label: string; icon: string }> = {
   'own-events': { label: 'feedback.own', icon: 'stadium' },
   pending: { label: 'Pending', icon: 'schedule' },
   feedbacked: { label: 'Feedbacked', icon: 'task_alt' },
   removed: { label: 'Removed', icon: 'delete_outline' }
 };
-const EVENT_FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> =
-  EVENT_FEEDBACK_LIST_FILTERS.map(key => ({ key, ...EVENT_FEEDBACK_LIST_FILTER_META[key] }));
+const FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: FeedbackListFilter; label: string; icon: string }> =
+  FEEDBACK_LIST_FILTERS.map(key => ({ key, ...FEEDBACK_LIST_FILTER_META[key] }));
 const DEFAULT_HELP_CENTER_DESCRIPTION = "Profiles, communities, events, chats and tools: find the relevant topic and follow the steps.";
 const DEFAULT_PRIVACY_CENTER_DESCRIPTION = 'Before continuing, please review and accept how your data is used in MyScoutee.';
 const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
@@ -2207,23 +2207,23 @@ const EXPLANATION_PROFILE_VIEW_SECTIONS_HU: HelpCenterSectionDto[] = [
   }
 ];
 
-const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
+const EXPLANATION_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
   {
-    id: 'event-feedback-entry',
+    id: 'feedback-entry',
     icon: 'rate_review',
     title: 'Feedback lists',
     blurb: 'Choose the feedback state you want to see.',
     contentHtml: '<p><strong>Pending</strong> holds events and completed-case providers waiting for your feedback, <strong>Feedbacked</strong> holds submitted items, and <strong>Removed</strong> holds skipped items that can be restored. <strong>Own</strong> shows feedback received for events you organized and services you provided. Service cards have a different background color.</p>'
   },
   {
-    id: 'event-feedback-categories',
+    id: 'feedback-categories',
     icon: 'checklist',
     title: 'Answer the cards',
     blurb: 'Complete each card, then review your answers.',
     contentHtml: '<p>On every event or participant card, answer the two questions and choose one to three traits. Review the summary, then use <strong>Submit feedback</strong> to send all answers.</p>'
   },
   {
-    id: 'event-feedback-save',
+    id: 'feedback-save',
     icon: 'task_alt',
     title: 'After feedback',
     blurb: 'Review submitted or received results.',
@@ -2231,23 +2231,23 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
   }
 ];
 
-const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSectionDto[] = [
+const EXPLANATION_FEEDBACK_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
-    id: 'event-feedback-entry',
+    id: 'feedback-entry',
     icon: 'rate_review',
     title: 'Visszajelzési listák',
     blurb: 'Válaszd ki, melyik állapotot szeretnéd látni.',
     contentHtml: '<p>A <strong>Függőben</strong> listában a kitöltésre váró, a <strong>Visszajelezve</strong> listában a beküldött, az <strong>Eltávolítva</strong> listában pedig a kihagyott és visszaállítható események vannak. A <strong>Saját események</strong> a szervezőként kapott visszajelzéseket mutatja.</p>'
   },
   {
-    id: 'event-feedback-categories',
+    id: 'feedback-categories',
     icon: 'checklist',
     title: 'Kártyák kitöltése',
     blurb: 'Tölts ki minden kártyát, majd ellenőrizd a válaszaidat.',
     contentHtml: '<p>Minden esemény- vagy résztvevőkártyán válaszolj a két kérdésre, és válassz 1–3 jellemzőt. Az összegzés után a <strong>Visszajelzés beküldése</strong> gomb elküldi az összes választ.</p>'
   },
   {
-    id: 'event-feedback-save',
+    id: 'feedback-save',
     icon: 'task_alt',
     title: 'Beküldés után',
     blurb: 'Nézd meg az elküldött vagy kapott eredményeket.',
@@ -2957,25 +2957,25 @@ const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU: HelpCenterRevisionDto = {
   sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION: HelpCenterRevisionDto = {
+const DEFAULT_EXPLANATION_FEEDBACK_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
-  id: 'explanation-event-feedback-default-v1',
-  contextKey: 'event.feedback',
+  id: 'explanation-feedback-default-v1',
+  contextKey: 'feedback',
   title: 'Event feedback',
   summary: 'Submit feedback and review event results.',
   description: 'Learn how feedback lists, answer cards, and organizer results work.',
-  sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS, 'en')
+  sections: withSeededExplanationImages('feedback', EXPLANATION_FEEDBACK_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU: HelpCenterRevisionDto = {
-  ...DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION,
-  id: 'explanation-event-feedback-default-hu-v1',
+const DEFAULT_EXPLANATION_FEEDBACK_REVISION_HU: HelpCenterRevisionDto = {
+  ...DEFAULT_EXPLANATION_FEEDBACK_REVISION,
+  id: 'explanation-feedback-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
   title: 'Esemény-visszajelzés',
   summary: 'Visszajelzés beküldése és az eredmények áttekintése.',
   description: 'Itt megismerheted a visszajelzési listákat, a válaszkártyákat és a szervezői eredményeket.',
-  sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU, 'hu')
+  sections: withSeededExplanationImages('feedback', EXPLANATION_FEEDBACK_SECTIONS_HU, 'hu')
 };
 
 export const APP_STATIC_DATA = {
@@ -3037,12 +3037,12 @@ export const APP_STATIC_DATA = {
   activityMemberDefaults: ACTIVITY_MEMBER_DEFAULTS,
   reportUserReasons: REPORT_USER_REASONS,
   feedbackCategories: FEEDBACK_CATEGORIES,
-  eventFeedbackEventOverallOptions: EVENT_FEEDBACK_EVENT_OVERALL_OPTIONS,
-  eventFeedbackHostImproveOptions: EVENT_FEEDBACK_HOST_IMPROVE_OPTIONS,
-  eventFeedbackAttendeeCollabOptions: EVENT_FEEDBACK_ATTENDEE_COLLAB_OPTIONS,
-  eventFeedbackAttendeeRejoinOptions: EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS,
-  eventFeedbackPersonalityTraitOptions: EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
-  eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTER_OPTIONS,
+  feedbackEventOverallOptions: FEEDBACK_EVENT_OVERALL_OPTIONS,
+  feedbackHostImproveOptions: FEEDBACK_HOST_IMPROVE_OPTIONS,
+  feedbackAttendeeCollabOptions: FEEDBACK_ATTENDEE_COLLAB_OPTIONS,
+  feedbackAttendeeRejoinOptions: FEEDBACK_ATTENDEE_REJOIN_OPTIONS,
+  feedbackPersonalityTraitOptions: FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
+  feedbackListFilters: FEEDBACK_LIST_FILTER_OPTIONS,
   helpCenterSections: HELP_CENTER_SECTIONS,
   helpCenterSectionsByLang: {
     en: HELP_CENTER_SECTIONS,
@@ -3138,9 +3138,9 @@ export const APP_STATIC_DATA = {
       en: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION,
       hu: DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU
     },
-    'event.feedback': {
-      en: DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION,
-      hu: DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU
+    'feedback': {
+      en: DEFAULT_EXPLANATION_FEEDBACK_REVISION,
+      hu: DEFAULT_EXPLANATION_FEEDBACK_REVISION_HU
     }
   },
   seededExplanationImageRefPrefix: SEEDED_EXPLANATION_IMAGE_REF_PREFIX,

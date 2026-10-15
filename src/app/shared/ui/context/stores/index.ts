@@ -5,8 +5,7 @@ export {
   type ActivityCounterKey,
   type ActivityCounters,
   type ActivityEventCounters,
-  type ActivityEventFeedbackCounters,
-  type ActivityEventFeedbackSubmitSyncState,
+  type ActivityFeedbackCounters,
   type ActivityChatMetricBucketPatch,
   type ActivityChatMetricBucketType,
   type ActivityMembersSyncState,
@@ -88,7 +87,7 @@ export {
   type ActivitiesNavigationRequest,
   type NavigatorActivitiesRequest,
   type NavigatorAssetRequest,
-  type NavigatorEventFeedbackRequest
+  type NavigatorFeedbackRequest
 } from './app/member-menu.store';
 export {
   NotificationCenterStore,

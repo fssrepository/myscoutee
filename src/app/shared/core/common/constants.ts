@@ -151,8 +151,8 @@ export type AssetLifecycleStatus = typeof ASSET_LIFECYCLE_STATUSES[number];
 export const EVENT_VISIBILITIES = ['Public', 'Friends only', 'Invitation only'] as const;
 export type EventVisibility = typeof EVENT_VISIBILITIES[number];
 
-export const EVENT_FEEDBACK_LIST_FILTERS = ['own-events', 'pending', 'feedbacked', 'removed'] as const;
-export type EventFeedbackListFilter = typeof EVENT_FEEDBACK_LIST_FILTERS[number];
+export const FEEDBACK_LIST_FILTERS = ['own-events', 'pending', 'feedbacked', 'removed'] as const;
+export type FeedbackListFilter = typeof FEEDBACK_LIST_FILTERS[number];
 
 // Pricing
 export const PRICING_MODES = ['fixed', 'demand-based', 'time-based', 'hybrid'] as const;

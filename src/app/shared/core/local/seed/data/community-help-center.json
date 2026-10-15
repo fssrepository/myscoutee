@@ -383,7 +383,7 @@
         "icon": "help_outline",
         "title": "Card-specific criteria",
         "blurb": "",
-        "contentHtml": "<p>The detailed rating belongs to the evaluated card domain. Dating, a pair, a campaign, a Work profile and service interest use their own criteria; completed-service feedback remains separate.</p>"
+        "contentHtml": "<p>The detailed rating belongs to the evaluated card domain. Dating, a pair, a campaign, a Work profile and service interest use their own criteria; completed-feedback remains separate.</p>"
       },
       {
         "id": "guide-rating-save",
@@ -7342,7 +7342,7 @@
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-event-feedback-default-en-v4",
+    "_id": "community:explanation-feedback-default-en-v4",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
@@ -7358,8 +7358,8 @@
     "updatedUser": "system",
     "sections": [
       {
-        "id": "guide-event-feedback-filter-trigger",
-        "guideStepId": "event-feedback-filter:trigger",
+        "id": "guide-feedback-filter-trigger",
+        "guideStepId": "feedback-filter:trigger",
         "icon": "help_outline",
         "title": "Feedback categories",
         "blurb": "",
@@ -7443,7 +7443,7 @@
         "icon": "help_outline",
         "blurb": "",
         "title": "Update your organizer note",
-        "contentHtml": "<p>Changes your saved note about the organizer. This is separate from the event feedback you already submitted.</p>"
+        "contentHtml": "<p>Changes your saved note about the organizer. This is separate from the feedback you already submitted.</p>"
       },
       {
         "id": "guide-card-actions-removefeedback",
@@ -7518,12 +7518,12 @@
         "contentHtml": "<p>Review the event and participant answers, then submit them together. Missing required answers block submission; use the previous arrow to return and correct them.</p>"
       }
     ],
-    "contextKey": "event.feedback",
+    "contextKey": "feedback",
     "presentation": "tour",
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-event-feedback-default-hu-v4",
+    "_id": "community:explanation-feedback-default-hu-v4",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
@@ -7539,8 +7539,8 @@
     "updatedUser": "system",
     "sections": [
       {
-        "id": "guide-event-feedback-filter-trigger",
-        "guideStepId": "event-feedback-filter:trigger",
+        "id": "guide-feedback-filter-trigger",
+        "guideStepId": "feedback-filter:trigger",
         "icon": "help_outline",
         "title": "Visszajelzés-kategóriák",
         "blurb": "",
@@ -7699,7 +7699,7 @@
         "contentHtml": "<p>Nézd át az eseményről és a résztvevőkről adott válaszokat, majd küldd be őket együtt. Hiányzó kötelező válasszal nem küldhetők be; javításhoz lépj vissza a nyíllal.</p>"
       }
     ],
-    "contextKey": "event.feedback",
+    "contextKey": "feedback",
     "presentation": "tour",
     "baseGroupId": "myscoutee-community"
   },
@@ -12714,7 +12714,7 @@
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-event-feedback-detail-default-en-v4",
+    "_id": "community:explanation-feedback-detail-default-en-v4",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
@@ -12762,12 +12762,12 @@
         "contentHtml": "<p>Close the saved feedback summary to return to the feedback list or event. The recorded answers remain saved after you leave this view.</p>"
       }
     ],
-    "contextKey": "event.feedback.detail",
+    "contextKey": "feedback.detail",
     "presentation": "tour",
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-event-feedback-detail-default-hu-v4",
+    "_id": "community:explanation-feedback-detail-default-hu-v4",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
@@ -12815,7 +12815,7 @@
         "contentHtml": "<p>Zárd be a mentett visszajelzés összegzését, hogy visszatérj a listához vagy az eseményhez. A rögzített válaszok az ablak bezárása után is megmaradnak.</p>"
       }
     ],
-    "contextKey": "event.feedback.detail",
+    "contextKey": "feedback.detail",
     "presentation": "tour",
     "baseGroupId": "myscoutee-community"
   },
@@ -15329,7 +15329,7 @@
         "icon": "help_outline",
         "title": "Reflect on attended events",
         "blurb": "",
-        "contentHtml": "<p>Review pending and completed event feedback. This is feedback about participation; application support is available separately in Settings.</p>"
+        "contentHtml": "<p>Review pending and completed feedback. This is feedback about participation; application support is available separately in Settings.</p>"
       },
       {
         "id": "guide-rates",
@@ -15449,7 +15449,7 @@
         "icon": "help_outline",
         "title": "Send application feedback",
         "blurb": "",
-        "contentHtml": "<p>Opens application feedback for questions or suggestions. Use event feedback separately to describe an attended event.</p>"
+        "contentHtml": "<p>Opens application feedback for questions or suggestions. Use feedback separately to describe an attended event.</p>"
       },
       {
         "id": "guide-settings-report-bugs",
@@ -18208,7 +18208,7 @@
         "icon": "touch_app",
         "title": "Complete case",
         "blurb": "",
-        "contentHtml": "<p>Mark the case completed when work is finished. Completion also schedules service feedback; review the task board and confirm the selected case.</p>"
+        "contentHtml": "<p>Mark the case completed when work is finished. Completion also schedules feedback; review the task board and confirm the selected case.</p>"
       },
       {
         "id": "guide-card-actions-cancel",
@@ -28628,7 +28628,7 @@
     "baseGroupId": "myscoutee-community"
   },
   {
-    "_id": "community:explanation-community.service-feedback-en-v2",
+    "_id": "community:explanation-feedback.evaluation-en-v2",
     "documentType": "explanation",
     "lang": "en",
     "languageLabel": "English",
@@ -28636,7 +28636,7 @@
     "active": true,
     "title": "Service feedback",
     "summary": "Review the service image and choose an answer for each question.",
-    "description": "Use the same picture, answer blocks and overview as event feedback. No written comment is collected.",
+    "description": "Use the same picture, answer blocks and overview as feedback. No written comment is collected.",
     "headerColor": "violet",
     "createdDate": "2026-10-07T00:00:00.000Z",
     "createdUser": "system",
@@ -28644,32 +28644,32 @@
     "updatedUser": "system",
     "sections": [
       {
-        "id": "guide-service-feedback-quality",
-        "guideStepId": "service-feedback-quality",
+        "id": "guide-feedback-evaluation-quality",
+        "guideStepId": "feedback-evaluation-quality",
         "icon": "help_outline",
         "title": "Quality of the work",
         "blurb": "",
         "contentHtml": "<p>Choose the labelled answer that matches the quality of the completed work you experienced. Each question has one answer; the five choices represent 2, 4, 6, 8 and 10 points. The result is their average.</p>"
       },
       {
-        "id": "guide-service-feedback-reliability",
-        "guideStepId": "service-feedback-reliability",
+        "id": "guide-feedback-evaluation-reliability",
+        "guideStepId": "feedback-evaluation-reliability",
         "icon": "help_outline",
         "title": "Reliability",
         "blurb": "",
         "contentHtml": "<p>Choose how reliably the provider kept the agreed commitments. Each question has one answer; the five choices represent 2, 4, 6, 8 and 10 points. The result is their average.</p>"
       },
       {
-        "id": "guide-service-feedback-communication",
-        "guideStepId": "service-feedback-communication",
+        "id": "guide-feedback-evaluation-communication",
+        "guideStepId": "feedback-evaluation-communication",
         "icon": "help_outline",
         "title": "Communication",
         "blurb": "",
         "contentHtml": "<p>Choose how clear and useful communication with the provider was during the work. Each question has one answer; the five choices represent 2, 4, 6, 8 and 10 points. The result is their average.</p>"
       },
       {
-        "id": "guide-service-feedback-value",
-        "guideStepId": "service-feedback-value",
+        "id": "guide-feedback-evaluation-value",
+        "guideStepId": "feedback-evaluation-value",
         "icon": "help_outline",
         "title": "Value for money",
         "blurb": "",
@@ -28708,13 +28708,13 @@
         "contentHtml": "<p>Use the arrows to move to the summary or back to your answers before submitting.</p>"
       }
     ],
-    "contextKey": "community.service-feedback",
+    "contextKey": "feedback.evaluation",
     "presentation": "tour",
     "baseGroupId": "myscoutee-community",
     "isSystem": false
   },
   {
-    "_id": "community:explanation-community.service-feedback-hu-v2",
+    "_id": "community:explanation-feedback.evaluation-hu-v2",
     "documentType": "explanation",
     "lang": "hu",
     "languageLabel": "Magyar",
@@ -28730,32 +28730,32 @@
     "updatedUser": "system",
     "sections": [
       {
-        "id": "guide-service-feedback-quality",
-        "guideStepId": "service-feedback-quality",
+        "id": "guide-feedback-evaluation-quality",
+        "guideStepId": "feedback-evaluation-quality",
         "icon": "help_outline",
         "title": "A munka minősége",
         "blurb": "",
         "contentHtml": "<p>Válaszd azt a feliratos választ, amely az általad tapasztalt elvégzett munka minőségét írja le. Kérdésenként egy válasz jelölhető; az öt lehetőség 2, 4, 6, 8 és 10 pontot jelent. Az eredmény ezek átlaga.</p>"
       },
       {
-        "id": "guide-service-feedback-reliability",
-        "guideStepId": "service-feedback-reliability",
+        "id": "guide-feedback-evaluation-reliability",
+        "guideStepId": "feedback-evaluation-reliability",
         "icon": "help_outline",
         "title": "Megbízhatóság",
         "blurb": "",
         "contentHtml": "<p>Válaszd ki, mennyire tartotta be a szolgáltató a megbeszélt vállalásokat. Kérdésenként egy válasz jelölhető; az öt lehetőség 2, 4, 6, 8 és 10 pontot jelent. Az eredmény ezek átlaga.</p>"
       },
       {
-        "id": "guide-service-feedback-communication",
-        "guideStepId": "service-feedback-communication",
+        "id": "guide-feedback-evaluation-communication",
+        "guideStepId": "feedback-evaluation-communication",
         "icon": "help_outline",
         "title": "Kommunikáció",
         "blurb": "",
         "contentHtml": "<p>Válaszd ki, mennyire volt érthető és használható a szolgáltatóval való kommunikáció a munka során. Kérdésenként egy válasz jelölhető; az öt lehetőség 2, 4, 6, 8 és 10 pontot jelent. Az eredmény ezek átlaga.</p>"
       },
       {
-        "id": "guide-service-feedback-value",
-        "guideStepId": "service-feedback-value",
+        "id": "guide-feedback-evaluation-value",
+        "guideStepId": "feedback-evaluation-value",
         "icon": "help_outline",
         "title": "Ár-érték arány",
         "blurb": "",
@@ -28794,7 +28794,7 @@
         "contentHtml": "<p>A nyilakkal lépj az összegzéshez, vagy térj vissza a válaszokhoz elküldés előtt.</p>"
       }
     ],
-    "contextKey": "community.service-feedback",
+    "contextKey": "feedback.evaluation",
     "presentation": "tour",
     "baseGroupId": "myscoutee-community",
     "isSystem": false

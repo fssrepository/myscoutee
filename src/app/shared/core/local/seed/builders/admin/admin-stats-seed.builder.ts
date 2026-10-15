@@ -116,7 +116,7 @@ export class AdminStatsSeedBuilder {
         ]),
         segment('moderation', 'stats.segment.moderation', 'shield', 14, 62, [
           item('report.submitted', 'stats.event.report.submitted', 8, 14, 'report', 'red'),
-          item('feedback.submitted', 'stats.event.feedback.submitted', 4, 14, 'feedback', 'purple'),
+          item('feedback.submitted', 'stats.feedback.submitted', 4, 14, 'feedback', 'purple'),
           item('admin.user.blocked', 'stats.event.admin.user.blocked', 2, 14, 'block', 'red')
         ])
       ],

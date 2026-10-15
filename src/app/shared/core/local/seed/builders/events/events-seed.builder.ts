@@ -873,13 +873,13 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
   ]
 };
 
-const SEED_EVENT_FEEDBACK_SHOWCASE_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
+const SEED_FEEDBACK_SHOWCASE_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
   u3: [
     {
       id: 'feedback-showcase-nagy-eszter-studio',
       avatar: 'NE',
       title: 'Feedback Demo · Studio Recap',
-      shortDescription: 'Past creator meetup seeded so event feedback is always available for carousel testing.',
+      shortDescription: 'Past creator meetup seeded so feedback is always available for carousel testing.',
       timeframe: 'Feedback demo',
       activity: 2,
       isAdmin: false,
@@ -898,7 +898,7 @@ const SEED_EVENT_FEEDBACK_SHOWCASE_EVENTS_BY_USER: Record<string, ActivityEventS
       id: 'feedback-showcase-nagy-eszter-social',
       avatar: 'NE',
       title: 'Feedback Demo · Social Lab',
-      shortDescription: 'Second past event for checking multi-card event feedback carousel behavior.',
+      shortDescription: 'Second past event for checking multi-card feedback carousel behavior.',
       timeframe: 'Feedback demo',
       activity: 2,
       isAdmin: false,
@@ -1037,7 +1037,7 @@ export class SeedEventsBuilder {
     const seeded = Object.fromEntries(
       Object.entries(this.mergeSeedEventItemGroups(
         SEED_EVENTS_BY_USER,
-        SEED_EVENT_FEEDBACK_SHOWCASE_EVENTS_BY_USER
+        SEED_FEEDBACK_SHOWCASE_EVENTS_BY_USER
       )).map(([userId, items]) => [
         userId,
         items.map(item => ({

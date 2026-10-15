@@ -2,7 +2,8 @@ import { type ListQuery as SharedListQuery, clampNumber, UiDateUtils } from '@fs
 
 import { isCurrentFollowedEvent } from '../../builders/accounts/following-state.builder';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../../entity/events/mingle.entity';
-import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../entity/events/event.entity';
+import { EVENTS_TABLE_NAME } from '../../entity/events/event.entity';
+import { FEEDBACK_STATES_TABLE_NAME } from '../../entity/feedback/feedback.entity';
 import type { ActivityEventRecordCollection } from '../../entity/events/event.entity';
 import { USERS_TABLE_NAME } from '../../entity/accounts/user.entity';
 import { Injectable, inject } from '@angular/core';
@@ -87,6 +88,12 @@ interface ActivityEventExploreCursor {
   providedIn: 'root'
 })
 export class LocalEventsRepository {
+  feedbackAdminUserIds(eventId: string): string[] {
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    return [...new Set(table.ids.map(id => table.byId[id]).filter(event => event?.id.trim() === eventId)
+      .flatMap(event => [event.creatorUserId, ...(event.adminIds ?? [])]).map(id => id?.trim()).filter((id): id is string => !!id))];
+  }
+
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private static readonly SLOT_READ_MODEL_USER_ID = '__slot_read_model__';
   private readonly memoryDb = inject(LocalMemoryDb);
@@ -2359,13 +2366,13 @@ export class LocalEventsRepository {
     };
   }
 
-  countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
+  countPendingFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return 0;
     }
     const eventItems = this.queryFeedbackCandidateItemsByUser(normalizedUserId);
-    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const feedbackTable = this.memoryDb.read()[FEEDBACK_STATES_TABLE_NAME];
     const nowMs = Date.now();
     return eventItems.filter(item => {
       if (this.isEventAdminRecord(item, normalizedUserId)) {

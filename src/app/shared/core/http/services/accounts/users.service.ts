@@ -733,7 +733,7 @@ export class HttpUsersService implements UserService {
           accommodationPending: 0,
           suppliesPending: 0
         },
-        eventFeedback: {
+        feedbackCounts: {
           ownEvents: 0,
           pending: 0,
           feedbacked: 0,
@@ -810,11 +810,11 @@ export class HttpUsersService implements UserService {
         accommodationPending: this.normalizeInitialCounterValue(overrides?.asset?.accommodationPending, user.activities?.asset?.accommodationPending),
         suppliesPending: this.normalizeInitialCounterValue(overrides?.asset?.suppliesPending, user.activities?.asset?.suppliesPending)
       },
-      eventFeedback: {
-        ownEvents: this.normalizeInitialCounterValue(overrides?.eventFeedback?.ownEvents, user.activities?.eventFeedback?.ownEvents),
-        pending: this.normalizeInitialCounterValue(overrides?.eventFeedback?.pending, user.activities?.eventFeedback?.pending),
-        feedbacked: this.normalizeInitialCounterValue(overrides?.eventFeedback?.feedbacked, user.activities?.eventFeedback?.feedbacked),
-        removed: this.normalizeInitialCounterValue(overrides?.eventFeedback?.removed, user.activities?.eventFeedback?.removed)
+      feedbackCounts: {
+        ownEvents: this.normalizeInitialCounterValue(overrides?.feedbackCounts?.ownEvents, user.activities?.feedbackCounts?.ownEvents),
+        pending: this.normalizeInitialCounterValue(overrides?.feedbackCounts?.pending, user.activities?.feedbackCounts?.pending),
+        feedbacked: this.normalizeInitialCounterValue(overrides?.feedbackCounts?.feedbacked, user.activities?.feedbackCounts?.feedbacked),
+        removed: this.normalizeInitialCounterValue(overrides?.feedbackCounts?.removed, user.activities?.feedbackCounts?.removed)
       },
       adminJobs: this.normalizeInitialCounterValue(overrides?.adminJobs, user.activities?.adminJobs),
       adminMetrics: this.normalizeInitialCounterValue(overrides?.adminMetrics, user.activities?.adminMetrics)

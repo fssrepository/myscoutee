@@ -135,7 +135,7 @@ export class LocalUserRealtimeSnapshotBuilder {
         chat: activities.chat ? { ...activities.chat } : undefined,
         event: activities.event ? { ...activities.event } : undefined,
         asset: activities.asset ? { ...activities.asset } : undefined,
-        eventFeedback: activities.eventFeedback ? { ...activities.eventFeedback } : undefined,
+        feedbackCounts: activities.feedbackCounts ? { ...activities.feedbackCounts } : undefined,
         adminJobs: activities.adminJobs,
         adminMetrics: activities.adminMetrics,
         impressionsHostChanged: false,

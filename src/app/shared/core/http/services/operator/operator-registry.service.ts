@@ -551,7 +551,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
           `${this.operatorEndpoint}/leaderboard`,
           this.requestOptions(params)
         ).toPromise()
-      );
+      ).catch(async (error: unknown) => {
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+          const registry = await this.loadStatus().catch(() => null);
+          if (registry && (!registry.enabled || registry.lifecycle !== 'REGISTERED')) {
+            throw new Error('operator.leaderboard.error.registration.required');
+          }
+        }
+        throw new Error(error instanceof Error && error.message === 'operator.request.timeout'
+          ? 'operator.request.timeout' : 'operator.request.failed');
+      });
       this.throwIfAborted(signal);
       if (remote.view !== view) {
         throw new Error('operator.leaderboard.error.response');

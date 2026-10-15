@@ -137,7 +137,7 @@ const SEED_NOTIFICATION_DEFINITIONS: readonly SeedNotificationDefinition[] = [
     sender: false
   },
   {
-    kind: 'event-feedback-ready',
+    kind: 'feedback-ready',
     category: 'event',
     title: 'Feedback is ready',
     message: () => 'You can now leave feedback for Lakeside Picnic.',

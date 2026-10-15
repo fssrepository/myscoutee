@@ -9,6 +9,7 @@ import { SessionService } from '../../../../core/base/services/accounts/session.
 import { AppRuntimeStore } from '../app/app-runtime.store';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { ActivityStore } from '../activity/activity.store';
+import { FeedbackStore } from '../feedback/feedback.store';
 import { ContentModerationStore } from '../content/content-moderation.store';
 import { UiPollCoordinator } from '@fssrepository/myscoutee-components';
 import type { GroupWorkspace } from '../../../../core/contracts/groups/community-group.interface';
@@ -38,6 +39,10 @@ describe('Group workspace attention scope and live updates', () => {
       { provide: UserProfileStore, useValue: { activeUserProfile: signal(null), activeUserId: signal(''),
         getUserProfile: () => null, getUserImpressionChangeFlags: () => ({ host: true, member: false }) } },
       { provide: ActivityStore, useValue: { getUserCounterOverrides: () => ({}) } },
+      { provide: FeedbackStore, useValue: {
+        userId: () => TestBed.inject(UserProfileStore).activeUserId(),
+        counters: () => ({ attention: TestBed.inject(UserProfileStore).activeUserProfile()?.activities?.feedback ?? 0 })
+      } },
       { provide: ContentModerationStore, useValue: { attention: (_id: string, pending: number, revision: number) => ({ pending, revision }), forScope: () => null } },
       { provide: UiPollCoordinator, useValue: {} }
     ] });

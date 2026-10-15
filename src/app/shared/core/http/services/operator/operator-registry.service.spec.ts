@@ -65,6 +65,19 @@ describe('HttpOperatorRegistryService', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [409, false, 'UNCONFIGURED', 'operator.leaderboard.error.registration.required'],
+    [409, true, 'REGISTERED', 'operator.request.failed'],
+    [502, true, 'REGISTERED', 'operator.request.failed']
+  ])('preserves leaderboard failure instead of returning an empty page (%s, %s)', async (status, enabled, lifecycle, key) => {
+    get.mockImplementation((url: string) => url.endsWith('/leaderboard')
+      ? throwError(() => new HttpErrorResponse({ status: Number(status) }))
+      : of({ ...registryStatus(), enabled, lifecycle }));
+    await expect(TestBed.inject(HttpOperatorRegistryService).leaderboardPage({ page: 0, pageSize: 8 }))
+      .rejects.toThrow(String(key));
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('sends the current demo operator identity through Java and centralizes the 30 second timeout', async () => {
     const status = registryStatus();
     get.mockReturnValue(of(status));

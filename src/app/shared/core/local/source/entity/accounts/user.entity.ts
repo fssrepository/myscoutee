@@ -88,7 +88,7 @@ export interface UserAssetCountersRecord {
   suppliesPending?: number;
 }
 
-export interface UserEventFeedbackCountersRecord {
+export interface UserFeedbackCountersRecord {
   ownEvents?: number;
   pending?: number;
   feedbacked?: number;
@@ -172,7 +172,7 @@ export interface UserRecord {
     chat?: UserChatCountersRecord;
     event?: UserEventCountersRecord;
     asset?: UserAssetCountersRecord;
-    eventFeedback?: UserEventFeedbackCountersRecord;
+    feedbackCounts?: UserFeedbackCountersRecord;
     adminJobs?: number;
     adminMetrics?: number;
   };

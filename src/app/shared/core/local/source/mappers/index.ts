@@ -20,7 +20,7 @@ export {
   type LocalEventCheckoutLineItemRecord,
   type LocalEventCheckoutPricingSummaryRowRecord
 } from './events/event-checkout-basket.mapper';
-export { LocalEventFeedbackMapper } from './events/event-feedback.mapper';
+export { LocalFeedbackMapper } from './feedback/feedback.mapper';
 export { LocalEventParticipationActionMapper } from './events/event-participation-action.mapper';
 export { LocalHelpCenterMapper } from './help/help-center.mapper';
 export {

@@ -25,8 +25,8 @@ import type {
   UserChatCounterDeltasDto,
   UserEventCountersDto,
   UserEventCounterDeltasDto,
-  UserEventFeedbackCountersDto,
-  UserEventFeedbackCounterDeltasDto,
+  UserFeedbackCountersDto,
+  UserFeedbackCounterDeltasDto,
   UserReportUserSubmitRequestDto,
   UserMenuCounterDeltasDto,
   UserMenuCountersDto,
@@ -743,8 +743,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (patch.asset) {
       next.asset = this.applyUserAssetCounterPatch(current.asset, patch.asset);
     }
-    if (patch.eventFeedback) {
-      next.eventFeedback = this.applyUserEventFeedbackCounterPatch(current.eventFeedback, patch.eventFeedback);
+    if (patch.feedbackCounts) {
+      next.feedbackCounts = this.applyUserFeedbackCounterPatch(current.feedbackCounts, patch.feedbackCounts);
     }
     return next;
   }
@@ -788,8 +788,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (deltas.asset) {
       next.asset = this.applyUserAssetCounterDeltas(current.asset, deltas.asset);
     }
-    if (deltas.eventFeedback) {
-      next.eventFeedback = this.applyUserEventFeedbackCounterDeltas(current.eventFeedback, deltas.eventFeedback);
+    if (deltas.feedbackCounts) {
+      next.feedbackCounts = this.applyUserFeedbackCounterDeltas(current.feedbackCounts, deltas.feedbackCounts);
     }
     return next;
   }
@@ -860,10 +860,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     );
   }
 
-  private applyUserEventFeedbackCounterPatch(
-    current: UserDto['activities']['eventFeedback'],
-    patch: UserEventFeedbackCountersDto
-  ): UserEventFeedbackCountersDto {
+  private applyUserFeedbackCounterPatch(
+    current: UserDto['activities']['feedbackCounts'],
+    patch: UserFeedbackCountersDto
+  ): UserFeedbackCountersDto {
     return this.applyNestedCounterPatch(
       current,
       patch,
@@ -871,10 +871,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     );
   }
 
-  private applyUserEventFeedbackCounterDeltas(
-    current: UserDto['activities']['eventFeedback'],
-    deltas: UserEventFeedbackCounterDeltasDto
-  ): UserEventFeedbackCountersDto {
+  private applyUserFeedbackCounterDeltas(
+    current: UserDto['activities']['feedbackCounts'],
+    deltas: UserFeedbackCounterDeltasDto
+  ): UserFeedbackCountersDto {
     return this.applyNestedCounterDeltas(
       current,
       deltas,
@@ -941,7 +941,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const chat = activities?.chat;
     const event = activities?.event;
     const asset = notificationActivities?.asset;
-    const eventFeedback = activities?.eventFeedback;
+    const feedbackCounts = activities?.feedbackCounts;
 
     return {
       game: normalizeCounter(activities?.game),
@@ -990,11 +990,11 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         accommodationPending: normalizeCounter(asset?.accommodationPending),
         suppliesPending: normalizeCounter(asset?.suppliesPending)
       },
-      eventFeedback: {
-        ownEvents: normalizeCounter(eventFeedback?.ownEvents),
-        pending: normalizeCounter(eventFeedback?.pending ?? feedback),
-        feedbacked: normalizeCounter(eventFeedback?.feedbacked),
-        removed: normalizeCounter(eventFeedback?.removed)
+      feedbackCounts: {
+        ownEvents: normalizeCounter(feedbackCounts?.ownEvents),
+        pending: normalizeCounter(feedbackCounts?.pending ?? feedback),
+        feedbacked: normalizeCounter(feedbackCounts?.feedbacked),
+        removed: normalizeCounter(feedbackCounts?.removed)
       },
       adminJobs: normalizeCounter(activities?.adminJobs),
       adminMetrics: normalizeCounter(activities?.adminMetrics)
@@ -1030,7 +1030,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,
-        eventFeedback: counters.eventFeedback ?? user.activities.eventFeedback,
+        feedbackCounts: counters.feedbackCounts ?? user.activities.feedbackCounts,
         adminJobs: counters.adminJobs ?? user.activities.adminJobs,
         adminMetrics: counters.adminMetrics ?? user.activities.adminMetrics
       }

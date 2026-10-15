@@ -1,4 +1,5 @@
-import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../../source/entity/events/event.entity';
+import { EVENTS_TABLE_NAME } from '../../../source/entity/events/event.entity';
+import { FEEDBACK_STATES_TABLE_NAME } from '../../../source/entity/feedback/feedback.entity';
 import { EVENT_TICKETS_TABLE_NAME } from '../../../source/entity/events/event-ticket.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../../source/entity/affinity/rate.entity';
 import { USERS_TABLE_NAME } from '../../../source/entity/accounts/user.entity';
@@ -38,7 +39,7 @@ interface SeededActivityCountSources {
 })
 export class SeedUsersRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-  private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
+  private static readonly INITIAL_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
 
   private readonly memoryDb = inject(LocalMemoryDb);
   private initialized = false;
@@ -379,7 +380,7 @@ export class SeedUsersRepository {
             supplies: 0,
             tickets: 0,
           },
-          eventFeedback: {
+          feedbackCounts: {
             ownEvents: 0,
             pending: 0,
             feedbacked: 0,
@@ -398,9 +399,9 @@ export class SeedUsersRepository {
       ...this.countOwnedAssetsByType(user.id),
       ticketsCount: this.countTicketItemsByUser(user.id),
       contactsCount: user.activities?.contacts ?? 0,
-      feedbackCount: this.countPendingEventFeedbackByUser(
+      feedbackCount: this.countPendingFeedbackByUser(
         user.id,
-        SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
+        SeedUsersRepository.INITIAL_FEEDBACK_UNLOCK_DELAY_MS
       ),
       feedbackOwnEventsCount: this.countSubmittedFeedbackForOwnedEventsByUser(user.id)
     });
@@ -445,7 +446,7 @@ export class SeedUsersRepository {
       : normalizeCounter(activities.feedback);
     const event = activities.event;
     const asset = activities.asset;
-    const eventFeedback = activities.eventFeedback;
+    const feedbackCounts = activities.feedbackCounts;
     const hasEventSources = Boolean(sources.invitationItems)
       || Number.isFinite(sources.eventsCount)
       || Boolean(sources.hostingItems);
@@ -467,13 +468,13 @@ export class SeedUsersRepository {
       : normalizeCounter(asset?.accommodation ?? accommodation);
     const assetSupplies = Number.isFinite(sources.suppliesCount) ? supplies : normalizeCounter(asset?.supplies ?? supplies);
     const assetTickets = Number.isFinite(sources.ticketsCount) ? tickets : normalizeCounter(asset?.tickets ?? tickets);
-    const eventFeedbackPending = Number.isFinite(sources.feedbackCount)
+    const feedbackPending = Number.isFinite(sources.feedbackCount)
       ? fallbackFeedback
-      : normalizeCounter(eventFeedback?.pending ?? fallbackFeedback);
-    const eventFeedbackOwnEvents = Number.isFinite(sources.feedbackOwnEventsCount)
+      : normalizeCounter(feedbackCounts?.pending ?? fallbackFeedback);
+    const feedbackOwnEvents = Number.isFinite(sources.feedbackOwnEventsCount)
       ? normalizeCounter(sources.feedbackOwnEventsCount)
-      : normalizeCounter(eventFeedback?.ownEvents);
-    const feedback = eventFeedbackPending + eventFeedbackOwnEvents;
+      : normalizeCounter(feedbackCounts?.ownEvents);
+    const feedback = feedbackPending + feedbackOwnEvents;
 
     return {
       ...user,
@@ -510,11 +511,11 @@ export class SeedUsersRepository {
           accommodationPending: normalizeCounter(asset?.accommodationPending),
           suppliesPending: normalizeCounter(asset?.suppliesPending),
         },
-        eventFeedback: {
-          ownEvents: eventFeedbackOwnEvents,
-          pending: eventFeedbackPending,
-          feedbacked: normalizeCounter(eventFeedback?.feedbacked),
-          removed: normalizeCounter(eventFeedback?.removed),
+        feedbackCounts: {
+          ownEvents: feedbackOwnEvents,
+          pending: feedbackPending,
+          feedbacked: normalizeCounter(feedbackCounts?.feedbacked),
+          removed: normalizeCounter(feedbackCounts?.removed),
         }
       }
     };
@@ -563,12 +564,12 @@ export class SeedUsersRepository {
       .length;
   }
 
-  private countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
+  private countPendingFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return 0;
     }
-    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const feedbackTable = this.memoryDb.read()[FEEDBACK_STATES_TABLE_NAME];
     const nowMs = Date.now();
     return this.queryUserEventRecords(normalizedUserId).filter(item => {
       if (
@@ -605,7 +606,7 @@ export class SeedUsersRepository {
         .map(item => item.id.trim())
         .filter(Boolean)
     );
-    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const feedbackTable = this.memoryDb.read()[FEEDBACK_STATES_TABLE_NAME];
     return feedbackTable.ids.filter(id => {
       const record = feedbackTable.byId[id];
       return Boolean(
@@ -817,8 +818,8 @@ export class SeedUsersRepository {
     const rightChat = right.activities.chat;
     const leftAsset = left.activities.asset;
     const rightAsset = right.activities.asset;
-    const leftEventFeedback = left.activities.eventFeedback;
-    const rightEventFeedback = right.activities.eventFeedback;
+    const leftFeedback = left.activities.feedbackCounts;
+    const rightFeedback = right.activities.feedbackCounts;
 
     return left.activities.game === right.activities.game
       && left.activities.chats === right.activities.chats
@@ -857,11 +858,11 @@ export class SeedUsersRepository {
       && normalizeCounter(leftAsset?.carsPending) === normalizeCounter(rightAsset?.carsPending)
       && normalizeCounter(leftAsset?.accommodationPending) === normalizeCounter(rightAsset?.accommodationPending)
       && normalizeCounter(leftAsset?.suppliesPending) === normalizeCounter(rightAsset?.suppliesPending)
-      && Boolean(left.activities.eventFeedback) === Boolean(right.activities.eventFeedback)
-      && normalizeCounter(leftEventFeedback?.ownEvents) === normalizeCounter(rightEventFeedback?.ownEvents)
-      && normalizeCounter(leftEventFeedback?.pending) === normalizeCounter(rightEventFeedback?.pending)
-      && normalizeCounter(leftEventFeedback?.feedbacked) === normalizeCounter(rightEventFeedback?.feedbacked)
-      && normalizeCounter(leftEventFeedback?.removed) === normalizeCounter(rightEventFeedback?.removed)
+      && Boolean(left.activities.feedbackCounts) === Boolean(right.activities.feedbackCounts)
+      && normalizeCounter(leftFeedback?.ownEvents) === normalizeCounter(rightFeedback?.ownEvents)
+      && normalizeCounter(leftFeedback?.pending) === normalizeCounter(rightFeedback?.pending)
+      && normalizeCounter(leftFeedback?.feedbacked) === normalizeCounter(rightFeedback?.feedbacked)
+      && normalizeCounter(leftFeedback?.removed) === normalizeCounter(rightFeedback?.removed)
       && normalizeCounter(left.activities.adminJobs) === normalizeCounter(right.activities.adminJobs)
       && normalizeCounter(left.activities.adminMetrics) === normalizeCounter(right.activities.adminMetrics);
   }

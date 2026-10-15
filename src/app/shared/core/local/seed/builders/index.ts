@@ -2,7 +2,7 @@ export * from './admin';
 export { SeedAssetBuilder, type SeedAssetTemplate } from './assets/asset-seed.builder';
 export { SeedChatsBuilder } from './chat/chats-seed.builder';
 export { SeedEventBuilder } from './events/event-seed.builder';
-export { SeedEventFeedbackBuilder } from './events/event-feedback-seed.builder';
+export { SeedFeedbackBuilder } from './feedback/feedback-seed.builder';
 export { SeedEventTicketsBuilder } from './events/event-ticket-seed.builder';
 export { SeedEventsBuilder } from './events/events-seed.builder';
 export { SeedHelpCenterContentBuilder } from './help/help-center-content-seed.builder';

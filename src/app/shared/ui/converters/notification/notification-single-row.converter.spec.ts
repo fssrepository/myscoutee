@@ -6,8 +6,8 @@ import { NotificationSingleRowConverter } from './notification-single-row.conver
 describe('NotificationSingleRowConverter badges', () => {
   const converter = new NotificationSingleRowConverter();
 
-  it('opens service feedback from the existing notification menu with service presentation', () => {
-    const item = notification({ kind: 'service-feedback-ready', sourceType: 'service-feedback',
+  it('opens feedback from the existing notification menu with service presentation', () => {
+    const item = notification({ kind: 'feedback-evaluation-ready', sourceType: 'feedback-evaluation',
       sourceId: 'review-1', category: 'user', senderAvatarUrl: '/not-a-provider.webp' });
     const row = converter.convert(item);
     expect(row.menuActions).toEqual(['markNotificationRead', 'openNotificationFeedback']);

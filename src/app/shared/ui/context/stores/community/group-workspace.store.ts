@@ -13,6 +13,7 @@ import { CommunityGroupsService } from '../../../../core/base/services/groups/co
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { SessionService } from '../../../../core/base/services/accounts/session.service';
 import { UserProfileStore } from '../profile/user-profile.store';
+import { FeedbackStore } from '../feedback/feedback.store';
 import { ActivityStore } from '../activity/activity.store';
 import { profileMenuBadgeCount } from '../app/app-context-store.utils';
 import type { UserDto } from '../../../../core/contracts/accounts/user.interface';
@@ -31,6 +32,7 @@ export class GroupWorkspaceStore {
   private sessionKey = '';
   private readonly profile = inject(UserProfileStore);
   private readonly activities = inject(ActivityStore);
+  private readonly feedback = inject(FeedbackStore);
   private readonly session = inject(SessionService);
   private readonly moderation = inject(ContentModerationStore);
   private generation = 0;
@@ -46,7 +48,7 @@ export class GroupWorkspaceStore {
         : { pending: 0, revision: 0 };
       let activity = workspace.membershipStatus === 'accepted' && active?.groupId === workspace.groupId && profile?.id === workspace.profileId
         ? (profile.admin ? this.adminMenuCount(profile, workspace.groupId)
-          : profileMenuBadgeCount(profile, this.activities.getUserCounterOverrides(profile.id), this.profile.getUserImpressionChangeFlags(profile.id), 'group')) + (profile.admin ? 0 : workspace.membersActivity ?? 0)
+          : profileMenuBadgeCount(profile, { ...this.activities.getUserCounterOverrides(profile.id), feedback: this.feedback.counters().attention }, this.profile.getUserImpressionChangeFlags(profile.id), 'group')) + (profile.admin ? 0 : workspace.membersActivity ?? 0)
         : Math.max(0, workspace.activity - previousPending);
       if (profile?.admin && active?.groupId !== workspace.groupId && isBaseGroupId(workspace.groupId)) {
         const reviews = this.admin.reviewCountsForScope(workspace.groupId);
@@ -70,7 +72,8 @@ export class GroupWorkspaceStore {
     }
     if (!account) return 0;
     const flags = this.profile.getUserImpressionChangeFlags(account.id);
-    return profileMenuBadgeCount(account, this.activities.getUserCounterOverrides(account.id), flags)
+    return profileMenuBadgeCount(account, { ...this.activities.getUserCounterOverrides(account.id),
+      ...(account.id === this.feedback.userId() ? { feedback: this.feedback.counters().attention } : {}) }, flags)
       + (account.admin ? this.moderation.forScope(null)?.pendingCount ?? 0 : 0);
   });
   readonly avatarBadgeCount = computed(() => this.accountAttention()
@@ -176,7 +179,9 @@ export class GroupWorkspaceStore {
       ...(includeAll ? [{ id: 'all', label: 'All', icon: 'apps', palette: 'slate' as const }] : []),
       { id: 'main', ...this.trigger(null),
         counter: includeAll ? null : accountCount || null, counterTone: 'alert' },
-      ...this.workspaces().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId)).map(workspace => ({
+      ...this.workspaces().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId))
+        .sort((left, right) => Number(isBaseGroupId(right.groupId)) - Number(isBaseGroupId(left.groupId)))
+        .map(workspace => ({
         id: workspace.groupId, ...this.trigger(workspace), counter: includeAll ? null : workspace.activity || null,
         counterTone: 'alert' as const
       }))

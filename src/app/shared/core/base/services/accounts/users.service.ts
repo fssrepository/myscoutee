@@ -772,12 +772,12 @@ export class UsersService extends BaseRouteModeService {
       };
     }
 
-    const feedbackOwnEvents = normalizeWithFallback(counterOverrides.eventFeedback?.ownEvents, fallbackActivities.eventFeedback?.ownEvents);
-    const feedbackPending = normalizeWithFallback(counterOverrides.eventFeedback?.pending, fallbackActivities.eventFeedback?.pending);
-    const feedbackFeedbacked = normalizeWithFallback(counterOverrides.eventFeedback?.feedbacked, fallbackActivities.eventFeedback?.feedbacked);
-    const feedbackRemoved = normalizeWithFallback(counterOverrides.eventFeedback?.removed, fallbackActivities.eventFeedback?.removed);
+    const feedbackOwnEvents = normalizeWithFallback(counterOverrides.feedbackCounts?.ownEvents, fallbackActivities.feedbackCounts?.ownEvents);
+    const feedbackPending = normalizeWithFallback(counterOverrides.feedbackCounts?.pending, fallbackActivities.feedbackCounts?.pending);
+    const feedbackFeedbacked = normalizeWithFallback(counterOverrides.feedbackCounts?.feedbacked, fallbackActivities.feedbackCounts?.feedbacked);
+    const feedbackRemoved = normalizeWithFallback(counterOverrides.feedbackCounts?.removed, fallbackActivities.feedbackCounts?.removed);
     if (feedbackOwnEvents !== undefined || feedbackPending !== undefined || feedbackFeedbacked !== undefined || feedbackRemoved !== undefined) {
-      patch.eventFeedback = {
+      patch.feedbackCounts = {
         ownEvents: feedbackOwnEvents ?? 0,
         pending: feedbackPending ?? 0,
         feedbacked: feedbackFeedbacked ?? 0,
@@ -855,11 +855,11 @@ export class UsersService extends BaseRouteModeService {
           supplies: Math.max(0, Math.trunc(Number(user.activities?.asset?.supplies) || 0)),
           tickets: Math.max(0, Math.trunc(Number(user.activities?.asset?.tickets) || 0))
         },
-        eventFeedback: {
-          ownEvents: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.ownEvents) || 0)),
-          pending: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.pending) || 0)),
-          feedbacked: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.feedbacked) || 0)),
-          removed: Math.max(0, Math.trunc(Number(user.activities?.eventFeedback?.removed) || 0))
+        feedbackCounts: {
+          ownEvents: Math.max(0, Math.trunc(Number(user.activities?.feedbackCounts?.ownEvents) || 0)),
+          pending: Math.max(0, Math.trunc(Number(user.activities?.feedbackCounts?.pending) || 0)),
+          feedbacked: Math.max(0, Math.trunc(Number(user.activities?.feedbackCounts?.feedbacked) || 0)),
+          removed: Math.max(0, Math.trunc(Number(user.activities?.feedbackCounts?.removed) || 0))
         },
         adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
