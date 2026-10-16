@@ -534,9 +534,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       placement: 'inline',
       tone: 'accent'
     },
-    containerClass: {
-      'admin-job-process-list': true
-    },
     trackBy: (_index, rule) => rule.ruleKey
   };
   protected readonly processListLoadPage: SmartListLoadPage<AdminNotificationRule, ProcessListFilters> = (
@@ -821,6 +818,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         },
         {
           id: 'process-detail-close',
+          guideFieldId: 'close',
           icon: 'close',
           ariaLabel: this.uiText('admin.jobs.close.detail'),
           palette: 'neutral'
@@ -853,6 +851,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         },
         {
           id: 'schedule-close',
+          guideFieldId: 'close',
           icon: 'close',
           ariaLabel: this.uiText('admin.jobs.close.run.window.editor'),
           palette: 'neutral',
@@ -885,6 +884,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         },
         {
           id: 'parameter-close',
+          guideFieldId: 'close',
           icon: 'close',
           ariaLabel: this.uiText('cancel'),
           palette: 'neutral',

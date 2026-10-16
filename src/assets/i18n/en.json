@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.10.16.2",
+  "version": "2026.10.16.3",
   "messages": {
     "admin.jobs.rule.affinity-admin-signals": "Affinity statistics delivery",
     "admin.jobs.rule.events-admin-signals": "Event statistics delivery",
@@ -464,6 +464,8 @@
     "admin.jobs.rule.affinity.graph.layout.description": "Materializes the current affinity graph for the admin graph view.",
     "admin.jobs.rule.scheduled.messages": "Send scheduled messages",
     "admin.jobs.rule.scheduled.messages.description": "Sends due messages and reminders, and handles scheduled inactivity actions.",
+    "admin.jobs.rule.media.deletion": "Delete queued media",
+    "admin.jobs.rule.media.deletion.description": "Deletes queued media files from storage and retries failed deletions.",
     "admin.jobs.rule.account.purge": "Finalize deleted accounts",
     "admin.jobs.rule.account.purge.description": "Permanently removes account activity and private media after the deletion grace period.",
     "admin.jobs.run.detail.rule.not.found": "Rule was not found.",

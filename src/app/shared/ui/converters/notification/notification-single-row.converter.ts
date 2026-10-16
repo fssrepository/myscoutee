@@ -160,6 +160,12 @@ export class NotificationSingleRowConverter implements UiConverter<
   }
 
   static roleTargetPath(notification: NotificationDto): string | null {
+    if (notification.sourceType === 'operator' && notification.kind === 'node-member-joined'
+      && notification.actionPath === '/operator') return '/operator';
+    if (notification.sourceType === 'security' && notification.kind === 'security-login'
+      && (notification.actionPath === '/operator' || notification.actionPath === '/admin')) {
+      return notification.actionPath;
+    }
     const target = notification.payload?.['roleTarget'];
     if (notification.sourceType === 'operator' && target === 'updates') return '/operator?notificationTarget=updates';
     if (notification.sourceType === 'app-admin' && ['reports', 'feedback', 'stats'].includes(target ?? '')) {

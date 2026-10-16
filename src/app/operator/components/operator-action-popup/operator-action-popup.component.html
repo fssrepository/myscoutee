@@ -1723,12 +1723,6 @@
             activeKind !== 'configuration'
             && activeKind !== 'deployments'
           ) {
-            @if (workspace.error()) {
-              <p class="operator-action-popup__result is-error" role="alert">
-                <mat-icon>error_outline</mat-icon>
-                <span>{{ workspace.error() | i18n }}</span>
-              </p>
-            }
             @if (
               workspace.notice()
               && !(

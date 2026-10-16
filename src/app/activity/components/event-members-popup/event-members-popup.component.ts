@@ -265,12 +265,9 @@ export class EventMembersPopupComponent implements OnDestroy {
     emptyDescription: 'Check back later or invite people in.',
     listLayout: 'card-grid',
     desktopColumns: 4,
+    mobileColumns: 2,
+    minColumnWidth: '280px',
     snapMode: 'none',
-    containerClass: {
-      'experience-card-list': true,
-      'assets-card-list': true,
-      'activity-members-list-shell': true
-    },
     trackBy: (_index, member) => member.id
   };
 

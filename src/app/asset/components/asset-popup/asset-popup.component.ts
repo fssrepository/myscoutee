@@ -269,7 +269,6 @@ export class AssetPopupComponent {
       sortKey: (row, _index, query) => this.ticketSortKey(row, query.filters?.order)
     },
     trackBy: (_index, row) => AssetTicketBuilder.identity(row),
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: row => AssetTicketInfoCardConverter.groupLabel(row.dateIso)
   };
 

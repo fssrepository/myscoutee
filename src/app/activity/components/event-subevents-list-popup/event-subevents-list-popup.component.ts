@@ -254,7 +254,6 @@ export class EventSubeventsListPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
     groupBy: (section, query) => this.groupLabel(section.startAt, query.view as EventSubeventsListView),
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     trackBy: (_index, section) => section.id
   };
 

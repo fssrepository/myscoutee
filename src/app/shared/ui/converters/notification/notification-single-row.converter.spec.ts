@@ -275,6 +275,28 @@ describe('NotificationSingleRowConverter badges', () => {
     ]);
   });
 
+  it('opens the owning workspace for join and own-security notices', () => {
+    expect(NotificationSingleRowConverter.roleTargetPath(notification({
+      kind: 'node-member-joined', sourceType: 'operator', actionPath: '/operator'
+    }))).toBe('/operator');
+    for (const actionPath of ['/operator', '/admin']) {
+      expect(NotificationSingleRowConverter.roleTargetPath(notification({
+        kind: 'security-login', sourceType: 'security', actionPath
+      }))).toBe(actionPath);
+    }
+  });
+
+  it('rejects unrecognized workspace paths on join and security notices', () => {
+    for (const actionPath of ['https://example.com', '//example.com', '/operator/other', '/game']) {
+      expect(NotificationSingleRowConverter.roleTargetPath(notification({
+        kind: 'security-login', sourceType: 'security', actionPath
+      }))).toBeNull();
+      expect(NotificationSingleRowConverter.roleTargetPath(notification({
+        kind: 'node-member-joined', sourceType: 'operator', actionPath
+      }))).toBeNull();
+    }
+  });
+
   it('does not offer a target without enough data to open one', () => {
     const row = converter.convert(notification({
       kind: 'scheduled-maintenance',

@@ -38,7 +38,6 @@ export class PhotoFeedEventPickerComponent {
     pageSize: 10, listLayout: 'card-grid', desktopColumns: 3,
     trackBy: (_index, option) => option.event.id,
     snapMode: 'mandatory', initialScrollAnchor: 'first-item', scrollPaddingTop: '2.6rem',
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: option => {
       const date = new Date(option.startAtIso ?? '');
       return Number.isNaN(date.getTime()) ? 'Date unavailable' : UiDateUtils.smartListDayLabel(date);

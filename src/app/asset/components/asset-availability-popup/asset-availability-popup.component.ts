@@ -301,7 +301,6 @@ export class AssetAvailabilityPopupComponent {
     desktopColumns: 1,
     snapMode: 'mandatory',
     showStickyHeader: true,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: (item, query) => this.groupLabelForItem(item, query.view as AppDTOs.AssetAvailabilityView),
     trackBy: (index, item) => this.availabilityItemKey(item, index)
   };

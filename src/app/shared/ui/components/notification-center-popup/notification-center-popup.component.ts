@@ -101,7 +101,6 @@ export class NotificationCenterPopupComponent implements OnDestroy {
 
   protected readonly store = inject(NotificationCenterStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
-  private readonly offline = computed(() => !this.runtimeStore.isOnline() || backendUnavailable());
   private readonly preferenceUnavailable = computed(() => !this.runtimeStore.isDataSourceAvailable()
     || (environment.activitiesDataSource === 'http' && backendUnavailable()));
   private readonly dialogStore = inject(DialogStore);
@@ -175,7 +174,8 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     emptyLabel: 'No notifications',
     emptyDescription: 'New messages and updates will appear here.',
     showStickyHeader: true,
-    listLayout: 'stack',
+    listLayout: 'card-grid',
+    desktopColumns: 1,
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
     pollIntervalMs: () => this.store.pollIntervalMs(),
@@ -203,9 +203,6 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     },
     groupBy: item => this.notificationDateGroupLabel(item.createdAtIso),
     showFirstGroupMarker: true,
-    containerClass: {
-      'notification-center-smart-list': true
-    },
     trackBy: (_index, item) => item.id
   };
 
@@ -278,15 +275,15 @@ export class NotificationCenterPopupComponent implements OnDestroy {
             {
               id: 'notification-attention-toggle',
               kind: 'toggle',
-              icon: this.offline() ? 'cloud_off' : muted ? 'notifications_off' : 'notifications_active',
+              icon: muted ? 'notifications_off' : 'notifications_active',
               disabled: this.preferenceUnavailable() || this.store.permissionActionPending(),
               progress: { state: this.store.permissionBusy() ? 'loading' : null },
               layout: 'icon',
-              palette: this.offline() ? 'offline' : muted ? 'slate' : 'violet',
+              palette: muted ? 'slate' : 'violet',
               active: muted,
               checked: muted,
               closeOnSelect: false,
-              ariaLabel: this.offline() ? 'Offline' : muted ? 'Unmute notification alerts' : 'Mute notification alerts',
+              ariaLabel: muted ? 'Unmute notification alerts' : 'Mute notification alerts',
               context: { action: 'toggle-muted' }
             }
           ]
@@ -349,7 +346,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
       const path = NotificationSingleRowConverter.roleTargetPath(notification);
       const profile = this.profiles.activeUserProfile();
       if (!path || (path.startsWith('/operator') ? !profile?.operator : !profile?.admin)) return;
-      if (await this.router.navigateByUrl(path)) {
+      if (this.router.url === path || await this.router.navigateByUrl(path)) {
         this.store.close();
         await this.markRead(notification);
       }

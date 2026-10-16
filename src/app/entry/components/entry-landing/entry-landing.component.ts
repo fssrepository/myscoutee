@@ -288,7 +288,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     emptyStickyLabel: 'Articles',
     showStickyHeader: true,
     showFirstGroupMarker: true,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: card => this.ideaDayGroupLabel(this.ideaCardDetail(card)),
     trackBy: (_index, card) => card.id,
     listLayout: 'card-grid',

@@ -14,13 +14,6 @@
         <span>{{ 'operator.workspace.loading' | i18n }}</span>
       </section>
     } @else {
-      @if (errorMessage()) {
-        <p class="operator-state-message operator-state-message--error" role="alert">
-          <mat-icon>error_outline</mat-icon>
-          <span>{{ errorMessage() | i18n }}</span>
-        </p>
-      }
-
       <section class="operator-actions" [attr.aria-label]="'operator.actions' | i18n">
         <app-menu
           kind="inline"

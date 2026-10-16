@@ -69,7 +69,6 @@ export class PhotoFeedPopupComponent implements OnDestroy {
     trackBy: (_index, card) => card.id, cacheable: true, sortable: true,
     groupBy: card => card.groupLabel ?? '',
     snapMode: 'mandatory', initialScrollAnchor: 'first-item', scrollPaddingTop: '2.6rem',
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     pollIntervalMs: 0,
     headerProgress: { enabled: true },
     emptyLabel: () => this.i18n.translate('feed.empty')

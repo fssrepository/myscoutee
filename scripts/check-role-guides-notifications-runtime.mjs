@@ -26,6 +26,7 @@ function context(providers = {}) {
   const injector = { get(token, fallback) {
     const name = (token.name ?? '').replace(/^_/, '');
     if (token === Injector) return injector;
+    if (String(token) === 'InjectionToken MyScoutee UI translations') return providers.I18nService;
     if (token === DestroyRef) return { onDestroy: fn => { cleanup.push(fn); return () => {}; } };
     if (name === 'EffectScheduler') return { add: node => pending.add(node), schedule: node => pending.add(node), remove: node => pending.delete(node) };
     if (name === 'ChangeDetectionScheduler') return { notify() {} };
@@ -55,9 +56,10 @@ for (const rows of catalogs) for (const group of [null,'myscoutee-work','myscout
 console.log(`PASS ${contexts.length} role contexts: EN/HU, three groups, all Mongo catalogs, protected flag and step/content parity`);
 const i18n = { currentLanguage: signal('en') }, loads=[];
 const ctx = context({ I18nService: i18n });
-const guide = ctx.construct(() => new Guide({ loadState: async (key,lang) => {
+const guideOptions = await compiled.symbol('myScouteeGuideOptions');
+const guide = ctx.construct(() => new Guide(guideOptions({ loadState: async (key,lang) => {
   loads.push([key,lang]); return { activeRevision: catalogs[0].find(row => row.active && row.contextKey === key && row.lang === lang && !row.baseGroupId), guideFields: fields[key] };
-} }));
+} })));
 const root = guide.registerContext('operator.home'); guide.openCurrent(); await ctx.flush();
 for (const key of contexts) {
   const close = guide.registerContext(key); await ctx.flush();
@@ -150,8 +152,26 @@ assert.equal(repo.unreadCount('op'),2);assert.equal(repo.unreadCount('admin'),2)
 const notices=repo.queryPage('op',{pageSize:20,filters:{bucket:'all'}}).records;
 const release=notices.find(n=>n.kind==='release-available');assert.equal(Converter.roleTargetPath(release),'/operator?notificationTarget=updates');
 assert.equal(Converter.roleTargetPath({...release,payload:{roleTarget:'https://evil.example'}}),null);
+for (const sourceType of ['operator','app-admin']) {
+  for (const roleTarget of ['unknown','//evil.example','javascript:alert(1)']) {
+    assert.equal(Converter.roleTargetPath({...release,sourceType,payload:{roleTarget}}),null);
+  }
+}
+const forbiddenEffects=[];
+for (const [sourceType,roleTarget,profile] of [
+  ['operator','updates',{}],['operator','updates',{admin:true}],
+  ['app-admin','reports',{}],['app-admin','feedback',{operator:true}]
+]) {
+  await NotificationPopup.prototype.openNotificationTarget.call({
+    profiles:{activeUserProfile:()=>profile},
+    router:{navigateByUrl:async path=>{forbiddenEffects.push(path);return true;}},
+    store:{close:()=>forbiddenEffects.push('close')},
+    markRead:async()=>forbiddenEffects.push('read')
+  },{...release,sourceType,payload:{roleTarget}},'openNotificationRoleTarget');
+}
+assert.deepEqual(forbiddenEffects,[],'Wrong role must neither navigate nor consume/read the notification');
 assert.equal(repo.markRead('member',release.id),null);repo.markRead('op',release.id);repo.markRead('op',release.id);assert.equal(repo.unreadCount('op'),1);
-console.log('PASS local event -> inbox -> role target; repeated events/read are idempotent; recipient isolation');
+console.log('PASS local event -> inbox -> role target; unknown/external/wrong-role targets denied; idempotency and recipient isolation');
 
 // Shared popup registration changes only at actual context/lifecycle transitions.
 const transitions=[];const surface={active:true,guideContext:'admin.reports',registeredGuideContext:undefined,

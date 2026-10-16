@@ -558,6 +558,24 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).not.toContain(CHATS_TABLE_NAME);
   });
 
+  it.each([
+    ['operator-demo-dev', 'operator', 3],
+    ['admin-demo-ava', 'admin', 4]
+  ] as const)('seeds %s notifications and persists the matching unread count', async (userId, mode, count) => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    await bootstrap.ensureDemoSelectorReady(mode);
+    await bootstrap.ensureUserReady(userId, mode);
+    const table = memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+    const ids = table.idsByRecipientUserId[userId] ?? [];
+    expect(ids).toHaveLength(count);
+    expect(ids.filter(id => !table.byId[id].readAtIso)).toHaveLength(count);
+    expect(memoryDb.read()[USERS_TABLE_NAME].byId[userId].activities.notifications).toBe(count);
+    const persisted = await memoryDb.readIndexedDbTableEntry<any>(USERS_TABLE_NAME);
+    expect(persisted.byId[userId].activities.notifications).toBe(count);
+    await bootstrap.ensureUserReady(userId, mode);
+    expect(memoryDb.read()[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId[userId]).toEqual(ids);
+  });
+
   it('runs admin workspace bootstrap when an admin demo user is selected', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');

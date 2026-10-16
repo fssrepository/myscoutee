@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.10.16.2",
+  "version": "2026.10.16.3",
   "messages": {
     "admin.jobs.rule.affinity-admin-signals": "Affinitásstatisztika küldése",
     "admin.jobs.rule.events-admin-signals": "Eseménystatisztika küldése",
@@ -464,6 +464,8 @@
     "admin.jobs.rule.affinity.graph.layout.description": "Materializálja az aktuális affinitásgráfot az admin gráfnézethez.",
     "admin.jobs.rule.scheduled.messages": "Ütemezett üzenetek küldése",
     "admin.jobs.rule.scheduled.messages.description": "Kiküldi az esedékes üzeneteket és emlékeztetőket, és kezeli az időzített inaktivitási műveleteket.",
+    "admin.jobs.rule.media.deletion": "Várakozó médiafájlok törlése",
+    "admin.jobs.rule.media.deletion.description": "Törli a várakozó médiafájlokat a tárhelyről, és újrapróbálja a sikertelen törléseket.",
     "admin.jobs.rule.account.purge": "Törölt fiókok véglegesítése",
     "admin.jobs.rule.account.purge.description": "A törlési türelmi idő után végleg eltávolítja a fiók aktivitását és privát médiáját.",
     "admin.jobs.run.detail.rule.not.found": "A szabály nem található.",

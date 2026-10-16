@@ -334,12 +334,6 @@ export class EventExplorePopupComponent implements OnDestroy {
     sortable: {
       sortKey: record => this.eventExploreRecordLocalSortKey(record)
     },
-    showGroupMarker: ({ groupIndex, scrollable }) => {
-      if (groupIndex > 0) {
-        return true;
-      }
-      return scrollable;
-    },
     groupBy: (record, query) => this.buildEventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 

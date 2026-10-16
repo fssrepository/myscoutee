@@ -161,6 +161,17 @@ describe('OperatorActionPopupComponent', () => {
     TestBed.resetTestingModule();
   });
 
+  it('uses the shared popup error without resizing Community', () => {
+    activePopup.set('community');
+    error.set('operator.community.error.registration.required');
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const model = (fixture.componentInstance as unknown as { popupModel(): any }).popupModel();
+    expect(model).toEqual(expect.objectContaining({
+      size: 'wide', height: 'full', mobilePresentation: 'fullscreen',
+      errorMessage: 'operator.community.error.registration.required'
+    }));
+  });
+
   it('disables both update actions for a retained running job and releases both after failure', () => {
     activePopup.set('updates');
     deploymentUpdate.set({

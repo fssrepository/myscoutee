@@ -472,21 +472,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     },
     emptyLabel: () => this.activitiesEmptyLabel,
     emptyStickyLabel: () => (this.activitiesView === 'distance' ? '0 km' : 'No items'),
-    showGroupMarker: ({ groupIndex, scrollable }) => {
-      if (groupIndex > 0) {
-        return true;
-      }
-      if (this.activitiesPrimaryFilter === 'chats') {
-        return false;
-      }
-      if (this.isEventActivitiesPrimaryFilter() && !scrollable) {
-        return false;
-      }
-      if (!scrollable) {
-        return false;
-      }
-      return true;
-    },
+    showGroupMarker: ({ groupIndex }) => groupIndex > 0 || this.activitiesPrimaryFilter !== 'chats',
     menuItems: context => this.activitySmartListMenuItems(context)
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<ActivityListItem, ActivitiesSmartListFilters>

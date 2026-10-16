@@ -324,7 +324,6 @@ export class ContactsPopupComponent implements OnDestroy {
       'contacts-scroll-list': true
     },
     trackBy: (_index, contact) => contact.id,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: contact => this.chatAccess.requestsOnly() ? this.i18n.translate('contact.chat.requests') : contact.groupLabel,
     onDelete: (contact: ContactListItem, event?: Event) => { if (contact.saved !== false) this.confirmDelete(contact, event); }
   }));

@@ -71,28 +71,6 @@
   text-align: center;
 }
 
-.operator-state-message {
-  flex: 0 0 auto;
-  min-height: 38px;
-  margin: 0 0 0.72rem;
-  padding: 0.58rem 0.72rem;
-  border: 1px solid rgba(178, 58, 78, 0.24);
-  border-radius: 12px;
-  background: rgba(255, 239, 242, 0.94);
-  color: #8d2d3d;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.operator-state-message .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-}
-
 .operator-actions {
   flex: 0 0 auto;
   min-width: 0;

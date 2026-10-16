@@ -152,16 +152,18 @@ export class SeedDemoBootstrapService {
 
     if (mode === 'admin') {
       await this.ensureAdminWorkspaceReady(normalizedUserId, onProgress);
-      return;
-    }
-    if (mode === 'operator') {
+    } else if (mode === 'operator') {
       await this.ensureOperatorSelectorReady(onProgress);
-      this.emitSessionReady(onProgress, normalizedUserId);
+    } else {
+      await this.ensureDemoSelectorReady(mode, onProgress);
+      await this.ensureUserSessionReady(normalizedUserId, onProgress);
       return;
     }
 
-    await this.ensureDemoSelectorReady(mode, onProgress);
-    await this.ensureUserSessionReady(normalizedUserId, onProgress);
+    if (this.notificationsSeed.seedForUser(normalizedUserId)) {
+      await this.flushBootstrapTables([NOTIFICATIONS_TABLE_NAME, USERS_TABLE_NAME]);
+    }
+    this.emitSessionReady(onProgress, normalizedUserId);
   }
 
   async ensureUserSessionReady(

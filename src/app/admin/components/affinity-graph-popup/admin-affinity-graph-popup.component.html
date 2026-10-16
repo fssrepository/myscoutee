@@ -2,6 +2,7 @@
   <app-popup guideContext="admin.affinity-graph" class="affinity-graph-popup" [model]="affinityGraphPopupModel()">
     @if (graphUrl(); as sourceUrl) {
       <iframe
+        data-guide-field="overview"
         class="affinity-graph-frame"
         [src]="sourceUrl"
         title="Affinity graph view"

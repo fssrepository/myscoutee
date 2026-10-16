@@ -156,6 +156,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       headerActions: [
         {
           id: 'cancel-edit',
+          guideFieldId: 'close',
           icon: 'close',
           ariaLabel: 'cancel',
           palette: 'default',
@@ -184,6 +185,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       headerActions: [
         {
           id: 'close-history',
+          guideFieldId: 'close',
           icon: 'close',
           ariaLabel: 'close',
           palette: 'default',

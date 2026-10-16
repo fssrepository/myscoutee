@@ -1068,6 +1068,7 @@ export class OperatorActionPopupComponent {
           ].join(': ')
         : this.titleKey(kind),
       translateTitle: kind !== 'deployments',
+      errorMessage: kind !== 'configuration' && kind !== 'deployments' ? this.workspace.error() : null,
       closeAriaLabel: 'operator.popup.close',
       size: wide ? 'wide' : 'small',
       height: wide ? 'full' : 'auto',

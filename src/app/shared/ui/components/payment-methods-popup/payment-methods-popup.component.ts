@@ -153,7 +153,6 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
     mobileColumns: 1,
     snapMode: 'none',
     headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
-    containerClass: { 'payment-method-card-list': true },
     trackBy: (_index, item) => item.id
   };
 

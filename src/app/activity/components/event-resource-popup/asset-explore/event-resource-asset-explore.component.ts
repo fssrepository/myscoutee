@@ -305,7 +305,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     emptyLabel: 'No visible assets right now.',
     emptyDescription: 'Try another date range or category.',
     showStickyHeader: true,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: card => this.groupLabel(card),
     listLayout: 'card-grid',
     desktopColumns: 3,

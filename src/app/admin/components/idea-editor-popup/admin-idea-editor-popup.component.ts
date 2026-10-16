@@ -212,7 +212,6 @@ export class AdminIdeaEditorPopupComponent {
     emptyStickyLabel: 'Articles',
     showStickyHeader: true,
     showFirstGroupMarker: true,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: card => this.ideaCardDayGroupLabel(card),
     trackBy: (_index, card) => card.id,
     listLayout: 'card-grid',

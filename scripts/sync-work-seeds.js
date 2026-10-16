@@ -391,7 +391,10 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
       .sort((a,b) => b.version-a.version)[0];
     const source = previous ?? read(path.join(data,'work-help-center.json')).find(row => row.contextKey === context && row.lang === lang);
     if (!source) throw new Error(`Missing guide source: ${context}/${lang}`);
-    const id = `explanation-${context.replaceAll('.','-')}-default-${lang}-v${version}`;
+    // Revision identity is scoped by context/language/version, not its historical ID spelling.
+    const existing = rows.find(row => !row.baseGroupId && row.documentType === 'explanation'
+      && row.contextKey === context && row.lang === lang && row.version === version);
+    const id = existing?._id ?? `explanation-${context.replaceAll('.','-')}-default-${lang}-v${version}`;
     for (const row of rows) if (!row.baseGroupId && row.contextKey === context && row.lang === lang) row.active=false;
     const next = guideRevision(source, context, lang, version, null, id);
     const index=rows.findIndex(row=>row._id===id); if(index<0) rows.push(next); else rows[index]=next;

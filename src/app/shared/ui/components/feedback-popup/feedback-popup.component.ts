@@ -217,7 +217,6 @@ export class FeedbackPopupComponent implements OnDestroy {
       filter: query.filters?.filter ?? 'pending'
     }).emptyDescription,
     showStickyHeader: true,
-    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     groupBy: (item, query) => FeedbackInfoCardConverter.serviceItem(item)
       ? UiDateUtils.weekdayMonthDayYearLabel(new Date(item.dateIso!))
       : FeedbackListPresentationConverter.convert({
