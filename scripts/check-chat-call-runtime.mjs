@@ -37,6 +37,57 @@ const injector = { get(token, fallback) {
   throw Error('Missing test provider ' + name);
 } };
 call = runInInjectionContext(injector, () => new ChatCallService());
+// A roster may be ahead of local MLS reconciliation when an existing member's
+// authenticated offer arrives. Exercise only this regression when requested.
+if (process.argv.includes('--early-signal-only')) {
+  call.chat = { id: 'chat' }; call.callId = 'room'; call.selfId = 'z';
+  const participant = { sessionId: 'a', clientId: 'client-a' };
+  call.participants.set([participant]);
+  const descriptions = [], sent = [], failures = [];
+  let created = 0;
+  call.createPeer = member => {
+    created++;
+    const peer = { incomingIce: [], pc: {
+      connectionState: 'new', getTransceivers: () => [],
+      setRemoteDescription: async value => descriptions.push(value),
+      createAnswer: async () => ({ type: 'answer', sdp: 'answer' }),
+      setLocalDescription: async () => {}
+    } };
+    call.peers.set(member.sessionId, peer); return peer;
+  };
+  call.sendDescription = async id => sent.push(id);
+  call.failPeer = id => failures.push(id);
+  call.mls = { exists: async () => true, decrypt: async plaintext => ({ clientId: 'client-a', plaintext }) };
+  const offer = { chatId: 'chat', callId: 'room', senderSessionId: 'a', targetSessionId: 'z',
+    description: { type: 'offer', sdp: 'authenticated-offer' } };
+  const receive = payload => call.receive({ kind: 'signal', callId: 'room', senderSessionId: 'a', data: JSON.stringify(payload) });
+  await receive({ ...offer, chatId: 'another-chat' });
+  assert.equal(created, 0, 'Invalid context must not create a peer');
+  assert.deepEqual(failures.splice(0), ['a']);
+  await receive(offer);
+  assert.equal(created, 1, 'Authenticate and create the peer before consuming its first offer');
+  assert.deepEqual(descriptions, [offer.description]);
+  assert.deepEqual(sent, ['a'], 'The early offer must receive an answer');
+  assert.deepEqual(failures, []);
+  assert.equal(await call.startPeer(participant), call.peers.get('a'));
+  assert.equal(created, 1, 'Later roster reconciliation must reuse the same peer');
+  const pending = call.peers.get('a');
+  pending.pc.localDescription = { type: 'answer', sdp: 'answer' };
+  call.mls.memberIds = async () => ['client-a'];
+  call.mls.verificationCode = async () => 'verified';
+  call.updateStatus = () => {};
+  await call.startPeers();
+  assert.deepEqual(sent, ['a', 'a'], 'Converged membership must resend an unfinished handshake in its current epoch');
+  pending.pc.connectionState = 'connected';
+  await call.startPeers();
+  assert.equal(sent.length, 2, 'Membership changes must not renegotiate connected peers');
+  pending.pc.signalingState = 'stable';
+  await receive({ ...offer, description: { type: 'answer', sdp: 'repeated-answer' } });
+  assert.equal(descriptions.length, 1, 'A repeated answer must not invalidate an established negotiation');
+  assert.deepEqual(failures, []);
+  console.log('PASS early offer, current-epoch pending handshake, connected-peer preservation and repeated answer');
+  process.exit(0);
+}
 const guideFields = JSON.parse(readFileSync(new URL('../src/app/shared/core/local/seed/data/help-center-guide-fields.json', import.meta.url)));
 const guideRevisions = JSON.parse(readFileSync(new URL('../../server/docker/conf/mongodb/demo_db/helpCenterRevisions.json', import.meta.url)));
 const guideLoads = [];

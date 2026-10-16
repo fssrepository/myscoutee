@@ -51,7 +51,8 @@ export class ChatCallMls {
           }
         });
         result.credential = await ctx.addCredential(api.Credential.basic(api.CipherSuite.Mls128Dhkemx25519Aes128gcmSha256Ed25519, client));
-        const keyPackage = await ctx.generateKeyPackage(result.credential, 3600);
+        // CoreCrypto's JavaScript duration is milliseconds: keep this package valid for one hour.
+        const keyPackage = await ctx.generateKeyPackage(result.credential, 60 * 60 * 1000);
         result.keyPackage = encodeCallBytes(keyPackage.serialize());
       });
       return result;
@@ -117,12 +118,22 @@ export class ChatCallMls {
   encrypt(payload: object): Promise<string> {
     return this.run(() => this.core.transaction(async ctx => encodeCallBytes(await ctx.encryptMessage(this.conversation, bytes(JSON.stringify(payload))))));
   }
-  decrypt(ciphertext: string): Promise<{ clientId: string; plaintext: string }> {
-    return this.run(() => this.core.transaction(async ctx => {
-      const result = await ctx.decryptMessage(this.conversation, decodeCallBytes(ciphertext));
-      if (result.tag !== 'Text') throw new Error('Expected an MLS application message.');
-      return { clientId: result.inner.senderClientId.deserialize().userId.toString(), plaintext: new TextDecoder().decode(result.inner.plaintext) };
-    }));
+  decrypt(ciphertext: string): Promise<{ clientId: string; plaintext: string } | null> {
+    return this.run(async () => {
+      try {
+        return await this.core.transaction(async ctx => {
+          const result = await ctx.decryptMessage(this.conversation, decodeCallBytes(ciphertext));
+          if (result.tag !== 'Text') throw new Error('Expected an MLS application message.');
+          return { clientId: result.inner.senderClientId.deserialize().userId.toString(), plaintext: new TextDecoder().decode(result.inner.plaintext) };
+        });
+      } catch (error) {
+        // Broadcast signaling can still contain in-flight messages from before
+        // this member joined. They are undecryptable, not a failed live peer.
+        if (this.api.CoreCryptoError.Mls.instanceOf(error)
+            && this.api.MlsError.MessageEpochTooOld.instanceOf(error.inner.mlsError)) return null;
+        throw error;
+      }
+    });
   }
   verificationCode(): Promise<string> {
     return this.run(async () => {

@@ -12,6 +12,7 @@ export interface ChatCallRemote {
   video: boolean;
   stream: MediaStream;
   state: 'connecting' | 'connected' | 'failed';
+  error?: string;
 }
 interface Peer {
   pc: RTCPeerConnection;
@@ -54,12 +55,14 @@ export class ChatCallService {
   readonly canModerate = computed(() => this.participants().some(p => this.isSelf(p.sessionId) && p.moderator));
   readonly tiles = computed(() => this.participants().filter(p => !this.isSelf(p.sessionId)).map(p => {
     const remote = this.remotes().find(remote => remote.id === p.sessionId);
-    return { id: p.sessionId, name: this.chat?.members?.find(member => member.id === p.userId)?.name ?? '',
+    const member = this.chat?.members?.find(member => member.id === p.userId);
+    return { id: p.sessionId, name: member?.name ?? '', imageUrl: member?.imageUrl ?? null,
+      initials: member?.initials ?? '', gender: member?.gender, error: remote?.error,
       stream: remote?.stream ?? null, cameraOn: remote?.video ?? false, video: (remote?.video ?? false) && this.receivesVideo(p.sessionId), state: remote?.state ?? 'connecting', mutedByAdmin: p.mutedByAdmin };
   }));
   readonly coordinator = signal('');
   readonly verificationCode = signal('');
-  readonly muted = signal(false);
+  readonly muted = signal(true);
   readonly speakerMuted = signal(false);
   readonly volume = signal(100);
   readonly peerVolumes = signal<Readonly<Partial<Record<string, number>>>>({});
@@ -142,7 +145,7 @@ export class ChatCallService {
     if (!node || !node.urls.every(url => /^stuns?:/.test(url))) { this.error.set('chat.call.error.node'); return; }
     const generation = ++this.generation;
     const callId = this.invite?.callId ?? crypto.randomUUID();
-    this.error.set(null); this.notice.set(null); this.status.set('preparing'); this.open.set(true);
+    this.error.set(null); this.notice.set(null); this.muted.set(true); this.status.set('preparing'); this.open.set(true);
     let mls: ChatCallMls | null = null;
     let stream: MediaStream | null = null;
     try {
@@ -150,9 +153,11 @@ export class ChatCallService {
       if (generation !== this.generation) { void mls.destroy(); return; }
       stream = await navigator.mediaDevices.getUserMedia({ audio: { autoGainControl: true, echoCancellation: true, noiseSuppression: true },
         video: video ? { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24, max: 30 } } : false });
+      // Keep capture silent before any peer can attach the newly granted track.
+      stream.getAudioTracks().forEach(track => { track.enabled = false; });
       if (generation !== this.generation) { stream.getTracks().forEach(t => t.stop()); void mls.destroy(); return; }
       this.mls = mls; this.localStream.set(stream); this.callId = callId;
-      this.selectedNode.set(nodeId); this.cameraOff.set(!video); this.muted.set(false);
+      this.selectedNode.set(nodeId); this.cameraOff.set(!video);
       this.speakerMuted.set(false);
       this.voice = new ChatCallVoiceActivity(speakers => this.activeSpeakers.set(speakers), levels => this.audioLevels.set(levels));
       const local = stream;
@@ -329,7 +334,9 @@ export class ChatCallService {
       if (!participant || !await this.mls.exists()) return;
       try {
         const generation = this.generation;
-        const { clientId, plaintext } = await this.mls.decrypt(event.data);
+        const decrypted = await this.mls.decrypt(event.data);
+        if (!decrypted) return;
+        const { clientId, plaintext } = decrypted;
         if (clientId !== participant.clientId) throw new Error('MLS sender identity mismatch.');
         if (generation !== this.generation) return;
         const payload = JSON.parse(plaintext) as SecureSignal;
@@ -338,7 +345,9 @@ export class ChatCallService {
           throw new Error('Call context mismatch.');
         }
         if (payload.targetSessionId !== this.selfId) return;
-        const peer = this.peers.get(event.senderSessionId);
+        // A valid offer can arrive while a newer roster is still being committed.
+        // Create this authenticated peer now instead of discarding its initial SDP.
+        const peer = await this.startPeer(participant);
         if (!peer || peer.pc.connectionState === 'closed') return;
         if (typeof payload.receiveVideo === 'boolean') {
           peer.sendVideoEnabled = payload.receiveVideo;
@@ -351,6 +360,8 @@ export class ChatCallService {
           if (!['offer', 'answer'].includes(payload.description.type) || /a=candidate:.* typ relay(?:\s|$)/m.test(payload.description.sdp ?? '')) {
             throw new Error('Invalid direct call description.');
           }
+          // Membership commits can repeat a pending handshake in the current epoch.
+          if (peer.pc.signalingState === 'stable' && payload.description.type === 'answer') return;
           await peer.pc.setRemoteDescription(payload.description);
           for (const candidate of peer.incomingIce.splice(0)) await peer.pc.addIceCandidate(candidate);
           if (payload.description.type === 'offer') {
@@ -400,15 +411,28 @@ export class ChatCallService {
     if (generation !== this.generation) return;
     this.verificationCode.set(code);
     for (const participant of this.participants()) {
-      if (participant.sessionId === this.selfId || this.peers.has(participant.sessionId)) continue;
-      const peer = this.createPeer(participant);
-      if (this.selfId < participant.sessionId) {
-        await peer.pc.setLocalDescription(await peer.pc.createOffer());
-        if (generation !== this.generation) return;
+      if (participant.sessionId === this.selfId) continue;
+      const existing = this.peers.has(participant.sessionId);
+      const peer = await this.startPeer(participant);
+      // An in-flight SDP may belong to an epoch a joining member cannot decrypt.
+      // Reannounce only unfinished handshakes after membership has converged.
+      if (existing && peer.pc.localDescription && ['new', 'connecting'].includes(peer.pc.connectionState)) {
         await this.sendDescription(participant.sessionId, peer);
       }
+      if (generation !== this.generation) return;
     }
     this.updateStatus();
+  }
+  private async startPeer(participant: ChatCallParticipant): Promise<Peer> {
+    const existing = this.peers.get(participant.sessionId);
+    if (existing) return existing;
+    const generation = this.generation;
+    const peer = this.createPeer(participant);
+    if (this.selfId < participant.sessionId) {
+      await peer.pc.setLocalDescription(await peer.pc.createOffer());
+      if (generation === this.generation) await this.sendDescription(participant.sessionId, peer);
+    }
+    return peer;
   }
   private createPeer(participant: ChatCallParticipant): Peer {
     const node = this.nodes().find(node => node.id === this.selectedNode());
@@ -488,12 +512,15 @@ export class ChatCallService {
     } catch { this.failPeer(id, 'chat.call.error.direct'); }
   }
   private setPeerState(id: string, state: ChatCallRemote['state']): void {
-    this.remotes.update(items => items.map(item => item.id === id ? { ...item, state } : item)); this.updateStatus();
+    this.remotes.update(items => items.map(item => item.id === id
+      ? { ...item, state, error: state === 'failed' ? item.error : undefined } : item)); this.updateStatus();
   }
   private failPeer(id: string, error: string): void {
     const peer = this.peers.get(id);
     if (!peer) return;
-    clearTimeout(peer.timer); peer.pc.close(); this.error.set(error); this.setPeerState(id, 'failed');
+    clearTimeout(peer.timer); peer.pc.close();
+    this.remotes.update(items => items.map(item => item.id === id ? { ...item, error } : item));
+    this.setPeerState(id, 'failed');
     this.voice?.remove(id);
   }
   private removePeer(id: string): void {

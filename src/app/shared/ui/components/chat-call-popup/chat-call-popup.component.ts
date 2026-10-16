@@ -3,10 +3,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 import { ChatCallService } from '../../../core/base/services/chat/chat-call.service';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
+import { AppUtils } from '../../../core/base/app-utils';
+import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
 import {
   ExplanationGuideService,
   PopupComponent,
   SmartListComponent,
+  SmartListEmptyStateComponent,
   type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage
@@ -22,12 +25,11 @@ interface CallPage {
 
 @Component({
   selector: 'app-chat-call-popup', standalone: true,
-  imports: [MatIconModule, PopupComponent, SmartListComponent],
+  imports: [MatIconModule, PopupComponent, SmartListComponent, SmartListEmptyStateComponent],
   template: `
     @if (call.open()) {
       <app-popup [model]="model()" [zIndex]="zIndex">
         <section class="call" data-chat-call [attr.data-call-state]="call.status()">
-          @if (call.notice(); as notice) { <p role="status">{{ t(notice) }}</p> }
           @for (peer of call.tiles(); track peer.id) {
             <audio #remoteMedia [srcObject]="peer.stream" autoplay [muted]="call.speakerMuted() || !!call.peerMuted()[peer.id] || peer.mutedByAdmin"
               [volume]="call.playbackVolume(peer.id)" (loadedmetadata)="playMedia(remoteMedia)"></audio>
@@ -41,6 +43,7 @@ interface CallPage {
               @if (page.self) {
               <article class="call-tile" [hidden]="focused() && focused() !== 'self'"
                 [style.order]="page.ids.indexOf('self')"
+                [class.call-failed]="!!call.error()"
                 [class.call-muted]="call.muted() || call.adminMuted()"
                 [class.call-speaking]="call.activeSpeakers().has('self')" [attr.data-coordinator]="call.isSelfCoordinator()">
                   <button type="button" class="call-mic-state" data-call-tile-mute="self" data-guide-field="call-self-mute" (click)="call.toggleMute()"
@@ -60,7 +63,15 @@ interface CallPage {
                   @if (call.localStream(); as stream) {
                     <video [srcObject]="stream" autoplay playsinline [muted]="true" [hidden]="call.cameraOff()"></video>
                   }
-                  @if (call.cameraOff() || !call.localStream()) { <mat-icon class="avatar">person</mat-icon> }
+                  @if (call.cameraOff() || !call.localStream()) {
+                    @if (selfAvatar().imageUrl; as image) { <img class="call-avatar" [src]="image" [alt]="t('chat.call.you')" decoding="async" /> }
+                    @else { <div class="call-avatar call-monogram" [class.call-monogram--man]="selfAvatar().gender === 'man'">{{ selfAvatar().initials }}</div> }
+                  }
+                  @if (call.error() && call.error() !== 'chat.call.error.media') {
+                    <app-smart-list-empty-state class="call-error" tone="error" [label]="call.error()!"></app-smart-list-empty-state>
+                  } @else if (call.notice(); as notice) {
+                    <app-smart-list-empty-state class="call-error" [label]="notice"></app-smart-list-empty-state>
+                  }
                   @if (call.audioLevels()['self']; as levels) {
                     <div class="call-wave" data-guide-field="call-spectrum" data-call-wave="self" role="img" [attr.aria-label]="t('chat.call.speaking')">
                       @for (level of levels; track $index) { <i [style.height.%]="Math.max(8, level * 100)"></i> }
@@ -77,6 +88,7 @@ interface CallPage {
                   [style.order]="page.ids.indexOf(peer.id)"
                   [attr.data-coordinator]="call.coordinator() === peer.id" [hidden]="focused() && focused() !== peer.id"
                   [class.call-speaking]="call.activeSpeakers().has(peer.id)"
+                  [class.call-failed]="peer.state === 'failed'"
                   [class.call-muted]="call.speakerMuted() || !!call.peerMuted()[peer.id] || peer.mutedByAdmin">
                   <button type="button" class="call-mic-state" [attr.data-call-tile-mute]="peer.id" data-guide-field="call-peer-mute" (click)="call.togglePeerMute(peer.id)"
                     [attr.data-call-mic-state]="call.speakerMuted() || call.peerMuted()[peer.id] || peer.mutedByAdmin ? 'muted' : call.activeSpeakers().has(peer.id) ? 'speaking' : 'idle'"
@@ -99,14 +111,20 @@ interface CallPage {
                       [attr.aria-pressed]="peer.mutedByAdmin"><mat-icon>{{ peer.mutedByAdmin ? 'mic_off' : 'mic' }}</mat-icon></button>
                   }
                   <video [srcObject]="peer.stream" autoplay playsinline [hidden]="!peer.video" [muted]="true"></video>
-                  @if (!peer.video) { <mat-icon class="avatar">person</mat-icon> }
+                  @if (!peer.video) {
+                    @if (peer.imageUrl) { <img class="call-avatar" [src]="peer.imageUrl" [alt]="peer.name" decoding="async" /> }
+                    @else { <div class="call-avatar call-monogram" [class.call-monogram--man]="peer.gender === 'man'">{{ peer.initials }}</div> }
+                  }
+                  @if (peer.error) {
+                    <app-smart-list-empty-state class="call-error" tone="error" [label]="peer.error"></app-smart-list-empty-state>
+                  }
                   @if (call.audioLevels()[peer.id]; as levels) {
                     <div class="call-wave" data-guide-field="call-spectrum" [attr.data-call-wave]="peer.id" role="img" [attr.aria-label]="t('chat.call.speaking')">
                       @for (level of levels; track $index) { <i [style.height.%]="Math.max(8, level * 100)"></i> }
                     </div>
                   }
                   <span>{{ peer.name || t('chat.call.participant') }}
-                    <small>{{ t('chat.call.peer.' + peer.state) }}</small>
+                    @if (!peer.error) { <small>{{ t('chat.call.peer.' + peer.state) }}</small> }
                     @if (peer.mutedByAdmin) { <small>{{ t('chat.call.admin.muted') }}</small> }
                     @if (call.coordinator() === peer.id) { <small>{{ t('chat.call.coordinator') }}</small> }
                   </span>
@@ -182,19 +200,26 @@ interface CallPage {
   styles: [`
     .call { padding: 16px; display: flex; flex-direction: column; gap: 14px; height: 100%; min-height: 0; box-sizing: border-box; overflow: auto; }
     .call p { margin: 0; color: var(--text-secondary, #526076); }
-    .call .call-error { color: #b42318; }
+    .call-error { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 3; width: max-content; max-width: calc(100% - 104px); margin: 0; padding: 8px; box-sizing: border-box; border-radius: 10px; white-space: pre-line; pointer-events: none; }
+    /* Preserve the two explicit lines and ellipsize within the existing tile width. */
+    :host ::ng-deep .call-error h4 { font-size: .8rem; line-height: 1.35; max-width: 100%; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+    :host ::ng-deep .call-error .smart-list__empty-icon { display: none; }
     .call-stage { flex: 1; min-height: 240px; min-width: 0; display: flex; }
-    .call-participants { --smart-list-horizontal-mobile-surface-margin: 0; }
+    .call-participants { --smart-list-horizontal-mobile-surface-margin: 0; --smart-list-horizontal-dots-bottom: -12px; }
     :host ::ng-deep .call-participants .smart-list__surface { padding-top: 0; }
     :host ::ng-deep .call-participants .smart-list--horizontal { padding: 0; }
     .call-grid { flex: 1; width: 100%; min-width: 0; height: 100%; min-height: 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(var(--call-columns, 2), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 10px; }
-    .call-tile { position: relative; overflow: hidden; border-radius: 12px; min-height: 160px; background: #182235; color: white; display: grid; place-items: center; }
+    .call-tile { container-type: inline-size; position: relative; overflow: hidden; border-radius: 12px; min-height: 160px; background: #182235; color: white; display: grid; place-items: center; }
+    @container (max-width: 220px) {
+      .call-error { top: 52px; left: 52px; transform: none; max-width: calc(100% - 60px); padding: 5px; }
+      :host ::ng-deep .call-error h4 { font-size: .7rem; }
+    }
     .call-grid-single { grid-template-columns: minmax(0, 1fr); }
     .call-tile[hidden] { display: none; }
     .call-speaking { --call-frame-color: #36d58a; }
-    .call-muted { --call-frame-color: #ef4444; }
-    .call-speaking, .call-muted { box-shadow: inset 0 0 0 4px var(--call-frame-color); }
-    .call-speaking::after, .call-muted::after { content: ''; position: absolute; inset: 0; border: 4px solid var(--call-frame-color); border-radius: 12px; pointer-events: none; z-index: 1; }
+    .call-muted, .call-failed { --call-frame-color: #ef4444; }
+    .call-speaking, .call-muted, .call-failed { box-shadow: inset 0 0 0 4px var(--call-frame-color); }
+    .call-speaking::after, .call-muted::after, .call-failed::after { content: ''; position: absolute; inset: 0; border: 4px solid var(--call-frame-color); border-radius: 12px; pointer-events: none; z-index: 1; }
     .call-tile button.call-mic-state, .call-tile button.call-camera-state { position: absolute; left: 8px; z-index: 2; display: grid; place-items: center; width: 36px; height: 36px; min-height: 36px; padding: 6px; border-radius: 8px; background: #000b; color: #d1d9e6; }
     .call-tile button.call-mic-state { top: 8px; color: var(--call-frame-color, #d1d9e6); }
     .call-tile button.call-camera-state { top: 52px; }
@@ -209,7 +234,9 @@ interface CallPage {
     .call-tile button.tile-zoom:focus-visible { outline: 3px solid #76b7ff; outline-offset: 2px; }
     video { position: absolute; width: 100%; height: 100%; object-fit: contain; }
     video[hidden] { display: none; }
-    .avatar { font-size: 52px; width: 52px; height: 52px; margin-bottom: 35px; }
+    .call-avatar { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 35px; }
+    .call-monogram { display: grid; place-items: center; background: linear-gradient(180deg, #d76d8e 0%, #b84f72 100%); color: #fff; font-size: 16px; font-weight: 700; }
+    .call-monogram--man { background: linear-gradient(180deg, #4f87cf 0%, #3169ae 100%); }
     .call-tile > span { position: absolute; bottom: 0; left: 0; right: 0; padding: 9px; background: #0008; font-size: 13px; display: flex; flex-wrap: wrap; gap: 7px; }
     small { font-size: 11px; opacity: .85; }
     .call-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
@@ -233,6 +260,11 @@ interface CallPage {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatCallPopupComponent {
+  private readonly profiles = inject(UserProfileStore);
+  protected readonly selfAvatar = computed(() => {
+    const user = this.profiles.activeUserProfile();
+    return { imageUrl: AppUtils.firstImageUrl(user?.images), initials: user?.initials ?? '', gender: user?.gender };
+  });
   protected readonly call = inject(ChatCallService);
   protected readonly Math = Math;
   private readonly i18n = inject(I18nService);
@@ -333,7 +365,7 @@ export class ChatCallPopupComponent {
     });
   }
   protected t(key: string): string { return this.i18n.translate(key); }
-  protected readonly model = computed<PopupModel>(() => ({ errorMessage: this.call.error(), title: this.t('chat.call.title'), subtitle: this.call.title(), translateSubtitle: false,
+  protected readonly model = computed<PopupModel>(() => ({ title: this.t('chat.call.title'), subtitle: this.call.title(), translateSubtitle: false,
       ariaLabel: this.t('chat.call.title'), closeAriaLabel: this.t('chat.call.close'),
       size: 'wide', height: 'full', bodyLayout: 'fill', headerTone: 'accent', backdropTone: 'dim', closeOnBackdrop: false,
       headerControls: [{ id: 'call-follow-speakers', kind: 'menu', menuKind: 'inline', items: [{
