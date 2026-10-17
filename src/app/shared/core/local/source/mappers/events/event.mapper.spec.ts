@@ -8,6 +8,24 @@ import {
 } from '../../../../contracts/common/activity.interface';
 import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
 
+describe('Event date persistence', () => {
+  it.each([
+    ['', ''],
+    ['2099-03-10T12:00:00Z', ''],
+    ['', '2099-03-10T15:00:00Z'],
+    ['2099-03-10T12:00:00Z', '2099-03-10T12:37:00Z']
+  ])('preserves start %s and end %s without inventing dates', (startAtIso, endAtIso) => {
+    const record = LocalActivityEventDetailsMapper.toRecord(new ActivityEventDetailDTO().apply({
+      id: 'date-test', userId: 'owner', creatorUserId: 'owner', startAtIso, endAtIso
+    }));
+    expect(record.startAtIso).toBe(startAtIso);
+    expect(record.endAtIso).toBe(endAtIso);
+    const restored = LocalActivityEventDetailsMapper.toDto(JSON.parse(JSON.stringify(record)));
+    expect(restored.startAtIso).toBe(startAtIso);
+    expect(restored.endAtIso).toBe(endAtIso);
+  });
+});
+
 describe('LocalActivityEventDetailsMapper empty child definitions', () => {
   it('canonicalizes enabled empty Slots and Sub Events to the root Event shape', () => {
     const payload = new ActivityEventDetailDTO().apply({

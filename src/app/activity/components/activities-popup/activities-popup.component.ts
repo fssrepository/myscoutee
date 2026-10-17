@@ -3420,11 +3420,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return { start, end };
       }
     }
-    const parsed = new Date(row.dateIso ?? '');
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return { start: parsed, end: new Date(parsed.getTime() + (2 * 60 * 60 * 1000)) };
+    return null;
   }
 
   private resolveInvitationActivityMembersRow(row: ActivityEventListItem): ActivityEventListItem {

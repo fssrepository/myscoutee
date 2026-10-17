@@ -5,6 +5,27 @@ import type { InfoCardData } from '@fssrepository/myscoutee-components';
 
 import { ActivitiesPopupComponent } from './activities-popup.component';
 
+describe('Activity calendar uses stored Event intervals', () => {
+  function component(interval?: {startIso: string; endIso: string}) {
+    return Object.assign(Object.create(ActivitiesPopupComponent.prototype), {
+      activitiesPrimaryFilter: 'events', activityDateTimeRangeById: interval ? {'event-a': interval} : {}
+    });
+  }
+  it('uses the supplied duration exactly', () => {
+    const interval = {startIso: '2099-03-10T12:00:00Z', endIso: '2099-03-10T12:37:00Z'};
+    expect(component(interval).activityCalendarDateRange({id: 'event-a'})).toEqual({
+      start: new Date(interval.startIso), end: new Date(interval.endIso)
+    });
+  });
+  it.each([undefined,
+    {startIso: '2099-03-10T12:00:00Z', endIso: ''},
+    {startIso: '2099-03-10T12:00:00Z', endIso: '2099-03-10T11:00:00Z'},
+    {startIso: 'invalid', endIso: '2099-03-10T12:00:00Z'}
+  ])('does not manufacture a calendar interval from the card timestamp', interval => {
+    expect(component(interval).activityCalendarDateRange({id: 'event-a', dateIso: '2099-03-10T12:00:00Z'})).toBeNull();
+  });
+});
+
 describe('ActivitiesPopupComponent member sync source', () => {
   const row = {
     id: 'event-a',

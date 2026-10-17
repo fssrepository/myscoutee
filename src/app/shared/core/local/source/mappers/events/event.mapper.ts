@@ -1060,9 +1060,8 @@ export class LocalActivityEventDetailsMapper {
     ]);
     const creatorName = payload.creatorName.trim() || 'Unknown Host';
     const creatorInitials = payload.creatorInitials.trim() || AppUtils.initialsFromText(creatorName);
-    const startAtIso = payload.startAtIso.trim() || new Date().toISOString();
-    const endAtIso = payload.endAtIso.trim()
-      || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
+    const startAtIso = payload.startAtIso.trim();
+    const endAtIso = payload.endAtIso.trim();
     const title = payload.title.trim() || 'Untitled draft event';
     const subtitle = payload.subtitle.trim() || 'Draft event in progress';
     const type = this.normalizeRepositoryItemType(payload.type);

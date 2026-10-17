@@ -32,6 +32,28 @@ if (bundles.size === languages.length) {
   validateGeneratedNotificationKinds();
   for (const databaseName of seedDatabases) {
     validateSeedDatabase(databaseName);
+    validateJobCatalogReferences(databaseName);
+  }
+}
+
+function validateJobCatalogReferences(databaseName) {
+  const filePath = path.join(mongoRoot, databaseName, 'notificationRuleConfigs.json');
+  const result = readJson(filePath);
+  if (!result.ok) return;
+  if (!Array.isArray(result.value)) {
+    issues.push(`${relativePath(filePath)}: job catalog must be an array`);
+    return;
+  }
+  for (const rule of result.value) {
+    for (const field of ['label', 'description']) {
+      const key = rule[field];
+      if (typeof key !== 'string' || !key) continue;
+      for (const language of languages) {
+        if (!Object.hasOwn(bundles.get(language).messages, key)) {
+          issues.push(`${relativePath(filePath)}: job ${formatValue(rule.ruleKey)} ${field} references missing ${language} key ${formatValue(key)}`);
+        }
+      }
+    }
   }
 }
 
