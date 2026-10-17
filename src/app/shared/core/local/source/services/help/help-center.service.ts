@@ -617,11 +617,7 @@ export class LocalHelpCenterService {
   }
 
   private normalizeHtml(value: string): string {
-    return this.normalizeSeededImageRefsInHtml(`${value ?? ''}`)
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-      .replace(/\s(?:href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\1/gi, '')
-      .trim();
+    return AppUtils.sanitizeHtml(this.normalizeSeededImageRefsInHtml(`${value ?? ''}`));
   }
 
   private normalizeSeededImageRefsInHtml(value: string | null | undefined): string {

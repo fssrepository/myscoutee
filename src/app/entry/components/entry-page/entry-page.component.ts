@@ -806,7 +806,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         return;
       }
       if (session.kind === 'firebase' && entryCoordinates) {
-        this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
+        await this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
       }
       this.pendingFirebaseEntryCoordinates = null;
       this.firebaseEntryAccessApproved = false;
@@ -942,7 +942,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (session.kind === 'firebase' && !this.isAdminUser(user) && !this.isOperatorUser(user)) {
       const coordinates = user?.locationCoordinates;
       const hasLocation = coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude);
-      const needsLocationSetup = !hasLocation && !this.appLocationService.pendingLoginCoordinates(session.profile.id);
+      const needsLocationSetup = !hasLocation && !(await this.appLocationService.pendingLoginCoordinates(session.profile.id));
+      if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
       const needsNotificationSetup = hasLocation && !entryAccessApproved && this.firebaseMessagingService.entryPermissionPending;
       // Keep provider login visible through profile loading and route activation.
       // Only a required Setup or registration screen replaces it before navigation.
@@ -1203,7 +1204,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       }
       if (sessionIdentity !== this.sessionService.identity()) return false;
       if (accountId) {
-        this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+        await this.appLocationService.stageLoginCoordinates(accountId, coordinates);
       } else if (this.authMode === 'firebase') {
         // The anonymous device sample belongs to this entry attempt. Bind it to
         // the authenticated account before its first authoritative profile read.
@@ -1632,11 +1633,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         return;
       }
 
+      if (result.eligible && accountId && accountId === this.sessionService.activeUserId()) {
+        await this.appLocationService.stageLoginCoordinates(accountId, coordinates);
+      }
+      if (requestToken !== this.grantedLocationEligibilityRequestToken) return;
       this.ngZone.run(() => {
         this.syncLandingLoginAvailability(result, 'coordinates');
-        if (result.eligible && accountId === this.sessionService.activeUserId()) {
-          if (accountId) this.appLocationService.stageLoginCoordinates(accountId, coordinates);
-          else this.pendingFirebaseEntryCoordinates = coordinates;
+        if (result.eligible && !accountId && accountId === this.sessionService.activeUserId()) {
+          this.pendingFirebaseEntryCoordinates = coordinates;
         }
         this.changeDetectorRef.markForCheck();
       });

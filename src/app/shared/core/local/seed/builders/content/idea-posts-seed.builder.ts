@@ -1,4 +1,5 @@
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
+import { AppUtils } from '../../../../base/app-utils';
 import workArticles from '../../data/work-articles.json';
 import communityArticles from '../../data/community-articles.json';
 import { APP_STATIC_DATA } from '../../../../common/app-static-data';
@@ -279,11 +280,7 @@ export class SeedIdeaPostsBuilder {
   }
 
   private static normalizeHtml(value: string): string {
-    return `${value ?? ''}`
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-      .replace(/\s(?:href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\1/gi, '')
-      .trim();
+    return AppUtils.sanitizeHtml(value);
   }
 
   private static normalizeLang(lang: string | null | undefined): string {

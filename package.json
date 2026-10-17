@@ -55,13 +55,14 @@
     "@angular/platform-browser": "^21.2.23",
     "@angular/router": "^21.2.23",
     "@fontsource/roboto": "^5.2.10",
+    "@fssrepository/myscoutee-components": "1.4.0",
     "@wireapp/core-crypto": "10.5.4",
+    "dompurify": "3.4.17",
     "firebase": "^12.10.0",
     "material-icons": "^1.13.14",
     "qrcode": "1.5.4",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "@fssrepository/myscoutee-components": "1.4.0"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.2.12",

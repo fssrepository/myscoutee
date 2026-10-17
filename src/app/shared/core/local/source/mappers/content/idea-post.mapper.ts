@@ -1,4 +1,5 @@
 import { normalizeImageDetails } from '../../../../contracts/media/image-gallery.interface';
+import { AppUtils } from '../../../../base/app-utils';
 import type {
   IdeaPostAdminCountsDto,
   IdeaPostAdminPageResultDto,
@@ -110,11 +111,7 @@ export class LocalIdeaPostsMapper {
   }
 
   private static normalizeHtml(value: string | null | undefined): string {
-    return `${value ?? ''}`
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-      .replace(/\s(?:href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\1/gi, '')
-      .trim();
+    return AppUtils.sanitizeHtml(value);
   }
 
   private static excerpt(explicitExcerpt: string | null | undefined, contentHtml: string): string {

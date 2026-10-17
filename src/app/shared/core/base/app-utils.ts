@@ -1,4 +1,5 @@
 import { UiDateUtils, clampNumber } from '@fssrepository/myscoutee-components';
+import DOMPurify from 'dompurify';
 
 import type { ActivitiesView } from '../contracts';
 import type { AssetMemberRequestDTO } from '../contracts';
@@ -209,6 +210,11 @@ export class AppUtils {
       return text;
     }
     return `${text.slice(0, text.length - token.length)}${replacement}`;
+  }
+
+  static sanitizeHtml(value: string | null | undefined): string {
+    if (typeof document === 'undefined') return '';
+    return DOMPurify.sanitize(`${value ?? ''}`, { USE_PROFILES: { html: true } }).trim();
   }
 
   static mediaImageVariantUrl(
