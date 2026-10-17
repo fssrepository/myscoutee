@@ -1164,7 +1164,7 @@
   {
     "task_id": "MSC-121",
     "title": "Package and qualify the microservices deployment playground",
-    "workstream": null,
+    "workstream": "QA and release",
     "started": "2026-10-07",
     "finished": "2026-10-09",
     "tokens_million": 634.373124,
@@ -1188,5 +1188,19 @@
     "models": null,
     "reasoning": null,
     "evidence": "No isolated usage measurement; excluded from totals, not zero."
+  },
+  {
+    "task_id": "MSC-114",
+    "title": "Clean up code based on GitHub code-scanning alerts",
+    "workstream": "Product",
+    "started": "2026-10-01",
+    "finished": "2026-10-01",
+    "tokens_million": 5.615396,
+    "api_equivalent_usd_estimate": 1.7,
+    "active_hours": 0.19989472217029997,
+    "allocated_hours": 0.19989472217029997,
+    "models": "gpt-6-sol",
+    "reasoning": "xhigh",
+    "evidence": "Initial seven CodeQL locations: 5,615,396 measured tokens, 47 responses, 0.199895 active/allocated h; cutoff 2026-10-01T05:13:54.393Z. 13 Node + 58 focused Angular tests and existing watcher build passed. Later alert/dependency work belongs to MSC-123; no duplicate allocation."
   }
 ]

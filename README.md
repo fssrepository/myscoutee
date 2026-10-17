@@ -5,80 +5,14 @@ and Community experiences. Mutual priorities support meeting people; the
 current development also covers work campaigns, company team building, local
 services, community cases and decisions.
 
-The MSC-115 through MSC-119 development is consolidated on **master**.
-It includes domain-specific ratings, document attachments, contextual EN/HU
-guides and API/MCP permission controls. The Java client and MCP development
-version is **1.6.0**; full execution QA for these extensions is pending.
-
-### Core organization
-
-Services, repositories, contracts, mappers, builders and local entities are grouped
-by backend domain inside their existing base/HTTP/local layers. See the
-[core domain map](src/app/shared/core/README.md). UI stores and converters retain
-their existing presentation folders; shared components remain in their submodule.
-
-### Shared components development
-
-Shared UI source is owned by the `myscoutee-components` repository, integrated as the
-`components` Git submodule on `master`. Initialize submodules, switch that checkout to `master`, then run
-`npm ci`. Existing `npm run build:*`, `start:*` and `watch:*` scripts build the
-components workspace before the application. The dev stack uses that same path.
-
-Use public imports from `@fssrepository/myscoutee-components` and
-`@fssrepository/myscoutee-components/styles`; do not add forwarding files or source-path imports.
-Generic tests live beside the library source and run with `npm test` inside the
-submodule. Application integration tests stay here. The component repository also
-builds independently with `npm ci && npm run build`.
-
-Commit a shared change once in the components repository and publish that commit
-to its `origin`. Consume the same published commit in every frontend; never
-cherry-pick or recreate it in another components checkout:
-
-```sh
-git -C components fetch origin
-git -C components checkout --detach <published-components-commit>
-git add components
-```
-
-Verify the commit belongs to `origin/master` before recording the gitlink. Keep
-uncommitted component work in its original checkout until committed; do not
-overwrite a dirty checkout. The versioned submodule update mode is `checkout`,
-so `git submodule update --init components` restores the recorded commit without
-merging component histories. The frontend gitlink commit records a dependency
-revision; it does not duplicate the component implementation commit. Generated
-`dist/` and dependencies are ignored; no npm publication is needed.
-
-### Source snapshot — 7 October 2026
-
-| Scope | Physical source lines |
-|---|---:|
-| Angular `src/app` (`.ts`, `.html`, `.scss`, including tests) | 363,570 |
-| Backend profile Java sources | 157,658 |
-| Administrator affinity-graph JavaScript | 4,876 |
-| Core total | **526,104** |
-
-Counted from tracked files in frontend `e7e800bb3` and backend `3a743d6d0`;
-includes blank lines and comments, excludes generated bundles, dependencies,
-manuals and 69,872 lines of frontend seed JSON. The backend and graph are included
-only in the core total, not in the Angular figure.
-
 ---
 
 ## 🌐 Live Demo
 
 👉 [UI Prototype](https://fssrepository.github.io/myscoutee/)
 
-The committed GitHub Pages bundle is **1.3.3**, rebuilt for MSC-121 with the
-MSC-120 frontend-local timing and landing-page corrections. Its exact build
-identity is recorded in `docs/app-version.json`. The hosted site changes only
-after this bundle is published through the existing GitHub Pages workflow.
-
-MSC-121 is [Closed / Project Done](https://github.com/fssrepository/myscoutee-roadmap/issues/159).
-The runtime-status source uses shared SSE with disconnect/silent-stream recovery;
-Kubernetes discovery lives in the backend microservices shell. The existing Pages
-bundle remains the earlier prototype build; this closeout updates source history,
-documentation and the [restorable Project snapshot](guides/project-history/README.md).
-Broad feature QA and MSC-122 extraction remain separate.
+The browser demo runs locally in your browser. Use an installed backend for
+server accounts, provider connections and shared persistent data.
 
 > **Demo images:** The GitHub Pages prototype uses placeholders from
 > [Lorem Picsum](https://picsum.photos/) and [Random User](https://randomuser.me/documentation).
@@ -90,26 +24,24 @@ Broad feature QA and MSC-122 extraction remain separate.
 
 ### Installer
 
-The **1.3.0 installer release** contains the Debian installer, client tools,
-container references, checksums and release metadata:
-[download v1.3.0](https://github.com/fssrepository/myscoutee/releases/tag/v1.3.0).
-Application updates **1.3.1–1.3.3** do not imply a newer full installer; consult
-the [versioned release notes](https://github.com/fssrepository/myscoutee-backend/tree/master/guides/releases)
-for their installation scope.
+The **1.4.1 installer release** contains the Debian installer, client tools,
+container references, checksums and signed release metadata:
+[download v1.4.1](https://github.com/fssrepository/myscoutee/releases/tag/v1.4.1).
+See the [installation guide](https://github.com/fssrepository/myscoutee-backend/blob/master/packaging/README.md)
+and [release notes](https://github.com/fssrepository/myscoutee-backend/blob/master/guides/releases/v1.4.1.md).
 
 ### Official manuals
 
 | Manual | Document version | Applies to | Download |
 |---|---:|---:|---|
-| Operations Manual | 1.0.0 | MyScoutee 1.0.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Operations_Manual_v1.0.0_EN.pdf) |
-| Administrator Manual | 1.0.0 | MyScoutee 1.0.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Administrator_Manual_v1.0.0_EN.pdf) |
-| User Manual | 1.0.0 | MyScoutee 1.0.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_User_Manual_v1.0.0_EN.pdf) |
-| Integration API Guide | 1.0.1 | 1.0.1 + MSC-119 source extensions | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Integration_API_Guide_v1.0.1_EN.pdf) |
-| MCP User Guide | 1.0.0 | MCP / client 1.6.0 · MSC-119 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_MCP_User_Guide_v1.0.0_EN.pdf) |
-| Microservices Guide | 0.1.1 | MSC-121 implementation preview | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_EN.pdf) |
+| Operations Manual | 1.4.1 | MyScoutee 1.4.1 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Operations_Manual_EN.pdf) |
+| Administrator Manual | 1.4.1 | MyScoutee 1.4.1 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Administrator_Manual_EN.pdf) |
+| User Manual | 1.4.1 | MyScoutee 1.4.1 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_User_Manual_EN.pdf) |
+| Integration API Guide | 1.4.1 | MyScoutee 1.4.1 / client 1.6.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Integration_API_Guide_EN.pdf) |
+| MCP User Guide | 1.4.1 | MyScoutee 1.4.1 / client 1.6.0 | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_MCP_User_Guide_EN.pdf) |
+| Microservices Guide | 1.4.1 | KVM laboratory / eight-service assemblies | [PDF](https://raw.githubusercontent.com/fssrepository/myscoutee/master/guides/manuals/MyScoutee_Microservices_Guide_EN.pdf) |
 
-Document versions are independent of software versions. The MCP guide covers
-MSC-119 source behavior and identifies its pending live-host QA.
+These manuals cover MyScoutee 1.4.1. The API/MCP guides distinguish verified development behavior from external-host qualification.
 
 ### Presentations
 

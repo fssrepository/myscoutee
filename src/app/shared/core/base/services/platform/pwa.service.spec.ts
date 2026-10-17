@@ -130,7 +130,7 @@ describe('PWA automatic frontend release checks', () => {
   }
 
   it('checks on registration and whenever a visible browser or WebView returns to the foreground', async () => {
-    const registration = {} as ServiceWorkerRegistration;
+    const registration = new EventTarget() as ServiceWorkerRegistration;
     const register = vi.fn(async () => registration);
     vi.stubGlobal('navigator', { serviceWorker: { register } });
     const service = fixture();
@@ -163,6 +163,21 @@ describe('PWA automatic frontend release checks', () => {
     }
   });
 
+  it('rechecks when installation finishes after the initial update check has already returned', async () => {
+    const worker = Object.assign(new EventTarget(), { state: 'installing' });
+    const registration = Object.assign(new EventTarget(), { installing: worker });
+    vi.stubGlobal('navigator', { serviceWorker: { register: vi.fn(async () => registration) } });
+    const service = fixture();
+    const check = vi.spyOn(service as any, 'requestBundleUpdateCheck').mockResolvedValue(undefined);
+
+    await (service as any).registerServiceWorker();
+    expect(check).toHaveBeenCalledTimes(1);
+    worker.state = 'installed';
+    worker.dispatchEvent(new Event('statechange'));
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(check).toHaveBeenLastCalledWith(registration);
+  });
+
   it('downloads and activates a different public build automatically, then reloads once', async () => {
     environment.production = true;
     const service = fixture();
@@ -179,6 +194,24 @@ describe('PWA automatic frontend release checks', () => {
     expect(registration.update).toHaveBeenCalledTimes(1);
     expect(activate).toHaveBeenCalledWith(waitingWorker);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('activates the cached release when the network already served its current page without another reload', async () => {
+    environment.production = true;
+    const service = fixture();
+    const waitingWorker = {} as ServiceWorker;
+    const registration = { update: vi.fn(async () => undefined) } as unknown as ServiceWorkerRegistration;
+    vi.spyOn(service as any, 'readDocumentBuildId').mockReturnValue('current-build');
+    vi.spyOn(service as any, 'fetchLatestBuildId').mockResolvedValue('current-build');
+    vi.spyOn(service as any, 'waitForWaitingWorker').mockResolvedValue(waitingWorker);
+    const activate = vi.spyOn(service as any, 'activateWaitingWorker').mockResolvedValue(undefined);
+    const reload = vi.spyOn(service as any, 'reloadPage').mockImplementation(() => {});
+
+    await (service as any).requestBundleUpdateCheck(registration);
+
+    expect(registration.update).toHaveBeenCalledTimes(1);
+    expect(activate).toHaveBeenCalledWith(waitingWorker);
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it('deduplicates simultaneous foreground checks without suppressing the next later check', async () => {

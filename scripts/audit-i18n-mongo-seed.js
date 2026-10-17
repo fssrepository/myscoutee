@@ -87,9 +87,12 @@ function validateLiteralNotificationKeyReferences() {
 // call at the declaration. Parse only; this audit does not compile the app.
 function validateUiModelReferences() {
   const fields = new Set(['label', 'title', 'description', 'placeholder', 'ariaLabel',
-    'tooltip', 'emptyLabel', 'loadingLabel', 'headerLabel', 'headerBadge', 'subtitle']);
+    'tooltip', 'emptyLabel', 'emptyDescription', 'loadingLabel', 'headerLabel', 'headerBadge', 'subtitle',
+    'message', 'confirmLabel', 'cancelLabel', 'errorMessage', 'failureMessage', 'closeAriaLabel']);
   const knownKeys = new Set(Object.keys(bundles.get('en').messages));
   const namespaces = new Set([...knownKeys].map(key => key.split('.')[0]));
+  const normalize = value => value.trim().replace(/\s+/g, ' ').toLowerCase();
+  const knownCopy = new Set([...bundles.values()].flatMap(bundle => Object.values(bundle.messages).map(normalize)));
   for (const filePath of sourceFiles(path.join(frontendRoot, 'src')).filter(file => file.endsWith('.ts'))) {
     const source = ts.createSourceFile(filePath, fs.readFileSync(filePath, 'utf8'), ts.ScriptTarget.Latest, true);
     function check(value) {
@@ -101,6 +104,17 @@ function validateUiModelReferences() {
             && namespaces.has(key.split('.')[0]) && !knownKeys.has(key)) {
           const line = source.getLineAndCharacterOfPosition(value.getStart(source)).line + 1;
           issues.push(`${relativePath(filePath)}:${line}: UI model references missing key ${formatValue(key)}`);
+        }
+        // Existing UI models also support source-text translation. Check those
+        // literals too; key-set parity cannot detect an unregistered sentence.
+        // Language-specific catalog/demo content has its own owner and is not
+        // an application component or converter.
+        if (/[\\/](?:components|converters)[\\/]/.test(filePath)
+            && /[A-Za-z].*\s+[A-Za-z]/.test(key)
+            && !/[<>]|\n|\b(?:https?|mailto):/.test(key)
+            && !knownKeys.has(key) && !knownCopy.has(normalize(key))) {
+          const line = source.getLineAndCharacterOfPosition(value.getStart(source)).line + 1;
+          issues.push(`${relativePath(filePath)}:${line}: UI copy has no translation key ${formatValue(key)}`);
         }
       }
     }
@@ -240,6 +254,14 @@ function validateSourceKeySets() {
   }
   for (const key of sortedDifference(huKeys, enKeys)) {
     issues.push(`source bundles: key ${formatValue(key)} exists in hu but is missing from en`);
+  }
+  const placeholders = value => [...value.matchAll(/\{\{?([a-zA-Z0-9_.-]+)\}?\}/g)]
+    .map(match => match[1]).sort().join(',');
+  for (const key of enKeys) {
+    if (huKeys.has(key) && placeholders(bundles.get('en').messages[key])
+        !== placeholders(bundles.get('hu').messages[key])) {
+      issues.push(`source bundles: placeholder mismatch for ${formatValue(key)}`);
+    }
   }
 }
 

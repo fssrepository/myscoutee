@@ -2398,7 +2398,8 @@
         "Allocated h": 30.420657,
         "Models": "gpt-6-astra; gpt-6.1-sol",
         "Reasoning": "high; xhigh",
-        "Evidence": "Response-ID accounting through 2026-10-09T15:12:03.126Z; initial template/components turns excluded. Helm 123; 28 focused reader tests; live durable cursors verified. Mixed-task allocation estimate; Standard API equivalent, not billing. Ledger: guides/project-history/myscoutee/measurements.json."
+        "Evidence": "Response-ID accounting through 2026-10-09T15:12:03.126Z; initial template/components turns excluded. Helm 123; 28 focused reader tests; live durable cursors verified. Mixed-task allocation estimate; Standard API equivalent, not billing. Ledger: guides/project-history/myscoutee/measurements.json.",
+        "Workstream": "QA and release"
       }
     },
     {
@@ -2416,6 +2417,33 @@
       "values": {
         "Task ID": "MSC-122",
         "Status": "Todo"
+      }
+    },
+    {
+      "task_id": "MSC-114",
+      "title": "MSC-114: Clean up code based on GitHub code-scanning alerts",
+      "body": "Track the cleanup of actionable GitHub CodeQL/code-scanning findings in MyScoutee. Keep this task open for subsequent findings and link each focused fix commit and scan result here. Fix the owning implementation and verify behavior; do not silence a rule just to remove an alert.\n\n### First batch \u2014 frontend alerts reported on 2026-10-01\n- #28, #30, #31, #32 \u2014 `js/insecure-randomness` in session/attempt IDs.\n- #35 \u2014 `js/insecure-randomness` in local integration token IDs and secrets.\n- #34 \u2014 `js/bad-tag-filter` in the bootstrap recovery test's HTML extraction.\n- #33 \u2014 `js/clear-text-storage-of-sensitive-data` in the redundant FirebaseAuthService profile cache.\n\nInitial batch committed locally (pending push): frontend `3b3624ff5` and parent submodule pointer `c680c90c`. Focused verification: 13/13 bootstrap Node tests, 58/58 Angular/Vitest tests, existing frontend watch build passed, and `git diff --check` passed. GitHub alert closure requires a fresh CodeQL run on the published commit.\n\n### Continuing work\n- Triage the remaining and newly reported alerts one by one, including severity, real data flow, and the closest existing implementation.\n- Link each alert and its fix commit or documented disposition in this issue.\n- Review the separately used Firebase session snapshot in `SessionService` for profile data stored in `localStorage`, while preserving required session and offline restoration behavior.\n- Keep this issue open until the tracked alerts are resolved or explicitly dispositioned and the relevant CodeQL scans have been checked.\n\nProject: https://github.com/users/fssrepository/projects/2\n\n## Measured initial batch \u2014 reconciled 2026-10-17\n\nThe 1 October initial batch used **5,615,396 tokens**, **47 unique responses**, **0.199895 active / allocated hours**, model **gpt-6-sol**, reasoning **xhigh**. Frozen Standard API equivalent: **$1.70**, not an invoice. Execution window: `2026-10-01T05:00:25.000Z` to `2026-10-01T05:13:54.393Z`. Reproduce with `measure-msc114.py` in the [canonical measurement ledger](https://github.com/fssrepository/myscoutee-roadmap/tree/master/guides/project-history/myscoutee). Includes diagnosis, fixes, focused verification and issue/commit creation; active tool waits count and between-turn idle does not.\n\nHistorical \"pending push\" and \"keep open\" paragraphs above describe the initial checkpoint. The retained consolidated fixes are frontend `4b257b7217d09257d810c3af12d3dc1dcc631dfa` and backend `d9cb4566f9f05b950fba575736f26c996abc6c7c`. The later 15-alert/dependency batch and successful scan are recorded under [MSC-123](https://github.com/fssrepository/myscoutee-roadmap/issues/161), whose existing usage is excluded here. The Project's Done state is preserved.\n",
+      "state": "CLOSED",
+      "state_reason": "completed",
+      "issue": {
+        "repository": "fssrepository/myscoutee-roadmap",
+        "number": 152,
+        "url": "https://github.com/fssrepository/myscoutee-roadmap/issues/152",
+        "node_id": "I_kwDOU1_9-s8AAAABUTPAug"
+      },
+      "values": {
+        "Task ID": "MSC-114",
+        "Status": "Done",
+        "Workstream": "Product",
+        "Started": "2026-10-01",
+        "Finished": "2026-10-01",
+        "Tokens M": 5.615396,
+        "API equiv USD": 1.7,
+        "Active h": 0.199895,
+        "Allocated h": 0.199895,
+        "Models": "gpt-6-sol",
+        "Reasoning": "xhigh",
+        "Evidence": "Initial seven CodeQL locations: 5,615,396 measured tokens, 47 responses, 0.199895 active/allocated h; cutoff 2026-10-01T05:13:54.393Z. 13 Node + 58 focused Angular tests and existing watcher build passed. Later alert/dependency work belongs to MSC-123; no duplicate allocation."
       }
     }
   ]

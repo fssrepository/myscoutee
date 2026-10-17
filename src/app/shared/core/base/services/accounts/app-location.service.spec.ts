@@ -1,3 +1,4 @@
+import { appLocationStorageKey, scopedStorageKey } from '../../../common/storage-scope';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AppLocationService } from './app-location.service';
@@ -368,19 +369,104 @@ describe('Granted location background synchronization', () => {
 });
 
 describe('Pending login coordinates', () => {
-  afterEach(() => localStorage.clear());
-  it('survives browser reload, stays account-scoped and acknowledges only the sent sample', () => {
-    const create = () => Object.assign(Object.create(AppLocationService.prototype), { pendingLoginByAccount: new Map() });
-    const point = { latitude: 47, longitude: 19 };
-    create().stageLoginCoordinates('one', point);
+  beforeEach(async () => {
+    localStorage.clear();
+    const { webcrypto } = await vi.importActual<{ webcrypto: Crypto }>('node:crypto');
+    vi.stubGlobal('crypto', webcrypto);
+  });
+  afterEach(() => { localStorage.clear(); vi.unstubAllGlobals(); });
+
+  function fixture() {
+    const keys = new Map<string, CryptoKey>();
+    const db = {
+      readIndexedDbTableEntry: async (key: string) => keys.get(key) ?? null,
+      updateIndexedDbTableEntry: async (key: string, update: (value: CryptoKey | null) => CryptoKey) => {
+        const value = structuredClone(update(keys.get(key) ?? null));
+        keys.set(key, value);
+        return structuredClone(value);
+      }
+    };
+    const create = () => Object.assign(Object.create(AppLocationService.prototype), {
+      injector: { get: () => db }, pendingLoginByAccount: new Map(),
+      locationCacheWrites: new Map(), locationCacheKeyPromise: null, legacyLocationCacheCleared: false
+    }) as AppLocationService;
+    return { create, keys, db };
+  }
+  const point = { latitude: 47.497912, longitude: 19.040235 };
+  const storageKey = (account: string) => appLocationStorageKey(`${account}:pending-login`);
+
+  it('survives browser reload, stays account-scoped and acknowledges only the sent sample', async () => {
+    const { create } = fixture();
+    await create().stageLoginCoordinates('one', point);
     const restored = create();
-    expect(restored.pendingLoginCoordinates('one')).toEqual(point);
-    expect(restored.pendingLoginCoordinates('two')).toBeNull();
+    expect(await restored.pendingLoginCoordinates('one')).toEqual(point);
+    expect(await restored.pendingLoginCoordinates('two')).toBeNull();
     const newer = { latitude: 48, longitude: 20 };
-    restored.stageLoginCoordinates('one', newer);
-    restored.confirmLoginCoordinates('one', point);
-    expect(restored.pendingLoginCoordinates('one')).toEqual(newer);
-    restored.confirmLoginCoordinates('one', newer);
-    expect(create().pendingLoginCoordinates('one')).toBeNull();
+    await restored.stageLoginCoordinates('one', newer);
+    await restored.confirmLoginCoordinates('one', point);
+    expect(await restored.pendingLoginCoordinates('one')).toEqual(newer);
+    await restored.confirmLoginCoordinates('one', newer);
+    expect(await create().pendingLoginCoordinates('one')).toBeNull();
+  });
+
+  it('stores authenticated ciphertext with a persisted non-extractable key and fresh nonces', async () => {
+    const { create, keys } = fixture();
+    const service = create();
+    await service.stageLoginCoordinates('one', point);
+    const raw = localStorage.getItem(storageKey('one'))!;
+    expect(raw).not.toContain('latitude');
+    expect(raw).not.toContain('longitude');
+    expect(raw).not.toContain(String(point.latitude));
+    expect(raw).not.toContain(String(point.longitude));
+    expect(keys.size).toBe(1);
+    const key = [...keys.values()][0];
+    expect(key.extractable).toBe(false);
+    await expect(crypto.subtle.exportKey('raw', key)).rejects.toThrow();
+    await service.stageLoginCoordinates('one', point);
+    expect(JSON.parse(localStorage.getItem(storageKey('one'))!).iv).not.toEqual(JSON.parse(raw).iv);
+    expect(await create().pendingLoginCoordinates('one')).toEqual(point);
+  });
+
+  it('rejects ciphertext copied to another account and modified ciphertext', async () => {
+    const { create } = fixture();
+    await create().stageLoginCoordinates('one', point);
+    const raw = localStorage.getItem(storageKey('one'))!;
+    localStorage.setItem(storageKey('two'), raw);
+    expect(await create().pendingLoginCoordinates('two')).toBeNull();
+    const tampered = JSON.parse(raw);
+    tampered.ciphertext[0] ^= 1;
+    localStorage.setItem(storageKey('one'), JSON.stringify(tampered));
+    expect(await create().pendingLoginCoordinates('one')).toBeNull();
+  });
+
+  it('keeps the newest sample when writes and an older acknowledgement overlap', async () => {
+    const { create } = fixture();
+    const service = create();
+    await service.stageLoginCoordinates('one', point);
+    const acknowledge = service.confirmLoginCoordinates('one', point);
+    const newer = { latitude: 48, longitude: 20 };
+    const save = service.stageLoginCoordinates('one', newer);
+    await Promise.all([acknowledge, save]);
+    expect(await service.pendingLoginCoordinates('one')).toEqual(newer);
+    expect(await create().pendingLoginCoordinates('one')).toEqual(newer);
+  });
+
+  it('retains the in-memory sample without a plaintext fallback if key storage fails', async () => {
+    const { create, db } = fixture();
+    vi.spyOn(db, 'readIndexedDbTableEntry').mockRejectedValue(new Error('unavailable'));
+    const service = create();
+    await service.stageLoginCoordinates('one', point);
+    expect(await service.pendingLoginCoordinates('one')).toEqual(point);
+    expect(localStorage.getItem(storageKey('one'))).toBeNull();
+  });
+
+  it('removes only the legacy coordinate cache, preserving profile and unrelated storage', async () => {
+    const { create } = fixture();
+    const legacyKey = scopedStorageKey('location.v1:one');
+    localStorage.setItem(legacyKey, JSON.stringify(point));
+    localStorage.setItem('unrelated-profile', JSON.stringify({ id: 'one' }));
+    await create().pendingLoginCoordinates('one');
+    expect(localStorage.getItem(legacyKey)).toBeNull();
+    expect(localStorage.getItem('unrelated-profile')).toBe(JSON.stringify({ id: 'one' }));
   });
 });

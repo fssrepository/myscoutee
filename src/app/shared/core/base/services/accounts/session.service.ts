@@ -142,7 +142,13 @@ export class SessionService {
     if (this.isBrowserOffline()) {
       return current;
     }
-    const restoredProfile = await (await this.firebaseAuthService()).restoreSessionProfile();
+    let restoredProfile: FirebaseAuthProfileDto | null;
+    try {
+      restoredProfile = await (await this.firebaseAuthService()).restoreSessionProfile();
+    } catch (error) {
+      if (this.isFirebaseNetworkError(error)) return current;
+      throw error;
+    }
     if (!restoredProfile) {
       this.clearStoredSession();
       return null;
@@ -334,6 +340,9 @@ export class SessionService {
       this.persistSession(session);
       void this.initializeFirebaseMessagingForSession(session);
       return session;
+    } catch (error) {
+      if (current?.kind === 'firebase' && this.isFirebaseNetworkError(error)) return current;
+      throw error;
     } finally {
       this.firebaseBusyRef.set(false);
     }
@@ -617,6 +626,10 @@ export class SessionService {
 
   private isBrowserOffline(): boolean {
     return typeof navigator !== 'undefined' && navigator.onLine === false;
+  }
+
+  private isFirebaseNetworkError(error: unknown): boolean {
+    return (error as { code?: string } | null)?.code === 'auth/network-request-failed';
   }
 
   private loadStoredSession(): AppSession | null {

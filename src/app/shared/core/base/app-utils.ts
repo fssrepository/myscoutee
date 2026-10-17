@@ -211,6 +211,7 @@ export class AppUtils {
     return `${text.slice(0, text.length - token.length)}${replacement}`;
   }
 
+
   static mediaImageVariantUrl(
     imageUrl: string | null | undefined,
     variant: 'small' | 'medium' | 'large'

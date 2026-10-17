@@ -31,3 +31,7 @@ claimed. The historical account control and September-30 heatmap remain frozen.
 October-1 usage is recorded in `post_control_task_usage` and counted once in task
 totals, without consuming the historical unassigned-account allowance. Canonical
 commit mappings are in the roadmap backup to avoid self-referential source SHAs.
+
+## MSC-114 initial CodeQL measurement
+
+The isolated 1 October root session is selected from 05:00:25.000Z through 05:13:54.393Z. Reproduce with the canonical roadmap `measure-msc114.py`, which reuses `measure-msc119.py` for response-ID deduplication, component accounting, interval union and previous-allocation exclusion. 5,615,396 tokens / 47 responses; 0.199895 active and allocated hours. Frozen gpt-6-sol Standard API rates yield $1.70; no new price lookup or billing claim. Later licence/publication turns and all MSC-123 alert/dependency work are excluded. Full task measurement is stored only as a shared allocation, never added across repository subsets.

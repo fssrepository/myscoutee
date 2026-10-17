@@ -20,7 +20,8 @@ import {
 } from './session.service';
 import {
   APP_STORAGE_KEYS,
-  appLocationStorageKey
+  appLocationStorageKey,
+  scopedStorageKey
 } from '../../../common/storage-scope';
 import { GroupWorkspaceContextService } from '../groups/group-workspace-context.service';
 import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
@@ -49,6 +50,9 @@ export class AppLocationService {
   private watchedPermission: PermissionStatus | null = null;
   private permissionListener: (() => void) | null = null;
   private readonly pendingLoginByAccount = new Map<string, LocationCoordinates>();
+  private readonly locationCacheWrites = new Map<string, Promise<void>>();
+  private locationCacheKeyPromise: Promise<CryptoKey> | null = null;
+  private legacyLocationCacheCleared = false;
 
   readonly trackingEnabled = signal(this.readTrackingEnabled());
 
@@ -71,21 +75,24 @@ export class AppLocationService {
     }
   }
 
-  // Reuse the existing scoped browser location cache; only the profile load acknowledges this pending value.
-  stageLoginCoordinates(accountId: string, coordinates: LocationCoordinates): void {
+  // Only a successful profile load acknowledges this account-scoped pending sample.
+  async stageLoginCoordinates(accountId: string, coordinates: LocationCoordinates): Promise<void> {
     const normalized = this.normalizeCoordinates(coordinates);
     if (accountId.trim() && normalized) {
       this.pendingLoginByAccount.set(accountId, normalized);
-      this.storeCoordinates(`${accountId}:pending-login`, normalized);
+      await this.storeCoordinates(`${accountId}:pending-login`, normalized);
     }
   }
 
-  pendingLoginCoordinates(accountId: string): LocationCoordinates | null {
-    return accountId.trim() ? this.pendingLoginByAccount.get(accountId) ?? this.readStoredCoordinates(`${accountId}:pending-login`) : null;
+  async pendingLoginCoordinates(accountId: string): Promise<LocationCoordinates | null> {
+    return accountId.trim() ? this.pendingLoginByAccount.get(accountId) ?? await this.readStoredCoordinates(`${accountId}:pending-login`) : null;
   }
 
-  confirmLoginCoordinates(accountId: string, sent: LocationCoordinates): void {
-    if (!this.sameCoordinates(sent, this.pendingLoginCoordinates(accountId))) return;
+  async confirmLoginCoordinates(accountId: string, sent: LocationCoordinates): Promise<void> {
+    const pending = await this.pendingLoginCoordinates(accountId);
+    if (!this.sameCoordinates(sent, this.pendingLoginByAccount.get(accountId) ?? pending)) return;
+    await this.locationCacheWrites.get(this.storageKey(`${accountId}:pending-login`));
+    if (!this.sameCoordinates(sent, this.pendingLoginByAccount.get(accountId) ?? pending)) return;
     this.pendingLoginByAccount.delete(accountId);
     try { localStorage.removeItem(this.storageKey(`${accountId}:pending-login`)); } catch { /* Retry is safe. */ }
   }
@@ -95,6 +102,7 @@ export class AppLocationService {
       return;
     }
     this.initialized = true;
+    this.clearLegacyLocationCache();
 
     effect(() => {
       const activeUserId = this.userProfileStore.activeUserId().trim();
@@ -269,7 +277,6 @@ export class AppLocationService {
     this.primePersistedCoordinates(userId, user.locationCoordinates);
     if (!await this.persistCoordinates(userId, user, normalized)) return false;
     if (this.userProfileStore.activeUserId().trim() !== userId) return false;
-    this.storeCoordinates(userId, normalized);
     this.ensureCoordinateWatch(userId);
     return true;
   }
@@ -362,34 +369,81 @@ export class AppLocationService {
     this.queueLocationSyncForActiveUser(userId, activeUser, coordinates);
   }
 
-  private readStoredCoordinates(userId: string): LocationCoordinates | null {
+  private async readStoredCoordinates(userId: string): Promise<LocationCoordinates | null> {
     if (typeof localStorage === 'undefined') {
       return null;
     }
     try {
-      const raw = localStorage.getItem(this.storageKey(userId));
+      this.clearLegacyLocationCache();
+      const storageKey = this.storageKey(userId);
+      await this.locationCacheWrites.get(storageKey);
+      const raw = localStorage.getItem(storageKey);
       if (!raw) {
         return null;
       }
-      const parsed = JSON.parse(raw) as Partial<LocationCoordinates>;
-      return this.normalizeCoordinates(parsed);
+      const stored = JSON.parse(raw) as { version?: number; iv?: number[]; ciphertext?: number[] };
+      if (stored.version !== 1 || !Array.isArray(stored.iv) || stored.iv.length !== 12
+        || !Array.isArray(stored.ciphertext) || stored.ciphertext.length < 16) return null;
+      const plaintext = await crypto.subtle.decrypt({
+        name: 'AES-GCM', iv: Uint8Array.from(stored.iv), additionalData: new TextEncoder().encode(storageKey)
+      }, await this.locationCacheKey(), Uint8Array.from(stored.ciphertext));
+      return this.normalizeCoordinates(JSON.parse(new TextDecoder().decode(plaintext)));
     } catch {
       return null;
     }
   }
 
-  private storeCoordinates(userId: string, coordinates: LocationCoordinates): void {
+  private async storeCoordinates(userId: string, coordinates: LocationCoordinates): Promise<void> {
     if (typeof localStorage === 'undefined') {
       return;
     }
-    try {
-      localStorage.setItem(
-        this.storageKey(userId),
-        JSON.stringify(coordinates)
-      );
-    } catch {
-      // Ignore local cache failures and keep geolocation best-effort.
+    this.clearLegacyLocationCache();
+    const storageKey = this.storageKey(userId);
+    const write = (this.locationCacheWrites.get(storageKey) ?? Promise.resolve()).then(async () => {
+      const key = await this.locationCacheKey();
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await crypto.subtle.encrypt({
+        name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(storageKey)
+      }, key, new TextEncoder().encode(JSON.stringify(coordinates)));
+      localStorage.setItem(storageKey, JSON.stringify({
+        version: 1, iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ciphertext))
+      }));
+    }).catch(() => {
+      // Keep the in-memory sample usable; never fall back to plaintext storage.
+    });
+    this.locationCacheWrites.set(storageKey, write);
+    await write;
+    if (this.locationCacheWrites.get(storageKey) === write) this.locationCacheWrites.delete(storageKey);
+  }
+
+  private async locationCacheKey(): Promise<CryptoKey> {
+    if (!this.locationCacheKeyPromise) {
+      this.locationCacheKeyPromise = (async () => {
+        const { AppMemoryDb } = await import('../../../common/app.db');
+        const db = this.injector.get(AppMemoryDb);
+        const keyId = 'location.cache-key.v2';
+        const existing = await db.readIndexedDbTableEntry<CryptoKey>(keyId);
+        if (existing) return existing;
+        const generated = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        return db.updateIndexedDbTableEntry<CryptoKey>(keyId, current => current ?? generated);
+      })().catch(error => {
+        this.locationCacheKeyPromise = null;
+        throw error;
+      });
     }
+    return this.locationCacheKeyPromise;
+  }
+
+  private clearLegacyLocationCache(): void {
+    if (this.legacyLocationCacheCleared) return;
+    try {
+      const prefix = scopedStorageKey('location.v1:');
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key?.startsWith(prefix)) localStorage.removeItem(key);
+      }
+      this.legacyLocationCacheCleared = true;
+    } catch { /* Storage may be unavailable. */ }
   }
 
   private sameCoordinates(
@@ -536,7 +590,7 @@ export class AppLocationService {
       : await this.httpUsersService();
     const savedUser = await users.saveUserProfile({ ...user, locationCoordinates: coordinates });
     if (savedUser?.id?.trim()) {
-      this.storeCoordinates(userId, this.normalizeCoordinates(savedUser.locationCoordinates) ?? coordinates);
+      await this.storeCoordinates(userId, this.normalizeCoordinates(savedUser.locationCoordinates) ?? coordinates);
       this.lastPersistedCoordinatesByUserId.set(
         userId, this.normalizeCoordinates(savedUser.locationCoordinates) ?? coordinates
       );

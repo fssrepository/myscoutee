@@ -57,8 +57,13 @@ export class FirebaseAppService {
   private readonly activeRuntimeRef = signal<FirebaseAppRuntime | null>(null);
   private reconciliationPromise: Promise<FirebaseAppRuntime | null> | null = null;
   private lastSuccessfulConfigCheckAt = 0;
+  private configRequestUnavailable = false;
 
   readonly activeRuntime = this.activeRuntimeRef.asReadonly();
+
+  get configurationUnavailable(): boolean {
+    return this.configRequestUnavailable;
+  }
 
   constructor() {
     if (typeof window === 'undefined') {
@@ -116,6 +121,7 @@ export class FirebaseAppService {
   }
 
   async loadFirebaseConfig(): Promise<FirebaseConfigFile | null> {
+    this.configRequestUnavailable = false;
     if (
       typeof document === 'undefined'
       || this.sessionService.currentSession()?.kind === 'demo'
@@ -132,11 +138,14 @@ export class FirebaseAppService {
       () => abortController.abort(),
       FirebaseAppService.FIREBASE_CONFIG_TIMEOUT_MS
     );
+    let responseReceived = false;
     try {
       const response = await fetch(configUrl, {
         cache: 'no-store',
         signal: abortController.signal
       });
+      responseReceived = true;
+      this.configRequestUnavailable = [502, 503, 504].includes(response.status);
       if (response.status === 204 || !response.ok) {
         return null;
       }
@@ -158,6 +167,7 @@ export class FirebaseAppService {
         vapidKey: parsed.vapidKey.trim()
       };
     } catch {
+      this.configRequestUnavailable = !responseReceived;
       return null;
     } finally {
       clearTimeout(timeout);

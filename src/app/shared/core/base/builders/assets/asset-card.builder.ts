@@ -288,7 +288,13 @@ export class AssetCardBuilder {
     if (!normalized) {
       return false;
     }
-    return normalized.includes('loremflickr.com/');
+    try {
+      const url = new URL(normalized);
+      return (url.protocol === 'https:' || url.protocol === 'http:')
+        && (url.hostname === 'loremflickr.com' || url.hostname === 'www.loremflickr.com');
+    } catch {
+      return false;
+    }
   }
 
   private static asDetail(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDetailDTO | null {

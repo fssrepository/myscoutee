@@ -20,7 +20,6 @@
         <button
           type="button"
           class="entry-auth-btn" data-guide-field="login"
-          [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
           [class.entry-auth-btn-network]="networkUnavailable"
           [class.entry-auth-btn-unavailable]="authUnavailable"
           [disabled]="networkUnavailable || authUnavailable"
@@ -29,12 +28,8 @@
           [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
           (click)="requestHeaderAuth()"
           >
-          @if (entryAuthButtonShowsAvatar) {
-            <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
-          } @else {
-            <mat-icon>{{ entryAuthButtonIcon }}</mat-icon>
-            <span>{{ entryAuthButtonLabel | i18n }}</span>
-          }
+          <mat-icon>{{ entryAuthButtonIcon }}</mat-icon>
+          <span>{{ entryAuthButtonLabel | i18n }}</span>
         </button>
       </div>
     </header>
