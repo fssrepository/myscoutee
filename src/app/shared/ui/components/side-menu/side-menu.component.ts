@@ -375,7 +375,6 @@ export class SideMenuComponent implements OnDestroy {
   private openingNotificationChat = '';
   private openingNotificationMingleTable = '';
   private openingPartnerInvite = '';
-  private openingPartnerInvitePromise: Promise<void> | null = null;
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -1161,7 +1160,7 @@ export class SideMenuComponent implements OnDestroy {
       const url = this.notificationRouteUrl();
       if (userId && !this.groupWorkspaces.context.switching() && this.userProfileStore.activeUserProfile()?.id === userId) {
         void this.openNotificationRoute(url);
-        void this.openPartnerInviteTarget(url, userId);
+        if (this.activeUserLoadState().status === 'success') void this.openPartnerInviteTarget(url, userId);
         void this.openSharedAssetTarget(url, userId);
       }
     });
@@ -1956,18 +1955,7 @@ export class SideMenuComponent implements OnDestroy {
     const sessionKind = this.sessionService.currentSession()?.kind;
     const serverIdentifiedSession = sessionKind === 'firebase'
       || sessionKind === 'operator-bootstrap';
-    const inviteUrl = this.router.url;
-    const hasPartnerInvite = AppUtils.normalizeRoutePath(inviteUrl) === '/game'
-      && !!this.router.parseUrl(inviteUrl).queryParams['partnerInvite'];
-    if (hasPartnerInvite) {
-      // Claim and select the invitation workspace before the first avatar load.
-      // The route effect may already own this same operation.
-      await this.openPartnerInviteTarget(inviteUrl, this.userProfileStore.activeUserId() || userId || '');
-      if (requestVersion !== this.hydrationRequestVersion) return null;
-    }
-    const selectedProfileExt = hasPartnerInvite && this.activeUserLoadState().status === 'success'
-      ? this.userProfileStore.getProfileExt(this.userProfileStore.activeUserId()) : null;
-    const loadedProfileExt = selectedProfileExt ?? await this.usersService.loadProfileExtById(
+    const loadedProfileExt = await this.usersService.loadProfileExtById(
       serverIdentifiedSession ? undefined : userId
     );
     const loadedUser = loadedProfileExt?.profile ?? null;
@@ -2056,6 +2044,7 @@ export class SideMenuComponent implements OnDestroy {
   private privacyConsentAccountId(): string {
     // The session UID only bootstraps hydration; privacy consent belongs to the
     // persisted account profile, which may have a different identifier.
+    if (this.activeUserLoadState().status !== 'success') return '';
     const profileId = this.userProfileStore.activeUserProfile()?.id?.trim();
     return profileId ? this.groupWorkspaces.context.accountId(profileId) : '';
   }
@@ -2603,18 +2592,27 @@ export class SideMenuComponent implements OnDestroy {
     if (!token) return;
     const accountId = this.groupWorkspaces.context.accountId(userId);
     const key = `${accountId}:${token}`;
-    if (this.openingPartnerInvite === key) return this.openingPartnerInvitePromise ?? undefined;
+    if (this.openingPartnerInvite === key) return;
     this.openingPartnerInvite = key;
-    const operation = this.claimAndOpenPartnerInviteTarget(url, userId, accountId, token, tree);
-    this.openingPartnerInvitePromise = operation;
-    try {
-      await operation;
-    } finally {
-      if (this.openingPartnerInvite === key) {
-        this.openingPartnerInvite = '';
-        this.openingPartnerInvitePromise = null;
+    this.dialogStore.open({
+      title: 'event.partner.invite', confirmLabel: 'OK',
+      message: 'groups.confirm.accept.title',
+      failureMessage: 'event.partner.invite.failed',
+      onConfirm: async () => {
+        await this.claimAndOpenPartnerInviteTarget(url, userId, accountId, token, tree);
+        if (this.router.url !== url && this.openingPartnerInvite === key) this.openingPartnerInvite = '';
+      },
+      onCancel: async () => {
+        if (this.router.url === url) {
+          delete tree.queryParams['partnerInvite'];
+          delete tree.queryParams['affiliate'];
+          await this.router.navigateByUrl(tree, { replaceUrl: true });
+        }
+        if (this.openingPartnerInvite === key) {
+          this.openingPartnerInvite = '';
+        }
       }
-    }
+    });
   }
 
   private async claimAndOpenPartnerInviteTarget(
@@ -2622,10 +2620,10 @@ export class SideMenuComponent implements OnDestroy {
   ): Promise<void> {
     try {
       const claim = await this.usersService.claimPartnerInvite(accountId, token);
-      if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+      if (this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()) !== accountId || this.router.url !== url) return;
       if (claim.invitationAvailable && claim.groupId) {
         await this.groupWorkspaces.refresh(accountId);
-        if (this.userProfileStore.activeUserId() !== userId || this.router.url !== url) return;
+        if (this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()) !== accountId || this.router.url !== url) return;
         if (!await this.groupWorkspaces.select(claim.groupId)) throw new Error('groups.switch.failed');
         if (this.groupWorkspaces.context.accountUserId() !== accountId || this.router.url !== url) return;
         delete tree.queryParams['partnerInvite'];
@@ -2648,10 +2646,9 @@ export class SideMenuComponent implements OnDestroy {
       if (this.userProfileStore.activeUserId() === selectedUserId) {
         this.activitiesStore.openActivities('events', 'all');
       }
-    } catch {
-      if (this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()) === accountId) this.dialogStore.open({
-        title: 'event.partner.invite', message: 'event.partner.invite.failed', confirmLabel: 'OK'
-      });
+    } catch (error) {
+      throw new Error((error as { status?: number } | null)?.status === 404
+        ? 'event.partner.invite.notFound' : 'event.partner.invite.failed');
     }
   }
 

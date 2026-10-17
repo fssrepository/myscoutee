@@ -687,7 +687,6 @@ export class HomeComponent implements OnDestroy {
   protected get gameRatingBarConfig(): AppMenuRateConfig {
     return {
       scale: this.ratingScale,
-      label: 'Affinity',
       actionLabel: 'Go',
       guideFields: { slider: 'rating-input', action: 'pagination-next' },
       presentation: 'fullscreen',

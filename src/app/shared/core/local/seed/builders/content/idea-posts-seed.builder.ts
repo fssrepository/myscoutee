@@ -1,3 +1,4 @@
+import { sanitizeHtml } from '../../../../base/html-sanitizer';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import workArticles from '../../data/work-articles.json';
 import communityArticles from '../../data/community-articles.json';
@@ -279,11 +280,7 @@ export class SeedIdeaPostsBuilder {
   }
 
   private static normalizeHtml(value: string): string {
-    return `${value ?? ''}`
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-      .replace(/\s(?:href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\1/gi, '')
-      .trim();
+    return sanitizeHtml(value);
   }
 
   private static normalizeLang(lang: string | null | undefined): string {

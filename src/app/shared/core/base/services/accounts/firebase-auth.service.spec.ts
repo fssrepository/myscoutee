@@ -229,6 +229,14 @@ describe('FirebaseAuthService startup', () => {
     expect(initializeAuth).not.toHaveBeenCalled();
   });
 
+  it('reports an unavailable configuration as a network failure rather than a missing identity', async () => {
+    const appService = TestBed.inject(FirebaseAppService);
+    Object.defineProperty(appService, 'configurationUnavailable', { configurable: true, value: true });
+    ensureFirebaseApp.mockResolvedValue(null);
+    await expect(service.restoreSessionProfile()).rejects.toMatchObject({ code: 'auth/network-request-failed' });
+    expect(initializeAuth).not.toHaveBeenCalled();
+  });
+
   it('keeps verification and explicit refresh on subsequent restorations', async () => {
     await service.restoreSessionProfile();
     Object.assign(user, { emailVerified: false, providerData: [{ providerId: 'password' }] });

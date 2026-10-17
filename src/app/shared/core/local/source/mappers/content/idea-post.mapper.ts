@@ -1,3 +1,4 @@
+import { sanitizeHtml } from '../../../../base/html-sanitizer';
 import { normalizeImageDetails } from '../../../../contracts/media/image-gallery.interface';
 import type {
   IdeaPostAdminCountsDto,
@@ -110,11 +111,7 @@ export class LocalIdeaPostsMapper {
   }
 
   private static normalizeHtml(value: string | null | undefined): string {
-    return `${value ?? ''}`
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-      .replace(/\s(?:href|src)\s*=\s*(['"])\s*javascript:[\s\S]*?\1/gi, '')
-      .trim();
+    return sanitizeHtml(value);
   }
 
   private static excerpt(explicitExcerpt: string | null | undefined, contentHtml: string): string {

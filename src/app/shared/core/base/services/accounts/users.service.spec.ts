@@ -109,6 +109,18 @@ describe('Profile loads within a Firebase session', () => {
     expect(service.location.confirmLoginCoordinates).toHaveBeenCalledOnce();
   });
 
+  it('discards the profile if the session changes while the encrypted location is acknowledged', async () => {
+    const { session, adapter, service } = fixture();
+    service.location.pendingLoginCoordinates.mockResolvedValue({ latitude: 47, longitude: 19 });
+    service.location.confirmLoginCoordinates.mockImplementation(async () => {
+      (session as any).sessionRef.set({ ...account, sessionId: 'login-b' });
+    });
+    adapter.loadProfileExtById.mockResolvedValue({ profileExt: { profile, experienceEntries: [] } });
+    expect(await service.loadProfileExtById()).toBeNull();
+    expect(service.userProfileStore.setProfileExt).not.toHaveBeenCalled();
+    expect(service.workspace.switching()).toBe(false);
+  });
+
   it('discards an old response after a real session change and still releases the selector', async () => {
     const { session, adapter, service } = fixture();
     adapter.loadProfileExtById.mockImplementation(async () => {

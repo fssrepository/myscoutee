@@ -9,6 +9,7 @@ function controller() {
     privacyConsentRequiredKey: () => '', settingsPopup: () => null,
     clearPrivacyConsentRequirement: vi.fn(), closeSettingsPopup: vi.fn(), setPrivacyConsentRequiredKey: vi.fn()
   };
+  component.activeUserLoadState = () => ({ status: 'success' });
   component.currentRoutePathRef = () => '/game';
   component.privacyConsentCheckToken = 0;
   component.privacyConsentCheckKeyRef = () => 'current';
@@ -21,6 +22,16 @@ describe('privacy consent after profile hydration', () => {
     expect(component.privacyConsentAccountId()).toBe('');
     expect(component.groupWorkspaces.context.accountId).not.toHaveBeenCalled();
     component.userProfileStore.activeUserProfile.mockReturnValue({ id: 'backend-profile' });
+    expect(component.privacyConsentAccountId()).toBe('backend-profile');
+  });
+  it('ignores a cached Firebase profile until the current session hydration succeeds', () => {
+    const component = controller();
+    component.userProfileStore.activeUserProfile.mockReturnValue({ id: 'firebase-uid' });
+    component.activeUserLoadState = () => ({ status: 'loading' });
+    expect(component.privacyConsentAccountId()).toBe('');
+    expect(component.groupWorkspaces.context.accountId).not.toHaveBeenCalled();
+    component.userProfileStore.activeUserProfile.mockReturnValue({ id: 'backend-profile' });
+    component.activeUserLoadState = () => ({ status: 'success' });
     expect(component.privacyConsentAccountId()).toBe('backend-profile');
   });
   it('does not reopen accepted consent and dismisses a stale required window', async () => {

@@ -32,7 +32,6 @@ import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
 
 import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto, SupportedCountryDto } from '../../../shared/core/contracts/content/content.interface';
-import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/accounts/user.interface';
 import { AppUtils } from '../../../shared/core/base/app-utils';
 import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
@@ -95,7 +94,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   });
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
-  @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() articlesLoading = false;
   @Input() ideaCards: InfoCardData[] = [];
   @Input() ideaCount = 0;
@@ -402,13 +400,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return this.authMode === 'firebase';
   }
 
-  protected get entryAuthButtonShowsAvatar(): boolean {
-    return !this.networkUnavailable
-      && !this.authUnavailable
-      && this.isFirebaseAuthMode
-      && !!this.firebaseAuthProfile;
-  }
-
   protected get entryAuthButtonIcon(): string {
     if (this.networkUnavailable) {
       return 'wifi_off';
@@ -425,9 +416,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (this.authUnavailable) {
       return this.authUnavailableLabel;
-    }
-    if (this.entryAuthButtonShowsAvatar) {
-      return this.firebaseAuthProfile?.name ?? 'Continue';
     }
     return 'landing.login';
   }

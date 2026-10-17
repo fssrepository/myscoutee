@@ -164,7 +164,7 @@ export class HttpUsersService implements UserService {
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
-      });
+      }, previewSession?.kind === 'firebase' ? previewSession.profile.id : undefined);
       if (previewSession?.kind === 'firebase') {
         const imageUrl = me.images?.find(image => image.trim().length > 0)?.trim() ?? '';
         this.sessionService.setFirebaseAvatarPreview(
@@ -326,7 +326,9 @@ export class HttpUsersService implements UserService {
   }
 
   async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; workspaceGroupId?: string | null; invitationAvailable: boolean }> {
-    const result = await this.http.post<{ eventId?: string | null; groupId?: string | null; workspaceGroupId?: string | null; invitationAvailable: boolean }>(`${this.apiBaseUrl}/auth/me/partner-invite/claim`, { userId, token }).toPromise();
+    const route = '/auth/me/partner-invite/claim';
+    const result = await this.routeDelay.withRequestTimeout(route,
+      this.http.post<{ eventId?: string | null; groupId?: string | null; workspaceGroupId?: string | null; invitationAvailable: boolean }>(`${this.apiBaseUrl}${route}`, { userId, token }).toPromise());
     if (!result?.eventId && !result?.groupId) throw new Error('Invitation could not be claimed.');
     return result;
   }
@@ -593,11 +595,11 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  private cacheUserResponse(response: UserByIdQueryResponse): UserByIdQueryResponse {
+  private cacheUserResponse(response: UserByIdQueryResponse, sessionUserId?: string): UserByIdQueryResponse {
     if (!response.user?.id?.trim()) {
       return response;
     }
-    this.offlineCache.writeUser(response.user.id.trim(), response);
+    this.offlineCache.writeUser(sessionUserId?.trim() || response.user.id.trim(), response);
     return response;
   }
 

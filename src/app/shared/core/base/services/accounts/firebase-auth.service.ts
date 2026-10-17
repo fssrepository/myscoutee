@@ -18,7 +18,7 @@ import {
   type User
 } from 'firebase/auth';
 import type { FirebaseApp } from 'firebase/app';
-import type { FirebaseError } from 'firebase/app';
+import { FirebaseError } from 'firebase/app';
 
 import type {
   FirebaseAuthProfileDto,
@@ -134,6 +134,9 @@ export class FirebaseAuthService {
     }
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
+      if (this.firebaseAppService.configurationUnavailable) {
+        throw new FirebaseError('auth/network-request-failed', 'Firebase configuration is temporarily unavailable.');
+      }
       /*
        * A profile snapshot is not authentication. If the currently activated
        * deployment Firebase runtime cannot be resolved, fail closed instead
@@ -211,11 +214,12 @@ export class FirebaseAuthService {
     const initialization = this.firebaseAuthPromise;
     try {
       return await initialization;
-    } catch {
+    } catch (error) {
       if (this.firebaseAuthPromise === initialization) {
         this.firebaseAuthApp = null;
         this.firebaseAuthPromise = null;
       }
+      if (this.firebaseErrorCode(error) === 'auth/network-request-failed') throw error;
       return null;
     }
   }

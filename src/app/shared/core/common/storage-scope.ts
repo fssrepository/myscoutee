@@ -115,7 +115,7 @@ export function appMemoryDbStorageKey(scope: AppStorageScope = APP_STORAGE_SCOPE
 }
 
 export function appLocationStorageKey(userId: string, scope: AppStorageScope = APP_STORAGE_SCOPE): string {
-  return scopedStorageKey(`location.v1:${userId.trim()}`, scope);
+  return scopedStorageKey(`location.v2:${userId.trim()}`, scope);
 }
 
 export function chatVoiceClipTableKey(key: string): string {

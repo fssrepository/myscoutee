@@ -98,6 +98,20 @@ describe('FirebaseAppService reconciliation', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it.each([0, 503])('distinguishes temporary configuration transport failure %s from disabled Firebase', async status => {
+    fetchMock.mockImplementationOnce(() => status === 0
+      ? Promise.reject(new TypeError('Failed to fetch'))
+      : Promise.resolve(new Response(null, { status })));
+    const service = TestBed.inject(FirebaseAppService);
+    expect(await service.ensureFirebaseRuntime()).toBeNull();
+    expect(service.configurationUnavailable).toBe(true);
+    expect(initializeApp).not.toHaveBeenCalled();
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    expect(await service.ensureFirebaseRuntime()).toBeNull();
+    expect(service.configurationUnavailable).toBe(false);
+  });
+
   it('accepts an empty storage bucket and omits it from Firebase options', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({
       ...firebaseConfiguration(4),
