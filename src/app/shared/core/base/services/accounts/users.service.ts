@@ -254,9 +254,10 @@ export class UsersService extends BaseRouteModeService {
 
     this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'loading');
     const accountId = this.session.activeUserId();
-    const location = this.location.pendingLoginCoordinates(accountId);
+    const location = await this.location.pendingLoginCoordinates(accountId);
 
     try {
+      if (!current()) return null;
       const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs, groupId, location ?? undefined);
       if (!current()) return null;
       const profileExt = response.profileExt;
@@ -275,7 +276,8 @@ export class UsersService extends BaseRouteModeService {
         return profileExt;
       }
 
-      if (location) this.location.confirmLoginCoordinates(accountId, location);
+      if (location) await this.location.confirmLoginCoordinates(accountId, location);
+      if (!current()) return null;
       if (response.accountProfile) this.userProfileStore.setUserProfile(response.accountProfile);
       this.workspace.accountUserId.set(response.accountProfile?.id ?? user.id);
       this.workspace.active.set(response.workspace ?? null);

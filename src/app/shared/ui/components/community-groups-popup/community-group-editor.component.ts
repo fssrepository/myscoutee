@@ -154,7 +154,7 @@ export class CommunityGroupEditorComponent implements OnChanges, OnInit, OnDestr
           .filter(row => this.form.policy.enabled && this.optionalPolicyField(row.labelKey) && required.includes(row.labelKey))
           .map(row => ({ label: row.labelKey, value: 'groups.required',
             icon: 'check', badgeTone: 'danger', palette: this.policyFieldPalette(row.labelKey, index) }))) } }
-      ] }, { id: 'policies', title: '', controls: [
+      ] }, { id: 'policies', title: '', chrome: 'none', controls: [
         { id: 'group-policies', kind: 'policies', bind: 'policy.policies', enabledBind: 'policy.policiesEnabled', layout: 'wide',
           config: { model: {
             title: this.t('groups.policies.title'), subtitle: this.t('groups.policies.description'),

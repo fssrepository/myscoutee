@@ -263,6 +263,35 @@ describe('SessionService operator bootstrap session', () => {
     }
   });
 
+  it.each(['ensureSession', 'restoreFirebaseSession'] as const)(
+    'retains the warmed session during temporary Firebase failure in %s and verifies it on recovery', async method => {
+      const session = { kind: 'firebase', sessionId: 'persisted-transport-session', profile: {
+        id: 'firebase-user', name: 'Firebase User', email: 'firebase@example.com', initials: 'FU'
+      } };
+      localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify(session));
+      firebaseRestore.mockRejectedValueOnce(Object.assign(new Error('Network unavailable'), {
+        code: 'auth/network-request-failed'
+      }));
+      const service = TestBed.inject(SessionService);
+      await expect(service[method]()).resolves.toMatchObject(session);
+      expect(JSON.parse(localStorage.getItem(APP_STORAGE_KEYS.session)!)).toMatchObject(session);
+      expect(registerLogin).not.toHaveBeenCalled();
+
+      firebaseRestore.mockResolvedValueOnce(session.profile);
+      await expect(service.ensureSession()).resolves.toMatchObject(session);
+      expect(firebaseRestore).toHaveBeenCalledTimes(2);
+      expect(registerLogin).not.toHaveBeenCalled();
+    });
+
+  it('clears a persisted session after a definitive missing Firebase identity', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({ kind: 'firebase',
+      sessionId: 'invalid-session', profile: { id: 'old', name: 'Old', email: 'old@example.test', initials: 'O' }
+    }));
+    firebaseRestore.mockResolvedValueOnce(null);
+    await expect(TestBed.inject(SessionService).ensureSession()).resolves.toBeNull();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.session)).toBeNull();
+  });
+
   it('reuses the persisted Firebase session when the same device restores the same user', async () => {
     localStorage.setItem(APP_STORAGE_KEYS.session, JSON.stringify({
       kind: 'firebase',

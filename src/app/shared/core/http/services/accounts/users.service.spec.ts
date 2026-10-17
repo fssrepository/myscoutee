@@ -38,7 +38,12 @@ describe('HttpUsersService demo authority boundary', () => {
         { provide: RouteDelayService, useValue: { withRequestTimeout } },
         {
           provide: SessionService,
-          useValue: { currentSession: () => currentSession, setFirebaseAvatarPreview, setFirebaseAvatarPreviewData }
+          useValue: {
+            currentSession: () => currentSession,
+            activeUserId: () => currentSession?.kind === 'firebase' ? currentSession.profile.id
+              : currentSession?.kind === 'demo' ? currentSession.userId : '',
+            setFirebaseAvatarPreview, setFirebaseAvatarPreviewData
+          }
         },
         {
           provide: UserProfileStore,
@@ -190,6 +195,23 @@ describe('HttpUsersService demo authority boundary', () => {
     get.mockReturnValue(of(user));
     await TestBed.inject(HttpUsersService).queryUserById();
     expect(setFirebaseAvatarPreview).toHaveBeenCalledExactlyOnceWith('current-session', user.images[0]);
+  });
+
+  it('restores the real server profile offline using the Firebase identity that owns the session', async () => {
+    currentSession = { kind: 'firebase', sessionId: 'current-session', profile: {
+      id: 'firebase-uid', name: 'User', email: 'user@example.test', initials: 'U'
+    } };
+    const stored = new Map<string, UserByIdQueryResponse>();
+    writeUser.mockImplementation((key, value) => stored.set(key, value));
+    readUser.mockImplementation(key => stored.get(key) ?? null);
+    const user = { ...cachedUserResponse('server-profile-id').user!, profileStatus: 'public' as const, profileFormVersion: 2 };
+    get.mockReturnValueOnce(of(user)).mockReturnValueOnce(throwError(() => ({ status: 0 })));
+    const service = TestBed.inject(HttpUsersService);
+
+    await service.queryUserById();
+    expect((await service.queryUserById()).user).toEqual(user);
+    expect(service.peekCachedUserById('firebase-uid')).toEqual(user);
+    expect(stored.has('server-profile-id')).toBe(false);
   });
 
   function previewSession(imageUrl: string, dataUrl?: string) {

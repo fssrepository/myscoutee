@@ -3,6 +3,7 @@ import { CaseAppointmentsService } from '../../../../core/base/services/communit
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 import { ServiceOfferingsService } from '../../../../core/base/services/community/service-offerings.service';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
+import { GroupWorkspaceStore } from '../community/group-workspace.store';
 import { GameService } from '../../../../core/base/services/accounts/game.service';
 import { ActivityMembersService } from '../../../../core/base/services/events/activity-members.service';
 import { ActivityInvitePopupStore } from '../activity/activity-invite-popup.store';
@@ -20,6 +21,7 @@ export class ServiceOfferingsStore {
   readonly calendarCancelled=signal<string|null>(null);
   private readonly service=inject(ServiceOfferingsService);
   private readonly workspace=inject(GroupWorkspaceContextService);
+  private readonly workspaces=inject(GroupWorkspaceStore);
   private readonly profile=inject(UserProfileStore);
   private readonly profiles=inject(ProfileStore);
   private readonly game=inject(GameService);
@@ -27,7 +29,11 @@ export class ServiceOfferingsStore {
   private readonly picker=inject(ActivityInvitePopupStore);
   private readonly dialogs=inject(DialogStore);
   readonly accountId=computed(()=>this.workspace.accountId(this.profile.activeUserId()));
-  readonly profileId=computed(()=>`group:${COMMUNITY_BASE_GROUP_ID}:${this.accountId()}`);
+  readonly profileId=computed(()=>{
+    const active=this.workspace.active();
+    return (active?.groupId===COMMUNITY_BASE_GROUP_ID?active.profileId
+      :this.workspaces.workspaces().find(workspace=>workspace.groupId===COMMUNITY_BASE_GROUP_ID)?.profileId)??'';
+  });
   readonly session=signal<{pick:((item:ServiceOfferingItem)=>void)|null;providers?:{title:string;ids:string[]}}|null>(null);
   readonly selected=signal<ServiceOfferingItem|null>(null);
   readonly component=signal<Type<unknown>|null>(null);

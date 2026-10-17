@@ -22,6 +22,7 @@ describe('EntryLandingComponent article lists', () => {
   const branding = signal({ ...DEFAULT_DEPLOYMENT_BRANDING });
   const i18nRevision = signal(0);
   const translations: Readonly<Record<string, string>> = {
+    'landing.login': 'Login',
     'landing.articles.title': '{productName} articles',
     'landing.articles.count.one': '{count} article',
     'landing.articles.count.many': '{count} articles',
@@ -181,6 +182,11 @@ describe('EntryLandingComponent article lists', () => {
     component.firebaseAuthRequested.subscribe(authRequested);
     component.demoRequested.subscribe(demoRequested);
     fixture.detectChanges();
+    const headerLogin = fixture.nativeElement.querySelector('.entry-auth-btn') as HTMLButtonElement;
+    expect(headerLogin.textContent).toContain('Login');
+    expect(headerLogin.querySelector('mat-icon')?.textContent).toBe('login');
+    expect(headerLogin.classList.contains('entry-auth-btn-avatar')).toBe(false);
+    expect(headerLogin.querySelector('.entry-auth-avatar')).toBeNull();
     const buttons = fixture.nativeElement.querySelectorAll(
       '.entry-hero-cta-menu .app-menu__button-row-item'
     ) as NodeListOf<HTMLButtonElement>;

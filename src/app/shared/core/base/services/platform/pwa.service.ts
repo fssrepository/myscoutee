@@ -237,11 +237,30 @@ export class PwaService {
       updateViaCache: 'none'
     });
     this.registrationRef.set(registration);
+    registration.addEventListener('updatefound', () => this.watchWorkerInstallation(registration));
+    this.watchWorkerInstallation(registration);
     window.addEventListener('pageshow', this.onApplicationForegrounded);
     window.addEventListener('focus', this.onApplicationForegrounded);
     window.addEventListener('online', this.onApplicationForegrounded);
     document.addEventListener('visibilitychange', this.onApplicationForegrounded);
     await this.requestBundleUpdateCheck(registration);
+  }
+
+  private watchWorkerInstallation(registration: ServiceWorkerRegistration): void {
+    const worker = registration.installing;
+    if (!worker) {
+      return;
+    }
+    const onStateChange = () => {
+      if (worker.state === 'installed' || worker.state === 'activated' || worker.state === 'redundant') {
+        worker.removeEventListener('statechange', onStateChange);
+        if (worker.state === 'installed') {
+          void this.requestBundleUpdateCheck(registration);
+        }
+      }
+    };
+    worker.addEventListener('statechange', onStateChange);
+    onStateChange();
   }
 
   private async requestBundleUpdateCheck(
@@ -274,9 +293,19 @@ export class PwaService {
     }
 
     const latestBuildId = await this.fetchLatestBuildId();
-    if (!latestBuildId || latestBuildId === currentBuildId) {
+    if (!latestBuildId) {
       this.clearReloadAttempt();
       await registration.update().catch(() => undefined);
+      return;
+    }
+
+    if (latestBuildId === currentBuildId) {
+      this.clearReloadAttempt();
+      await registration.update().catch(() => undefined);
+      const waitingWorker = await this.waitForWaitingWorker(registration);
+      if (waitingWorker) {
+        await this.activateWaitingWorker(waitingWorker);
+      }
       return;
     }
 

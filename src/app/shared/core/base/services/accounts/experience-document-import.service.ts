@@ -574,7 +574,7 @@ export class ExperienceDocumentImportService {
 
     for (const block of cmap.matchAll(/\d+\s+beginbfrange([\s\S]*?)endbfrange/g)) {
       for (const range of block[1].matchAll(
-        /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(<([0-9A-Fa-f]+)>|\[((?:\s*<[\dA-Fa-f]+>\s*)+)\])/g
+        /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g
       )) {
         const startCode = Number.parseInt(range[1], 16);
         const endCode = Number.parseInt(range[2], 16);
@@ -597,7 +597,15 @@ export class ExperienceDocumentImportService {
           continue;
         }
 
-        const destinations = [...(range[5] ?? '').matchAll(/<([\dA-Fa-f]+)>/g)].map(match => match[1]);
+        const array = range[5] ?? '';
+        const destinations: string[] = [];
+        let cursor = 0;
+        for (const destination of array.matchAll(/<([\dA-Fa-f]+)>/g)) {
+          if (array.slice(cursor, destination.index).trim()) break;
+          destinations.push(destination[1]);
+          cursor = destination.index + destination[0].length;
+        }
+        if (array.slice(cursor).trim()) continue;
         for (let offset = 0; offset < destinations.length && startCode + offset <= endCode; offset += 1) {
           glyphByCode.set(
             (startCode + offset).toString(16).toUpperCase().padStart(codeLength, '0'),
@@ -734,15 +742,13 @@ export class ExperienceDocumentImportService {
   }
 
   private decodePdfLiteral(value: string): string {
-    let normalized = value
-      .replace(/\\\(/g, '(')
-      .replace(/\\\)/g, ')')
-      .replace(/\\\\/g, '\\')
-      .replace(/\\n/g, '\n')
-      .replace(/\\r/g, '\n')
-      .replace(/\\t/g, '\t');
-    normalized = normalized.replace(/\\([0-7]{3})/g, (_match, octal) => String.fromCharCode(Number.parseInt(octal, 8)));
-    return normalized;
+    const escapes: Record<string, string> = { n: '\n', r: '\n', t: '\t', b: '\b', f: '\f', '\r': '', '\n': '', '\r\n': '' };
+    return value.replace(/\\(?:\r\n|[\r\n]|[0-7]{1,3}|.)/g, match => {
+      const token = match.slice(1);
+      return /^[0-7]{1,3}$/.test(token)
+        ? String.fromCharCode(Number.parseInt(token, 8))
+        : escapes[token] ?? token;
+    });
   }
 
   private extractRtfText(buffer: ArrayBuffer): string {
@@ -827,13 +833,8 @@ export class ExperienceDocumentImportService {
   }
 
   private decodeXmlEntities(value: string): string {
-    return value
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, '\'')
-      .replace(/&nbsp;/g, ' ');
+    const entities: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ' };
+    return value.replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, entity => entities[entity]);
   }
 
   private extractExperienceEntries(text: string, seedWarnings: readonly string[]): UserExperienceImportParseResult {
@@ -950,7 +951,15 @@ export class ExperienceDocumentImportService {
     }
     return joined.includes('@')
       || joined.includes('linkedin')
-      || joined.includes('github.com')
+      || joined.split(/\s+/).some(token => {
+        try {
+          const url = new URL(token.includes('://') ? token : `https://${token}`);
+          return (url.protocol === 'https:' || url.protocol === 'http:')
+            && (url.hostname === 'github.com' || url.hostname === 'www.github.com');
+        } catch {
+          return false;
+        }
+      })
       || joined.includes('phone')
       || joined.includes('email')
       || joined.includes('references')
