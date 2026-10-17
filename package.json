@@ -58,7 +58,7 @@
     "@fssrepository/myscoutee-components": "1.4.0",
     "@wireapp/core-crypto": "10.5.4",
     "dompurify": "3.4.17",
-    "firebase": "^12.10.0",
+    "firebase": "^13.0.0",
     "material-icons": "^1.13.14",
     "qrcode": "1.5.4",
     "rxjs": "~7.8.0",
