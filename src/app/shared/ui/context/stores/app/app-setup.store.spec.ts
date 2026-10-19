@@ -16,7 +16,9 @@ describe('Setup acquisition timer starts at permission grant', () => {
       signal.addEventListener('abort', () => resolve(null), { once: true });
     }));
     const store = Object.assign(Object.create(AppSetupStore.prototype), {
+      activeControl: signal(null),
       isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
+      actionPending: () => store.nativePending() || store.busy(),
       allowDisabled: () => false, loggedIn: () => true, locationMissing: () => true,
       locationSelected: signal(true), notificationsSelected: signal(false),
       locationGranted: signal(initialState === 'granted'), locationPermission: signal(initialState),
@@ -131,6 +133,7 @@ describe('Setup explicit Login action and independent Close', () => {
 
   function setup(checkLocation: boolean) {
     return Object.assign(Object.create(AppSetupStore.prototype), {
+      activeControl: signal(null),
       isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
       allowDisabled: () => false, loggedIn: () => false,
       locationSelected: signal(true), notificationsSelected: signal(false),
@@ -181,6 +184,50 @@ describe('Setup explicit Login action and independent Close', () => {
     expect(store.error()).toBe('Outside supported region');
     store.close();
     expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('applies notification changes from the switch without requiring location', async () => {
+    const store = setup(false);
+    let grant!: (permission: NotificationPermission) => void;
+    let registered!: () => void;
+    Object.assign(store, {
+      completeLogin: null, activeControl: signal(null), notificationsEdited: signal(false),
+      locationSelected: signal(false), locationGranted: signal(false), notificationsSelected: signal(false),
+      actionPending: () => store.nativePending() || store.busy()
+    });
+    Object.assign(store.messaging, { notificationsConfigured: true,
+      requestEntryPermission: vi.fn().mockImplementation(() => new Promise(resolve => { grant = resolve; })),
+      setDeviceNotificationsEnabled: vi.fn().mockImplementation(() => new Promise<void>(resolve => { registered = resolve; })) });
+    store.toggleNotifications();
+    expect(store.activeControl()).toBe('notifications');
+    expect(store.nativePending()).toBe(true);
+    expect(store.busy()).toBe(false);
+    expect(store.messaging.setDeviceNotificationsEnabled).not.toHaveBeenCalled();
+    grant('granted');
+    await vi.waitFor(() => expect(store.busy()).toBe(true));
+    expect(store.nativePending()).toBe(false);
+    registered();
+    await vi.waitFor(() => expect(store.saveSucceeded()).toBe(true));
+    expect(store.messaging.requestEntryPermission).toHaveBeenCalledOnce();
+    expect(store.messaging.setDeviceNotificationsEnabled).toHaveBeenCalledExactlyOnceWith(true);
+    expect(store.location.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(store.location.setTrackingEnabled).not.toHaveBeenCalled();
+    expect(store.isOpen()).toBe(true);
+  });
+
+  it('applies location from its switch and disables tracking without another permission request', async () => {
+    const store = setup(false);
+    Object.assign(store, { completeLogin: null, locationSelected: signal(false), locationGranted: signal(false),
+      actionPending: () => store.nativePending() || store.busy() });
+    store.toggleLocation();
+    expect(store.activeControl()).toBe('location');
+    await vi.waitFor(() => expect(store.saveSucceeded()).toBe(true));
+    expect(store.location.requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(store.location.setTrackingEnabled).toHaveBeenLastCalledWith(true);
+    store.toggleLocation();
+    await vi.waitFor(() => expect(store.location.setTrackingEnabled).toHaveBeenLastCalledWith(false));
+    expect(store.location.requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(store.isOpen()).toBe(true);
   });
 
   it('keeps settings Update open and shows save feedback', async () => {

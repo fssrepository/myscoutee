@@ -52,6 +52,7 @@ import {
 import {
   Component,
   HostListener,
+  Input,
   Injector,
   OnDestroy,
   computed,
@@ -293,8 +294,9 @@ export class SideMenuComponent implements OnDestroy {
   private readonly i18n = inject(I18nService);
   protected readonly pwaService = inject(PwaService);
   protected readonly mingleStore = inject(MingleStore);
-  private readonly appSetupStore = inject(AppSetupStore);
+  protected readonly appSetupStore = inject(AppSetupStore);
   protected openAppSetup(): void {
+    this.closeSideMenu();
     this.appSetupStore.open();
   }
   protected openCurrentMingleTable(event?: Event): void {
@@ -427,6 +429,18 @@ export class SideMenuComponent implements OnDestroy {
     return Boolean(activeUserId) && path !== '/' && !path.startsWith('/entry');
   });
   protected readonly hasBindings = computed(() => this.profileStore.bindings() !== null);
+  protected readonly initialAvatarLoadTiming = signal({ start: 100, durationMs: 3000 });
+
+  @Input() set avatarLoadStartedAt(startedAt: number) {
+    // The shell and lazy menu render the same loading avatar in succession.
+    // Continue its existing CSS timeline instead of starting another full ring.
+    const duration = SideMenuComponent.USER_MENU_LOAD_DURATION_MS;
+    const remaining = startedAt > 0 ? Math.max(0, duration - (Date.now() - startedAt)) : duration;
+    this.initialAvatarLoadTiming.set({
+      start: 100 * Math.min(duration, remaining) / duration,
+      durationMs: Math.max(1, Math.min(duration, remaining))
+    });
+  }
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
     this.connectionOffline() && this.userProfileStore.activeUserProfile() !== null
@@ -524,7 +538,7 @@ export class SideMenuComponent implements OnDestroy {
         ? {
             state: this.avatarLoadError() ? 'error' : 'loading',
             shape: 'circle',
-            durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
+            durationMs: this.initialAvatarLoadTiming().durationMs
           }
         : null,
       context: { kind: 'toggle-menu' }
@@ -629,12 +643,6 @@ export class SideMenuComponent implements OnDestroy {
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
     if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
-        id: 'permissions',
-        label: 'install.app',
-        icon: 'install_desktop',
-        counter: this.pwaService.appVersionLabel(),
-        ariaLabel: 'install.app'
-      }, {
         id: 'share',
         label: `Share ${this.deploymentBranding().productName}`,
         icon: 'share',
@@ -706,6 +714,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
+    const setupCount = this.appSetupStore.missingCount();
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
     {
       items.push({
@@ -724,6 +733,14 @@ export class SideMenuComponent implements OnDestroy {
           ? ' — ' + this.i18n.translate('game.location.required.title') : '')
       });
     }
+    items.push({
+      id: 'permissions',
+      label: 'app.setup.title',
+      icon: this.appSetupStore.launcherIcon(),
+      palette: this.appSetupStore.launcherPalette(),
+      counter: setupCount > 0 ? { value: setupCount } : null,
+      ariaLabel: 'app.setup.title'
+    });
     {
       items.push(
         {
@@ -1116,6 +1133,12 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly navigationGuideContext = computed(() => this.isOperatorMode() ? 'operator.navigation' : this.isAdminMode() ? 'admin.navigation' : 'navigation.menu');
 
   constructor() {
+    effect(() => {
+      if (this.canToggleAvatarMenu()) {
+        // Later saves and workspace switches own fresh, independent actions.
+        this.initialAvatarLoadTiming.set({ start: 100, durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS });
+      }
+    });
     const overlayNavigation = inject(OverlayNavigationStore);
     effect(onCleanup => {
       if (!this.isMenuOpen()) return;

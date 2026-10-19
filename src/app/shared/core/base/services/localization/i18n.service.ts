@@ -37,7 +37,9 @@ export class I18nService implements UiTranslations {
   });
   private static readonly LOCAL_SEED_ASSETS: Record<string, string> = {
     en: 'assets/i18n/en.json',
-    hu: 'assets/i18n/hu.json'
+    hu: 'assets/i18n/hu.json',
+    de: 'assets/i18n/de.json',
+    es: 'assets/i18n/es.json'
   };
   private static readonly TRANSLATABLE_ATTRIBUTES = ['aria-label', 'title', 'placeholder', 'alt'] as const;
   private static readonly SKIP_ATTRIBUTE_SELECTOR = [
@@ -203,7 +205,8 @@ export class I18nService implements UiTranslations {
       : lang === this.currentLanguageSignal()
         ? this.messagesSignal()
         : this.messagesByLanguageSignal()[lang] ?? {};
-    return messages[key] ?? `${fallback ?? key}`;
+    const sourceKey = this.sourceKeyByTextSignal()[this.normalizeSourceKey(key)];
+    return messages[key] ?? (sourceKey ? messages[sourceKey] : undefined) ?? `${fallback ?? key}`;
   }
 
   revalidate(): Promise<void> {
@@ -1308,7 +1311,7 @@ export class I18nService implements UiTranslations {
   }
 
   private currentIntlLocale(): string {
-    return this.currentLanguageSignal() === 'hu' ? 'hu-HU' : I18nService.DEFAULT_LANGUAGE;
+    return ({ hu: 'hu-HU', de: 'de-DE', es: 'es-ES' } as Record<string, string>)[this.currentLanguageSignal()] ?? I18nService.DEFAULT_LANGUAGE;
   }
 
   private translateCompositeSource(

@@ -80,6 +80,7 @@ export class App implements OnDestroy {
   protected readonly sideMenuComponent = this.sideMenuComponentRef.asReadonly();
   protected routeWarmupVisible = false;
   protected gameStartupVisible = false;
+  protected avatarLoadStartedAt = 0;
   protected readonly loadingAvatarItems = computed<readonly AppMenuItem[]>(() => {
     const session = this.sessionService.currentSession();
     const userId = session?.kind === 'firebase' ? session.profile.id : session?.kind === 'demo' ? session.userId : '';
@@ -176,6 +177,11 @@ export class App implements OnDestroy {
 
   private syncSideMenuVisibility(url: string): void {
     this.showSideMenu = this.shouldShowSideMenu(url);
+    if (this.showSideMenu) {
+      this.avatarLoadStartedAt ||= Date.now();
+    } else if (!this.gameStartupVisible) {
+      this.avatarLoadStartedAt = 0;
+    }
     this.changeDetectorRef.markForCheck();
     if (this.showSideMenu) {
       void this.ensureSideMenuComponentLoaded();
@@ -249,6 +255,7 @@ export class App implements OnDestroy {
     this.gameStartupVisible = this.initialLandingWarmupPending
       && Boolean(session && session.kind !== 'operator-bootstrap')
       && (path === '/' || path === '/game' || path === '/home');
+    if (this.gameStartupVisible) this.avatarLoadStartedAt ||= Date.now();
   }
 
   private completeWarmupIfNavigationSettled(): void {

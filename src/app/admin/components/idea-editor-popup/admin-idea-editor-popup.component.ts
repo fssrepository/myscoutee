@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from '../../../shared/core/common/content-languages.json';
 import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/media/image-gallery.interface';
 import {
   ImageGalleryStore,
@@ -1156,7 +1157,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected contentLanguageFlag(lang: string): string {
-    const flags: Record<string, string> = { en: '🇬🇧', hu: '🇭🇺' };
+    const flags: Record<string, string> = { en: '🇬🇧', hu: '🇭🇺', de: '🇩🇪', es: '🇪🇸' };
     return flags[this.normalizeContentLang(lang)] ?? '🌐';
   }
 
@@ -1527,7 +1528,7 @@ export class AdminIdeaEditorPopupComponent {
 
   private normalizeContentLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return normalized === 'hu' ? 'hu' : 'en';
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
   }
 
   private contentLanguageLabel(lang: string): string {
@@ -1537,7 +1538,7 @@ export class AdminIdeaEditorPopupComponent {
 
   private contentKeyFromId(id: string): string {
     const normalized = `${id ?? ''}`.trim();
-    return normalized.endsWith('-hu') ? normalized.slice(0, -3) : normalized;
+    return normalized.replace(/-(?:hu|de|es)$/, '');
   }
 
   private refreshIdeaList(): void {

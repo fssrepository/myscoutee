@@ -10,7 +10,7 @@ const auditPolicy = require('./i18n-audit-policy.json');
 const frontendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendRoot, '..');
 const mongoRoot = path.join(repoRoot, 'server/docker/conf/mongodb');
-const languages = ['en', 'hu'];
+const languages = require('../src/app/shared/core/common/content-languages.json').map(item => item.lang);
 const seedDatabases = ['demo_db', 'e2e_db', 'myscoutee_db'];
 const issues = [];
 
@@ -33,6 +33,84 @@ if (bundles.size === languages.length) {
   for (const databaseName of seedDatabases) {
     validateSeedDatabase(databaseName);
     validateJobCatalogReferences(databaseName);
+    validateContentLanguages(databaseName);
+    validateTemplateLanguages(databaseName);
+    validateSeedKeyReferences(databaseName);
+  }
+}
+
+function validateContentLanguages(databaseName) {
+  for (const collection of ['helpCenterRevisions', 'ideaPosts']) {
+    const file = path.join(mongoRoot, databaseName, `${collection}.json`);
+    const result = readJson(file);
+    if (!result.ok) continue;
+    const families = new Map();
+    for (const row of result.value) {
+      if (collection === 'helpCenterRevisions' ? !row.active : !row.published || row.trashed) continue;
+      const family = JSON.stringify(collection === 'helpCenterRevisions'
+        ? [row.baseGroupId ?? null, row.documentType, row.contextKey ?? null]
+        : [row.workspaceGroupId ?? null, row.contentKey]);
+      if (!families.has(family)) families.set(family, new Set());
+      const found = families.get(family);
+      if (found.has(row.lang)) issues.push(`${relativePath(file)}: duplicate active ${row.lang} content in ${family}`);
+      found.add(row.lang);
+      for (const field of ['title', collection === 'ideaPosts' ? 'excerpt' : 'description']) {
+        if (!row[field]?.trim()) issues.push(`${relativePath(file)}: empty ${field} in ${row._id}`);
+      }
+    }
+    for (const [family, found] of families) for (const language of languages) {
+      if (!found.has(language)) issues.push(`${relativePath(file)}: missing ${language} content in ${family}`);
+    }
+  }
+}
+
+function validateTemplateLanguages(databaseName) {
+  for (const collection of ['emailTemplates', 'notificationTemplates']) {
+    const file = path.join(mongoRoot, databaseName, `${collection}.json`);
+    const result = readJson(file);
+    if (!result.ok) continue;
+    const rows = result.value;
+    const identities = new Set();
+    for (const row of rows) {
+      const identity = JSON.stringify([row.baseGroupId ?? null, row.templateKey]);
+      if (identities.has(identity)) issues.push(`${relativePath(file)}: duplicate template ${identity}`);
+      identities.add(identity);
+    }
+    const fields = collection === 'emailTemplates'
+      ? ['subjectTemplate', 'htmlTemplate', 'textTemplate'] : ['titleTemplate', 'bodyTemplate'];
+    for (const source of rows.filter(row => row.locale === 'en')) for (const language of languages) {
+      const key = source.templateKey + (language === 'en' ? '' : `-${language}`);
+      const target = rows.find(row => row.templateKey === key && (row.baseGroupId ?? null) === (source.baseGroupId ?? null));
+      if (!target || target.locale !== language) {
+        issues.push(`${relativePath(file)}: missing ${language} template ${source._id}`);
+        continue;
+      }
+      for (const field of fields) {
+        const tokens = value => JSON.stringify((value?.match(/@[A-Za-z_][A-Za-z_0-9]*/g) ?? []).sort());
+        if (!target[field]?.trim() || tokens(target[field]) !== tokens(source[field])) {
+          issues.push(`${relativePath(file)}: empty text or changed placeholders in ${target._id}/${field}`);
+        }
+      }
+    }
+  }
+}
+
+function validateSeedKeyReferences(databaseName) {
+  const fields = new Set(['titleKey', 'messageKey', 'descriptionKey', 'labelKey', 'summaryKey', 'statusBadgeKey']);
+  function visit(value, file) {
+    if (!value || typeof value !== 'object') return;
+    for (const [field, child] of Object.entries(value)) {
+      if (fields.has(field) && typeof child === 'string' && child.trim()) {
+        for (const language of languages) if (!Object.hasOwn(bundles.get(language).messages, child)) {
+          issues.push(`${relativePath(file)}: missing ${language} seed reference ${child}`);
+        }
+      } else if (typeof child === 'object') visit(child, file);
+    }
+  }
+  for (const name of fs.readdirSync(path.join(mongoRoot, databaseName)).filter(name => name.endsWith('.json') && !name.startsWith('i18n_'))) {
+    const file = path.join(mongoRoot, databaseName, name);
+    const result = readJson(file);
+    if (result.ok) visit(result.value, file);
   }
 }
 
@@ -247,20 +325,21 @@ function validateSourceBundle(filePath, expectedLanguage, bundle) {
 
 function validateSourceKeySets() {
   const enKeys = new Set(Object.keys(bundles.get('en').messages));
-  const huKeys = new Set(Object.keys(bundles.get('hu').messages));
-
-  for (const key of sortedDifference(enKeys, huKeys)) {
-    issues.push(`source bundles: key ${formatValue(key)} exists in en but is missing from hu`);
-  }
-  for (const key of sortedDifference(huKeys, enKeys)) {
-    issues.push(`source bundles: key ${formatValue(key)} exists in hu but is missing from en`);
-  }
   const placeholders = value => [...value.matchAll(/\{\{?([a-zA-Z0-9_.-]+)\}?\}/g)]
     .map(match => match[1]).sort().join(',');
-  for (const key of enKeys) {
-    if (huKeys.has(key) && placeholders(bundles.get('en').messages[key])
-        !== placeholders(bundles.get('hu').messages[key])) {
-      issues.push(`source bundles: placeholder mismatch for ${formatValue(key)}`);
+  for (const language of languages.filter(lang => lang !== 'en')) {
+    const translated = bundles.get(language).messages;
+    const keys = new Set(Object.keys(translated));
+    for (const key of sortedDifference(enKeys, keys)) {
+      issues.push(`source bundles: key ${formatValue(key)} is missing from ${language}`);
+    }
+    for (const key of sortedDifference(keys, enKeys)) {
+      issues.push(`source bundles: key ${formatValue(key)} exists in ${language} but is missing from en`);
+    }
+    for (const key of enKeys) {
+      if (keys.has(key) && placeholders(bundles.get('en').messages[key]) !== placeholders(translated[key])) {
+        issues.push(`source bundles: ${language} placeholder mismatch for ${formatValue(key)}`);
+      }
     }
   }
 }

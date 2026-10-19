@@ -99,7 +99,7 @@ function safeToSwitch(): boolean {
   const path = location.pathname.replace(/\/$/, '');
   return (path === '/game' || isLandingPage())
     && document.visibilityState === 'visible' && writes === 0
-    && !document.querySelector('.ui-popup')
+    && !document.querySelector('.ui-popup, .firebase-auth-overlay')
     && !document.activeElement?.matches('input,textarea,[contenteditable="true"]');
 }
 
@@ -191,7 +191,7 @@ export async function checkDemoFailover(): Promise<void> {
       const reachable = await backendReachable();
       // Change adapters only at a fresh bootstrap, preserving their storage scopes.
       // An open form/popup defers the reload; the next poll retries after it closes.
-      if (reachable === local && safeToSwitch()) location.reload();
+      if (reachable === local && anonymousLanding() && safeToSwitch()) location.reload();
       return;
     }
     const session = eligibleSession();

@@ -7,10 +7,8 @@ const frontendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendRoot, '..');
 const mongoRoot = path.join(repoRoot, 'server/docker/conf/mongodb');
 const seedDatabases = ['demo_db', 'e2e_db', 'myscoutee_db'];
-const bundlePaths = [
-  path.join(frontendRoot, 'src/assets/i18n/en.json'),
-  path.join(frontendRoot, 'src/assets/i18n/hu.json')
-];
+const languages = require('../src/app/shared/core/common/content-languages.json');
+const bundlePaths = languages.map(({ lang }) => path.join(frontendRoot, `src/assets/i18n/${lang}.json`));
 
 const bundles = bundlePaths.map(readBundle);
 const bundleDocs = bundles.map(bundle => ({

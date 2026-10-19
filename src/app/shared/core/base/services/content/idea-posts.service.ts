@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from '../../../common/content-languages.json';
 import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalIdeaPostsService } from '../../../local/source/services/content/idea-posts.service';
@@ -334,7 +335,7 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   private normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return normalized === 'hu' ? 'hu' : 'en';
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
   }
 
   private ideaImageUrl(post: Pick<IdeaPostDto, 'imageUrl' | 'imageUrls'> | null): string {

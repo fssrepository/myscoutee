@@ -38,6 +38,7 @@ export class PwaService {
   private readonly installPromptPendingRef = signal(false);
   private readonly installBusyRef = signal(false);
   private installCompleted = false;
+  readonly installed = signal(this.isStandalone());
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
   private readonly registrationRef = signal<ServiceWorkerRegistration | null>(null);
   private readonly appVersionLabelRef = signal('');
@@ -51,6 +52,7 @@ export class PwaService {
   };
   private onAppInstalled = () => {
     this.installCompleted = true;
+    this.installed.set(true);
     this.installPromptRef.set(null);
     this.installPromptPendingRef.set(false);
     this.installBusyRef.set(false);
@@ -79,6 +81,8 @@ export class PwaService {
       return;
     }
     this.initialized = true;
+    const displayMode = window.matchMedia('(display-mode: standalone)');
+    displayMode.addEventListener('change', () => this.installed.set(this.isStandalone() || this.installCompleted));
     void this.loadAppVersionLabel();
     window.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
     window.addEventListener('appinstalled', this.onAppInstalled);

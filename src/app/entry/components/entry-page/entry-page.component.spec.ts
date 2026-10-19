@@ -39,36 +39,20 @@ describe('entry consent visibility while the policy loads', () => {
 });
 
 describe('EntryPageComponent new demo registration admission', () => {
-  it.each([false, true])('waits for location admission (%s) before onboarding and retains the invitation', async eligible => {
-    let finish!: (accepted: boolean) => void;
+  it('opens registration without requesting device setup and retains the invitation', async () => {
     const component = Object.assign(Object.create(EntryPageComponent.prototype), {
       buildDemoRegistrationUser: () => ({ id: 'new-demo-account' }),
-      requestLocationAccessFromDialog: vi.fn(() => new Promise<boolean>(resolve => { finish = resolve; })),
-      pendingDemoSessionUserId: '',
-      memberRedirectUrl: () => '/game?eventInvite=retained-test-invite',
-      openOnboardingGate: vi.fn()
+      appSetupStore: { requestForLogin: vi.fn() }, pendingDemoSessionUserId: '',
+      memberRedirectUrl: () => '/game?eventInvite=retained-test-invite', openOnboardingGate: vi.fn()
     });
     const request = { complete: vi.fn(), fail: vi.fn() };
-    const pending = component.onDemoNewProfileRequested(request);
-    expect(component.requestLocationAccessFromDialog).toHaveBeenCalledWith('new-demo-account');
-    expect(component.pendingDemoSessionUserId).toBe('');
-    expect(component.openOnboardingGate).not.toHaveBeenCalled();
-    expect(request.complete).not.toHaveBeenCalled();
-    finish(eligible);
-    await pending;
-    if (eligible) {
-      expect(component.pendingDemoSessionUserId).toBe('new-demo-account');
-      expect(component.openOnboardingGate).toHaveBeenCalledWith(
-        { id: 'new-demo-account' }, '/game?eventInvite=retained-test-invite', expect.any(Object)
-      );
-      expect(request.complete).toHaveBeenCalledOnce();
-      expect(request.fail).not.toHaveBeenCalled();
-    } else {
-      expect(component.pendingDemoSessionUserId).toBe('');
-      expect(component.openOnboardingGate).not.toHaveBeenCalled();
-      expect(request.complete).not.toHaveBeenCalled();
-      expect(request.fail).toHaveBeenCalledOnce();
-    }
+    await component.onDemoNewProfileRequested(request);
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    expect(component.pendingDemoSessionUserId).toBe('new-demo-account');
+    expect(component.openOnboardingGate).toHaveBeenCalledWith(
+      { id: 'new-demo-account' }, '/game?eventInvite=retained-test-invite', expect.any(Object));
+    expect(request.complete).toHaveBeenCalledOnce();
+    expect(request.fail).not.toHaveBeenCalled();
   });
 });
 
@@ -131,25 +115,20 @@ describe('EntryPageComponent browser connection transitions', () => {
 });
 
 describe('EntryPageComponent operator authentication gate', () => {
-  it.each([false, true])('waits for Setup Close (accepted location: %s) before opening Firebase', async allowed => {
-    let close!: (allowed: boolean) => void;
+  it.each(['prompt', 'denied', 'granted'])('opens Firebase with %s location permission and only requests guidance', async permission => {
     const component = Object.assign(Object.create(EntryPageComponent.prototype), {
-      entryNetworkUnavailable: false,
-      loginEligibilityBusy: false,
-      showFirebaseAuthPopup: false,
-      sessionService: { authMode: 'firebase', firebaseProfile: () => null },
-      synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
-      ensureEntryConsent: () => true,
-      ensureHttpLoginAccessAllowed: vi.fn(() => new Promise<boolean>(resolve => { close = resolve; })),
-      onFirebaseSessionContinueRequested: vi.fn()
+      entryNetworkUnavailable: false, entryAuthUnavailable: false, loginEligibilityBusy: false,
+      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', firebaseProfile: () => null },
+      synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined), ensureEntryConsent: () => true,
+      isLoginBlockedByLandingBundle: () => false,
+      queryGeolocationPermissionState: vi.fn().mockResolvedValue(permission),
+      appSetupStore: { explainMissingSetup: vi.fn(), requestForLogin: vi.fn() }
     });
-    const opening = component.openEntryAuthPopup();
-    await vi.waitFor(() => expect(component.ensureHttpLoginAccessAllowed).toHaveBeenCalledOnce());
-    expect(component.showFirebaseAuthPopup).toBe(false);
-    close(allowed);
-    await opening;
-    expect(component.showFirebaseAuthPopup).toBe(allowed);
-    expect(component.onFirebaseSessionContinueRequested).not.toHaveBeenCalled();
+    await component.openEntryAuthPopup();
+    expect(component.showFirebaseAuthPopup).toBe(true);
+    expect(component.appSetupStore.explainMissingSetup).toHaveBeenCalledOnce();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    expect(component.queryGeolocationPermissionState).not.toHaveBeenCalled();
   });
 
   it('bypasses consumer region and coordinate checks but still requires privacy consent', async () => {
@@ -185,7 +164,8 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);
     component.openBundledLoginUnavailableInfo = vi.fn();
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
-    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false } });
+    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false },
+      appSetupStore: { explainMissingSetup: vi.fn() } });
 
     await component.openEntryAuthPopup({
       forceAuthPopup: true,
@@ -222,7 +202,8 @@ describe('EntryPageComponent operator authentication gate', () => {
       firebaseProfile: () => null
     };
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
-    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false } });
+    Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false },
+      appSetupStore: { explainMissingSetup: vi.fn() } });
     component.isLoginBlockedByLandingBundle = vi.fn().mockReturnValue(false);
     component.isLoginLocationRequiredByLandingBundle = vi.fn().mockReturnValue(false);
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);
@@ -260,80 +241,23 @@ describe('EntryPageComponent browser location permission gate', () => {
     });
   }
 
-  it('waits for the running country check without reopening setup or requesting a second position', async () => {
-    const component = grantedPermissionsEntry();
-    let finish!: (result: { eligible: boolean }) => void;
-    component.usersService.checkLocationEligibility.mockReturnValue(new Promise(resolve => finish = resolve));
-    component.grantedLocationEligibilityPromise = component.resolveBrowserLocationAccess(1);
-    const complete = vi.fn();
-    const login = component.ensureHttpLoginAccessAllowed().then(complete);
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(component.requestCurrentLocation).toHaveBeenCalledOnce();
-    expect(complete).not.toHaveBeenCalled();
-    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
-    expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
-
-    finish({ eligible: true });
-    await login;
-    expect(complete).toHaveBeenCalledWith(true);
-    expect(component.requestCurrentLocation).toHaveBeenCalledOnce();
-    expect(component.loginEligibilityBusy).toBe(false);
-  });
-
-  it.each([true, false])('checks country eligibility silently when both permissions are granted (eligible: %s)', async eligible => {
-    const component = grantedPermissionsEntry();
-    component.usersService.checkLocationEligibility.mockResolvedValue({ eligible });
-    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
-    expect(component.requestCurrentLocation).toHaveBeenCalledOnce();
-    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
-    expect(component.requestLocationAccessFromDialog).toHaveBeenCalledTimes(eligible ? 0 : 1);
-    expect(component.dialogStore.openInfo).not.toHaveBeenCalled();
-  });
-
-  it('opens the retryable setup when a granted location cannot be acquired', async () => {
-    const component = grantedPermissionsEntry();
-    component.requestCurrentLocation.mockResolvedValue(null);
-    component.requestLocationAccessFromDialog.mockResolvedValue(false);
-    expect(await component.ensureHttpLoginAccessAllowed()).toBe(false);
-    expect(component.requestLocationAccessFromDialog).toHaveBeenCalledOnce();
-    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
-    expect(component.usersService.checkLocationEligibility).not.toHaveBeenCalled();
-    expect(component.dialogStore.openInfo).not.toHaveBeenCalled();
-  });
-
-  it('reuses completed eligibility with granted permissions without opening setup or acquiring location', async () => {
-    const component = grantedPermissionsEntry();
-    component.locationEligibilityResolvedFromCoordinates = true;
-    component.landingLoginAvailability = { eligible: true };
-    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
-    expect(component.requestCurrentLocation).not.toHaveBeenCalled();
-    expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
-    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
-  });
-
-  it.each(['prompt', 'denied'])('keeps the explicit setup flow when location permission is %s', async state => {
+  it.each(['prompt', 'denied', 'granted'])('does not wait for device setup when permission is %s', async state => {
     const component = grantedPermissionsEntry();
     component.queryGeolocationPermissionState.mockResolvedValue(state);
-    await component.ensureHttpLoginAccessAllowed();
-    expect(component.requestLocationAccessFromDialog).toHaveBeenCalledOnce();
+    component.firebaseMessagingService.entryPermissionPending = true;
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
+    expect(component.queryGeolocationPermissionState).not.toHaveBeenCalled();
     expect(component.requestCurrentLocation).not.toHaveBeenCalled();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
   });
 
-  it('reuses a successful location check when reopening setup for notifications', async () => {
-    const requestForLogin = vi.fn().mockResolvedValue(true);
-    const requestLocationAccessFromDialog = vi.fn();
-    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
-      locationEligibilityResolvedFromCoordinates: true,
-      landingLoginAvailability: { eligible: true },
-      firebaseMessagingService: { entryPermissionPending: true },
-      appSetupStore: { requestForLogin },
-      requestLocationAccessFromDialog
-    });
-    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
-    expect(requestForLogin).toHaveBeenCalledWith();
-    expect(requestLocationAccessFromDialog).not.toHaveBeenCalled();
-    expect(component.loginEligibilityBusy).toBe(false);
+  it('retains an explicit regional security rejection without requesting device permissions', async () => {
+    const component = grantedPermissionsEntry();
+    component.locationEligibilityResolvedFromCoordinates = true;
+    component.landingLoginAvailability = { eligible: false, securityGateEnabled: true };
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(false);
+    expect(component.dialogStore.openInfo).toHaveBeenCalledOnce();
+    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
   });
 
   it('waits for an explicit user action while browser permission is prompt', async () => {
@@ -569,38 +493,26 @@ describe('Demo location admission before session creation', () => {
       expect(selection.complete).toHaveBeenCalledOnce();
     });
 
-    for (const point of [undefined, rejected]) {
-      it(`allows retry after missing/rejected coordinates without opening a ${local ? 'local' : 'HTTP'} session first`, async () => {
-        const { component, selection } = fixture(local, point);
-        await component.onDemoUserSelected(selection);
-        expect(component.requestLocationAccessFromDialog).toHaveBeenCalledWith('demo-user');
-        expect(component.sessionService.startDemoSession).not.toHaveBeenCalled();
-        expect(component.sessionService.startTrackedDemoSession).not.toHaveBeenCalled();
-        expect(component.usersService.loadUserById).not.toHaveBeenCalled();
-        expect(component.router.navigateByUrl).not.toHaveBeenCalled();
-        component.requestLocationAccessFromDialog.mockResolvedValue(true);
-        await component.onDemoUserSelected(selection);
-        expect(selection.complete).toHaveBeenCalledOnce();
-      });
-    }
-  }
-
-  it('keeps a rejected fresh point inside the setup flow and stages only the successful retry for the selected account', async () => {
-    let validate: (point: typeof accepted) => Promise<boolean> = async () => false;
-    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
-      sessionService: { identity: () => 'anonymous' },
-      appSetupStore: { requestForLogin: vi.fn(callback => { validate = callback; return Promise.resolve(false); }) },
-      usersService: { checkLocationEligibility: vi.fn(async point => ({ eligible: point === accepted, message: 'country unavailable' })) },
-      appLocationService: { stageLoginCoordinates: vi.fn() },
-      syncLandingLoginAvailability: vi.fn(),
-      uiText: (text: string) => text
+    it(`starts a ${local ? 'local' : 'HTTP'} session without stored coordinates or a permission popup`, async () => {
+      const { component, selection } = fixture(local);
+      await component.onDemoUserSelected(selection);
+      expect(component.usersService.checkLocationEligibility).not.toHaveBeenCalled();
+      expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
+      expect(local ? component.sessionService.startDemoSession : component.sessionService.startTrackedDemoSession).toHaveBeenCalledOnce();
+      if (local) expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
+      else expect(component.runPostSessionGate).toHaveBeenCalledOnce();
+      expect(selection.complete).toHaveBeenCalledOnce();
     });
-    await component.requestLocationAccessFromDialog('demo-user');
-    await expect(validate(rejected)).rejects.toThrow('country unavailable');
-    expect(component.appLocationService.stageLoginCoordinates).not.toHaveBeenCalled();
-    await expect(validate(accepted)).resolves.toBe(true);
-    expect(component.appLocationService.stageLoginCoordinates).toHaveBeenCalledWith('demo-user', accepted);
-  });
+
+    it(`retains regional rejection for a ${local ? 'local' : 'HTTP'} profile without opening setup`, async () => {
+      const { component, selection } = fixture(local, rejected);
+      await component.onDemoUserSelected(selection);
+      expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
+      expect(component.sessionService.startDemoSession).not.toHaveBeenCalled();
+      expect(component.sessionService.startTrackedDemoSession).not.toHaveBeenCalled();
+      expect(selection.fail).toHaveBeenCalledOnce();
+    });
+  }
 });
 
 describe('Authenticated entry location', () => {
@@ -618,25 +530,14 @@ describe('Authenticated entry location', () => {
   }
   const session = { kind: 'firebase', sessionId: 'session-a', profile: { id: 'member' } };
   for (const savedLocation of [false, true]) {
-    it(`dismisses provider login before waiting for ${savedLocation ? 'notification' : 'location'} setup`, async () => {
+    it(`continues after authentication with ${savedLocation ? 'notifications missing' : 'no saved location'}`, async () => {
       const component = entry(savedLocation ? { latitude: 47, longitude: 19 } : undefined);
-      const detectChanges = vi.fn();
-      Object.assign(component, {
-        showFirebaseAuthPopup: true,
-        ngZone: { run: (callback: () => void) => callback() },
-        changeDetectorRef: { detectChanges }
-      });
-      const setup = vi.fn(async () => {
-        expect(component.showFirebaseAuthPopup).toBe(false);
-        expect(detectChanges).toHaveBeenCalled();
-        return false;
-      });
-      component.firebaseMessagingService.entryPermissionPending = savedLocation;
-      component.ensureHttpLoginAccessAllowed = setup;
-      component.appSetupStore = { requestForLogin: setup };
+      component.firebaseMessagingService.entryPermissionPending = true;
+      component.appSetupStore = { requestForLogin: vi.fn() };
       await component.runPostSessionGate(session, '/game');
-      expect(setup).toHaveBeenCalledOnce();
-      expect(component.router.navigateByUrl).not.toHaveBeenCalled();
+      expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+      expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
+      expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
     });
   }
   it.each(['onFirebaseAuthRequested', 'onFirebaseSessionContinueRequested'])(
@@ -712,20 +613,20 @@ describe('Authenticated entry location', () => {
     expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
     expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
   });
-  it('retains notification setup with a saved location without asking for new coordinates', async () => {
+  it('keeps notifications optional with a saved location', async () => {
     const component = entry({ latitude: 47, longitude: 19 });
     component.firebaseMessagingService.entryPermissionPending = true;
     const requestForLogin = vi.fn().mockResolvedValue(true);
     Object.assign(component, { appSetupStore: { requestForLogin } });
     await component.runPostSessionGate(session, '/game');
-    expect(requestForLogin).toHaveBeenCalledOnce();
+    expect(requestForLogin).not.toHaveBeenCalled();
     expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
     expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
   });
-  it('asks for initial coordinates only if both server and pending browser values are absent', async () => {
+  it('does not request initial device coordinates during authentication', async () => {
     const component = entry();
     await component.runPostSessionGate(session, '/game');
-    expect(component.ensureHttpLoginAccessAllowed).toHaveBeenCalledOnce();
+    expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
     component.ensureHttpLoginAccessAllowed.mockClear();
     component.appLocationService.pendingLoginCoordinates.mockReturnValue({ latitude: 47, longitude: 19 });
     await component.runPostSessionGate(session, '/game');

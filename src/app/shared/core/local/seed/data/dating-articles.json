@@ -1,0 +1,182 @@
+[
+  {
+    "id": "idea-why-priority-matching",
+    "lang": "en",
+    "title": "How the 1–10 rating helps",
+    "excerpt": "A 1–10 rating signals interest and, together with other context, can support suggestions, event invitations, and grouping.",
+    "contentHtml": "<p>When you rate someone from 1 to 10, you signal how interested you are in meeting them. It is an early preference, not a promise or an automatic match. Mutual ratings can carry more weight, while profile details, distance, and recent activity can provide additional context.</p>\n          <p>These signals can help order profile suggestions. For published events, they can also support invitations to open places or the grouping of accepted participants when those options are enabled. The rating alone does not create an event or a group chat.</p>\n          <p>Feedback after taking part in an event is a separate step. It records the real event experience and can contribute to the impressions shown about a host or participant.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-29T10:00:00.000Z"
+  },
+  {
+    "id": "idea-social-first-dating",
+    "lang": "en",
+    "title": "Meet through a shared activity",
+    "excerpt": "An event or group conversation gives the first message a clear, shared topic.",
+    "contentHtml": "<p>Starting a private conversation with a stranger can feel awkward. An event gives the introduction a real topic, such as a walk, game night, sport session, or another small local activity.</p>\n          <p>People can ask about the plan, time, and place instead of starting with an empty chat. When the event settings allow it, they can also see who is taking part before deciding whether to join.</p>\n          <figure>\n            <img src=\"@image_url\" alt=\"People talking at a small shared activity\">\n            <figcaption>A shared plan makes it easier to start a conversation.</figcaption>\n          </figure>",
+    "featured": true,
+    "submittedAtIso": "2026-04-24T12:30:00.000Z"
+  },
+  {
+    "id": "idea-host-use-case",
+    "lang": "en",
+    "title": "Plan a small event in one place",
+    "excerpt": "Set the event details, capacity, visibility, and approval rules before people join.",
+    "contentHtml": "<p>Create an event with a description, date, place, and participant capacity. You can add topics or optional program parts so people know what is planned before they join.</p>\n          <ul>\n            <li>Choose public, friends-only, or invitation-only visibility.</li>\n            <li>Decide whether joining requests need approval.</li>\n            <li>Invite people directly or, when enabled, use automatic invitations for open places.</li>\n          </ul>\n          <p>The event keeps the main details in one place, so participants can check the same information before requesting a spot or accepting an invitation.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-20T09:15:00.000Z"
+  },
+  {
+    "id": "idea-trust-context",
+    "lang": "en",
+    "title": "More context before you meet",
+    "excerpt": "Profiles, event roles, related chats, and impressions help people understand who they are meeting.",
+    "contentHtml": "<p>A profile can show details that a person chooses to share. An event adds the plan and each member's role or participation, while its event or group chat keeps the conversation connected to that plan.</p>\n          <p>After taking part, hosts and participants can give separate feedback. It can contribute to the impressions shown about a host or member, providing useful context without guaranteeing how a future meeting will go.</p>\n          <p>This information reduces guesswork, but everyone still decides for themselves whom they want to meet.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-16T16:45:00.000Z"
+  },
+  {
+    "id": "idea-register-value",
+    "lang": "en",
+    "title": "What you can do with an account",
+    "excerpt": "Create a profile, discover people and events, host plans, use chats, and give feedback after participating.",
+    "contentHtml": "<p>After registering, you can create a profile and choose its visibility. A public profile is needed to appear in profile suggestions and use the people-rating features.</p>\n          <ul>\n            <li>Discover and rate people, and explore available events.</li>\n            <li>Request a place, accept invitations, or host and manage an event.</li>\n            <li>Use event, group, and support chats, then give feedback after participating.</li>\n          </ul>\n          <p>Your account keeps your profile and activity available between visits, so you can return to your plans and conversations.</p>",
+    "featured": false,
+    "submittedAtIso": "2026-04-11T13:20:00.000Z"
+  },
+  {
+    "id": "idea-why-priority-matching-hu",
+    "lang": "hu",
+    "title": "Hogyan segít az 1–10-es értékelés?",
+    "excerpt": "Az 1–10-es értékelés érdeklődést jelez, és más adatokkal együtt segítheti az ajánlást, az eseménymeghívást és a csoportosítást.",
+    "contentHtml": "<p>Amikor 1-től 10-ig értékelsz valakit, azt jelzed, mennyire szívesen találkoznál vele. Ez egy előzetes érdeklődési jel, nem ígéret és nem automatikus párosítás. A kölcsönös értékelés nagyobb súlyt kaphat, míg a profil adatai, a távolság és a legutóbbi aktivitás további hátteret adhatnak.</p>\n          <p>Ezek a jelek segíthetik a profilajánlások sorrendjét. Közzétett eseményeknél, ha a megfelelő lehetőség be van kapcsolva, az üres helyekre szóló meghívást vagy az elfogadott résztvevők csoportosítását is támogathatják. Az értékelés önmagában nem hoz létre eseményt vagy csoportos csevegést.</p>\n          <p>A tényleges eseményen való részvétel után külön visszajelzés adható. Ez a valós élményt rögzíti, és hozzájárulhat a szervezőről vagy résztvevőről megjelenő benyomásokhoz.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-29T10:00:00.000Z"
+  },
+  {
+    "id": "idea-social-first-dating-hu",
+    "lang": "hu",
+    "title": "Találkozzatok közös programon keresztül",
+    "excerpt": "Egy esemény vagy csoportos csevegés világos, közös témát ad az első üzenethez.",
+    "contentHtml": "<p>Egy idegennel nehéz lehet személyes beszélgetést kezdeni. Egy esemény konkrét témát ad a bemutatkozáshoz: lehet séta, társasjáték, sport vagy más kisebb helyi program.</p>\n          <p>A résztvevők az üres csevegőablak helyett a tervről, az időpontról és a helyszínről kérdezhetnek. Ha az esemény beállításai engedik, azt is láthatják, kik vesznek részt, mielőtt csatlakoznak.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-24T12:30:00.000Z"
+  },
+  {
+    "id": "idea-host-use-case-hu",
+    "lang": "hu",
+    "title": "Szervezz kis eseményt egy helyen",
+    "excerpt": "Állítsd be az esemény részleteit, létszámát, láthatóságát és jóváhagyási szabályait a csatlakozás előtt.",
+    "contentHtml": "<p>Hozz létre eseményt leírással, időponttal, helyszínnel és létszámkorláttal. Témákat vagy választható programelemeket is hozzáadhatsz, hogy mindenki előre lássa a tervet.</p>\n          <ul>\n            <li>Válassz nyilvános, csak barátoknak szóló vagy meghívásos láthatóságot.</li>\n            <li>Döntsd el, hogy a jelentkezéseket jóvá kell-e hagyni.</li>\n            <li>Hívj meg embereket közvetlenül, vagy bekapcsolt funkció esetén használj automatikus meghívást az üres helyekre.</li>\n          </ul>\n          <p>Az esemény egy helyen tartja a legfontosabb részleteket, így a résztvevők ugyanazokat az információkat látják jelentkezés vagy meghívás elfogadása előtt.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-20T09:15:00.000Z"
+  },
+  {
+    "id": "idea-trust-context-hu",
+    "lang": "hu",
+    "title": "Több háttér a találkozó előtt",
+    "excerpt": "A profil, az eseményen betöltött szerep, a kapcsolódó csevegés és a benyomások segítenek megérteni, kivel találkozol.",
+    "contentHtml": "<p>A profil megmutathatja azokat az adatokat, amelyeket valaki megoszt magáról. Az esemény ehhez hozzáadja a tervet, valamint a tag szerepét vagy részvételét, az esemény- és csoportos csevegés pedig a programhoz köti a beszélgetést.</p>\n          <p>A tényleges részvétel után a szervezők és a résztvevők külön esemény-visszajelzést adhatnak. Ez hozzájárulhat a szervezőről vagy tagról megjelenő benyomásokhoz, de nem garantálja, hogyan alakul egy későbbi találkozó.</p>\n          <p>Ez a háttér csökkenti a bizonytalanságot, de mindenki maga dönti el, kivel szeretne találkozni.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-16T16:45:00.000Z"
+  },
+  {
+    "id": "idea-register-value-hu",
+    "lang": "hu",
+    "title": "Mire használható egy fiók?",
+    "excerpt": "Hozz létre profilt, fedezz fel embereket és eseményeket, szervezz programot, csevegj és adj visszajelzést a részvétel után.",
+    "contentHtml": "<p>Regisztráció után létrehozhatod a profilodat, és beállíthatod a láthatóságát. Nyilvános profil szükséges ahhoz, hogy megjelenj a profilajánlásokban, és használd az emberek értékelésére szolgáló funkciókat.</p>\n          <ul>\n            <li>Fedezz fel és értékelj embereket, valamint böngéssz az elérhető események között.</li>\n            <li>Jelentkezz eseményre, fogadj el meghívást, vagy szervezz és kezelj saját eseményt.</li>\n            <li>Használj esemény-, csoportos és támogatási csevegést, majd adj visszajelzést a részvétel után.</li>\n          </ul>\n          <p>A fiókod megőrzi a profilodat és a tevékenységeidet, így később is visszatérhetsz a terveidhez és a beszélgetéseidhez.</p>",
+    "featured": false,
+    "submittedAtIso": "2026-04-11T13:20:00.000Z"
+  },
+  {
+    "id": "idea-why-priority-matching-de",
+    "lang": "de",
+    "title": "Wie die Bewertung von 1–10 hilft",
+    "excerpt": "Eine Bewertung von 1–10 signalisiert Interesse und kann zusammen mit anderem Kontext Vorschläge, Einladungen zu Veranstaltungen und Gruppierung unterstützen.",
+    "contentHtml": "<p>Wenn Sie jemanden mit einer Note von 1 bis 10 bewerten, signalisieren Sie, wie sehr Sie daran interessiert sind, ihn kennenzulernen. Es handelt sich um eine frühzeitige Präferenz, nicht um ein Versprechen oder eine automatische Übereinstimmung. Gegenseitige Bewertungen können mehr Gewicht haben, während Profildetails, Entfernung und aktuelle Aktivitäten zusätzlichen Kontext liefern können.</p>\n          <p>Diese Signale können bei der Bestellung von Profilvorschlägen hilfreich sein. Bei veröffentlichten Veranstaltungen können sie auch Einladungen zu offenen Plätzen oder die Gruppierung akzeptierter Teilnehmer unterstützen, wenn diese Optionen aktiviert sind. Durch die Bewertung allein entsteht weder ein Event noch ein Gruppenchat.</p>\n          <p>Das Feedback nach der Teilnahme an einer Veranstaltung ist ein separater Schritt. Es erfasst das reale Veranstaltungserlebnis und kann zu den vermittelten Eindrücken eines Gastgebers oder Teilnehmers beitragen.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-29T10:00:00.000Z"
+  },
+  {
+    "id": "idea-why-priority-matching-es",
+    "lang": "es",
+    "title": "Cómo ayuda la clasificación del 1 al 10",
+    "excerpt": "Una calificación de 1 a 10 indica interés y, junto con otro contexto, puede respaldar sugerencias, invitaciones a eventos y agrupaciones.",
+    "contentHtml": "<p>Cuando calificas a alguien del 1 al 10, indicas tu interés en conocerlo. Es una preferencia temprana, no una promesa o una coincidencia automática. Las calificaciones mutuas pueden tener más peso, mientras que los detalles del perfil, la distancia y la actividad reciente pueden proporcionar contexto adicional.</p>\n          <p>Estas señales pueden ayudar a ordenar sugerencias de perfiles. Para eventos publicados, también pueden admitir invitaciones a lugares abiertos o la agrupación de participantes aceptados cuando esas opciones están habilitadas. La calificación por sí sola no crea un evento o un chat grupal.</p>\n          <p>La retroalimentación después de participar en un evento es un paso independiente. Registra la experiencia real del evento y puede contribuir a las impresiones mostradas sobre un anfitrión o participante.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-29T10:00:00.000Z"
+  },
+  {
+    "id": "idea-social-first-dating-de",
+    "lang": "de",
+    "title": "Treffen Sie sich über eine gemeinsame Aktivität",
+    "excerpt": "Ein Ereignis oder eine Gruppenunterhaltung gibt der ersten Nachricht ein klares, gemeinsames Thema.",
+    "contentHtml": "<p>Ein privates Gespräch mit einem Fremden zu beginnen, kann sich unangenehm anfühlen. Eine Veranstaltung gibt der Einleitung ein reales Thema, etwa einen Spaziergang, einen Spieleabend, eine Sportveranstaltung oder eine andere kleine lokale Aktivität.</p>\n          <p>Die Leute können nach Plan, Zeit und Ort fragen, anstatt mit einem leeren Chat zu beginnen. Wenn die Veranstaltungseinstellungen dies zulassen, können sie auch sehen, wer teilnimmt, bevor sie sich für eine Teilnahme entscheiden.</p>\n          <figure>\n            <img src=\"/media/public?key=images/system/idea-posts/idea-social-first-dating/v1/large.webp\" alt=\"People talking at a small shared activity\">\n            <figcaption>Ein gemeinsamer Plan erleichtert den Beginn eines Gesprächs.</figcaption>\n          </figure>",
+    "featured": true,
+    "submittedAtIso": "2026-04-24T12:30:00.000Z"
+  },
+  {
+    "id": "idea-social-first-dating-es",
+    "lang": "es",
+    "title": "Conocer a través de una actividad compartida",
+    "excerpt": "Un evento o conversación grupal le da al primer mensaje un tema claro y compartido.",
+    "contentHtml": "<p>Iniciar una conversación privada con un extraño puede resultar incómodo. Un evento le da a la introducción un tema real, como una caminata, una noche de juegos, una sesión de deporte u otra pequeña actividad local.</p>\n          <p>Las personas pueden preguntar sobre el plan, la hora y el lugar en lugar de comenzar con un chat vacío. Cuando la configuración del evento lo permite, también pueden ver quién participa antes de decidir si unirse.</p>\n          <figure>\n            <img src=\"/media/public?key=images/system/idea-posts/idea-social-first-dating/v1/large.webp\" alt=\"People talking at a small shared activity\">\n            <figcaption>Un plan compartido facilita el inicio de una conversación.</figcaption>\n          </figure>",
+    "featured": true,
+    "submittedAtIso": "2026-04-24T12:30:00.000Z"
+  },
+  {
+    "id": "idea-host-use-case-de",
+    "lang": "de",
+    "title": "Planen Sie eine kleine Veranstaltung an einem Ort",
+    "excerpt": "Legen Sie die Veranstaltungsdetails, die Kapazität, die Sichtbarkeit und die Genehmigungsregeln fest, bevor Personen beitreten.",
+    "contentHtml": "<p>Erstellen Sie eine Veranstaltung mit Beschreibung, Datum, Ort und Teilnehmerkapazität. Sie können Themen oder optionale Programmteile hinzufügen, damit die Teilnehmer vor dem Beitritt wissen, was geplant ist.</p>\n          <ul>\n            <li>Wählen Sie die Sichtbarkeit öffentlich, nur für Freunde oder nur auf Einladung.</li>\n            <li>Entscheiden Sie, ob Beitrittsanfragen genehmigt werden müssen.</li>\n            <li>Laden Sie Personen direkt ein oder nutzen Sie, sofern aktiviert, automatische Einladungen für offene Plätze.</li>\n          </ul>\n          <p>Die Veranstaltung speichert die wichtigsten Details an einem Ort, sodass Teilnehmer dieselben Informationen überprüfen können, bevor sie einen Platz beantragen oder eine Einladung annehmen.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-20T09:15:00.000Z"
+  },
+  {
+    "id": "idea-host-use-case-es",
+    "lang": "es",
+    "title": "Planifica un pequeño evento en un solo lugar",
+    "excerpt": "establezca los detalles del evento, la capacidad, la visibilidad y las reglas de aprobación antes de que las personas se unan.",
+    "contentHtml": "<p>Crear un evento con descripción, fecha, lugar y capacidad de participantes. Puede agregar temas o partes opcionales del programa para que las personas sepan lo que está planeado antes de unirse.</p>\n          <ul>\n            <li>elija visibilidad pública, solo para amigos o solo por invitación.</li>\n            <li>Decida si las solicitudes de unión necesitan aprobación.</li>\n            <li>Invite a personas directamente o, cuando esté habilitado, use invitaciones automáticas para lugares abiertos.</li>\n          </ul>\n          <p>El evento mantiene los detalles principales en un solo lugar, para que los participantes puedan verificar la misma información antes de solicitar un lugar o aceptar una invitación.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-20T09:15:00.000Z"
+  },
+  {
+    "id": "idea-trust-context-de",
+    "lang": "de",
+    "title": "Mehr Kontext, bevor Sie sich treffen",
+    "excerpt": "Profile, Event-Rollen, verwandte Chats und Impressionen helfen Menschen zu verstehen, wen sie treffen.",
+    "contentHtml": "<p>Ein Profil kann Details anzeigen, die eine Person teilen möchte. Eine Veranstaltung fügt den Plan und die Rolle oder Teilnahme jedes Mitglieds hinzu, während die Veranstaltung oder der Gruppenchat die Konversation mit diesem Plan verknüpft hält.</p>\n          <p>Gastgeber und Teilnehmer können nach der Teilnahme getrennt Feedback geben. Es kann zu den Eindrücken beitragen, die über einen Gastgeber oder ein Mitglied vermittelt werden, und einen nützlichen Kontext liefern, ohne jedoch zu garantieren, wie ein zukünftiges Treffen verlaufen wird.</p>\n          <p>Diese Informationen reduzieren das Rätselraten, aber jeder entscheidet trotzdem selbst, wen er treffen möchte.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-16T16:45:00.000Z"
+  },
+  {
+    "id": "idea-trust-context-es",
+    "lang": "es",
+    "title": "Más contexto antes de reunirse",
+    "excerpt": "Los perfiles, roles de eventos, chats relacionados e impresiones ayudan a las personas a comprender con quién se están reuniendo.",
+    "contentHtml": "<p>Un perfil puede mostrar detalles que una persona elige compartir. Un evento agrega el plan y el rol o participación de cada miembro, mientras que su evento o chat grupal mantiene la conversación conectada a ese plan.</p>\n          <p>Después de participar, los anfitriones y los participantes pueden dar comentarios por separado. Puede contribuir a las impresiones mostradas sobre un anfitrión o miembro, proporcionando un contexto útil sin garantizar cómo se desarrollará una reunión futura.</p>\n          <p>Esta información reduce las conjeturas, pero cada uno decide por sí mismo a quién quiere conocer.</p>",
+    "featured": true,
+    "submittedAtIso": "2026-04-16T16:45:00.000Z"
+  },
+  {
+    "id": "idea-register-value-de",
+    "lang": "de",
+    "title": "Was Sie mit einem Konto tun können",
+    "excerpt": "Erstellen Sie ein Profil, entdecken Sie Personen und Veranstaltungen, veranstalten Sie Pläne, nutzen Sie Chats und geben Sie nach der Teilnahme Feedback.",
+    "contentHtml": "<p>Nach der Registrierung können Sie ein Profil erstellen und dessen Sichtbarkeit wählen. Um in Profilvorschlägen angezeigt zu werden und die Personenbewertungsfunktionen nutzen zu können, ist ein öffentliches Profil erforderlich.</p>\n          <ul>\n            <li>Entdecken und bewerten Sie Personen und erkunden Sie verfügbare Veranstaltungen.</li>\n            <li>Einen Ort anfordern, Einladungen annehmen oder eine Veranstaltung veranstalten und verwalten.</li>\n            <li>Nutzen Sie Event-, Gruppen- und Support-Chats und geben Sie nach der Teilnahme Feedback.</li>\n          </ul>\n          <p>Ihr Konto hält Ihr Profil und Ihre Aktivitäten zwischen Besuchen verfügbar, sodass Sie zu Ihren Plänen und Gesprächen zurückkehren können.</p>",
+    "featured": false,
+    "submittedAtIso": "2026-04-11T13:20:00.000Z"
+  },
+  {
+    "id": "idea-register-value-es",
+    "lang": "es",
+    "title": "Qué puedes hacer con una cuenta",
+    "excerpt": "cree un perfil, descubra personas y eventos, organice planes, use chats y brinde comentarios después de participar.",
+    "contentHtml": "<p>Después de registrarte, puedes crear un perfil y elegir su visibilidad. Se necesita un perfil público para aparecer en las sugerencias de perfiles y utilizar las funciones de calificación de personas.</p>\n          <ul>\n            <li>Descubra y califique personas, y explore eventos disponibles.</li>\n            <li>Solicite un lugar, acepte invitaciones o organice y administre un evento.</li>\n            <li>use chats de eventos, grupos y soporte, luego brinde comentarios después de participar.</li>\n          </ul>\n          <p>Su cuenta mantiene su perfil y actividad disponibles entre visitas, para que pueda regresar a sus planes y conversaciones.</p>",
+    "featured": false,
+    "submittedAtIso": "2026-04-11T13:20:00.000Z"
+  }
+]

@@ -3,7 +3,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NavigationCancel, NavigationCancellationCode, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, type Subscription } from 'rxjs';
 import { App } from './app';
 import { DEFAULT_DEPLOYMENT_BRANDING } from './shared/core/contracts/platform/deployment-configuration.interface';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
@@ -129,6 +129,21 @@ describe('application startup loading handoff', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
     expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
+  });
+
+  it('keeps the avatar timeline when the lazy menu takes over after initial navigation', () => {
+    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'cached-user' } });
+    const fixture = create('/game');
+    const app = fixture.componentInstance as unknown as { avatarLoadStartedAt: number };
+    const startedAt = app.avatarLoadStartedAt;
+    expect(startedAt).toBeGreaterThan(0);
+    vi.advanceTimersByTime(1800);
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    router.url = '/game';
+    events.next(new NavigationEnd(1, '/game', '/game'));
+    fixture.detectChanges();
+    expect(app.avatarLoadStartedAt).toBe(startedAt);
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar')).not.toBeNull();
   });
 
   it('keeps the loader across the root redirect while the destination is still loading', () => {
@@ -266,9 +281,13 @@ describe('application startup loading handoff', () => {
   it('cleans up pending startup timers when destroyed', () => {
     currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
     const fixture = create();
+    const subscription = (fixture.componentInstance as unknown as {
+      routerEventsSubscription: Subscription;
+    }).routerEventsSubscription;
     window.dispatchEvent(new Event('focus'));
     fixture.destroy();
-    expect(events.observed).toBe(false);
+    // Root overlay services retain their own subscriptions until TestBed teardown.
+    expect(subscription.closed).toBe(true);
     expect(() => vi.advanceTimersByTime(8000)).not.toThrow();
   });
 });

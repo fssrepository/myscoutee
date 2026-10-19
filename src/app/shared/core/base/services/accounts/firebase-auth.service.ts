@@ -153,7 +153,8 @@ export class FirebaseAuthService {
       this.clearStoredProfile();
       return null;
     }
-    await currentUser.reload();
+    // Auth initialization restores and validates the persisted user. Leave
+    // subsequent token refreshes to the SDK instead of reloading on each guard.
     if (this.needsEmailVerification(currentUser)) {
       this.clearStoredProfile();
       return null;
@@ -281,7 +282,6 @@ export class FirebaseAuthService {
       const email = `${request.email ?? ''}`.trim();
       const password = `${request.password ?? ''}`;
       const credential = await this.runEmailAuthRequest(auth, email, password, request.emailMode);
-      await credential.user.reload();
       if (this.needsEmailVerification(credential.user)) {
         await sendEmailVerification(credential.user, this.emailVerificationActionCodeSettings());
         return {

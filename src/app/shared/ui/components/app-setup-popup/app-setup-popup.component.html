@@ -7,15 +7,12 @@
         @for (item of toggles(); track item.id) {
           <app-menu class="app-setup-toggle" [attr.data-guide-field]="item.id" kind="inline" [items]="[item]" (itemSelect)="toggle($event)"></app-menu>
         }
-        @if (showPermissionAction()) {
-          <app-menu class="app-setup-action" kind="inline" [model]="actionModel" data-guide-field="permissions-save" [items]="permissionActions()" (itemSelect)="action($event)"></app-menu>
-        }
       </section>
       @if (installActions().length) {
         <section class="app-setup-section app-setup-install" aria-labelledby="setup-install">
           <h3 id="setup-install">{{ 'install.app' | i18n }}</h3>
           <p>{{ 'app.setup.description' | i18n }}</p>
-          <app-menu class="app-setup-action" kind="inline" [model]="actionModel" data-guide-field="install" [items]="installActions()" (itemSelect)="action($event)"></app-menu>
+          <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" data-guide-field="install" [items]="installActions()" (itemSelect)="action($event)"></app-menu>
         </section>
       }
     </div>

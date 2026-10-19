@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from '../../../shared/core/common/content-languages.json';
 import {
   CommonModule
 } from '@angular/common';
@@ -656,7 +657,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected contentLanguageFlag(lang: string): string {
-    const flags: Record<string, string> = { en: '🇬🇧', hu: '🇭🇺' };
+    const flags: Record<string, string> = { en: '🇬🇧', hu: '🇭🇺', de: '🇩🇪', es: '🇪🇸' };
     return flags[this.normalizeContentLang(lang)] ?? '🌐';
   }
 
@@ -1834,7 +1835,7 @@ export class AdminHelpEditorPopupComponent {
 
   private normalizeContentLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return normalized === 'hu' ? 'hu' : 'en';
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
   }
 
   private escapeHtml(value: string): string {

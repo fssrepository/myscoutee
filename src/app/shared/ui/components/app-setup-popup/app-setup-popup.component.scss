@@ -18,7 +18,7 @@ p { font-size: 0.9rem; overflow-wrap: anywhere; }
 .app-setup-error { color: #a32035; }
 app-menu { max-width: 100%; }
 
-.app-setup-action { justify-self: end; }
+.app-setup-action { justify-self: stretch; }
 .app-setup-toggle {
   --app-menu-row-item-width: 14rem;
   --app-menu-row-item-justify: space-between;
