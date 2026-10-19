@@ -36,8 +36,9 @@ export class AppSetupStore implements OnDestroy {
   readonly guideRequested = signal(false);
   readonly dragPosition = signal({ x: 0, y: 0 });
   // Display-only projection of the three existing device choices.
-  readonly missingCount = computed(() => Number(!this.locationGranted() || !this.location.trackingEnabled()
-      || (this.loggedIn() && this.locationMissing()))
+  readonly locationSetupMissing = computed(() => !this.locationGranted() || !this.location.trackingEnabled()
+    || (this.loggedIn() && this.locationMissing()));
+  readonly missingCount = computed(() => Number(this.locationSetupMissing())
     + Number(!this.messaging.deviceNotificationsEnabled()) + Number(!this.pwa.installed()));
   readonly launcherVisible = computed(() => this.missingCount() > 0 && !this.launcherDismissed());
   readonly permissionDenied = computed(() => this.locationPermission() === 'denied'
@@ -45,10 +46,11 @@ export class AppSetupStore implements OnDestroy {
   readonly launcherIcon = computed(() => this.permissionDenied() ? 'shield' : 'install_mobile');
   readonly launcherPalette = computed(() => this.permissionDenied() ? 'orange' as const : 'violet' as const);
 
-  explainMissingSetup(): void {
-    if (!this.missingCount()) return;
+  explainMissingSetup(): boolean {
+    if (!this.locationSetupMissing()) return false;
     this.launcherDismissed.set(false);
     this.guideRequested.set(true);
+    return true;
   }
   private saveFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
   readonly allowDisabled = computed(() => this.actionPending() || this.notificationConfigurationPending() || this.locationPermissionPending());

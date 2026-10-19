@@ -115,17 +115,19 @@ describe('EntryPageComponent browser connection transitions', () => {
 });
 
 describe('EntryPageComponent operator authentication gate', () => {
-  it.each(['prompt', 'denied', 'granted'])('opens Firebase with %s location permission and only requests guidance', async permission => {
+  it.each(['prompt', 'denied', 'granted'])('shows only location guidance for %s permission, otherwise Firebase', async permission => {
     const component = Object.assign(Object.create(EntryPageComponent.prototype), {
       entryNetworkUnavailable: false, entryAuthUnavailable: false, loginEligibilityBusy: false,
       showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', firebaseProfile: () => null },
       synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined), ensureEntryConsent: () => true,
       isLoginBlockedByLandingBundle: () => false,
       queryGeolocationPermissionState: vi.fn().mockResolvedValue(permission),
-      appSetupStore: { explainMissingSetup: vi.fn(), requestForLogin: vi.fn() }
+      landingGuide: { enabled: () => true, closePopup: vi.fn() },
+      appSetupStore: { explainMissingSetup: vi.fn(() => permission !== 'granted'), requestForLogin: vi.fn(), guideRequested: { set: vi.fn() } }
     });
     await component.openEntryAuthPopup();
-    expect(component.showFirebaseAuthPopup).toBe(true);
+    expect(component.showFirebaseAuthPopup).toBe(permission === 'granted');
+    expect(component.landingGuide.closePopup).toHaveBeenCalledTimes(permission === 'granted' ? 1 : 0);
     expect(component.appSetupStore.explainMissingSetup).toHaveBeenCalledOnce();
     expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
     expect(component.queryGeolocationPermissionState).not.toHaveBeenCalled();
@@ -165,7 +167,8 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.openBundledLoginUnavailableInfo = vi.fn();
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
     Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false },
-      appSetupStore: { explainMissingSetup: vi.fn() } });
+      landingGuide: { enabled: () => true, closePopup: vi.fn() },
+      appSetupStore: { explainMissingSetup: vi.fn(() => false), guideRequested: { set: vi.fn() } } });
 
     await component.openEntryAuthPopup({
       forceAuthPopup: true,
@@ -203,7 +206,8 @@ describe('EntryPageComponent operator authentication gate', () => {
     };
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
     Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false },
-      appSetupStore: { explainMissingSetup: vi.fn() } });
+      landingGuide: { enabled: () => true, closePopup: vi.fn() },
+      appSetupStore: { explainMissingSetup: vi.fn(() => false), guideRequested: { set: vi.fn() } } });
     component.isLoginBlockedByLandingBundle = vi.fn().mockReturnValue(false);
     component.isLoginLocationRequiredByLandingBundle = vi.fn().mockReturnValue(false);
     component.ensureEntryConsent = vi.fn().mockReturnValue(true);

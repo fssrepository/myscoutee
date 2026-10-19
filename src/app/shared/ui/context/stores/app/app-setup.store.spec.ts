@@ -241,3 +241,26 @@ describe('Setup explicit Login action and independent Close', () => {
   });
 
 });
+
+
+describe('Entry setup guidance only for missing location', () => {
+  it.each([0, 1, 2])('does not request a guide for %i other missing device choices', missingCount => {
+    const store = Object.assign(Object.create(AppSetupStore.prototype), {
+      locationSetupMissing: () => false, missingCount: () => missingCount,
+      launcherDismissed: signal(true), guideRequested: signal(false)
+    });
+    expect(store.explainMissingSetup()).toBe(false);
+    expect(store.guideRequested()).toBe(false);
+    expect(store.launcherDismissed()).toBe(true);
+  });
+
+  it('restores the setup launcher and requests a guide when location is missing', () => {
+    const store = Object.assign(Object.create(AppSetupStore.prototype), {
+      locationSetupMissing: () => true, missingCount: () => 1,
+      launcherDismissed: signal(true), guideRequested: signal(false)
+    });
+    expect(store.explainMissingSetup()).toBe(true);
+    expect(store.guideRequested()).toBe(true);
+    expect(store.launcherDismissed()).toBe(false);
+  });
+});

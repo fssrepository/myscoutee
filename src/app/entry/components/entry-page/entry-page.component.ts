@@ -330,7 +330,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     this.resumeExploreAfterConsent = false;
-    this.appSetupStore.explainMissingSetup();
+    if (this.showEntryLocationGuide()) return;
     this.openDemoUserSelectorPopup();
   }
 
@@ -351,7 +351,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (!await this.ensureEntryConsent()) {
       return;
     }
-    this.appSetupStore.explainMissingSetup();
+    if (this.showEntryLocationGuide(options.bypassConsumerEligibility)) return;
     if (this.authMode !== 'firebase' && !options.forceAuthPopup) {
       this.openDemoUserSelectorPopup();
       return;
@@ -372,6 +372,15 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     this.showFirebaseAuthPopup = true;
+  }
+
+  private showEntryLocationGuide(bypassLocationGuide = false): boolean {
+    if (!bypassLocationGuide && this.landingGuide.enabled()
+      && this.appSetupStore.explainMissingSetup()) return true;
+    // No deferred auth action: the click either shows location guidance or opens entry.
+    this.appSetupStore.guideRequested.set(false);
+    this.landingGuide.closePopup();
+    return false;
   }
 
   protected async openEntryOperator(): Promise<void> {
