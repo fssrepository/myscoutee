@@ -1,3 +1,4 @@
+import { SeedUserBuilder } from '../accounts/user-seed.builder';
 import type { UserRecord } from '../../../source/entity/accounts/user.entity';
 import type { AdminSeedUserDto } from './admin-seed.models';
 
@@ -8,7 +9,9 @@ export class AdminProfileSeedBuilder {
       name: admin.name,
       age: 0,
       birthday: '',
-      city: admin.id.includes('noel') ? 'Trust desk' : 'Safety desk',
+      city: 'Budapest',
+      locationCoordinates: SeedUserBuilder.resolveDemoLocationCoordinates('Budapest', admin.id),
+      partitionKey: 'country:hu',
       height: '',
       physique: '',
       languages: ['English'],

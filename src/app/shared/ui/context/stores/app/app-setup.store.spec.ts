@@ -1,5 +1,51 @@
 import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { AppLocationService } from '../../../../core/base/services/accounts/app-location.service';
+import { FirebaseMessagingService } from '../../../../core/base/services/notifications/firebase-messaging.service';
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
+import { PwaService } from '../../../../core/base/services/platform/pwa.service';
+import { UserProfileStore } from '../profile/user-profile.store';
 import { AppSetupStore } from './app-setup.store';
+
+describe('Setup launcher counts available device choices', () => {
+  afterEach(() => { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
+
+  it('excludes unavailable installation and notifications, and tracks capability changes', async () => {
+    vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockRejectedValue(new Error('Unsupported')) } });
+    const installAvailable = signal(false), installActionPending = signal(false), installed = signal(false);
+    const configured = signal(false), enabled = signal(false);
+    TestBed.configureTestingModule({ providers: [
+      { provide: PwaService, useValue: { installAvailable, installActionPending, installed } },
+      { provide: AppLocationService, useValue: { trackingEnabled: () => true } },
+      { provide: FirebaseMessagingService, useValue: {
+        get notificationsConfigured() { return configured(); },
+        deviceNotificationsEnabled: enabled, refreshNotificationPermission: vi.fn()
+      } },
+      { provide: UserProfileStore, useValue: { activeUserId: () => '', activeUserLocationMissing: () => false } },
+      { provide: I18nService, useValue: {} }
+    ] });
+    const store = TestBed.inject(AppSetupStore);
+    await store.refreshPermissions();
+    expect(store.missingCount()).toBe(1);
+    store.locationGranted.set(true);
+    expect(store.missingCount()).toBe(0);
+    expect(store.launcherVisible()).toBe(false);
+    installAvailable.set(true);
+    expect(store.missingCount()).toBe(1);
+    expect(store.launcherVisible()).toBe(true);
+    configured.set(true);
+    expect(store.missingCount()).toBe(2);
+    installAvailable.set(false);
+    installActionPending.set(true);
+    expect(store.missingCount()).toBe(2);
+    installed.set(true);
+    installActionPending.set(false);
+    expect(store.missingCount()).toBe(1);
+    enabled.set(true);
+    expect(store.missingCount()).toBe(0);
+    expect(store.launcherVisible()).toBe(false);
+  });
+});
 
 describe('Setup acquisition timer starts at permission grant', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -16,7 +62,9 @@ describe('Setup acquisition timer starts at permission grant', () => {
       signal.addEventListener('abort', () => resolve(null), { once: true });
     }));
     const store = Object.assign(Object.create(AppSetupStore.prototype), {
+      activeControl: signal(null),
       isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
+      actionPending: () => store.nativePending() || store.busy(),
       allowDisabled: () => false, loggedIn: () => true, locationMissing: () => true,
       locationSelected: signal(true), notificationsSelected: signal(false),
       locationGranted: signal(initialState === 'granted'), locationPermission: signal(initialState),
@@ -131,6 +179,7 @@ describe('Setup explicit Login action and independent Close', () => {
 
   function setup(checkLocation: boolean) {
     return Object.assign(Object.create(AppSetupStore.prototype), {
+      activeControl: signal(null),
       isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
       allowDisabled: () => false, loggedIn: () => false,
       locationSelected: signal(true), notificationsSelected: signal(false),
@@ -183,6 +232,50 @@ describe('Setup explicit Login action and independent Close', () => {
     expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
   });
 
+  it('applies notification changes from the switch without requiring location', async () => {
+    const store = setup(false);
+    let grant!: (permission: NotificationPermission) => void;
+    let registered!: () => void;
+    Object.assign(store, {
+      completeLogin: null, activeControl: signal(null), notificationsEdited: signal(false),
+      locationSelected: signal(false), locationGranted: signal(false), notificationsSelected: signal(false),
+      actionPending: () => store.nativePending() || store.busy()
+    });
+    Object.assign(store.messaging, { notificationsConfigured: true,
+      requestEntryPermission: vi.fn().mockImplementation(() => new Promise(resolve => { grant = resolve; })),
+      setDeviceNotificationsEnabled: vi.fn().mockImplementation(() => new Promise<void>(resolve => { registered = resolve; })) });
+    store.toggleNotifications();
+    expect(store.activeControl()).toBe('notifications');
+    expect(store.nativePending()).toBe(true);
+    expect(store.busy()).toBe(false);
+    expect(store.messaging.setDeviceNotificationsEnabled).not.toHaveBeenCalled();
+    grant('granted');
+    await vi.waitFor(() => expect(store.busy()).toBe(true));
+    expect(store.nativePending()).toBe(false);
+    registered();
+    await vi.waitFor(() => expect(store.saveSucceeded()).toBe(true));
+    expect(store.messaging.requestEntryPermission).toHaveBeenCalledOnce();
+    expect(store.messaging.setDeviceNotificationsEnabled).toHaveBeenCalledExactlyOnceWith(true);
+    expect(store.location.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(store.location.setTrackingEnabled).not.toHaveBeenCalled();
+    expect(store.isOpen()).toBe(true);
+  });
+
+  it('applies location from its switch and disables tracking without another permission request', async () => {
+    const store = setup(false);
+    Object.assign(store, { completeLogin: null, locationSelected: signal(false), locationGranted: signal(false),
+      actionPending: () => store.nativePending() || store.busy() });
+    store.toggleLocation();
+    expect(store.activeControl()).toBe('location');
+    await vi.waitFor(() => expect(store.saveSucceeded()).toBe(true));
+    expect(store.location.requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(store.location.setTrackingEnabled).toHaveBeenLastCalledWith(true);
+    store.toggleLocation();
+    await vi.waitFor(() => expect(store.location.setTrackingEnabled).toHaveBeenLastCalledWith(false));
+    expect(store.location.requestCurrentCoordinates).toHaveBeenCalledOnce();
+    expect(store.isOpen()).toBe(true);
+  });
+
   it('keeps settings Update open and shows save feedback', async () => {
     const store = setup(false);
     store.completeLogin = null;
@@ -193,4 +286,27 @@ describe('Setup explicit Login action and independent Close', () => {
     expect(store.isOpen()).toBe(false);
   });
 
+});
+
+
+describe('Entry setup guidance only for missing location', () => {
+  it.each([0, 1, 2])('does not request a guide for %i other missing device choices', missingCount => {
+    const store = Object.assign(Object.create(AppSetupStore.prototype), {
+      locationSetupMissing: () => false, missingCount: () => missingCount,
+      launcherDismissed: signal(true), guideRequested: signal(false)
+    });
+    expect(store.explainMissingSetup()).toBe(false);
+    expect(store.guideRequested()).toBe(false);
+    expect(store.launcherDismissed()).toBe(true);
+  });
+
+  it('restores the setup launcher and requests a guide when location is missing', () => {
+    const store = Object.assign(Object.create(AppSetupStore.prototype), {
+      locationSetupMissing: () => true, missingCount: () => 1,
+      launcherDismissed: signal(true), guideRequested: signal(false)
+    });
+    expect(store.explainMissingSetup()).toBe(true);
+    expect(store.guideRequested()).toBe(true);
+    expect(store.launcherDismissed()).toBe(false);
+  });
 });

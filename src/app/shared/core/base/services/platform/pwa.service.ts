@@ -38,6 +38,7 @@ export class PwaService {
   private readonly installPromptPendingRef = signal(false);
   private readonly installBusyRef = signal(false);
   private installCompleted = false;
+  readonly installed = signal(this.isStandalone());
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
   private readonly registrationRef = signal<ServiceWorkerRegistration | null>(null);
   private readonly appVersionLabelRef = signal('');
@@ -51,6 +52,7 @@ export class PwaService {
   };
   private onAppInstalled = () => {
     this.installCompleted = true;
+    this.installed.set(true);
     this.installPromptRef.set(null);
     this.installPromptPendingRef.set(false);
     this.installBusyRef.set(false);
@@ -79,6 +81,8 @@ export class PwaService {
       return;
     }
     this.initialized = true;
+    const displayMode = window.matchMedia('(display-mode: standalone)');
+    displayMode.addEventListener('change', () => this.installed.set(this.isStandalone() || this.installCompleted));
     void this.loadAppVersionLabel();
     window.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
     window.addEventListener('appinstalled', this.onAppInstalled);
@@ -128,6 +132,21 @@ export class PwaService {
     }
     return window.matchMedia('(display-mode: standalone)').matches
       || ((window.navigator as Navigator & { standalone?: boolean }).standalone === true);
+  }
+
+  get externalBrowserAvailable(): boolean {
+    if (typeof navigator === 'undefined' || this.isStandalone()) return false;
+    const userAgent = navigator.userAgent;
+    return /Android/i.test(userAgent) && /Instagram|FBAN|FBAV|FB_IAB|;\s*wv\b/i.test(userAgent);
+  }
+
+  openInBrowser(): void {
+    if (!this.externalBrowserAvailable || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return;
+    // Keep the page, query and fragment. A user click launches Android's normal
+    // URL handler (or browser chooser), without depending on a particular browser.
+    window.location.assign(`intent:${url.href.slice(url.protocol.length)}#Intent;scheme=${url.protocol.slice(0, -1)};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`);
   }
 
   async promptInstall(): Promise<boolean> {

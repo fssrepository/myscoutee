@@ -35,6 +35,17 @@ describe('Profile loads within a Firebase session', () => {
     return { session, adapter, service };
   }
 
+  it('uses the stored demo location even when visitor login coordinates remain cached', async () => {
+    const { session, adapter, service } = fixture();
+    (session as any).sessionRef.set({ kind: 'demo', userId: 'member', sessionId: 'demo-a' });
+    service.location.pendingLoginCoordinates.mockResolvedValue({ latitude: 30.2672, longitude: -97.7431 });
+    adapter.loadProfileExtById.mockResolvedValue({ profileExt: { profile, experienceEntries: [] } });
+    expect(await service.loadProfileExtById('member')).not.toBeNull();
+    expect(service.location.pendingLoginCoordinates).not.toHaveBeenCalled();
+    expect(service.location.confirmLoginCoordinates).not.toHaveBeenCalled();
+    expect(adapter.loadProfileExtById).toHaveBeenCalledWith('member', undefined, undefined, undefined);
+  });
+
   it('passes the landing workspace to avatar hydration once, without starting a load at selection', async () => {
     const { adapter, service } = fixture();
     adapter.loadProfileExtById.mockResolvedValue({ profileExt: { profile, experienceEntries: [] } });

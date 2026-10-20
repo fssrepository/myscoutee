@@ -18,7 +18,7 @@ p { font-size: 0.9rem; overflow-wrap: anywhere; }
 .app-setup-error { color: #a32035; }
 app-menu { max-width: 100%; }
 
-.app-setup-action { justify-self: end; }
+.app-setup-action { justify-self: stretch; }
 .app-setup-toggle {
   --app-menu-row-item-width: 14rem;
   --app-menu-row-item-justify: space-between;
@@ -52,4 +52,13 @@ app-menu { max-width: 100%; }
 }
 @media (max-width: 600px) {
   .app-setup-help { grid-template-columns: minmax(0, 1fr); }
+}
+
+.app-setup-browser {
+  padding: 0.8rem;
+  border: 2px solid #1e40af;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #172554;
+  p { font-weight: 600; }
 }

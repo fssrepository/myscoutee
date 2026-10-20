@@ -13,7 +13,7 @@
 
 @if (showSideMenu && !gameStartupVisible) {
   @if (sideMenuComponent(); as component) {
-    <ng-container *ngComponentOutlet="component"></ng-container>
+    <ng-container *ngComponentOutlet="component; inputs: { avatarLoadStartedAt: avatarLoadStartedAt }"></ng-container>
   }
 }
 

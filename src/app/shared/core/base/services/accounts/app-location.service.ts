@@ -106,7 +106,7 @@ export class AppLocationService {
 
     effect(() => {
       const activeUserId = this.userProfileStore.activeUserId().trim();
-      if (!this.trackingEnabled() || !activeUserId) {
+      if (!this.trackingEnabled() || !activeUserId || this.sessionService.currentSession()?.kind !== 'firebase') {
         this.releasePermissionWatch();
         this.stopCoordinateWatch();
         return;
@@ -193,7 +193,8 @@ export class AppLocationService {
   }
 
   private runLocationSyncFlow(userId: string, activeUser: UserDto): void {
-    if (!activeUser?.id?.trim() || activeUser.admin === true) {
+    if (!activeUser?.id?.trim() || activeUser.admin === true
+      || this.sessionService.currentSession()?.kind !== 'firebase') {
       return;
     }
     if (activeUser.profileStatus === 'onboarding' || !this.normalizeCoordinates(activeUser.locationCoordinates)) {
@@ -210,7 +211,8 @@ export class AppLocationService {
   async syncGrantedLocationForActiveUser(): Promise<void> {
     const userId = this.userProfileStore.activeUserId().trim();
     const user = this.resolveTrackedUser(userId);
-    if (!this.trackingEnabled() || !userId || !user || user.admin === true || user.profileStatus === 'onboarding'
+    if (this.sessionService.currentSession()?.kind !== 'firebase'
+      || !this.trackingEnabled() || !userId || !user || user.admin === true || user.profileStatus === 'onboarding'
       || !this.normalizeCoordinates(user.locationCoordinates)
       || !this.isActiveMemberSession(userId) || typeof navigator === 'undefined' || !navigator.permissions) {
       return;
@@ -282,7 +284,8 @@ export class AppLocationService {
   }
 
   private ensureCoordinateWatch(userId: string): void {
-    if (!this.trackingEnabled() || typeof navigator === 'undefined' || !navigator.geolocation) {
+    if (this.sessionService.currentSession()?.kind !== 'firebase'
+      || !this.trackingEnabled() || typeof navigator === 'undefined' || !navigator.geolocation) {
       return;
     }
 
@@ -310,7 +313,8 @@ export class AppLocationService {
   private onLocationPermissionChanged(): void {
     const userId = this.watchedPermissionUserId;
     const user = this.resolveTrackedUser(userId);
-    if (this.trackingEnabled() && this.watchedPermission?.state === 'granted'
+    if (this.sessionService.currentSession()?.kind === 'firebase'
+      && this.trackingEnabled() && this.watchedPermission?.state === 'granted'
       && user?.profileStatus !== 'onboarding' && this.normalizeCoordinates(user?.locationCoordinates)
       && this.userProfileStore.activeUserId().trim() === userId) this.startCoordinateWatch(userId);
     else this.stopCoordinateWatch();
@@ -359,7 +363,8 @@ export class AppLocationService {
   }
 
   private handleStreamedCoordinates(userId: string, coordinates: LocationCoordinates): void {
-    if (!this.trackingEnabled() || this.userProfileStore.activeUserId().trim() !== userId) return;
+    if (this.sessionService.currentSession()?.kind !== 'firebase'
+      || !this.trackingEnabled() || this.userProfileStore.activeUserId().trim() !== userId) return;
     const activeUser = this.resolveTrackedUser(userId);
     if (!activeUser?.id?.trim()) {
       return;

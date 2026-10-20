@@ -1,3 +1,4 @@
+import { SeedUserBuilder } from '../accounts/user-seed.builder';
 import type {
   OperatorRegistryStatusDto,
   OperatorRevenueDto,
@@ -864,7 +865,9 @@ export class SeedOperatorRegistryBuilder {
       name: 'Demo Operator',
       age: 0,
       birthday: '',
-      city: 'Demo deployment',
+      city: 'Budapest',
+      locationCoordinates: SeedUserBuilder.resolveDemoLocationCoordinates('Budapest', 'operator-demo-dev'),
+      partitionKey: 'country:hu',
       height: '',
       physique: '',
       languages: ['English'],

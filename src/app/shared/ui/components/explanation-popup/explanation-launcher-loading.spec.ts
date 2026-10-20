@@ -1,3 +1,4 @@
+import { AppSetupStore } from '../../context/stores/app/app-setup.store';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ExplanationLauncherComponent } from './explanation-launcher.component';
@@ -16,6 +17,7 @@ describe('Guide launcher loading indication', () => {
     TestBed.configureTestingModule({
       imports: [ExplanationLauncherComponent],
       providers: [
+        { provide: AppSetupStore, useValue: { launcherVisible: () => false, guideRequested: () => false } },
         { provide: ExplanationGuideService, useValue: {
           popupOpen: open, loading, launcherVisible: () => false,
           hasVisiblePopup: visible, currentContextKey: () => 'landing.home'

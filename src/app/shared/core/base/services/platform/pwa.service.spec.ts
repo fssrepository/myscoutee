@@ -2,6 +2,46 @@ import { Injector, runInInjectionContext } from '@angular/core';
 import { PwaService } from './pwa.service';
 import { environment } from '../../../../../../environments/environment';
 
+describe('External browser from an Android in-app browser', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function fixture(userAgent: string, href = 'https://myscoutee.com/?mode=work&utm_source=instagram#about') {
+    const assign = vi.fn();
+    vi.stubGlobal('navigator', { userAgent });
+    vi.stubGlobal('window', { navigator: {}, matchMedia: () => ({ matches: false }), location: { href, assign } });
+    const service = Object.create(PwaService.prototype) as PwaService;
+    return { service, assign };
+  }
+
+  it.each([
+    'Mozilla/5.0 (Linux; Android 13; wv) Chrome/140.0 Instagram 400.0',
+    'Mozilla/5.0 (Linux; Android 13) Chrome/140.0 [FBAN/FB4A;FBAV/500.0]',
+    'Mozilla/5.0 (Linux; Android 13; wv) Chrome/140.0'
+  ])('opens the same page, campaign query and fragment through Android URL handling: %s', userAgent => {
+    const { service, assign } = fixture(userAgent);
+    expect(service.externalBrowserAvailable).toBe(true);
+    service.openInBrowser();
+    expect(assign).toHaveBeenCalledExactlyOnceWith('intent://myscoutee.com/?mode=work&utm_source=instagram#about#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end');
+  });
+
+  it.each([
+    'Mozilla/5.0 (Linux; Android 13) Chrome/140.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram 400.0',
+    'Mozilla/5.0 (X11; Linux x86_64) Chrome/140.0'
+  ])('does not offer Android navigation in a regular browser or on another platform: %s', userAgent => {
+    const { service, assign } = fixture(userAgent);
+    expect(service.externalBrowserAvailable).toBe(false);
+    service.openInBrowser();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it.each(['javascript:alert(1)', 'https://name:password@myscoutee.com/'])('does not forward unsafe URLs: %s', href => {
+    const { service, assign } = fixture('Android Instagram', href);
+    service.openInBrowser();
+    expect(assign).not.toHaveBeenCalled();
+  });
+});
+
 describe('PWA service-worker configuration', () => {
   it('does not use a browser preference to override deployment configuration', () => {
     const service = Object.create(PwaService.prototype);

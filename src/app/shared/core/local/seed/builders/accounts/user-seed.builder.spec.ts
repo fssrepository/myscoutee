@@ -1,21 +1,22 @@
 import { LocalCountryPartitionsRepository } from '../../../source/repositories/platform/country-partitions.repository';
+import { AdminProfileSeedBuilder } from '../admin/admin-profile-seed.builder';
+import { SeedOperatorRegistryBuilder } from '../operator/operator-registry-seed.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 
 describe('Pre-registered demo location seed', () => {
   const partitions = new LocalCountryPartitionsRepository();
 
-  it('seeds supported coordinates for all but two location-prompt profiles', () => {
+  it('seeds supported coordinates for every demo profile, including admin and operator', () => {
     const users = SeedUserBuilder.buildExpandedDemoUsers(50);
     expect(users).toHaveLength(50);
-    expect(users.filter(user => !user.locationCoordinates)).toHaveLength(2);
+    users.push(AdminProfileSeedBuilder.buildDemoAdminUser({ id: 'admin-demo-ava', name: 'Ava', initials: 'AV' }),
+      AdminProfileSeedBuilder.buildDemoAdminUser({ id: 'admin-demo-noel', name: 'Noel', initials: 'NS' }),
+      SeedOperatorRegistryBuilder.buildDemoOperatorUser());
     expect(new Set(users.map(user => partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates))))
-      .toEqual(new Set(['country:hu', 'country:de', 'country:es', 'country:gb', null]));
+      .toEqual(new Set(['country:hu', 'country:de', 'country:es', 'country:gb']));
     for (const user of users) {
-      if (SeedUserBuilder.LOCATION_PROMPT_USER_IDS.includes(user.id)) {
-        expect(user.locationCoordinates).toBeUndefined();
-      } else {
-        expect(partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates)).not.toBeNull();
-      }
+      expect(user.locationCoordinates, user.id).toBeDefined();
+      expect(partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates), user.id).not.toBeNull();
     }
   });
 

@@ -354,6 +354,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       this.openDemoUserSelectorPopup();
       return;
     }
+    if (this.showEntryLocationSetup(options.bypassConsumerEligibility)) return;
     if (!options.bypassConsumerEligibility && this.loginEligibilityBusy) {
       return;
     }
@@ -370,6 +371,16 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     this.showFirebaseAuthPopup = true;
+  }
+
+  private showEntryLocationSetup(bypassLocationSetup = false): boolean {
+    this.appSetupStore.guideRequested.set(false);
+    this.landingGuide.closePopup();
+    if (!bypassLocationSetup && this.appSetupStore.locationSetupMissing()) {
+      this.appSetupStore.open();
+      return true;
+    }
+    return false;
   }
 
   protected async openEntryOperator(): Promise<void> {
@@ -590,29 +601,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private async ensureHttpLoginAccessAllowed(): Promise<boolean> {
-    this.loginEligibilityBusy = true;
-    try {
-      if (!this.locationEligibilityResolvedFromCoordinates
-        && !this.firebaseMessagingService.entryPermissionPending
-        && await this.queryGeolocationPermissionState() === 'granted') {
-        await (this.grantedLocationEligibilityPromise
-          ?? this.resolveBrowserLocationAccess(this.grantedLocationEligibilityRequestToken));
-        if (!this.locationEligibilityResolvedFromCoordinates) {
-          return await this.requestLocationAccessFromDialog();
-        }
-      }
-      const gateState = this.landingLoginAvailability;
-      if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
-        return this.firebaseMessagingService.entryPermissionPending
-          ? await this.appSetupStore.requestForLogin()
-          : true;
-      }
-      return await this.requestLocationAccessFromDialog();
-    } catch {
-      return await this.requestLocationAccessFromDialog();
-    } finally {
-      this.loginEligibilityBusy = false;
+    // Device setup is optional. Only an already known regional security decision
+    // may reject entry; missing browser permissions never open a blocking dialog.
+    if (this.isLoginBlockedByLandingBundle()) {
+      this.openBundledLoginUnavailableInfo();
+      return false;
     }
+    return true;
   }
 
   private openDemoUserSelectorPopup(
@@ -666,20 +661,18 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     const selectedUser = this.usersService.localModeEnabled
       ? this.usersService.peekCachedUserById(normalizedUserId)
       : null;
-    try {
-      const coordinates = selectedUser?.locationCoordinates ?? selection.user?.locationCoordinates;
-      const eligible = coordinates
-        && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)
-        && Math.abs(coordinates.latitude) <= 90 && Math.abs(coordinates.longitude) <= 180
-        && (await this.usersService.checkLocationEligibility(coordinates)).eligible;
-      if (!eligible && !await this.requestLocationAccessFromDialog(normalizedUserId)) {
-        // Closing Setup is cancellation: retain the selector without an error page.
-        selection.fail('');
+    const coordinates = selectedUser?.locationCoordinates ?? selection.user?.locationCoordinates;
+    if (coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)) {
+      try {
+        const result = await this.usersService.checkLocationEligibility(coordinates);
+        if (!result.eligible) {
+          selection.fail(this.loginUnavailableMessage(result));
+          return;
+        }
+      } catch {
+        selection.fail(this.uiText('entry.permissions.location.unavailable'));
         return;
       }
-    } catch {
-      selection.fail(this.uiText('entry.permissions.location.unavailable'));
-      return;
     }
     if (selectedUser && this.requiresProfileOnboarding(selectedUser)) {
       this.pendingDemoSessionUserId = normalizedUserId;
@@ -727,10 +720,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   protected async onDemoNewProfileRequested(request: EntryDemoNewProfileRequestEvent): Promise<void> {
     const user = this.buildDemoRegistrationUser();
-    if (!await this.requestLocationAccessFromDialog(user.id)) {
-      request.fail();
-      return;
-    }
     this.pendingDemoSessionUserId = user.id;
     this.openOnboardingGate(
       user,
@@ -938,29 +927,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) {
       return;
-    }
-    if (session.kind === 'firebase' && !this.isAdminUser(user) && !this.isOperatorUser(user)) {
-      const coordinates = user?.locationCoordinates;
-      const hasLocation = coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude);
-      const needsLocationSetup = !hasLocation && !(await this.appLocationService.pendingLoginCoordinates(session.profile.id));
-      if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
-      const needsNotificationSetup = hasLocation && !entryAccessApproved && this.firebaseMessagingService.entryPermissionPending;
-      // Keep provider login visible through profile loading and route activation.
-      // Only a required Setup or registration screen replaces it before navigation.
-      if ((needsLocationSetup || needsNotificationSetup) && this.showFirebaseAuthPopup) {
-        this.ngZone.run(() => {
-          this.showFirebaseAuthPopup = false;
-          this.changeDetectorRef.detectChanges();
-        });
-      }
-      if (needsLocationSetup) {
-        this.locationEligibilityResolvedFromCoordinates = false;
-        if (!await this.ensureHttpLoginAccessAllowed()) return;
-        if (gateToken !== this.postSessionGateToken || this.sessionService.activeUserId() !== session.profile.id) return;
-      } else if (needsNotificationSetup) {
-        if (!await this.appSetupStore.requestForLogin()) return;
-        if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
-      }
     }
     if (!user && session.kind === 'firebase') {
       this.openOnboardingGate(
@@ -1188,31 +1154,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return this.appLocationService.requestCurrentCoordinates();
   }
 
-  private requestLocationAccessFromDialog(accountId = this.sessionService.activeUserId()): Promise<boolean> {
-    const sessionIdentity = this.sessionService.identity();
-    return this.appSetupStore.requestForLogin(async coordinates => {
-      let result: UserLocationEligibilityResponseDto;
-      try {
-        result = await this.usersService.checkLocationEligibility(coordinates);
-      } catch {
-        this.markEntryNetworkUnavailable();
-        throw new Error(this.uiText('The server is not reachable right now. Please try again when the network is back.'));
-      }
-      this.syncLandingLoginAvailability(result, 'coordinates');
-      if (!result.eligible) {
-        throw new Error(this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'));
-      }
-      if (sessionIdentity !== this.sessionService.identity()) return false;
-      if (accountId) {
-        await this.appLocationService.stageLoginCoordinates(accountId, coordinates);
-      } else if (this.authMode === 'firebase') {
-        // The anonymous device sample belongs to this entry attempt. Bind it to
-        // the authenticated account before its first authoritative profile read.
-        this.pendingFirebaseEntryCoordinates = coordinates;
-      }
-      return true;
-    });
-  }
 
   private uiText(value: string): string {
     return this.i18n.translate(value);
@@ -1557,7 +1498,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     // The selected profile and the retryable Setup flow decide admission on click.
     this.entryAuthUnavailable = demoFailoverEnabled() && environment.activitiesDataSource === 'local';
     this.entryAuthUnavailableLabel = this.entryAuthUnavailable ? 'No network' : 'Unavailable here';
-    // Firebase entry resolves location through Setup before opening provider login.
+    // Device setup stays available from its launcher during and after sign-in.
     this.changeDetectorRef.markForCheck();
   }
 

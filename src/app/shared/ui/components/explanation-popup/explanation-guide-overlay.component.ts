@@ -16,6 +16,8 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { I18nService } from '../../../core';
 
+import { AppSetupStore } from '../../context/stores/app/app-setup.store';
+
 type GuideRect = { left: number; top: number; width: number; height: number };
 
 type GuideFrame = {
@@ -43,6 +45,7 @@ type GuideTarget = { element: HTMLElement; repeatedElements?: HTMLElement[]; men
 export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   protected readonly guide = inject(ExplanationGuideService);
   private readonly i18n = inject(I18nService);
+  private readonly setup = inject(AppSetupStore);
   private readonly overlayNavigation = inject(OverlayNavigationStore);
   protected readonly frame = signal<GuideFrame | null>(null);
   protected readonly positionReady = signal(false);
@@ -577,6 +580,7 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       return [field, element?.closest<HTMLElement>('[data-guide-order-group]') ?? element] as const;
     }));
     fields.sort((left, right) => {
+      if (left.id === 'setup-launcher' || right.id === 'setup-launcher') return left.id === 'setup-launcher' ? 1 : -1;
       if (left.id === 'close' || right.id === 'close') return left.id === 'close' ? 1 : -1;
       const leftAnchor = anchors.get(left), rightAnchor = anchors.get(right);
       if (leftAnchor && rightAnchor && leftAnchor !== rightAnchor) {
@@ -594,10 +598,18 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
       return index(left) - index(right) || left.order - right.order;
     });
     const previous = this.steps();
-    if (previous.length === fields.length && previous.every((field, index) => field === fields[index])) return;
+    if (!this.setup.guideRequested() && previous.length === fields.length && previous.every((field, index) => field === fields[index])) return;
     const currentId = previous[this.step()]?.id;
     const retainedIndex = fields.findIndex(field => field.id === currentId);
     this.steps.set(fields);
+    if (this.setup.guideRequested()) {
+      const setupIndex = fields.findIndex(field => field.id === 'setup-launcher');
+      if (setupIndex >= 0) {
+        this.setup.guideRequested.set(false);
+        this.guide.setStepIndex(setupIndex);
+        return;
+      }
+    }
     this.guide.setStepIndex(retainedIndex >= 0 ? retainedIndex : Math.min(this.step(), Math.max(0, fields.length - 1)));
   }
 
@@ -619,6 +631,11 @@ export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {
   }
 
   private resolveTarget(field: HelpCenterGuideFieldDto, root: HTMLElement): GuideTarget | null {
+    if (field.id === 'setup-launcher') {
+      const element = Array.from(document.querySelectorAll<HTMLElement>('app-explanation-launcher [data-guide-field="setup-launcher"]'))
+        .find(candidate => this.isRendered(candidate));
+      return element ? { element, menuId: null, menuPanel: null } : null;
+    }
     const menuId = this.guideMenuTriggerId(field, root);
     if (menuId) {
       const trigger = this.menuTrigger(menuId, root);

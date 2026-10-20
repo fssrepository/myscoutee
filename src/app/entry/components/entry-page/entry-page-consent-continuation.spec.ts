@@ -12,6 +12,8 @@ describe('EntryPageComponent Explore consent continuation', () => {
   function entry() {
     const revision = { id: 'privacy', version: 1, sections: [] };
     return Object.assign(Object.create(EntryPageComponent.prototype), {
+      landingGuide: { enabled: () => true, closePopup: vi.fn() },
+      appSetupStore: { explainMissingSetup: vi.fn(() => false), guideRequested: { set: vi.fn() } },
       entryNetworkUnavailable: false,
       entryPrivacyLoading: false,
       entryPrivacySaving: false,

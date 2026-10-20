@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from '../../../../common/content-languages.json';
 import { sanitizeHtml } from '../../../../base/html-sanitizer';
 import type {
   HelpCenterAuditRecord,
@@ -756,7 +757,7 @@ export class LocalHelpCenterService {
 
   private normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return normalized === 'hu' ? 'hu' : 'en';
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
   }
 
   private requestContentLang(lang: string | null | undefined): string {
@@ -800,7 +801,7 @@ export class LocalHelpCenterService {
   }
 
   private languageLabel(lang: string | null | undefined): string {
-    return this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English';
+    return SUPPORTED_CONTENT_LANGUAGES.find(item => item.lang === this.normalizeLang(lang))?.label ?? 'English';
   }
 
   private availableLanguages(): Array<{ lang: string; label: string }> {

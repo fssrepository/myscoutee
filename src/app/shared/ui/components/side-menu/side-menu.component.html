@@ -19,6 +19,7 @@
       }
       <app-menu
         class="user-selector-menu"
+        [style.--app-indicator-progress-start]="initialAvatarLoadTiming().start"
         kind="inline"
         layout="row"
         [items]="avatarMenuItems()"
@@ -28,7 +29,7 @@
   </div>
 }
 
-@if (avatarVisible() && (notificationAttentionVisible() || explanationGuide.launcherVisible())) {
+@if (avatarVisible() && (notificationAttentionVisible() || explanationGuide.launcherVisible() || appSetupStore.launcherVisible())) {
   <div
     class="floating-launcher-rail"
     [style.z-index]="floatingLauncherZIndex()"
@@ -37,7 +38,7 @@
     [class.is-popup-open]="popupPresenceStore.visible()"
   >
     <div class="floating-launcher-slot floating-launcher-slot--guide">
-      @if (explanationGuide.launcherVisible()) {
+      @if (explanationGuide.launcherVisible() || appSetupStore.launcherVisible()) {
         <app-explanation-launcher [embedded]="true"></app-explanation-launcher>
       }
     </div>

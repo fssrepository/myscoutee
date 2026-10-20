@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from '../../../../common/content-languages.json';
 import GUIDE_VERSIONS from '../../data/help-center-guide-versions.json';
 import { APP_STATIC_DATA } from '../../../../common/app-static-data';
 import type {
@@ -29,7 +30,14 @@ export class SeedHelpCenterContentBuilder {
       return this.explanationTourRevision(context, language, translate);
     }
     const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
-    return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en);
+    const revision = this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en);
+    if (language === 'en' || language === 'hu') return revision;
+    return { ...revision, id: revision.id.replace(/-v(\d+)$/, `-${language}-v$1`), lang: language,
+      languageLabel: SUPPORTED_CONTENT_LANGUAGES.find(item => item.lang === language)!.label,
+      title: translate(revision.title), summary: translate(revision.summary), description: translate(revision.description),
+      sections: revision.sections.map(section => ({ ...section, title: translate(section.title),
+        blurb: translate(section.blurb), contentHtml: translate(section.contentHtml) })) };
+
   }
 
   private static explanationTourRevision(
@@ -111,19 +119,19 @@ export class SeedHelpCenterContentBuilder {
       : APP_STATIC_DATA.defaultExplanationRevisionsByContext[
         context as keyof typeof APP_STATIC_DATA.defaultExplanationRevisionsByContext
       ];
-    const language = lang === 'hu' ? 'hu' : 'en';
-    if (configured) {
+    const language = this.normalizeLang(lang);
+    if (configured && (language === 'en' || language === 'hu')) {
       return this.cloneRevision(language === 'hu' ? configured.hu : configured.en);
     }
 
-    const base = APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang[language];
+    const base = APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang[language === 'hu' ? 'hu' : 'en'];
     const translationKey = `guide.context.${context}`;
     return {
       ...this.cloneRevision(base),
       id: `explanation-${context.replace(/[^a-z0-9]+/gi, '-')}-default-${language}-v1`,
       contextKey: context,
       lang: language,
-      languageLabel: language === 'hu' ? 'Magyar' : 'English',
+      languageLabel: SUPPORTED_CONTENT_LANGUAGES.find(item => item.lang === language)!.label,
       title: translate(`${translationKey}.title`),
       summary: translate(`${translationKey}.summary`),
       description: translate(`${translationKey}.description`),
@@ -159,6 +167,6 @@ export class SeedHelpCenterContentBuilder {
 
   private static normalizeLang(lang: string | null | undefined): string {
     const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return normalized === 'hu' ? 'hu' : 'en';
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
   }
 }

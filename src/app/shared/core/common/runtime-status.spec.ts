@@ -127,10 +127,10 @@ describe('landing runtime status', () => {
     expect(fetchStatus.mock.calls[0][1].cache).toBe('no-store');
   });
 
-  it('switches the HTTP landing after a failed status and defers switching during a popup', async () => {
+  it.each(['ui-popup', 'firebase-auth-overlay'])('defers landing recovery while %s is open', async popupClass => {
     await failover.prepareDemoFailover();
     const popup = document.createElement('div');
-    popup.className = 'ui-popup'; popup.dataset['testPopup'] = '';
+    popup.className = popupClass; popup.dataset['testPopup'] = '';
     document.body.append(popup);
     fetchStatus.mockImplementation(async () => response(false));
     await failover.checkDemoFailover();
@@ -139,6 +139,19 @@ describe('landing runtime status', () => {
     popup.remove();
     await failover.checkDemoFailover();
     expect(location.reload).toHaveBeenCalledOnce();
+  });
+
+  it('does not reload if Firebase login finishes during a pending anonymous readiness check', async () => {
+    await failover.prepareDemoFailover();
+    let complete!: (value: Response) => void;
+    fetchStatus.mockReturnValue(new Promise<Response>(resolve => complete = resolve));
+    const check = failover.checkDemoFailover();
+    localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({
+      kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session'
+    }));
+    complete(response(false));
+    await check;
+    expect(location.reload).not.toHaveBeenCalled();
   });
 
   it('does not probe native GitHub Pages or rewrite a retained real identity', async () => {

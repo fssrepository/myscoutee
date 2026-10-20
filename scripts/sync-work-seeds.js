@@ -8,6 +8,11 @@ const root = path.resolve(__dirname, '..');
 const data = path.join(root, 'src/app/shared/core/local/seed/data');
 const mongo = path.resolve(root, '../server/docker/conf/mongodb');
 const check = process.argv.includes('--check');
+const contentOnly = process.argv.includes('--content-only');
+const locationsOnly = process.argv.includes('--locations-only');
+const languages = require('../src/app/shared/core/common/content-languages.json');
+const languageCodes = languages.map(item => item.lang);
+const languageLabel = lang => languages.find(item => item.lang === lang)?.label ?? lang;
 const staged = new Map();
 const read = file => staged.has(file) ? structuredClone(staged.get(file)) : JSON.parse(fs.readFileSync(file, 'utf8'));
 const group = read(path.join(data, 'work-group.json'));
@@ -27,6 +32,8 @@ function flush() {
     }
   }
   for (const [file, value] of staged) {
+    if (locationsOnly && !file.endsWith('/users.json')) continue;
+    if (contentOnly && !/(?:helpCenterRevisions|helpCenterGuideFields|ideaPosts|(?:work|community)-help-center)\.json$/.test(file)) continue;
     if (file.endsWith('/helpCenterRevisions.json') && fs.existsSync(file)) {
       const previous = JSON.parse(fs.readFileSync(file, 'utf8'));
       const order = new Map(previous.map((row,index) => [row._id,index]));
@@ -46,7 +53,7 @@ const escapeHtml = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quo
 // Previously only the unscoped Mongo revision was regenerated, leaving group guides stale.
 const guideVersions = read(path.join(data, 'help-center-guide-versions.json'));
 const guideCatalog = read(path.join(data, 'help-center-guide-fields.json'));
-const guideBundles = Object.fromEntries(['en','hu'].map(lang => [lang, read(path.join(root, `src/assets/i18n/${lang}.json`)).messages]));
+const guideBundles = Object.fromEntries(languageCodes.map(lang => [lang, read(path.join(root, `src/assets/i18n/${lang}.json`)).messages]));
 function guideRevision(source, context, lang, version, baseGroupId, id) {
   const messages = guideBundles[lang];
   const text = key => {
@@ -59,7 +66,7 @@ function guideRevision(source, context, lang, version, baseGroupId, id) {
     title:text(field.i18nKey+'.label'), blurb:'', contentHtml:`<p>${escapeHtml(text(field.i18nKey+'.description'))}</p>`
   }));
   return {...source, _id:id, documentType:'explanation', baseGroupId, contextKey:context,
-    lang, languageLabel:lang==='hu'?'Magyar':'English', version, active:true, presentation:'tour',
+    lang, languageLabel:languageLabel(lang), version, active:true, presentation:'tour',
     title:messages[`guide.context.${context}.title`] ?? source.title,
     summary:messages[`guide.context.${context}.summary`] ?? source.summary,
     description:messages[`guide.context.${context}.description`] ?? source.description,
@@ -68,7 +75,7 @@ function guideRevision(source, context, lang, version, baseGroupId, id) {
 for (const groupType of ['work', 'community']) {
   const file = path.join(data, `${groupType}-help-center.json`);
   let rows = read(file);
-  for (const [context, version] of Object.entries(guideVersions)) for (const lang of ['en','hu']) {
+  for (const [context, version] of Object.entries(guideVersions)) for (const lang of languageCodes) {
     const matches = rows.filter(row => row.documentType === 'explanation' && row.contextKey === context && row.lang === lang);
     const source = matches.sort((a,b) => b.version-a.version)[0];
     if (source && source.version > version) throw new Error(`Guide version would regress: ${groupType}/${context}/${lang}`);
@@ -88,7 +95,7 @@ for (const groupType of ['work', 'community']) {
   write(file, rows);
 }
 const articles = read(path.join(data, 'work-articles.json')).map(({ id, ...post }) => ({
-  ...post, _id: id, contentKey: id.replace(/-hu$/, ''), languageLabel: post.lang === 'hu' ? 'Magyar' : 'English',
+  ...post, _id: id, contentKey: id.replace(/-(?:hu|de|es)$/, ''), languageLabel: languageLabel(post.lang),
   contentHtml: `${post.contentHtml}\n<figure><img src="${post.imageUrl}" alt="${escapeHtml(post.title)}"></figure>`,
   imageUrls: [post.imageUrl], published: true, trashed: false, trashedAtIso: null, trashedByUserId: null,
   createdDate: '2026-10-05T00:00:00.000Z', createdUser: 'system', updatedDate: '2026-10-05T00:00:00.000Z', updatedUser: 'system'
@@ -162,7 +169,7 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
     const [city, center] = cities[Math.floor(index / 4) % cities.length];
     let hash = 0;
     for (const char of account.id) hash = (hash * 31 + char.charCodeAt(0)) % 104729;
-    const coordinates = locations.promptUserIds.includes(account.id) ? null : {
+    const coordinates = {
       latitude: Number((center.latitude + ((hash % 29) - 14) * 0.0012).toFixed(6)),
       longitude: Number((center.longitude + ((Math.floor(hash / 29) % 29) - 14) * 0.0012).toFixed(6))
     };
@@ -170,6 +177,19 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
     for (const profile of users.filter(profile => profile === user || profile.accountUserId === user.userId)) {
       Object.assign(profile, { city, locationCoordinates: coordinates, partitionKey });
     }
+  }
+  const settings = read(path.join(dir, 'appSettings.json')).find(row => row._id === 'app-settings-global');
+  const adminEmails = new Set(settings?.adminAccessEnabled ? settings.adminEmails ?? [] : []);
+  for (const profile of users.filter(user => user.operator === true || adminEmails.has(user.email)
+    || adminEmails.has(users.find(account => account.userId === user.accountUserId)?.email))) {
+    let hash = 0;
+    const accountId = profile.accountUserId ?? profile.userId;
+    for (const char of accountId) hash = (hash * 31 + char.charCodeAt(0)) % 104729;
+    const center = locations.cities.Budapest;
+    Object.assign(profile, { city: 'Budapest', partitionKey: 'country:hu', locationCoordinates: {
+      latitude: Number((center.latitude + ((hash % 29) - 14) * 0.0012).toFixed(6)),
+      longitude: Number((center.longitude + ((Math.floor(hash / 29) % 29) - 14) * 0.0012).toFixed(6))
+    } });
   }
   const owner = byName.get(group.owner);
   if (!owner) throw new Error(`Missing Work owner in ${database}`);
@@ -270,7 +290,7 @@ const communityIds = new Set(communityDefinitions.map(item => item.id));
 for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
   const dir = path.join(mongo, database);
   const communityArticles = read(path.join(data, 'community-articles.json')).map(({ id, ...post }) => ({
-    ...post, _id: id, contentKey: id.replace(/-hu$/, ''), languageLabel: post.lang === 'hu' ? 'Magyar' : 'English',
+    ...post, _id: id, contentKey: id.replace(/-(?:hu|de|es)$/, ''), languageLabel: languageLabel(post.lang),
     contentHtml: `${post.contentHtml}\n<figure><img src="${post.imageUrl}" alt="${escapeHtml(post.title)}"></figure>`,
     imageUrls: [post.imageUrl], published: true, trashed: false, trashedAtIso: null, trashedByUserId: null,
     createdDate: '2026-10-05T00:00:00.000Z', createdUser: 'system', updatedDate: '2026-10-05T00:00:00.000Z', updatedUser: 'system'
@@ -386,7 +406,7 @@ for (const database of ['demo_db', 'e2e_db']) {
 for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
   const file = path.join(mongo, database, 'helpCenterRevisions.json');
   const rows = read(file);
-  for (const [context, version] of Object.entries(guideVersions)) for (const lang of ['en','hu']) {
+  for (const [context, version] of Object.entries(guideVersions)) for (const lang of languageCodes) {
     const previous = rows.filter(row => !row.baseGroupId && row.contextKey === context && row.lang === lang)
       .sort((a,b) => b.version-a.version)[0];
     const source = previous ?? read(path.join(data,'work-help-center.json')).find(row => row.contextKey === context && row.lang === lang);

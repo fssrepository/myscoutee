@@ -140,16 +140,19 @@ describe('Granted location background synchronization', () => {
     expect(save).toHaveBeenCalledTimes(2);
   });
 
-  it('persists permitted demo coordinates before exposing them to the live profile', async () => {
+  it('keeps demo profile coordinates without requesting or saving visitor location', async () => {
     const { service, save, profile } = fixture();
+    const seeded = { latitude: 47.4979, longitude: 19.0402 };
+    service.userProfileStore.setUserProfile({ ...profile(), locationCoordinates: seeded });
     service.sessionService.currentSession = () => ({ kind: 'demo', userId: 'member' });
-    let complete!: (user: unknown) => void;
-    save.mockReturnValue(new Promise(resolve => complete = resolve));
-    service.handleStreamedCoordinates('member', { latitude: 47, longitude: 19 });
-    expect(profile().locationCoordinates).toBeUndefined();
-    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-    complete({ ...profile(), locationCoordinates: { latitude: 47, longitude: 19 } });
-    await vi.waitFor(() => expect(profile().locationCoordinates).toEqual({ latitude: 47, longitude: 19 }));
+    service.runLocationSyncFlow('member', profile());
+    await service.syncGrantedLocationForActiveUser();
+    service.handleStreamedCoordinates('member', { latitude: 30.2672, longitude: -97.7431 });
+    expect(service.ensureCoordinateWatch).not.toHaveBeenCalled();
+    expect(navigator.permissions.query).not.toHaveBeenCalled();
+    expect(service.requestCurrentCoordinates).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(profile().locationCoordinates).toEqual(seeded);
   });
 
   it('updates an active demo group profile through its owning account', async () => {

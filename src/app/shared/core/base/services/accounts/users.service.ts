@@ -254,7 +254,8 @@ export class UsersService extends BaseRouteModeService {
 
     this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'loading');
     const accountId = this.session.activeUserId();
-    const location = await this.location.pendingLoginCoordinates(accountId);
+    const location = this.session.currentSession()?.kind === 'firebase'
+      ? await this.location.pendingLoginCoordinates(accountId) : null;
 
     try {
       if (!current()) return null;

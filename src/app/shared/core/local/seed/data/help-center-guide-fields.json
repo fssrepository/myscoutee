@@ -279,6 +279,13 @@
       "group": "card",
       "i18nKey": "guide.common.pair-score-summary",
       "order": 39
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "activities.rates",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 40
     }
   ],
   "home.game": [
@@ -400,6 +407,13 @@
       "group": "card",
       "i18nKey": "guide.common.pair-profiles",
       "order": 16
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "home.game",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 17
     }
   ],
   "chats": [
@@ -472,6 +486,13 @@
       "group": "popup",
       "i18nKey": "guide.common.close",
       "order": 9
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "chats",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 10
     }
   ],
   "profile.editor": [
@@ -754,6 +775,13 @@
       "group": "card",
       "i18nKey": "guide.common.image-view",
       "order": 39
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 40
     }
   ],
   "profile.view": [
@@ -819,6 +847,13 @@
       "group": "card",
       "i18nKey": "guide.event.editor.image-pages",
       "order": 8
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.view",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "contacts": [
@@ -891,6 +926,13 @@
       "group": "popup",
       "i18nKey": "guide.common.close",
       "order": 9
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "contacts",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 10
     }
   ],
   "assets": [
@@ -1194,6 +1236,13 @@
       "group": "card",
       "i18nKey": "guide.common.image-view",
       "order": 42
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 43
     }
   ],
   "assets.transport": [
@@ -1385,6 +1434,13 @@
       "group": "card",
       "i18nKey": "guide.assets.transport.card-static-state",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.transport",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "assets.accommodation": [
@@ -1576,6 +1632,13 @@
       "group": "card",
       "i18nKey": "guide.assets.accommodation.card-static-state",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.accommodation",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "assets.supplies": [
@@ -1767,6 +1830,13 @@
       "group": "card",
       "i18nKey": "guide.assets.supplies.card-static-state",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.supplies",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "assets.tickets": [
@@ -1958,6 +2028,13 @@
       "group": "card",
       "i18nKey": "guide.assets.tickets.card-static-state",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.tickets",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "events": [
@@ -2261,6 +2338,13 @@
       "group": "menus",
       "i18nKey": "guide.events.card-actions.restore",
       "order": 42
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "events",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 43
     }
   ],
   "event.editor": [
@@ -2816,6 +2900,13 @@
       "group": "menus",
       "i18nKey": "guide.event.editor.event-campaign",
       "order": 78
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 79
     }
   ],
   "feedback": [
@@ -2958,6 +3049,13 @@
       "group": "fields",
       "i18nKey": "guide.feedback.form-save",
       "order": 19
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "feedback",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 20
     }
   ],
   "notifications": [
@@ -3002,6 +3100,13 @@
       "group": "popup",
       "i18nKey": "guide.notifications.close",
       "order": 5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "notifications",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "payment.history": [
@@ -3193,6 +3298,13 @@
       "group": "menus",
       "i18nKey": "guide.payment.history.counterparty",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "payment.history",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "profile.impressions": [
@@ -3223,6 +3335,13 @@
       "group": "popup",
       "i18nKey": "guide.profile.impressions.close",
       "order": 3
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.impressions",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 4
     }
   ],
   "community.groups": [
@@ -3379,6 +3498,13 @@
       "group": "popup",
       "i18nKey": "guide.community.groups.close",
       "order": 21
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.groups",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 22
     }
   ],
   "community.groups.explore": [
@@ -3535,6 +3661,13 @@
       "group": "popup",
       "i18nKey": "guide.community.groups.explore.close",
       "order": 21
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.groups.explore",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 22
     }
   ],
   "community.feed": [
@@ -3726,6 +3859,13 @@
       "group": "card",
       "i18nKey": "guide.common.image-view",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.feed",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "events.followed": [
@@ -3861,6 +4001,13 @@
       "group": "popup",
       "i18nKey": "guide.events.followed.close",
       "order": 18
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "events.followed",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 19
     }
   ],
   "event.explore": [
@@ -4143,6 +4290,13 @@
       "group": "menus",
       "i18nKey": "guide.event.explore.card-actions.follow-organizer",
       "order": 39
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.explore",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 40
     }
   ],
   "event.chat": [
@@ -4201,6 +4355,13 @@
       "group": "popup",
       "i18nKey": "guide.event.chat.close",
       "order": 7
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.chat",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 8
     }
   ],
   "event.members": [
@@ -4350,6 +4511,13 @@
       "group": "overview",
       "i18nKey": "guide.event.members.member-revokeVote",
       "order": 20
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.members",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 21
     }
   ],
   "event.checkout": [
@@ -4569,6 +4737,13 @@
       "group": "fields",
       "i18nKey": "guide.event.checkout.close",
       "order": 30
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.checkout",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 31
     }
   ],
   "event.resources": [
@@ -4781,6 +4956,13 @@
       "group": "popup",
       "i18nKey": "guide.event.resources.close",
       "order": 29
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.resources",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 30
     }
   ],
   "event.subevents": [
@@ -4937,6 +5119,13 @@
       "group": "popup",
       "i18nKey": "guide.event.subevents.close",
       "order": 21
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.subevents",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 22
     }
   ],
   "feedback.detail": [
@@ -4967,6 +5156,13 @@
       "group": "popup",
       "i18nKey": "guide.feedback.detail.close",
       "order": 3
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "feedback.detail",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 4
     }
   ],
   "home.filters": [
@@ -5109,6 +5305,13 @@
       "group": "popup",
       "i18nKey": "guide.home.filters.close",
       "order": 19
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "home.filters",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 20
     }
   ],
   "community.group.editor": [
@@ -5279,6 +5482,13 @@
       "group": "card",
       "i18nKey": "guide.common.image-view",
       "order": 23
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.group.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 24
     }
   ],
   "community.group.policy": [
@@ -5302,6 +5512,13 @@
       "group": "popup",
       "i18nKey": "guide.community.group.policy.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.group.policy",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "event.tournament.groups": [
@@ -5458,6 +5675,13 @@
       "group": "menus",
       "i18nKey": "guide.event.tournament.groups.tournament-group-actions.supplies",
       "order": 21
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.tournament.groups",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 22
     }
   ],
   "event.mingle.configuration": [
@@ -5509,6 +5733,13 @@
       "group": "popup",
       "i18nKey": "guide.event.mingle.configuration.close",
       "order": 6
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "event.mingle.configuration",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "assets.checkout": [
@@ -5651,6 +5882,13 @@
       "group": "fields",
       "i18nKey": "guide.assets.checkout.payment-method",
       "order": 19
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.checkout",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 20
     }
   ],
   "profile.integrations": [
@@ -5842,6 +6080,13 @@
       "group": "menus",
       "i18nKey": "guide.profile.integrations.integration-access-save",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.integrations",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "payment.cash.receipt": [
@@ -5893,6 +6138,13 @@
       "group": "popup",
       "i18nKey": "guide.payment.cash.receipt.method",
       "order": -1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "payment.cash.receipt",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "navigation.menu": [
@@ -6133,6 +6385,13 @@
       "group": "fields",
       "i18nKey": "guide.navigation.menu.votes",
       "order": 10.1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "navigation.menu",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 33
     }
   ],
   "members": [
@@ -6282,6 +6541,13 @@
       "group": "overview",
       "i18nKey": "guide.members.member-revokeVote",
       "order": 20
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "members",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 21
     }
   ],
   "assets.availability": [
@@ -6389,6 +6655,13 @@
       "group": "card",
       "i18nKey": "guide.assets.availability.close",
       "order": 14
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.availability",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 15
     }
   ],
   "assets.explore": [
@@ -6580,6 +6853,13 @@
       "group": "card",
       "i18nKey": "guide.assets.explore.borrow-basket",
       "order": 26
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "assets.explore",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 27
     }
   ],
   "landing.home": [
@@ -6617,6 +6897,13 @@
       "group": "overview",
       "i18nKey": "guide.entry.landing.privacy",
       "order": 4
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "landing.home",
+      "group": "menus",
+      "i18nKey": "guide.landing.home.setup-launcher",
+      "order": 5
     }
   ],
   "landing.setup": [
@@ -6642,18 +6929,11 @@
       "order": 2
     },
     {
-      "id": "permissions-save",
-      "screenKey": "landing.setup",
-      "group": "fields",
-      "i18nKey": "guide.landing.setup.permissions-save",
-      "order": 3
-    },
-    {
       "id": "install",
       "screenKey": "landing.setup",
       "group": "fields",
       "i18nKey": "guide.landing.setup.install",
-      "order": 4
+      "order": 3
     }
   ],
   "landing.demo": [
@@ -6698,6 +6978,13 @@
       "group": "fields",
       "i18nKey": "guide.landing.demo.member-card",
       "order": 5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "landing.demo",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "landing.auth": [
@@ -6749,6 +7036,13 @@
       "group": "fields",
       "i18nKey": "guide.landing.auth.submit",
       "order": 6
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "landing.auth",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "landing.registration": [
@@ -6975,6 +7269,13 @@
       "group": "fields",
       "i18nKey": "guide.profile.editor.image-pages",
       "order": 31
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "landing.registration",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 32
     }
   ],
   "community.cases": [
@@ -7131,6 +7432,13 @@
       "order": 22,
       "i18nKey": "guide.community.cases.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.cases",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 23
     }
   ],
   "community.tasks": [
@@ -7210,6 +7518,13 @@
       "order": 11,
       "i18nKey": "guide.community.tasks.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.tasks",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 12
     }
   ],
   "community.case.editor": [
@@ -7268,6 +7583,13 @@
       "order": 8,
       "i18nKey": "guide.community.case.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "community.task.editor": [
@@ -7368,6 +7690,13 @@
       "order": 14,
       "i18nKey": "guide.community.task.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.task.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 15
     }
   ],
   "work.campaigns": [
@@ -7454,6 +7783,13 @@
       "group": "card",
       "i18nKey": "guide.work.campaigns.card-actions:restore",
       "order": 11
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "work.campaigns",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 12
     }
   ],
   "work.campaign.editor": [
@@ -7624,6 +7960,13 @@
       "order": 24,
       "i18nKey": "guide.work.campaign.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "work.campaign.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 25
     }
   ],
   "community.home": [
@@ -7724,6 +8067,13 @@
       "order": 14,
       "i18nKey": "guide.community.home.create",
       "group": "form"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.home",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 15
     }
   ],
   "community.voting": [
@@ -7838,6 +8188,13 @@
       "group": "card",
       "i18nKey": "guide.community.voting.row-status",
       "order": 1.5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.voting",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 16
     }
   ],
   "community.announcement.editor": [
@@ -7917,6 +8274,13 @@
       "order": 11,
       "i18nKey": "guide.community.announcement.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.announcement.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 12
     }
   ],
   "work.home": [
@@ -7982,6 +8346,13 @@
       "group": "overview",
       "i18nKey": "guide.work.home.profile",
       "order": 8
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "work.home",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "community.services.home": [
@@ -8040,6 +8411,13 @@
       "group": "overview",
       "i18nKey": "guide.community.services.home.profile",
       "order": 8
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.services.home",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "community.services": [
@@ -8161,6 +8539,13 @@
       "order": 17,
       "i18nKey": "guide.community.services.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.services",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 18
     }
   ],
   "community.service.editor": [
@@ -8317,6 +8702,13 @@
       "order": 22,
       "i18nKey": "guide.community.service.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.service.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 23
     }
   ],
   "community.service.calendar": [
@@ -8361,6 +8753,13 @@
       "order": 6,
       "i18nKey": "guide.community.service.calendar.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.service.calendar",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "community.case.appointments": [
@@ -8405,6 +8804,13 @@
       "group": "controls",
       "i18nKey": "guide.community.case.appointments.close",
       "order": 5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.appointments",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "community.case.board": [
@@ -8463,6 +8869,13 @@
       "order": 8,
       "i18nKey": "guide.community.case.board.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.board",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "community.case.board.task": [
@@ -8528,6 +8941,13 @@
       "order": 9,
       "i18nKey": "guide.community.case.board.task.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.board.task",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 10
     }
   ],
   "community.case.quotations": [
@@ -8628,6 +9048,13 @@
       "order": 14,
       "i18nKey": "guide.community.case.quotations.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.quotations",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 15
     }
   ],
   "community.case.quotation.editor": [
@@ -8686,6 +9113,13 @@
       "order": 8,
       "i18nKey": "guide.community.case.quotation.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.quotation.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "work.campaign.select": [
@@ -8723,6 +9157,13 @@
       "group": "overview",
       "i18nKey": "guide.work.campaign.select.confirm",
       "order": 4
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "work.campaign.select",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 5
     }
   ],
   "work.campaign.history": [
@@ -8802,6 +9243,13 @@
       "order": 11,
       "i18nKey": "guide.work.campaign.history.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "work.campaign.history",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 12
     }
   ],
   "members.select": [
@@ -8846,6 +9294,13 @@
       "order": 6,
       "i18nKey": "guide.members.select.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "members.select",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "profile.integration-access": [
@@ -8876,6 +9331,13 @@
       "group": "popup",
       "i18nKey": "guide.profile.integration-access.close",
       "order": 3
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.integration-access",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 4
     }
   ],
   "feedback.evaluation": [
@@ -8934,6 +9396,13 @@
       "order": 8,
       "i18nKey": "guide.feedback.evaluation.form-navigation",
       "group": "form"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "feedback.evaluation",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 9
     }
   ],
   "chat.call": [
@@ -9055,6 +9524,13 @@
       "group": "popup",
       "i18nKey": "guide.chat.call.close",
       "order": 16
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "chat.call",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 17
     }
   ],
   "chat.call.volume": [
@@ -9106,6 +9582,13 @@
       "group": "popup",
       "i18nKey": "guide.chat.call.volume.close",
       "order": 6
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "chat.call.volume",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "landing.guide": [
@@ -9124,6 +9607,13 @@
       "group": "main",
       "i18nKey": "guide.landing.consent.entry-privacy-accept",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "landing.consent",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "operator.home": [
@@ -9168,6 +9658,13 @@
       "group": "menus",
       "i18nKey": "guide.operator.home.leaderboard",
       "order": 5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.home",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "operator.updates": [
@@ -9205,6 +9702,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.updates.close",
       "order": 4
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.updates",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 5
     }
   ],
   "operator.registration": [
@@ -9249,6 +9753,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.registration.close",
       "order": 5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.registration",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "operator.claim": [
@@ -9300,6 +9811,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.claim.close",
       "order": 6
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.claim",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "operator.configuration": [
@@ -9351,6 +9869,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.configuration.close",
       "order": 6
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.configuration",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 7
     }
   ],
   "operator.revenue": [
@@ -9374,6 +9899,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.revenue.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.revenue",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "operator.community": [
@@ -9390,6 +9922,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.community.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.community",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "operator.deployments": [
@@ -9406,6 +9945,13 @@
       "group": "popup",
       "i18nKey": "guide.operator.deployments.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.deployments",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.home": [
@@ -9415,6 +9961,13 @@
       "group": "menus",
       "i18nKey": "guide.admin.home.overview",
       "order": 0
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.home",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 1
     }
   ],
   "admin.content-moderation": [
@@ -9452,6 +10005,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.content-moderation.close",
       "order": 4
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.content-moderation",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 5
     }
   ],
   "admin.moderation-settings": [
@@ -9475,6 +10035,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.moderation-settings.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.moderation-settings",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.reports": [
@@ -9505,6 +10072,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.reports.close",
       "order": 3
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.reports",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 4
     }
   ],
   "admin.report-detail": [
@@ -9521,6 +10095,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.report-detail.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.report-detail",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.blocked-users": [
@@ -9537,6 +10118,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.blocked-users.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.blocked-users",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.feedback": [
@@ -9560,6 +10148,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.feedback.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.feedback",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.feedback-detail": [
@@ -9576,6 +10171,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.feedback-detail.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.feedback-detail",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.chat-review": [
@@ -9606,6 +10208,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.chat-review.close",
       "order": 3
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.chat-review",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 4
     }
   ],
   "admin.item-preview": [
@@ -9622,6 +10231,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.item-preview.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.item-preview",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.help-editor": [
@@ -9876,6 +10492,13 @@
       "group": "menus",
       "i18nKey": "guide.admin.help-editor.image-pages",
       "order": 40
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.help-editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 41
     }
   ],
   "admin.idea-editor": [
@@ -9976,6 +10599,13 @@
       "group": "menus",
       "i18nKey": "guide.admin.idea-editor.card-actions.restore",
       "order": 48
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.idea-editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 49
     }
   ],
   "admin.article-view": [
@@ -10013,6 +10643,13 @@
       "group": "menus",
       "i18nKey": "guide.admin.article-view.image-pages",
       "order": 11
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.article-view",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 12
     }
   ],
   "admin.article-edit": [
@@ -10127,6 +10764,13 @@
       "group": "menus",
       "i18nKey": "guide.admin.article-edit.image-caption",
       "order": 32
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.article-edit",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 33
     }
   ],
   "admin.notifications": [
@@ -10150,6 +10794,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.notifications.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.notifications",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.process-detail": [
@@ -10173,6 +10824,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.process-detail.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.process-detail",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.schedule-edit": [
@@ -10196,6 +10854,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.schedule-edit.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.schedule-edit",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.job-parameter": [
@@ -10219,6 +10884,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.job-parameter.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.job-parameter",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.params": [
@@ -10235,6 +10907,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.params.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.params",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.parameter-edit": [
@@ -10258,6 +10937,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.parameter-edit.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.parameter-edit",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.parameter-history": [
@@ -10274,6 +10960,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.parameter-history.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.parameter-history",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.stats": [
@@ -10297,6 +10990,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.stats.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.stats",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.graph-help": [
@@ -10313,6 +11013,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.graph-help.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.graph-help",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.affinity-graph": [
@@ -10329,6 +11036,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.affinity-graph.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.affinity-graph",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.monitoring": [
@@ -10352,6 +11066,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.monitoring.close",
       "order": 2
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.monitoring",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 3
     }
   ],
   "admin.payment-simulator": [
@@ -10368,6 +11089,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.payment-simulator.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.payment-simulator",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.payment-authorizations": [
@@ -10384,6 +11112,13 @@
       "group": "popup",
       "i18nKey": "guide.admin.payment-authorizations.close",
       "order": 1
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.payment-authorizations",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 2
     }
   ],
   "admin.navigation": [
@@ -10498,6 +11233,13 @@
       "group": "menus",
       "i18nKey": "guide.admin.navigation.adminPaymentAuthorizations",
       "order": 16
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "admin.navigation",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 17
     }
   ],
   "operator.navigation": [
@@ -10521,6 +11263,13 @@
       "group": "menus",
       "i18nKey": "guide.operator.navigation.settings",
       "order": 3
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "operator.navigation",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 4
     }
   ],
   "profile.integration-help": [
@@ -10565,6 +11314,13 @@
       "group": "popup",
       "i18nKey": "guide.profile.integration-help.close",
       "order": 5
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.integration-help",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "profile.mcp-authorization": [
@@ -10602,6 +11358,13 @@
       "order": 5,
       "i18nKey": "guide.profile.mcp-authorization.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.mcp-authorization",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "profile.mcp-advanced": [
@@ -10653,6 +11416,13 @@
       "order": 7,
       "i18nKey": "guide.profile.mcp-advanced.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.mcp-advanced",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 8
     }
   ],
   "profile.mcp-details": [
@@ -10690,6 +11460,13 @@
       "order": 5,
       "i18nKey": "guide.profile.mcp-details.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "profile.mcp-details",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "community.case.board.offers": [
@@ -10727,6 +11504,13 @@
       "order": 5,
       "i18nKey": "guide.community.case.board.offers.card-actions:view",
       "group": "card"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.board.offers",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ],
   "community.case.board.dependencies": [
@@ -10757,6 +11541,13 @@
       "order": 4,
       "i18nKey": "guide.community.case.board.dependencies.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "community.case.board.dependencies",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 5
     }
   ],
   "policies.list": [
@@ -10787,6 +11578,13 @@
       "order": 4,
       "i18nKey": "guide.policies.list.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "policies.list",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 5
     }
   ],
   "policies.editor": [
@@ -10824,6 +11622,13 @@
       "order": 5,
       "i18nKey": "guide.policies.editor.close",
       "group": "popup"
+    },
+    {
+      "id": "setup-launcher",
+      "screenKey": "policies.editor",
+      "group": "menus",
+      "i18nKey": "guide.app.setup.launcher",
+      "order": 6
     }
   ]
 }

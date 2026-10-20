@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from './content-languages.json';
 import {
   HOROSCOPE_META_BY_SIGN,
   type GuideHeaderColor as HelpCenterHeaderColor,
@@ -369,10 +370,7 @@ const LANGUAGE_SUGGESTIONS = [
   'Korean',
   'Mandarin'
 ];
-const CONTENT_LANGUAGES = [
-  { lang: 'en', label: 'English' },
-  { lang: 'hu', label: 'Magyar' }
-];
+const CONTENT_LANGUAGES = SUPPORTED_CONTENT_LANGUAGES;
 const HELP_CENTER_HEADER_COLORS: readonly HelpCenterHeaderColor[] = [
   'amber',
   'blue',
@@ -2664,7 +2662,8 @@ function seededExplanationPathSegment(value: string | null | undefined): string 
 }
 
 function contentLangForSeed(lang: string | null | undefined): string {
-  return `${lang ?? ''}`.trim().toLowerCase().split('-')[0] === 'hu' ? 'hu' : 'en';
+  const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
 }
 
 function escapeHtmlAttribute(value: string): string {

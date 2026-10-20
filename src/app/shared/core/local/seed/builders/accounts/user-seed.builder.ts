@@ -297,9 +297,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
 ];
 
 export class SeedUserBuilder {
-  // Only these two active demo accounts exercise browser location acquisition.
-  // Everyone else starts with an accepted sample inside a supported country.
-  static readonly LOCATION_PROMPT_USER_IDS: readonly string[] = demoLocations.promptUserIds;
+  // Every demo account starts inside a supported country, without visitor location.
   private static readonly DEMO_CITIES: Readonly<Record<string, LocationCoordinates>> = demoLocations.cities;
 
   // These are seed values only. Runtime readers consume repository profileDetails.
@@ -549,8 +547,7 @@ export class SeedUserBuilder {
       ...user,
       profileFormVersion: this.resolveSeedProfileFormVersion(user.profileFormVersion),
       locationCoordinates: this.cloneLocationCoordinates(user.locationCoordinates)
-        ?? (this.LOCATION_PROMPT_USER_IDS.includes(user.id)
-          ? undefined : this.resolveDemoLocationCoordinates(user.city, user.id))
+        ?? this.resolveDemoLocationCoordinates(user.city, user.id)
     };
     return {
       ...nextUser,

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { FacebookAuthProvider, GoogleAuthProvider, browserLocalPersistence, browserPopupRedirectResolver, initializeAuth, linkWithCredential, signInWithPopup,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
+  sendEmailVerification,
   type Auth, type User, type UserCredential } from 'firebase/auth';
 import { FirebaseAppService } from './firebase-app.service';
 import { FirebaseAuthService } from './firebase-auth.service';
@@ -117,6 +118,24 @@ describe('FirebaseAuthService provider linking', () => {
     expect(linkWithCredential).not.toHaveBeenCalled();
   });
 
+  it('uses the SDK email sign-in result without another account lookup', async () => {
+    vi.mocked(signInWithEmailAndPassword).mockResolvedValueOnce({ user } as UserCredential);
+    const result = await service.signIn({ provider: 'email', emailMode: 'sign-in', email: user.email!, password: 'correct' });
+    expect(result.profile?.id).toBe('existing-user');
+    expect(user.reload).not.toHaveBeenCalled();
+    expect(sendEmailVerification).not.toHaveBeenCalled();
+  });
+
+  it('still requires email verification from the SDK sign-in result', async () => {
+    Object.assign(user, { emailVerified: false, providerData: [{ providerId: 'password' }] });
+    vi.mocked(signInWithEmailAndPassword).mockResolvedValueOnce({ user } as UserCredential);
+    const result = await service.signIn({ provider: 'email', emailMode: 'sign-in', email: user.email!, password: 'correct' });
+    expect(result.profile).toBeNull();
+    expect(result.emailVerificationSent).toBe(true);
+    expect(sendEmailVerification).toHaveBeenCalledOnce();
+    expect(user.reload).not.toHaveBeenCalled();
+  });
+
   it('keeps pending proof for retry after the provider popup is cancelled', async () => {
     await conflict();
     vi.mocked(signInWithPopup).mockRejectedValueOnce({ code: 'auth/popup-closed-by-user' });
@@ -199,8 +218,7 @@ describe('FirebaseAuthService startup', () => {
     expect(localStorage.getItem(APP_STORAGE_KEYS.firebaseAuthProfile)).toBeNull();
     expect(initializeAuth).toHaveBeenCalledWith(app, { persistence: browserLocalPersistence });
     expect(auth.authStateReady).toHaveBeenCalledOnce();
-    // Keep explicit validation: Firebase itself tolerates a network error during startup.
-    expect(user.reload).toHaveBeenCalledOnce();
+    expect(user.reload).not.toHaveBeenCalled();
   });
 
   it('shares initialization and waits for persisted auth before serving tokens', async () => {
@@ -237,17 +255,45 @@ describe('FirebaseAuthService startup', () => {
     expect(initializeAuth).not.toHaveBeenCalled();
   });
 
-  it('keeps verification and explicit refresh on subsequent restorations', async () => {
+  it('restores repeatedly without adding account lookups or forced token refreshes', async () => {
+    expect((await service.restoreSessionProfile())?.id).toBe('restored-user');
+    expect((await service.restoreSessionProfile())?.id).toBe('restored-user');
+    expect(user.reload).not.toHaveBeenCalled();
+    expect(user.getIdToken).not.toHaveBeenCalled();
+    expect(initializeAuth).toHaveBeenCalledOnce();
+  });
+
+  it('lets the SDK supply cached or refreshed tokens without forcing refresh', async () => {
+    vi.mocked(user.getIdToken).mockResolvedValueOnce('cached-token').mockResolvedValueOnce('refreshed-token');
+    expect(await service.getIdToken()).toBe('cached-token');
+    expect(await service.getIdToken()).toBe('refreshed-token');
+    expect(vi.mocked(user.getIdToken).mock.calls).toEqual([[], []]);
+    expect(user.reload).not.toHaveBeenCalled();
+  });
+
+  it('still rejects an unverified password user on subsequent restorations', async () => {
     await service.restoreSessionProfile();
     Object.assign(user, { emailVerified: false, providerData: [{ providerId: 'password' }] });
     expect(await service.restoreSessionProfile()).toBeNull();
-    expect(user.reload).toHaveBeenCalledTimes(2);
+    expect(user.reload).not.toHaveBeenCalled();
     expect(localStorage.length).toBe(0);
   });
 
-  it('does not accept a cached profile when explicit server validation fails', async () => {
-    vi.mocked(user.reload).mockRejectedValue(new Error('network unavailable'));
-    await expect(service.restoreSessionProfile()).rejects.toThrow('network unavailable');
+  it('propagates an SDK initialization network failure instead of reviving a profile snapshot', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.firebaseAuthProfile, 'obsolete profile');
+    vi.mocked(auth.authStateReady).mockRejectedValue({ code: 'auth/network-request-failed' });
+    await expect(service.restoreSessionProfile()).rejects.toMatchObject({ code: 'auth/network-request-failed' });
+    expect(user.reload).not.toHaveBeenCalled();
+    expect(initializeAuth).toHaveBeenCalledOnce();
+  });
+
+  it('does not restore an obsolete profile when the SDK has no signed-in user', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.firebaseAuthProfile, 'obsolete profile');
+    // Model the SDK auth-state callback after initialization has signed the user out.
+    vi.spyOn(service as unknown as { waitForAuthState(auth: Auth): Promise<User | null> }, 'waitForAuthState')
+      .mockResolvedValue(null);
+    Object.assign(auth, { currentUser: null });
+    expect(await service.restoreSessionProfile()).toBeNull();
     expect(localStorage.length).toBe(0);
   });
 });

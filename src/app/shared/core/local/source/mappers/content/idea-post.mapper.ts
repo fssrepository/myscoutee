@@ -1,3 +1,4 @@
+import SUPPORTED_CONTENT_LANGUAGES from '../../../../common/content-languages.json';
 import { sanitizeHtml } from '../../../../base/html-sanitizer';
 import { normalizeImageDetails } from '../../../../contracts/media/image-gallery.interface';
 import type {
@@ -130,16 +131,17 @@ export class LocalIdeaPostsMapper {
   }
 
   private static normalizeLang(lang: string | null | undefined): string {
-    return `${lang ?? ''}`.trim().toLowerCase().split('-')[0] === 'hu' ? 'hu' : 'en';
+    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
+    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
   }
 
   private static languageLabel(lang: string | null | undefined): string {
-    return this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English';
+    return SUPPORTED_CONTENT_LANGUAGES.find(item => item.lang === this.normalizeLang(lang))?.label ?? 'English';
   }
 
   private static contentKey(value: string | null | undefined, fallbackId: string): string {
     const normalized = `${value ?? ''}`.trim() || fallbackId.trim();
-    return normalized.endsWith('-hu') ? normalized.slice(0, -3) : normalized;
+    return normalized.replace(/-(?:hu|de|es)$/, '');
   }
 
   private static imageUrls(

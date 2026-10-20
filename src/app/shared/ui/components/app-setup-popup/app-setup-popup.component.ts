@@ -26,6 +26,8 @@ export class AppSetupPopupComponent {
   private readonly i18n = inject(I18nService);
   readonly helpOpen = signal(false);
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
+  readonly browserActions: AppMenuItem[] = [{ id: 'open-browser', icon: 'open_in_browser',
+    layout: 'pill', label: 'app.setup.open.browser', palette: 'ink' }];
   readonly model = computed<PopupModel>(() => ({
     errorMessage: this.store.error(),
     title: 'app.setup.title', size: 'small', height: 'auto',
@@ -54,41 +56,34 @@ export class AppSetupPopupComponent {
       palette: 'blue',
       togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
-      showToggleIndicator: !this.store.locationPermissionPending(),
-      progress: this.store.locationPermissionPending() ? { state: 'loading', shape: 'button' } : null,
+      showToggleIndicator: true,
+      progress: this.controlProgress('location'),
       disabled: this.store.actionPending() || this.store.locationPermissionPending() },
     { id: 'notifications', kind: 'toggle', layout: 'pill', icon: 'notifications',
       label: 'app.setup.notifications',
       palette: 'violet',
       togglePalette: this.store.notificationsSelected() && this.store.messaging.notificationPermission() === 'granted' ? 'green' : this.store.messaging.notificationPermission() === 'denied' ? 'red' : this.store.notificationsSelected() ? 'blue' : 'slate',
       checked: this.store.notificationsSelected(),
-      showToggleIndicator: !this.store.notificationConfigurationPending(),
-      progress: this.store.notificationConfigurationPending() ? { state: 'loading', shape: 'button' } : null,
+      showToggleIndicator: true,
+      progress: this.controlProgress('notifications'),
       disabled: this.store.actionPending()
         || this.store.notificationConfigurationPending() || !this.store.messaging.notificationsConfigured }
   ]);
   readonly installActions = computed<AppMenuItem[]>(() => [
     ...((this.store.pwa.installAvailable() || this.store.pwa.installActionPending()) ? [{ id: 'install', icon: 'install_desktop',
-      layout: 'action' as const, label: 'install.app', palette: 'violet' as const,
+      layout: 'pill' as const, label: 'install.app', palette: 'violet' as const,
       disabled: this.store.actionPending() || this.store.pwa.installActionPending(),
       progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
   ]);
-  readonly showPermissionAction = computed(() => this.store.actionPending()
-    || this.store.locationPermissionPending() || this.store.notificationConfigurationPending()
-    || this.store.locationMissing()
-    || this.toggles().some(item => !item.disabled));
-  readonly permissionActionPending = computed(() => this.store.busy() || this.store.notificationConfigurationPending()
-    || this.store.locationPermissionPending());
-  readonly permissionActions = computed<AppMenuItem[]>(() => [
-    { id: 'allow', icon: this.permissionActionPending() ? 'hourglass_empty' : this.store.saveSucceeded() ? 'check_circle' : 'check',
-      label: this.permissionActionPending() ? 'entry.permissions.checking' : this.store.loginRequested() ? 'login' : 'app.setup.update',
-      layout: 'action', palette: this.store.error() ? 'danger' : this.store.saveSucceeded() ? 'green' : 'blue',
-      disabled: this.store.allowDisabled(),
-      progress: this.permissionActionPending() || this.store.error()
-        ? { state: this.permissionActionPending() ? 'loading' : 'error', shape: 'button', perimeter: 100,
-            durationMs: APP_SETUP_CONFIG.locationRequestTimeoutMs }
-        : this.store.saveSucceeded() ? { state: 'success', durationMs: 1000 } : null }
-  ]);
+  private controlProgress(control: 'location' | 'notifications'): AppMenuItem['progress'] {
+    const active = this.store.activeControl() === control;
+    if (active && this.store.busy()) {
+      return { state: 'loading', shape: 'button', perimeter: 100,
+        ...(this.store.busy() ? { durationMs: APP_SETUP_CONFIG.locationRequestTimeoutMs } : {}) };
+    }
+    if (active && this.store.error()) return { state: 'error', shape: 'button' };
+    return active && this.store.saveSucceeded() ? { state: 'success', shape: 'button', durationMs: 1000 } : null;
+  }
 
   constructor() {
     effect(() => {
@@ -98,7 +93,7 @@ export class AppSetupPopupComponent {
 
   @HostListener('window:focus')
   refreshPermissions(): void {
-    if (this.store.isOpen()) void this.store.refreshPermissions();
+    void this.store.refreshPermissions();
   }
 
   toggle(event: AppMenuItemSelectEvent): void {
@@ -112,6 +107,6 @@ export class AppSetupPopupComponent {
 
   action(event: AppMenuItemSelectEvent): void {
     if (event.id === 'install') this.store.install();
-    if (event.id === 'allow') void this.store.allow();
+    else if (event.id === 'open-browser') this.store.pwa.openInBrowser();
   }
 }
