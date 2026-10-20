@@ -20,7 +20,9 @@ app-menu { max-width: 100%; }
 
 .app-setup-action { justify-self: stretch; }
 .app-setup-toggle {
-  --app-menu-row-item-width: 14rem;
+  --app-menu-row-width: 100%;
+  --app-menu-row-justify: flex-start;
+  --app-menu-row-item-width: min(14rem, 100%);
   --app-menu-row-item-justify: space-between;
 }
 
@@ -62,3 +64,16 @@ app-menu { max-width: 100%; }
   color: #172554;
   p { font-weight: 600; }
 }
+
+.app-setup-privacy { border-top: 1px solid #dce3ed; padding-top: 0.8rem; margin-top: 0.3rem; }
+.app-setup-checklist { display: grid; gap: 0.65rem; position: relative; padding-left: 36px;
+  &::before { content: ''; position: absolute; left: 11px; top: 12px; bottom: 19px; width: 2px; background: #cbd5e1; }
+}
+.app-setup-step { position: relative; min-width: 0; }
+.app-setup-step-badge {
+  position: absolute; left: -36px; top: 50%; transform: translateY(-50%); display: grid; place-items: center;
+  width: 24px; height: 24px; border: 1px solid #bf701c; border-radius: 50%; background: #fff4df; color: #8c4908;
+  mat-icon { display: block; font-size: 18px; line-height: 18px; width: 18px; height: 18px; }
+}
+.app-setup-step.is-complete .app-setup-step-badge { background: #eaf8f0; border-color: #399467; color: #176b47; }
+.app-setup-step.is-blocked .app-setup-step-badge { background: #fff0f2; border-color: #c93240; color: #ad2030; }

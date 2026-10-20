@@ -312,6 +312,23 @@ describe('I18nService', () => {
     expect(apiRequestCount()).toBeGreaterThanOrEqual(2);
   });
 
+  it('shares the initial bundle load with revalidation and missing-key requests', async () => {
+    const response = new Subject<unknown>();
+    get.mockReturnValue(response);
+    const service = TestBed.inject(I18nService);
+    service.initialize();
+    await vi.waitFor(() => expect(apiRequestCount()).toBe(1));
+    const refresh = service.revalidate();
+    expect(service.translate('initial.translation.key')).toBe('initial.translation.key');
+    expect((service as any).missingKeyRefreshTimer).toBeNull();
+    expect(apiRequestCount()).toBe(1);
+    response.next({lang:'en', version:'remote.2', data:{'initial.translation.key':'Ready'}});
+    response.complete();
+    await refresh;
+    expect(service.translate('initial.translation.key')).toBe('Ready');
+    expect(apiRequestCount()).toBe(1);
+  });
+
   it('uses local seed bundles when the application has no backend', async () => {
     environment.activitiesDataSource = 'local';
     get.mockImplementation((url: string) => {

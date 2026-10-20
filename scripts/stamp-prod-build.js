@@ -3,6 +3,7 @@
 const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { consolidateStartupBundles } = require('./startup-bundles');
 
 const frontendRoot = path.resolve(__dirname, '..');
 const outputDir = resolveOutputDir(process.env.FRONTEND_BUILD_OUTPUT_DIR || 'prod');
@@ -20,11 +21,12 @@ const buildId = sanitizeBuildId(explicitBuildId || `${gitSha || 'local'}-${times
 assertFile(indexPath, 'production index.html');
 assertFile(serviceWorkerPath, 'production service worker');
 
-stampIndexHtml();
-stampServiceWorker();
-writeVersionFile();
-
-console.log(`Stamped production UI build ${buildId} in ${path.relative(frontendRoot, outputDir) || '.'}.`);
+consolidateStartupBundles(outputDir).then(manifest => {
+  stampIndexHtml();
+  stampServiceWorker(manifest);
+  writeVersionFile();
+  console.log(`Stamped production UI build ${buildId} in ${path.relative(frontendRoot, outputDir) || '.'}.`);
+}).catch(error => { console.error(error); process.exitCode = 1; });
 
 function stampIndexHtml() {
   const metaTag = `<meta name="myscoutee-build-id" content="${buildId}">`;
@@ -40,10 +42,10 @@ function stampIndexHtml() {
   fs.writeFileSync(indexPath, html, 'utf8');
 }
 
-function stampServiceWorker() {
+function stampServiceWorker(manifest) {
   let serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
   const cacheVersion = JSON.stringify(`build-${buildId}`);
-  const precacheBuildUrls = collectPrecacheBuildAssetUrls();
+  const precacheBuildUrls = collectPrecacheBuildAssetUrls(manifest);
   if (!/const\s+CACHE_VERSION\s*=/.test(serviceWorker)) {
     throw new Error(`Could not find CACHE_VERSION in ${serviceWorkerPath}.`);
   }
@@ -118,41 +120,26 @@ function assertFile(filePath, description) {
   }
 }
 
-function collectPrecacheBuildAssetUrls() {
-  const urls = [];
-  visitOutputDir(outputDir, '');
-  return urls.sort();
-
-  function visitOutputDir(directory, relativeDirectory) {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      const relativePath = relativeDirectory
-        ? `${relativeDirectory}/${entry.name}`
-        : entry.name;
-      const absolutePath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (relativePath === 'assets' || relativePath === 'keys') {
-          continue;
-        }
-        visitOutputDir(absolutePath, relativePath);
-        continue;
-      }
-      if (shouldPrecacheBuildAsset(relativePath)) {
-        urls.push(`./${relativePath}`);
-      }
+function collectPrecacheBuildAssetUrls(manifest) {
+  // Precache the startup shell, not every lazy feature and every font subset
+  // emitted by Angular. Used lazy chunks/fonts enter the existing runtime cache.
+  const urls = new Set(manifest.startup.map(name => `./${name}`));
+  const html = fs.readFileSync(indexPath, 'utf8');
+  for (const match of html.matchAll(/<(script|link)\b[^>]*>/gi)) {
+    const tag = match[0];
+    const script = match[1].toLowerCase() === 'script';
+    if (!script && !/\brel=["']stylesheet["']/i.test(tag)) continue;
+    const reference = tag.match(script ? /\bsrc=["']([^"']+)["']/i : /\bhref=["']([^"']+)["']/i)?.[1];
+    if (!reference || /^(?:[a-z]+:|\/\/)/i.test(reference)) continue;
+    const relativePath = reference.replace(/^\.\//, '').split(/[?#]/)[0];
+    const absolutePath = path.resolve(outputDir, relativePath);
+    if (!absolutePath.startsWith(outputDir + path.sep)) {
+      throw new Error(`Startup asset is outside the build: ${reference}`);
     }
+    assertFile(absolutePath, 'startup asset');
+    urls.add(`./${relativePath}`);
   }
-}
-
-function shouldPrecacheBuildAsset(relativePath) {
-  if (
-    relativePath === 'app-sw.js' ||
-    relativePath === 'index.html' ||
-    relativePath === 'app-version.json' ||
-    relativePath.endsWith('.map')
-  ) {
-    return false;
-  }
-  return /\.(?:js|css|woff2?|ttf)$/i.test(relativePath);
+  return [...urls].sort();
 }
 
 function resolveOutputDir(value) {

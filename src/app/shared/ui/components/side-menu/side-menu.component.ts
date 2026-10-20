@@ -102,7 +102,7 @@ import { PaymentMethodsService } from '../../../core/base/services/payments/paym
 import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import { HelpCenterService } from '../../../core/base/services/help/help-center.service';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
-import { PrivacyPolicyService } from '../../../core/base/services/help/privacy-policy.service';
+import { PrivacyPolicyService, automaticPrivacyConsentEnabled } from '../../../core/base/services/help/privacy-policy.service';
 import { SessionService } from '../../../core/base/services/accounts/session.service';
 import { ChatsService } from '../../../core/base/services/chat/chats.service';
 import { TermsPolicyService } from '../../../core/base/services/help/terms-policy.service';
@@ -1281,6 +1281,7 @@ export class SideMenuComponent implements OnDestroy {
 
       if (!shouldCheckPrivacyConsent) {
         this.privacyConsentCheckKeyRef.set('');
+        this.appSetupStore.privacyMissing.set(true);
         this.clearActivePrivacyConsentRequirement();
         return;
       }
@@ -1296,6 +1297,12 @@ export class SideMenuComponent implements OnDestroy {
 
       this.privacyConsentCheckKeyRef.set(checkKey);
       void this.ensureActivePrivacyConsent(activeUserId, revision, checkKey);
+    });
+
+    effect(() => {
+      if (!this.appSetupStore.privacyRequested()) return;
+      this.appSetupStore.privacyRequested.set(false);
+      this.openSettingsPopup('privacy');
     });
 
     effect(() => {
@@ -2088,6 +2095,7 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       if (this.isPrivacyConsentCurrent(existingConsent, revision)) {
+        this.appSetupStore.privacyMissing.set(false);
         this.clearActivePrivacyConsentRequirement();
         return;
       }
@@ -2097,16 +2105,23 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
       if (syncedAnonymousConsent) {
+        this.appSetupStore.privacyMissing.set(false);
         this.clearActivePrivacyConsentRequirement();
         return;
       }
 
-      this.profileStore.setPrivacyConsentRequiredKey(checkKey);
-      this.openSettingsPopup('privacy');
-    } catch {
-      if (this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+      this.appSetupStore.privacyMissing.set(true);
+      if (automaticPrivacyConsentEnabled()) {
         this.profileStore.setPrivacyConsentRequiredKey(checkKey);
         this.openSettingsPopup('privacy');
+      }
+    } catch {
+      if (this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        this.appSetupStore.privacyMissing.set(true);
+        if (automaticPrivacyConsentEnabled()) {
+          this.profileStore.setPrivacyConsentRequiredKey(checkKey);
+          this.openSettingsPopup('privacy');
+        }
       }
     }
   }

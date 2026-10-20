@@ -4,6 +4,7 @@ import { SessionService, type AppSession } from './session.service';
 import { OfflineCacheService } from '../platform/offline-cache.service';
 import { UsersService } from './users.service';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
+import { AppLocationService } from './app-location.service';
 
 // Exercise the real session identity and avatar-preview update through the profile loader.
 describe('Profile loads within a Firebase session', () => {
@@ -17,7 +18,7 @@ describe('Profile loads within a Firebase session', () => {
       { provide: OfflineCacheService, useValue: { activateUser: vi.fn(), clearUser: vi.fn().mockResolvedValue(undefined) } }
     ] });
   });
-  afterEach(() => { localStorage.clear(); TestBed.resetTestingModule(); });
+  afterEach(() => { localStorage.clear(); TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
 
   function fixture() {
     const session = TestBed.inject(SessionService);
@@ -34,6 +35,26 @@ describe('Profile loads within a Firebase session', () => {
     Object.defineProperty(service, 'userService', { value: adapter });
     return { session, adapter, service };
   }
+
+  it.each([true, false])('finishes avatar data loading with cached coordinates (%s) without native location calls', async saved => {
+    const { adapter, service } = fixture();
+    const coordinates = { latitude: 47, longitude: 19 };
+    service.location = Object.assign(Object.create(AppLocationService.prototype), {
+      pendingLoginByAccount: new Map(saved ? [['member', coordinates]] : []),
+      locationCacheWrites: new Map(), legacyLocationCacheCleared: true
+    });
+    const query = vi.fn(() => new Promise<PermissionStatus>(() => {}));
+    const getCurrentPosition = vi.fn(), watchPosition = vi.fn();
+    vi.stubGlobal('navigator', { permissions: { query }, geolocation: { getCurrentPosition, watchPosition } });
+    adapter.loadProfileExtById.mockResolvedValue({ profileExt: { profile, experienceEntries: [] } });
+    expect(await service.loadProfileExtById()).not.toBeNull();
+    expect(adapter.loadProfileExtById).toHaveBeenCalledExactlyOnceWith(
+      undefined, undefined, undefined, saved ? coordinates : undefined);
+    expect(service.setLoadStatus).toHaveBeenLastCalledWith('user-profile-ext', 'success');
+    expect(query).not.toHaveBeenCalled();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(watchPosition).not.toHaveBeenCalled();
+  });
 
   it('uses the stored demo location even when visitor login coordinates remain cached', async () => {
     const { session, adapter, service } = fixture();

@@ -171,6 +171,14 @@
   }
 }
 
+.route-content {
+  display: contents;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
 .game-startup-avatar {
   @include navigator-avatar.position;
   @include navigator-avatar.size;

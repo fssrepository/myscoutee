@@ -13,7 +13,7 @@ describe('EntryPageComponent Explore consent continuation', () => {
     const revision = { id: 'privacy', version: 1, sections: [] };
     return Object.assign(Object.create(EntryPageComponent.prototype), {
       landingGuide: { enabled: () => true, closePopup: vi.fn() },
-      appSetupStore: { explainMissingSetup: vi.fn(() => false), guideRequested: { set: vi.fn() } },
+      appSetupStore: { privacyMissing: { set: vi.fn() }, explainMissingSetup: vi.fn(() => false), guideRequested: { set: vi.fn() } },
       entryNetworkUnavailable: false,
       entryPrivacyLoading: false,
       entryPrivacySaving: false,
@@ -45,6 +45,7 @@ describe('EntryPageComponent Explore consent continuation', () => {
     expect(component.openDemoUserSelectorPopup).not.toHaveBeenCalled();
     await component.acceptEntryConsent([]);
     expect(component.hasEntryConsent).toBe(true);
+    expect(component.appSetupStore.privacyMissing.set).toHaveBeenLastCalledWith(false);
     expect(component.showEntryConsentPopup).toBe(false);
     expect(component.openDemoUserSelectorPopup).toHaveBeenCalledOnce();
     await component.acceptEntryConsent([]);

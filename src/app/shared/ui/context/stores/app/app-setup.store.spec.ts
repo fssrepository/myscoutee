@@ -6,9 +6,52 @@ import { I18nService } from '../../../../core/base/services/localization/i18n.se
 import { PwaService } from '../../../../core/base/services/platform/pwa.service';
 import { UserProfileStore } from '../profile/user-profile.store';
 import { AppSetupStore } from './app-setup.store';
+import { APP_STORAGE_KEYS } from '../../../../core/common/storage-scope';
+import { EntryPageComponent } from '../../../../../entry/components/entry-page/entry-page.component';
 
 describe('Setup launcher counts available device choices', () => {
-  afterEach(() => { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
+  afterEach(() => {
+    TestBed.resetTestingModule(); vi.unstubAllGlobals();
+    localStorage.removeItem(APP_STORAGE_KEYS.locationTrackingEnabled);
+  });
+
+  it.each([true, false, null])('uses the saved location choice (%s) for Login without waiting for a native result', async saved => {
+    localStorage.removeItem(APP_STORAGE_KEYS.locationTrackingEnabled);
+    if (saved !== null) localStorage.setItem(APP_STORAGE_KEYS.locationTrackingEnabled, String(saved));
+    const query = vi.fn(() => new Promise<PermissionStatus>(() => {}));
+    const getCurrentPosition = vi.fn();
+    vi.stubGlobal('navigator', { permissions: { query }, geolocation: { getCurrentPosition } });
+    TestBed.configureTestingModule({ providers: [
+      { provide: PwaService, useValue: {} },
+      { provide: AppLocationService, useValue: {
+        trackingEnabled: () => saved !== false,
+        hasSavedTrackingApproval: AppLocationService.prototype.hasSavedTrackingApproval
+      } },
+      { provide: FirebaseMessagingService, useValue: {
+        deviceNotificationsEnabled: () => false, refreshNotificationPermission: vi.fn(),
+        prepareNotificationConfiguration: vi.fn().mockResolvedValue(undefined)
+      } },
+      { provide: UserProfileStore, useValue: { activeUserId: () => '', activeUserLocationMissing: () => false } },
+      { provide: I18nService, useValue: {} }
+    ] });
+    const store = TestBed.inject(AppSetupStore);
+    expect(store.locationSetupMissing()).toBe(saved !== true);
+    expect(query).not.toHaveBeenCalled();
+    const entry = Object.assign(Object.create(EntryPageComponent.prototype), {
+      entryNetworkUnavailable: false, entryAuthUnavailable: false, loginEligibilityBusy: false,
+      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', firebaseProfile: () => null },
+      synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
+      ensureEntryConsent: vi.fn().mockResolvedValue(true), isLoginBlockedByLandingBundle: () => false,
+      landingGuide: { closePopup: vi.fn() }, appSetupStore: store,
+      ensureFirebaseAuthPopupLoaded: vi.fn().mockResolvedValue(undefined)
+    });
+    await entry.openEntryAuthPopup();
+    expect(entry.showFirebaseAuthPopup).toBe(saved === true);
+    expect(store.isOpen()).toBe(saved !== true);
+    expect(query).toHaveBeenCalledTimes(saved === true ? 0 : 1);
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(localStorage.getItem(APP_STORAGE_KEYS.locationTrackingEnabled)).toBe(saved === null ? null : String(saved));
+  });
 
   it('excludes unavailable installation and notifications, and tracks capability changes', async () => {
     vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockRejectedValue(new Error('Unsupported')) } });
@@ -16,7 +59,7 @@ describe('Setup launcher counts available device choices', () => {
     const configured = signal(false), enabled = signal(false);
     TestBed.configureTestingModule({ providers: [
       { provide: PwaService, useValue: { installAvailable, installActionPending, installed } },
-      { provide: AppLocationService, useValue: { trackingEnabled: () => true } },
+      { provide: AppLocationService, useValue: { trackingEnabled: () => true, hasSavedTrackingApproval: () => false } },
       { provide: FirebaseMessagingService, useValue: {
         get notificationsConfigured() { return configured(); },
         deviceNotificationsEnabled: enabled, refreshNotificationPermission: vi.fn()
@@ -26,6 +69,11 @@ describe('Setup launcher counts available device choices', () => {
     ] });
     const store = TestBed.inject(AppSetupStore);
     await store.refreshPermissions();
+    configured.set(true); installAvailable.set(true);
+    expect(store.missingCount()).toBe(4);
+    store.privacyMissing.set(false);
+    expect(store.missingCount()).toBe(3);
+    configured.set(false); installAvailable.set(false);
     expect(store.missingCount()).toBe(1);
     store.locationGranted.set(true);
     expect(store.missingCount()).toBe(0);
@@ -44,6 +92,10 @@ describe('Setup launcher counts available device choices', () => {
     enabled.set(true);
     expect(store.missingCount()).toBe(0);
     expect(store.launcherVisible()).toBe(false);
+    store.isOpen.set(true);
+    store.openPrivacy();
+    expect(store.privacyRequested()).toBe(true);
+    expect(store.isOpen()).toBe(true);
   });
 });
 

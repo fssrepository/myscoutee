@@ -43,7 +43,7 @@ function runtime({ bootstrapped = false, online = true, worker = true,
   return {
     state, data,
     boot: () => classes.add('app-bootstrapped'),
-    error: (tagName = 'SCRIPT', rel = '') => events.get('error')({ target: { tagName, rel } }),
+    error: (tagName = 'SCRIPT', rel = '', id = '') => events.get('error')({ target: { tagName, rel, id } }),
     retry: () => retry(),
     settle: () => new Promise(resolve => setImmediate(resolve))
   };
@@ -89,6 +89,14 @@ test('blocked session storage does not allow an unguarded automatic reload', asy
   app.retry();
   await app.settle();
   assert.equal(app.state.reloads, 1);
+});
+
+test('failure of optional landing diagnostics cannot restart startup', async () => {
+  const app = runtime();
+  app.error('SCRIPT', '', 'myscoutee-landing-debug-recorder');
+  await app.settle();
+  assert.equal(app.state.reloads, 0);
+  assert.equal(app.state.updates, 0);
 });
 
 for (const rel of ['icon', 'apple-touch-icon', 'manifest', 'preconnect']) {

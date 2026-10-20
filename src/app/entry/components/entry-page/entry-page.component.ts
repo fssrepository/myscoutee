@@ -1,3 +1,4 @@
+import { finishLandingDebug, markLandingDebug } from '../../../shared/core/common/landing-debug';
 import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
@@ -8,6 +9,8 @@ import {
   type GuideRevision as HelpCenterRevisionDto,
   type GuideSection as HelpCenterSectionDto,
   DialogStore,
+  IndicatorComponent,
+  PopupComponent,
   type InfoCardData
 } from '@fssrepository/myscoutee-components';
 import { LANDING_EXPLANATION_GUIDE } from '../../../shared/core/base/services/help/landing-explanation-guide';
@@ -17,10 +20,19 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  ComponentRef,
+  DestroyRef,
+  DoCheck,
   NgZone,
   OnDestroy,
   OnInit,
-  inject
+  inject,
+  effect,
+  inputBinding,
+  outputBinding,
+  signal,
+  viewChild,
+  ViewContainerRef
 } from '@angular/core';
 import {
   ActivatedRoute,
@@ -77,7 +89,7 @@ import {
   LandingContentService
 } from '../../../shared/core/base/services/content/landing-content.service';
 import {
-  PrivacyPolicyService, canonicalEntryConsentVersion
+  PrivacyPolicyService, canonicalEntryConsentVersion, automaticPrivacyConsentEnabled
 } from '../../../shared/core/base/services/help/privacy-policy.service';
 import {
   SessionService,
@@ -104,13 +116,13 @@ import {
 import {
   HelpCenterRevisionDocumentViewerConfigConverter
 } from '../../../shared/ui/converters/app/help-center-revision-document-viewer.converter';
-import {
+import type {
   EntryFirebaseAuthPopupComponent
 } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import {
   EntryLandingComponent
 } from '../entry-landing/entry-landing.component';
-import {
+import type {
   ProfileOnboardingPopupComponent
 } from '../profile-onboarding-popup/profile-onboarding-popup.component';
 import {
@@ -140,14 +152,22 @@ interface EntryDemoNewProfileRequestEvent {
     LandingGuideSurfaceDirective,
     EntryLandingComponent,
     DocumentViewerComponent,
-    EntryFirebaseAuthPopupComponent,
-
-    ProfileOnboardingPopupComponent
+    PopupComponent,
+    IndicatorComponent
   ],
   templateUrl: './entry-page.component.html',
   styleUrl: './entry-page.component.scss'
 })
-export class EntryPageComponent implements OnInit, OnDestroy {
+export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly firebaseAuthPopupHost = viewChild.required('firebaseAuthPopupHost', { read: ViewContainerRef });
+  private readonly onboardingPopupHost = viewChild.required('onboardingPopupHost', { read: ViewContainerRef });
+  protected readonly firebaseAuthPopup = signal<ComponentRef<EntryFirebaseAuthPopupComponent> | null>(null);
+  protected readonly onboardingPopup = signal<ComponentRef<ProfileOnboardingPopupComponent> | null>(null);
+  private readonly firebaseAuthPopupInputs = signal({ open: false, mobile: false });
+  private readonly onboardingPopupInputs = signal({ open: false, user: null as UserDto | null, mobile: false, title: '', message: '' });
+  private firebaseAuthPopupLoad: Promise<void> | null = null;
+  private onboardingPopupLoad: Promise<void> | null = null;
   private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
@@ -177,7 +197,15 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private pendingFirebaseEntryCoordinates: LocationCoordinates | null = null;
   private entryContentLoadPromise: Promise<void> | null = null;
 
-  protected showEntryConsentPopup = false;
+  private entryConsentPopupOpen = false;
+  private entryConsentManuallyOpened = false;
+  protected get showEntryConsentPopup(): boolean { return this.entryConsentPopupOpen; }
+  protected set showEntryConsentPopup(open: boolean) {
+    if (open !== this.entryConsentPopupOpen) {
+      this.entryConsentPopupOpen = open;
+      markLandingDebug(open ? 'privacy.open' : 'privacy.close');
+    }
+  }
   protected showEntryTermsPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
@@ -234,6 +262,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.initializeEntryFlow();
+    effect(() => {
+      if (!this.appSetupStore.privacyRequested()) return;
+      this.appSetupStore.privacyRequested.set(false);
+      this.openEntryConsentPopup();
+    });
   }
 
   private readonly affiliateReferral = inject(AffiliateReferralService);
@@ -260,6 +293,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    finishLandingDebug();
     this.queryParamSubscription?.unsubscribe();
     this.landingContentRequestToken += 1;
     this.grantedLocationEligibilityRequestToken += 1;
@@ -371,6 +405,65 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     this.showFirebaseAuthPopup = true;
+    void this.ensureFirebaseAuthPopupLoaded();
+    markLandingDebug('auth.open');
+  }
+
+  private ensureFirebaseAuthPopupLoaded(): Promise<void> {
+    if (this.firebaseAuthPopup()) return Promise.resolve();
+    return this.firebaseAuthPopupLoad ??= import('../entry-firebase-auth-popup/entry-firebase-auth-popup.component')
+      .then(module => {
+        if (this.destroyRef.destroyed) return;
+        this.firebaseAuthPopupInputs.set({ open: this.showFirebaseAuthPopup, mobile: this.isMobileView });
+        this.firebaseAuthPopup.set(this.firebaseAuthPopupHost().createComponent(module.EntryFirebaseAuthPopupComponent, {
+          bindings: [
+            inputBinding('open', () => this.firebaseAuthPopupInputs().open),
+            inputBinding('isMobileView', () => this.firebaseAuthPopupInputs().mobile),
+            inputBinding('busy', () => this.firebaseAuthIsBusy),
+            inputBinding('statusMessage', () => this.firebaseAuthMessage),
+            outputBinding('closeRequested', () => this.closeFirebaseAuthPopup()),
+            outputBinding<FirebaseAuthRequestDto>('authRequested', request => this.onRequestFirebaseAuth(request))
+          ]
+        }));
+      }).finally(() => { this.firebaseAuthPopupLoad = null; });
+  }
+
+  private ensureOnboardingPopupLoaded(): Promise<void> {
+    if (this.onboardingPopup()) return Promise.resolve();
+    return this.onboardingPopupLoad ??= import('../profile-onboarding-popup/profile-onboarding-popup.component')
+      .then(module => {
+        if (this.destroyRef.destroyed) return;
+        this.onboardingPopup.set(this.onboardingPopupHost().createComponent(module.ProfileOnboardingPopupComponent, {
+          bindings: [
+            inputBinding('open', () => this.onboardingPopupInputs().open),
+            inputBinding('user', () => this.onboardingPopupInputs().user),
+            inputBinding('mobile', () => this.onboardingPopupInputs().mobile),
+            inputBinding('title', () => this.onboardingPopupInputs().title),
+            inputBinding('message', () => this.onboardingPopupInputs().message),
+            outputBinding<UserDto>('completed', user => this.onOnboardingCompleted(user)),
+            outputBinding('dismissed', () => this.onOnboardingDismissed())
+          ]
+        }));
+      }).finally(() => { this.onboardingPopupLoad = null; });
+  }
+
+  ngDoCheck(): void {
+    // Keep the original live input bindings as the parent page is checked.
+    if (this.firebaseAuthPopup()) {
+      const current = this.firebaseAuthPopupInputs();
+      if (current.open !== this.showFirebaseAuthPopup || current.mobile !== this.isMobileView) {
+        this.firebaseAuthPopupInputs.set({ open: this.showFirebaseAuthPopup, mobile: this.isMobileView });
+      }
+    }
+    if (this.onboardingPopup()) {
+      const current = this.onboardingPopupInputs();
+      if (current.open !== this.onboardingOpen || current.user !== this.onboardingUser
+        || current.mobile !== this.isMobileView || current.title !== this.onboardingTitle
+        || current.message !== this.onboardingMessage) {
+        this.onboardingPopupInputs.set({ open: this.onboardingOpen, user: this.onboardingUser,
+          mobile: this.isMobileView, title: this.onboardingTitle, message: this.onboardingMessage });
+      }
+    }
   }
 
   private showEntryLocationSetup(bypassLocationSetup = false): boolean {
@@ -406,6 +499,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     void this.sessionService.cancelFirebaseAccountLink();
     this.showFirebaseAuthPopup = false;
+    markLandingDebug('auth.close');
     this.firebaseEntryAccessApproved = false;
     this.pendingFirebaseEntryCoordinates = null;
   }
@@ -426,6 +520,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       void this.loadEntryContent();
     }
     this.syncEntryPrivacyApprovalsForRevision();
+    this.entryConsentManuallyOpened = true;
     this.entryConsentViewOnly = viewOnly;
     this.showEntryConsentPopup = true;
   }
@@ -436,17 +531,20 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     this.resumeExploreAfterConsent = false;
     this.showEntryConsentPopup = false;
+    this.entryConsentManuallyOpened = false;
     this.entryConsentViewOnly = false;
     this.entryPrivacySaveMessage = '';
     this.entryPrivacySaveError = '';
   }
 
   protected openEntryTermsPopup(): void {
+    markLandingDebug('terms.open');
     this.showEntryTermsPopup = true;
     void this.termsPolicy.prepareOpen();
   }
 
   protected closeEntryTermsPopup(): void {
+    markLandingDebug('terms.close');
     this.showEntryTermsPopup = false;
   }
 
@@ -515,6 +613,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async acceptEntryConsent(selectedSectionIds: readonly string[] = Array.from(this.entryApprovedPrivacySectionIds)): Promise<void> {
+    markLandingDebug('privacy.accepted');
     const version = this.entryConsentVersion();
     if (this.entryPrivacyLoading || !version || this.entryPrivacySaving) {
       return;
@@ -538,6 +637,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     localStorage.setItem(EntryPageComponent.ENTRY_CONSENT_KEY, JSON.stringify(consent));
     this.appendEntryConsentAudit('accepted', nowIso);
     this.showEntryConsentPopup = false;
+    this.entryConsentManuallyOpened = false;
     this.entryConsentViewOnly = false;
     this.entryPrivacySaving = false;
     this.onEntryConsentStateChanged(true);
@@ -549,11 +649,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected rejectEntryConsent(): void {
+    markLandingDebug('privacy.rejected');
     this.resumeExploreAfterConsent = false;
     const nowIso = new Date().toISOString();
     localStorage.removeItem(EntryPageComponent.ENTRY_CONSENT_KEY);
     this.appendEntryConsentAudit('rejected', nowIso);
     this.showEntryConsentPopup = false;
+    this.entryConsentManuallyOpened = false;
     this.entryConsentViewOnly = false;
     this.entryPrivacySaveMessage = '';
     this.entryPrivacySaveError = '';
@@ -586,6 +688,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (this.entryNetworkUnavailable) {
       return false;
     }
+    if (!automaticPrivacyConsentEnabled()) return true;
     if (this.entryPrivacyLoading || this.privacyPolicy.state() === null) {
       await this.loadEntryContent();
     }
@@ -688,26 +791,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     try {
-      if (!this.usersService.localModeEnabled) {
-        const user = await this.usersService.loadUserById(normalizedUserId, 8000);
-        if (!user) {
-          await this.sessionService.logout();
-          selection.fail();
-          return;
-        }
-        if (selection.user?.baseGroupTypes?.includes(this.landingContent.mode()) && this.landingContent.mode() !== 'dating') {
-          if (!await this.usersService.loadProfileExtById(normalizedUserId, undefined, baseGroupId(this.landingContent.mode()))) {
-            selection.fail();
-            return;
-          }
-        }
-        await this.runPostSessionGate(session, this.memberRedirectUrl(), user);
-        selection.complete();
-        return;
-      }
       // The destination's existing avatar hydration owns profile loading.
-      this.usersService.stageInitialWorkspace(baseGroupId(this.landingContent.mode()));
-      const navigated = await this.router.navigateByUrl(this.memberRedirectUrl());
+      if (this.usersService.localModeEnabled || (this.landingContent.mode() !== 'dating'
+        && selection.user?.baseGroupTypes?.includes(this.landingContent.mode()))) {
+        this.usersService.stageInitialWorkspace(baseGroupId(this.landingContent.mode()));
+      }
+      const navigated = await (this.usersService.localModeEnabled
+        ? this.router.navigateByUrl(this.memberRedirectUrl())
+        : this.router.navigateByUrl(this.memberRedirectUrl(), { state: { avatarLoading: true } }));
       if (!navigated) {
         selection.fail();
         return;
@@ -822,6 +913,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   protected onEntryConsentStateChanged(accepted: boolean): void {
     this.entryConsentAccepted = accepted;
+    this.appSetupStore.privacyMissing.set(this.entryConsentVersion().length > 0 && !accepted);
     this.beginAutoOnboardingIfReady();
   }
 
@@ -893,7 +985,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private beginAutoOnboardingIfReady(): void {
-    if (!this.autoOnboardingRequested || !this.entryConsentAccepted) {
+    if (!this.autoOnboardingRequested || (automaticPrivacyConsentEnabled() && !this.entryConsentAccepted)) {
       return;
     }
     this.autoOnboardingRequested = false;
@@ -1034,6 +1126,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       this.onboardingMessage = copy.message ?? '';
       this.showFirebaseAuthPopup = false;
       this.onboardingOpen = true;
+      void this.ensureOnboardingPopupLoaded();
       this.changeDetectorRef.detectChanges();
     });
   }
@@ -1216,7 +1309,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private shouldPromptEntryConsent(): boolean {
-    return this.entryConsentVersion().length > 0 && this.loadEntryConsentState() === null;
+    return automaticPrivacyConsentEnabled()
+      && this.entryConsentVersion().length > 0 && this.loadEntryConsentState() === null;
   }
 
   protected changeLandingMode(mode: GroupType): void {
@@ -1264,6 +1358,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           this.landingIdeaCount = 0;
           this.landingSupportedCountries = [];
           this.markEntryNetworkUnavailable();
+          markLandingDebug('landing.content.failed');
           this.finishEntryPrivacyLoad(requestToken, options.promptConsent !== false);
         });
       }
@@ -1288,7 +1383,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     this.endEntryPrivacyLoadingWindow();
     this.syncEntryPrivacyApprovalsForRevision();
-    if (promptConsent && !this.entryNetworkUnavailable && !this.entryConsentViewOnly) {
+    if (promptConsent && !this.entryNetworkUnavailable && !this.entryConsentViewOnly && !this.entryConsentManuallyOpened) {
       this.showEntryConsentPopup = this.shouldPromptEntryConsent();
     }
     this.changeDetectorRef.markForCheck();
@@ -1326,7 +1421,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return [
       {
         id: 'entry-privacy-reject',
-        label: this.uiText('Cancel'),
+        label: this.uiText(this.hasEntryConsent ? 'Revoke' : 'Cancel'),
         palette: 'slate',
         disabled: this.entryPrivacySaving
       },

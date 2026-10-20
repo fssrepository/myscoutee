@@ -1,3 +1,4 @@
+import { markLandingDebug } from '../../../common/landing-debug';
 import { Injectable, inject } from '@angular/core';
 import {
   FacebookAuthProvider,
@@ -61,8 +62,10 @@ export class FirebaseAuthService {
   }
 
   async signIn(request: FirebaseAuthRequestDto): Promise<FirebaseAuthSignInResult> {
+    markLandingDebug('auth.' + request.provider);
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
+      markLandingDebug('auth.failed');
       return { profile: null };
     }
     try {
@@ -82,6 +85,7 @@ export class FirebaseAuthService {
         return { profile: null, errorMessage: 'firebase.auth.link.email.mismatch' };
       }
       if (result.emailVerificationSent) {
+        markLandingDebug('auth.email.verification');
         this.clearStoredProfile();
         return {
           profile: null,
@@ -103,8 +107,13 @@ export class FirebaseAuthService {
         }
       }
       this.clearStoredProfile();
+      markLandingDebug('auth.success');
       return { profile: this.toFirebaseAuthProfile(result.user) };
     } catch (error) {
+      const debugCode = this.firebaseErrorCode(error);
+      markLandingDebug(debugCode === 'auth/popup-closed-by-user' || debugCode === 'auth/cancelled-popup-request'
+        ? 'auth.cancelled' : debugCode === 'auth/popup-blocked' ? 'auth.blocked'
+          : debugCode === 'auth/network-request-failed' ? 'auth.network' : 'auth.failed');
       if (this.firebaseErrorCode(error) === 'auth/account-exists-with-different-credential') {
         // Keep the original provider proof if the user selects another conflicting provider.
         if (!this.pendingLink) {
@@ -276,6 +285,7 @@ export class FirebaseAuthService {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');
       provider.setCustomParameters({ display: 'popup' });
+      markLandingDebug('auth.popup.request');
       return signInWithPopup(auth, provider, browserPopupRedirectResolver);
     }
     if (request.provider === 'email') {
@@ -293,6 +303,7 @@ export class FirebaseAuthService {
     }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    markLandingDebug('auth.popup.request');
     return signInWithPopup(auth, provider, browserPopupRedirectResolver);
   }
 

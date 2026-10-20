@@ -3,6 +3,7 @@ import { SideMenuComponent } from './side-menu.component';
 
 function controller() {
   const component = Object.create(SideMenuComponent.prototype) as any;
+  component.appSetupStore = { privacyMissing: { set: vi.fn() } };
   component.userProfileStore = { activeUserProfile: vi.fn(() => null), activeUserId: () => 'firebase-uid' };
   component.groupWorkspaces = { context: { accountId: vi.fn((id: string) => id) } };
   component.profileStore = {
@@ -17,6 +18,21 @@ function controller() {
   return component;
 }
 describe('privacy consent after profile hydration', () => {
+  afterEach(() => document.getElementById('myscoutee-consent-auto')?.remove());
+  it.each([false, true])('does not automatically require/open consent when off, including load failure (%s)', failed => {
+    const flag = document.createElement('script');
+    flag.id = 'myscoutee-consent-auto'; flag.textContent = '0'; document.head.appendChild(flag);
+    const component = controller();
+    component.privacyPolicy = {
+      loadConsent: failed ? vi.fn().mockRejectedValue(new Error('offline')) : vi.fn().mockResolvedValue(null),
+      syncAnonymousEntryConsent: vi.fn().mockResolvedValue(false)
+    };
+    return component.ensureActivePrivacyConsent('backend-profile', { id: 'privacy', version: 2 }, 'current').then(() => {
+      expect(component.openSettingsPopup).not.toHaveBeenCalled();
+      expect(component.profileStore.setPrivacyConsentRequiredKey).not.toHaveBeenCalled();
+      expect(component.appSetupStore.privacyMissing.set).toHaveBeenCalledWith(true);
+    });
+  });
   it('does not use the Firebase bootstrap UID before a persisted profile arrives', () => {
     const component = controller();
     expect(component.privacyConsentAccountId()).toBe('');

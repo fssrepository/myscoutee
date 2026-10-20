@@ -43,7 +43,9 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(APP_CACHE)
       .then(cache => cache.addAll(
-        PRECACHE_URLS.map(url => new Request(url, { cache: 'reload' }))
+        PRECACHE_URLS.map(url => new Request(url, {
+          cache: /-[a-z0-9]{8}\.(?:js|css)$/i.test(url) ? 'default' : 'reload'
+        }))
       ))
       .catch(async error => {
         await caches.delete(APP_CACHE);
@@ -213,6 +215,9 @@ async function offlineAppShell(cached) {
   const html = (await cached.text()).replace(
     /(<script\b[^>]*\bid=["']myscoutee-runtime-status["'][^>]*>)[\s\S]*?(<\/script>)/i,
     '$1null$2'
+  ).replace(
+    /(<script\b[^>]*\bid=["']myscoutee-landing-debug["'][^>]*>)[\s\S]*?(<\/script>)/i,
+    '$10$2'
   );
   const headers = new Headers(cached.headers);
   headers.delete('Content-Length');
@@ -229,7 +234,7 @@ async function serveAppShell(request) {
 async function networkFirstStaticAsset(request) {
   // Angular content-hashed bundles are immutable, including lazy chunks.
   // Reuse the current/retained build cache before contacting the network.
-  if (/\/[\w.-]+-[A-Z0-9]{8}\.(?:js|css)$/.test(new URL(request.url).pathname)) {
+  if (/\/[\w.-]+-[A-Z0-9]{8}\.(?:js|css)$/i.test(new URL(request.url).pathname)) {
     const cached = await matchAppBundleCache(request);
     if (cached) {
       return cached;

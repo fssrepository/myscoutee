@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <base href="/">
+  <script id="myscoutee-consent-auto" type="application/json"><!--# echo var="myscoutee_consent_auto" default="1" --></script>
+  <script id="myscoutee-landing-debug" type="application/json"><!--# echo var="myscoutee_landing_debug" default="0" --></script>
+  <script id="myscoutee-landing-debug-context" type="application/json">[<!--# echo var="myscoutee_landing_purpose" default="0" -->,<!--# echo var="myscoutee_landing_user" default="0" -->]</script>
+  <script id="myscoutee-landing-debug-recorder" src="assets/diagnostics/landing.js" async></script>
   <script id="myscoutee-runtime-status" type="application/json"><!--# include virtual="/api/runtime-status" --></script>
   <title>MyScoutee</title>
   <meta name="description" content="MyScoutee - Connect with people through shared activities and experiences">
@@ -17,7 +22,6 @@
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
   <meta property="og:image:alt" content="MyScoutee app icon">
-  <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2d5f94">
   <meta name="mobile-web-app-capable" content="yes">
@@ -232,6 +236,9 @@
 
       function isBootResource(target) {
         if (!target || !target.tagName) {
+          return false;
+        }
+        if (target.id === 'myscoutee-landing-debug-recorder') {
           return false;
         }
         var tagName = target.tagName.toLowerCase();

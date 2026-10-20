@@ -16,6 +16,7 @@ import {
 } from '../../../shared/core/common/app-static-data';
 import { HelpCenterService } from '../../../shared/core/base/services/help/help-center.service';
 import { PrivacyPolicyService } from '../../../shared/core/base/services/help/privacy-policy.service';
+import { AppSetupStore } from '../../../shared/ui/context/stores/app/app-setup.store';
 import {
   type GuideRevision as HelpCenterRevisionDto,
   type GuideSection as HelpCenterSectionDto,
@@ -54,6 +55,7 @@ export class ProfileSettingsPopupsComponent {
   private readonly profileStore = inject(ProfileStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly appSetupStore = inject(AppSetupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   protected readonly activePopup = this.profileStore.settingsPopup;
@@ -284,6 +286,7 @@ export class ProfileSettingsPopupsComponent {
         source: 'settings'
       });
       this.settingsPrivacyActiveRevisionConsentSaved = this.isPrivacyConsentCurrent(consent, revision);
+      this.appSetupStore.privacyMissing.set(!this.settingsPrivacyActiveRevisionConsentSaved);
       this.settingsApprovedPrivacySectionIds = new Set(consent.approvedOptionalSectionIds);
       this.settingsPrivacySaveMessage = 'Privacy choices saved.';
       this.completePrivacyPopup();

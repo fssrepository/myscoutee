@@ -14,6 +14,7 @@ import { PwaService } from './shared/core/base/services/platform/pwa.service';
 import { I18nService } from './shared/core/base/services/localization/i18n.service';
 import { AppLocationService } from './shared/core/base/services/accounts/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
+import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/app/demo-bootstrap-selector.store';
 
 @Component({ selector: 'router-outlet', template: '' })
 class TestOutlet { @Output() activate = new EventEmitter<void>(); }
@@ -23,6 +24,8 @@ class TestSetup {}
 class TestPayment {}
 @Component({ selector: 'app-dialog', template: '' })
 class TestDialog {}
+@Component({ selector: 'test-demo-selector', template: '<button>Selected demo user</button>' })
+class TestDemoSelector {}
 
 describe('application startup loading handoff', () => {
   let events: Subject<unknown>;
@@ -144,6 +147,60 @@ describe('application startup loading handoff', () => {
     fixture.detectChanges();
     expect(app.avatarLoadStartedAt).toBe(startedAt);
     expect(fixture.nativeElement.querySelector('.game-startup-avatar')).not.toBeNull();
+  });
+
+  it('shows the avatar during accepted HTTP demo navigation and restores the same selector on failure', () => {
+    TestBed.overrideProvider(DemoBootstrapSelectorStore, { useValue: {
+      demoBootstrapSelector: signal({ mode: 'member' }),
+      demoBootstrapSelectorComponent: signal(TestDemoSelector)
+    } });
+    const fixture = create('/entry');
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    fixture.detectChanges();
+    const selector = fixture.nativeElement.querySelector('test-demo-selector');
+    currentSession.mockReturnValue({ kind: 'demo', userId: 'member' });
+    router.getCurrentNavigation.mockReturnValue({ id: 2, extras: { state: { avatarLoading: true } } });
+    events.next(new NavigationStart(2, '/game'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar .app-menu__button-row-ring')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
+    expect(selector.closest('.route-content').hidden).toBe(true);
+    expect(fixture.nativeElement.querySelector('router-outlet').closest('.route-content').hidden).toBe(true);
+    const app = fixture.componentInstance as unknown as { avatarLoadStartedAt: number };
+    expect(app.avatarLoadStartedAt).toBeGreaterThan(0);
+    events.next(new NavigationCancel(2, '/game', 'Rejected', NavigationCancellationCode.GuardRejected));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('test-demo-selector')).toBe(selector);
+    expect(selector.closest('.route-content').hidden).toBe(false);
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar')).toBeNull();
+    expect(app.avatarLoadStartedAt).toBe(0);
+  });
+
+  it('continues the demo entry avatar timeline when the destination activates', () => {
+    const selection = signal<object | null>({ mode: 'member' });
+    const closeSelector = vi.fn(() => selection.set(null));
+    TestBed.overrideProvider(DemoBootstrapSelectorStore, { useValue: {
+      demoBootstrapSelector: selection,
+      demoBootstrapSelectorComponent: signal(TestDemoSelector),
+      closeDemoBootstrapSelector: closeSelector
+    } });
+    const fixture = create('/entry');
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    currentSession.mockReturnValue({ kind: 'demo', userId: 'member' });
+    router.getCurrentNavigation.mockReturnValue({ id: 2, extras: { state: { avatarLoading: true } } });
+    events.next(new NavigationStart(2, '/game'));
+    const app = fixture.componentInstance as unknown as { avatarLoadStartedAt: number };
+    const startedAt = app.avatarLoadStartedAt;
+    vi.advanceTimersByTime(500);
+    router.getCurrentNavigation.mockReturnValue({ id: 2, finalUrl: '/game' });
+    fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
+    fixture.detectChanges();
+    expect(app.avatarLoadStartedAt).toBe(startedAt);
+    expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.game-startup-avatar')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('router-outlet').closest('.route-content').hidden).toBe(false);
+    expect(closeSelector).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.querySelector('test-demo-selector')).toBeNull();
   });
 
   it('keeps the loader across the root redirect while the destination is still loading', () => {

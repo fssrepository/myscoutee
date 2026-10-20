@@ -237,6 +237,7 @@ export class I18nService implements UiTranslations {
     const now = Date.now();
     if (!this.initialized
       || !this.usesHttpBundles()
+      || this.bundleRefreshPromise !== null
       || this.missingKeyRefreshTimer !== null
       || now - this.lastMissingKeyRefreshAt < I18nService.MISSING_KEY_REFRESH_COOLDOWN_MS) {
       return;
@@ -269,7 +270,13 @@ export class I18nService implements UiTranslations {
     // public dictionaries here flashes raw keys and changes button/ring widths
     // during login/logout. Generation checks still reject the previous scope.
     this.messagesByLanguageSignal.set({});
-    void this.loadPreferredLanguage(scope, generation);
+    let pending: Promise<void>;
+    pending = this.loadPreferredLanguage(scope, generation).finally(() => {
+      if (this.bundleRefreshPromise === pending) {
+        this.bundleRefreshPromise = null;
+      }
+    });
+    this.bundleRefreshPromise = pending;
   }
 
   private async loadPreferredLanguage(

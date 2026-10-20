@@ -5,6 +5,7 @@ import { getToken, getMessaging, isSupported, onMessage } from 'firebase/messagi
 import { FirebaseMessagingService } from './firebase-messaging.service';
 import { FirebaseAppService } from '../accounts/firebase-app.service';
 import { DeviceRegistrationsService } from '../accounts/device-registrations.service';
+import { SessionService, type AppSession } from '../accounts/session.service';
 import { DeploymentConfigurationService } from '../platform/deployment-configuration.service';
 import { I18nService } from '../localization/i18n.service';
 import { AppLocationService } from '../accounts/app-location.service';
@@ -27,6 +28,7 @@ describe('Notification preference and background registration', () => {
   const remove = vi.fn();
   const messagingConfigured = signal(true);
   const activeUserId = signal('user-1');
+  const session = signal<AppSession | null>(null);
   const locationMissing = signal(false);
   const reloadDeployment = vi.fn();
   const initializeDeployment = vi.fn();
@@ -37,6 +39,9 @@ describe('Notification preference and background registration', () => {
     vi.resetAllMocks();
     messagingConfigured.set(true);
     activeUserId.set('user-1');
+    session.set({ kind: 'firebase', sessionId: 'session-1', profile: {
+      id: 'firebase-auth-uid', name: 'Member', email: 'member@example.test', initials: 'M'
+    } });
     locationMissing.set(false);
     reloadDeployment.mockResolvedValue(undefined);
     initializeDeployment.mockResolvedValue(undefined);
@@ -60,6 +65,7 @@ describe('Notification preference and background registration', () => {
     activeRuntime.mockReturnValue(runtime);
     TestBed.configureTestingModule({ providers: [
       FirebaseMessagingService, AppSetupStore,
+      { provide: SessionService, useValue: { currentSession: session } },
       { provide: DeviceRegistrationsService, useValue: { isLocal: false, upsert, remove } },
       { provide: FirebaseAppService, useValue: { ensureFirebaseRuntime, activeRuntime } },
       { provide: DeploymentConfigurationService, useValue: {
@@ -67,12 +73,13 @@ describe('Notification preference and background registration', () => {
       } },
       { provide: I18nService, useValue: { revision: () => 0, currentLanguage: () => 'en', translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
-        trackingEnabled: signal(true), setTrackingEnabled: vi.fn(),
+        trackingEnabled: signal(true), hasSavedTrackingApproval: () => false, setTrackingEnabled: vi.fn(),
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
         saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
         syncGrantedLocationForActiveUser: vi.fn().mockResolvedValue(undefined)
       } },
       { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn(),
+        installed: () => false, installBusy: () => false,
         installAvailable: () => false, installActionPending: () => false,
         installPromptVisible: () => false } },
       { provide: UserProfileStore, useValue: {
@@ -85,7 +92,11 @@ describe('Notification preference and background registration', () => {
     setup = TestBed.inject(AppSetupStore);
     setup.open();
     await vi.advanceTimersByTimeAsync(0);
+    // Prepare a user-edited draft without starting the automatic write that
+    // a real toggle click has performed since 1.4.3. Each test owns its save.
+    const prepareDraft = vi.spyOn(setup, 'allow').mockResolvedValue(undefined);
     setup.toggleNotifications();
+    prepareDraft.mockRestore();
   });
 
   afterEach(() => {
@@ -106,7 +117,7 @@ describe('Notification preference and background registration', () => {
     expect(fixture.nativeElement.querySelector('app-popup')).not.toBeNull();
     const pendingLocation = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]') as HTMLButtonElement;
     expect(pendingLocation.disabled).toBe(true);
-    expect(pendingLocation.classList.contains('app-menu__button-row-item--progress-loading')).toBe(true);
+    expect(pendingLocation.classList.contains('app-menu__button-row-item--progress-loading')).toBe(false);
     expect(setup.allowDisabled()).toBe(true);
     await vi.advanceTimersByTimeAsync(0);
     expect(setup.notificationConfigurationPending()).toBe(false);
@@ -176,23 +187,23 @@ describe('Notification preference and background registration', () => {
     fixture.destroy();
   });
 
-  it('renders success on the actual Update button after a click and keeps the popup open', async () => {
+  it('saves directly from the notification toggle and shows success on that control', async () => {
     vi.mocked(getToken).mockResolvedValue('saved-token');
+    setup.notificationsSelected.set(false);
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
-    const button = fixture.nativeElement.querySelector('.app-setup-action button') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.notifications"]') as HTMLButtonElement;
     expect(button.disabled).toBe(false);
     button.click();
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('true');
-    expect(button.classList.contains('app-menu__palette--green')).toBe(true);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.classList.contains('app-menu__button-row-item--progress-success')).toBe(true);
-    expect(button.textContent).toContain('check_circle');
     expect(fixture.nativeElement.querySelector('app-popup')).not.toBeNull();
     await vi.advanceTimersByTimeAsync(1000);
     fixture.detectChanges();
-    expect(button.classList.contains('app-menu__palette--blue')).toBe(true);
+    expect(setup.saveSucceeded()).toBe(false);
     expect(button.classList.contains('app-menu__button-row-item--progress-success')).toBe(false);
     fixture.destroy();
   });
@@ -254,11 +265,11 @@ describe('Notification preference and background registration', () => {
     vi.mocked(getToken).mockResolvedValue('saved-token');
     await setup.allow();
     expect(setup.saveSucceeded()).toBe(true);
-    setup.toggleNotifications();
-    expect(setup.saveSucceeded()).toBe(false);
     vi.spyOn(TestBed.inject(FirebaseMessagingService), 'setDeviceNotificationsEnabled')
       .mockRejectedValueOnce(new Error('save failed'));
-    await setup.allow();
+    setup.toggleNotifications();
+    expect(setup.saveSucceeded()).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
     expect(setup.error()).toBe('save failed');
     expect(setup.saveSucceeded()).toBe(false);
     expect(setup.actionPending()).toBe(false);
@@ -327,13 +338,12 @@ describe('Notification preference and background registration', () => {
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
     expect(fixture.componentInstance.toggles().find(item => item.id === 'location')?.disabled).toBe(false);
-    fixture.componentInstance.toggle({ id: 'location' } as any);
     const location = TestBed.inject(AppLocationService);
     let resolveCoordinates!: (value: { latitude: number; longitude: number }) => void;
     let resolveSave!: (value: boolean) => void;
     vi.mocked(location.requestCurrentCoordinates).mockReturnValue(new Promise(resolve => resolveCoordinates = resolve));
     vi.mocked(location.saveCurrentCoordinates).mockReturnValue(new Promise(resolve => resolveSave = resolve));
-    const saving = setup.allow();
+    fixture.componentInstance.toggle({ id: 'location' } as any);
     expect(location.requestCurrentCoordinates).toHaveBeenCalledOnce();
     expect(setup.busy()).toBe(false);
     permission.state = 'granted';
@@ -344,7 +354,7 @@ describe('Notification preference and background registration', () => {
     expect(location.saveCurrentCoordinates).toHaveBeenCalledWith({ latitude: 47, longitude: 19 });
     expect(setup.saveSucceeded()).toBe(false);
     resolveSave(true);
-    await saving;
+    await vi.advanceTimersByTimeAsync(0);
     expect(setup.saveSucceeded()).toBe(true);
     expect(location.requestCurrentCoordinates).toHaveBeenCalledOnce();
     fixture.destroy();
@@ -450,15 +460,15 @@ describe('Notification preference and background registration', () => {
     vi.mocked(getToken).mockResolvedValue('new-token');
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
-    const saving = setup.allow();
+    const saving = setup.allow('notifications');
     expect(requestPermission).toHaveBeenCalledOnce();
     expect(getToken).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(10_000);
     expect(setup.nativePending()).toBe(true);
     expect(getToken).not.toHaveBeenCalled();
     fixture.detectChanges();
-    const button = fixture.nativeElement.querySelector('.app-setup-action button') as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
+    const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.notifications"]') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
     expect(button.classList.contains('app-menu__button-row-item--progress')).toBe(false);
     expect(button.querySelector('app-indicator')).toBeNull();
     await setup.allow();
@@ -485,35 +495,22 @@ describe('Notification preference and background registration', () => {
     expect(setup.locationSelected()).toBe(false);
   });
 
-  it('starts the ring only after both native decisions and keeps it while acquiring coordinates', async () => {
-    let allowNotifications!: (permission: NotificationPermission) => void;
-    const notification = { permission: 'default', requestPermission: vi.fn(() =>
-      new Promise<NotificationPermission>(resolve => { allowNotifications = resolve; })) };
-    vi.stubGlobal('Notification', notification);
+  it('starts the location control ring at native grant and keeps it while acquiring coordinates', async () => {
     const permission = { state: 'prompt', onchange: null } as unknown as PermissionStatus;
     vi.mocked(navigator.permissions.query).mockResolvedValue(permission);
     await setup.refreshPermissions();
     let finish!: (coordinates: { latitude: number; longitude: number }) => void;
     vi.mocked(TestBed.inject(AppLocationService).requestCurrentCoordinates)
       .mockReturnValue(new Promise(resolve => { finish = resolve; }));
-    vi.mocked(getToken).mockResolvedValue('new-token');
-    void setup.requestForLogin(vi.fn().mockResolvedValue(true));
-    setup.locationSelected.set(true);
+    setup.locationSelected.set(false);
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
-    const saving = setup.allow();
-    await vi.advanceTimersByTimeAsync(0);
-    fixture.detectChanges();
-    const button = fixture.nativeElement.querySelector('.app-setup-action button') as HTMLButtonElement;
-    expect(button.disabled).toBe(false);
-    expect(button.querySelector('app-indicator')).toBeNull();
-    expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
-    notification.permission = 'granted';
-    allowNotifications('granted');
+    const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]') as HTMLButtonElement;
+    button.click();
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
     expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).toHaveBeenCalledOnce();
-    expect(button.disabled).toBe(false);
+    expect(button.disabled).toBe(true);
     expect(button.querySelector('app-indicator')).toBeNull();
     Object.assign(permission, { state: 'granted' });
     permission.onchange?.call(permission, new Event('change'));
@@ -523,23 +520,26 @@ describe('Notification preference and background registration', () => {
     expect(button.querySelector('app-indicator')).not.toBeNull();
     expect((button.querySelector('app-indicator') as HTMLElement).style.getPropertyValue('--app-indicator-duration')).toBe('10000ms');
     finish({ latitude: 47, longitude: 19 });
-    await saving;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(TestBed.inject(AppLocationService).saveCurrentCoordinates).toHaveBeenCalledWith({ latitude: 47, longitude: 19 });
+    expect(getToken).not.toHaveBeenCalled();
     fixture.destroy();
   });
 
-  it('keeps the signed-out permission action disabled until location is selected', () => {
+  it('lets a signed-out visitor enable already-permitted location directly from its control', async () => {
     activeUserId.set('');
     setup.locationSelected.set(false);
     const fixture = TestBed.createComponent(AppSetupPopupComponent);
     fixture.detectChanges();
-    const button = fixture.nativeElement.querySelector('.app-setup-action button') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    button.click();
-    expect(setup.error()).toBe('');
-    expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
-    setup.toggleLocation();
-    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]') as HTMLButtonElement;
     expect(button.disabled).toBe(false);
+    button.click();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    expect(setup.error()).toBe('');
+    expect(setup.saveSucceeded()).toBe(true);
+    expect(TestBed.inject(AppLocationService).setTrackingEnabled).toHaveBeenCalledWith(true);
     expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
     fixture.destroy();
   });
@@ -631,7 +631,7 @@ describe('Notification preference and background registration', () => {
     expect(setup.actionPending()).toBe(false);
   });
 
-  it.each(['denied', 'default'] as const)('keeps the user ON draft after a %s decision, focus refresh and another Update', async decision => {
+  it.each(['denied', 'default'] as const)('retains the ON draft after %s and retries through OFF/ON control clicks', async decision => {
     const notification = { permission: 'default', requestPermission: vi.fn().mockImplementation(async () => {
       notification.permission = decision;
       return decision;
@@ -644,11 +644,10 @@ describe('Notification preference and background registration', () => {
     fixture.detectChanges();
     const toggle = () => fixture.nativeElement.querySelector('button[aria-label="app.setup.notifications"]') as HTMLButtonElement;
     expect(toggle().getAttribute('aria-pressed')).toBe('false');
-    toggle().click();
-    fixture.detectChanges();
     const request = vi.spyOn(TestBed.inject(FirebaseMessagingService), 'requestEntryPermission');
     for (let attempt = 1; attempt <= 2; attempt++) {
-      await setup.allow();
+      toggle().click();
+      await vi.advanceTimersByTimeAsync(0);
       await setup.refreshPermissions();
       await vi.advanceTimersByTimeAsync(0);
       fixture.detectChanges();
@@ -656,6 +655,13 @@ describe('Notification preference and background registration', () => {
       expect(request).toHaveBeenCalledTimes(attempt);
       expect(notification.requestPermission).toHaveBeenCalledTimes(attempt);
       expect(setup.isOpen()).toBe(true);
+      if (attempt === 1) {
+        toggle().click();
+        await vi.advanceTimersByTimeAsync(0);
+        fixture.detectChanges();
+        expect(toggle().getAttribute('aria-pressed')).toBe('false');
+        expect(request).toHaveBeenCalledTimes(attempt);
+      }
     }
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
     expect(upsert).not.toHaveBeenCalled();
@@ -666,15 +672,15 @@ describe('Notification preference and background registration', () => {
     vi.mocked(getToken).mockResolvedValue('saved-token');
     await setup.allow();
     await vi.advanceTimersByTimeAsync(0);
-    setup.toggleNotifications();
     vi.spyOn(TestBed.inject(FirebaseMessagingService), 'setDeviceNotificationsEnabled')
       .mockRejectedValueOnce(new Error('save failed'));
-    await setup.allow();
+    setup.toggleNotifications();
+    await vi.advanceTimersByTimeAsync(0);
     await setup.refreshPermissions();
     await vi.advanceTimersByTimeAsync(0);
     expect(setup.notificationsSelected()).toBe(false);
     setup.toggleNotifications();
-    await setup.allow();
+    await vi.advanceTimersByTimeAsync(0);
     vi.stubGlobal('Notification', { permission: 'denied' });
     await setup.refreshPermissions();
     messagingConfigured.set(false);
@@ -683,7 +689,7 @@ describe('Notification preference and background registration', () => {
     expect(setup.notificationsSelected()).toBe(true);
   });
 
-  it.each(['denied', 'default'] as const)('stops login after a %s notification result until the user turns notifications OFF', async decision => {
+  it.each(['denied', 'default'] as const)('keeps the combined permission check pending after %s until notifications are deselected', async decision => {
     activeUserId.set('');
     const notification = { permission: 'default', requestPermission: vi.fn().mockResolvedValue(decision) };
     vi.stubGlobal('Notification', notification);
@@ -692,7 +698,7 @@ describe('Notification preference and background registration', () => {
     const completed = vi.fn();
     const login = setup.requestForLogin(checkLocation).then(completed);
     await vi.advanceTimersByTimeAsync(0);
-    setup.toggleNotifications();
+    setup.notificationsSelected.set(true);
     await setup.allow();
     await vi.advanceTimersByTimeAsync(0);
     expect(setup.isOpen()).toBe(true);
@@ -703,7 +709,7 @@ describe('Notification preference and background registration', () => {
     expect(checkLocation).not.toHaveBeenCalled();
     expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
     expect(upsert).not.toHaveBeenCalled();
-    setup.toggleNotifications();
+    setup.notificationsSelected.set(false);
     await setup.allow();
     await login;
     expect(notification.requestPermission).toHaveBeenCalledOnce();
@@ -725,6 +731,167 @@ describe('Notification preference and background registration', () => {
     expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
     expect(setup.isOpen()).toBe(true);
+  });
+
+  describe('cached registration identity', () => {
+    function retainRegistration(userId = 'user-1') {
+      localStorage.setItem(APP_STORAGE_KEYS.messagingUserId, userId);
+      localStorage.setItem(APP_STORAGE_KEYS.messagingToken, 'retained-token');
+      localStorage.setItem(APP_STORAGE_KEYS.messagingDeviceId, 'device-1');
+    }
+
+    it('does not use a cached owner or a stale UI profile as a signed-out identity', async () => {
+      retainRegistration();
+      session.set(null);
+      // The UI store intentionally still contains the preceding member.
+      expect(activeUserId()).toBe('user-1');
+      const messaging = TestBed.inject(FirebaseMessagingService);
+      await messaging.setDeviceNotificationsEnabled(false);
+      await messaging.setDeviceNotificationsEnabled(true);
+      expect(remove).not.toHaveBeenCalled();
+      expect(upsert).not.toHaveBeenCalled();
+      expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('retained-token');
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingUserId)).toBe('user-1');
+    });
+
+    it('does not delete another cached owner while changing the current browser preference', async () => {
+      retainRegistration('previous-member');
+      await TestBed.inject(FirebaseMessagingService).setDeviceNotificationsEnabled(false);
+      expect(remove).not.toHaveBeenCalled();
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled)).toBe('false');
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingUserId)).toBe('previous-member');
+    });
+
+    it('saves the signed-out landing toggle and keeps the pending server registration', async () => {
+      retainRegistration();
+      session.set(null);
+      const messaging = TestBed.inject(FirebaseMessagingService);
+      await messaging.setDeviceNotificationsEnabled(true);
+      setup.close();
+      setup.open();
+      await vi.advanceTimersByTimeAsync(0);
+      const fixture = TestBed.createComponent(AppSetupPopupComponent);
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.notifications"]') as HTMLButtonElement;
+      expect(button.getAttribute('aria-pressed')).toBe('true');
+      button.click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(setup.error()).toBe('');
+      expect(setup.saveSucceeded()).toBe(true);
+      expect(button.getAttribute('aria-pressed')).toBe('false');
+      expect(remove).not.toHaveBeenCalled();
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('retained-token');
+      setup.close();
+      setup.open();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(setup.notificationsSelected()).toBe(false);
+      fixture.destroy();
+    });
+
+    it('performs the retained OFF deletion in the background when its owner logs in again', async () => {
+      retainRegistration();
+      const ownerSession = session();
+      session.set(null);
+      const messaging = TestBed.inject(FirebaseMessagingService);
+      messaging.initialize();
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(remove).not.toHaveBeenCalled();
+      session.set(ownerSession);
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(remove).toHaveBeenCalledExactlyOnceWith({
+        userId: 'user-1', deviceId: 'device-1', firebaseToken: 'retained-token'
+      });
+      expect(upsert).not.toHaveBeenCalled();
+      expect(ensureFirebaseRuntime).not.toHaveBeenCalled();
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
+    });
+
+    it('retains a failed background deletion for the existing explicit retry', async () => {
+      retainRegistration();
+      remove.mockRejectedValueOnce(new Error('server unavailable'));
+      const messaging = TestBed.inject(FirebaseMessagingService);
+      messaging.initialize();
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(remove).toHaveBeenCalledOnce();
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('retained-token');
+      await messaging.setDeviceNotificationsEnabled(false);
+      expect(remove).toHaveBeenCalledTimes(2);
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
+    });
+
+    it('shares one in-flight deletion between explicit OFF and background cleanup', async () => {
+      vi.mocked(getToken).mockResolvedValue('retained-token');
+      const messaging = TestBed.inject(FirebaseMessagingService);
+      await messaging.setDeviceNotificationsEnabled(true);
+      messaging.initialize();
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      let complete!: () => void;
+      remove.mockReturnValue(new Promise<void>(resolve => complete = resolve));
+      const saving = messaging.setDeviceNotificationsEnabled(false);
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(remove).toHaveBeenCalledOnce();
+      complete();
+      await saving;
+      await vi.advanceTimersByTimeAsync(0);
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
+    });
+
+    it('does not repeat explicit ON registration from the background effect', async () => {
+      const messaging = TestBed.inject(FirebaseMessagingService);
+      messaging.initialize();
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      vi.mocked(getToken).mockResolvedValue('new-token');
+      await messaging.setDeviceNotificationsEnabled(true);
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(upsert).toHaveBeenCalledOnce();
+    });
+
+    it('keeps a newer registration when a previous deletion finishes', async () => {
+      retainRegistration();
+      let complete!: () => void;
+      remove.mockReturnValue(new Promise<void>(resolve => complete = resolve));
+      const saving = TestBed.inject(FirebaseMessagingService).setDeviceNotificationsEnabled(false);
+      localStorage.setItem(APP_STORAGE_KEYS.messagingToken, 'new-token');
+      localStorage.setItem(APP_STORAGE_KEYS.messagingUserId, 'next-member');
+      complete();
+      await saving;
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('new-token');
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingUserId)).toBe('next-member');
+    });
+
+    it('registers the current member without sending a deletion for a previous cached identity', async () => {
+      retainRegistration('previous-member');
+      vi.mocked(getToken).mockResolvedValue('new-token');
+      await TestBed.inject(FirebaseMessagingService).setDeviceNotificationsEnabled(true);
+      expect(remove).not.toHaveBeenCalled();
+      expect(upsert).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+        userId: 'user-1', firebaseToken: 'new-token'
+      }));
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingUserId)).toBe('user-1');
+    });
+
+    it('does not register a late token after logout even when the UI profile remains', async () => {
+      let complete!: (token: string) => void;
+      vi.mocked(getToken).mockReturnValue(new Promise(resolve => complete = resolve));
+      const saving = TestBed.inject(FirebaseMessagingService).setDeviceNotificationsEnabled(true);
+      await vi.advanceTimersByTimeAsync(0);
+      session.set(null);
+      complete('late-token');
+      await saving;
+      expect(activeUserId()).toBe('user-1');
+      expect(upsert).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
+      expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBeNull();
+    });
   });
 
   it('does not overwrite a newer OFF when token acquisition finishes', async () => {

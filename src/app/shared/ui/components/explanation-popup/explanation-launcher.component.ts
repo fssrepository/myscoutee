@@ -15,10 +15,12 @@ import { ExplanationPopupComponent } from './explanation-popup.component';
 @Component({ selector: 'app-explanation-launcher', standalone: true,
   imports: [FloatingLauncherComponent, ExplanationPopupComponent, IndicatorComponent, I18nPipe],
   template: `
-    @if (guide.popupOpen() && guide.loading()) {
+    @if (guide.popupOpen() && (guide.loading() || !guide.hasVisiblePopup())) {
       <div class="explanation-guide-loading" role="status" aria-busy="true"
         [style.z-index]="layer() - 1" [attr.aria-label]="'loading.explanation.content' | i18n">
-        <app-indicator kind="load-ring" state="loading" [tone]="loadingTone"></app-indicator>
+        @if (guide.loading()) {
+          <app-indicator kind="load-ring" state="loading" [tone]="loadingTone"></app-indicator>
+        }
       </div>
     }
     @if (guide.launcherVisible() || setup.launcherVisible()) {

@@ -28,6 +28,11 @@ export class AppSetupPopupComponent {
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
   readonly browserActions: AppMenuItem[] = [{ id: 'open-browser', icon: 'open_in_browser',
     layout: 'pill', label: 'app.setup.open.browser', palette: 'ink' }];
+  readonly privacyActions = computed<AppMenuItem[]>(() => [{ id: 'privacy', icon: 'policy',
+    layout: 'pill', label: 'privacy', palette: this.store.privacyMissing() ? 'blue' : 'green',
+    counter: this.store.privacyMissing() ? 1 : null, counterTone: 'alert', disabled: this.store.actionPending() }]);
+  readonly installedActions: AppMenuItem[] = [{ id: 'install', icon: 'install_desktop',
+    layout: 'pill', label: 'install.app', palette: 'green', disabled: true }];
   readonly model = computed<PopupModel>(() => ({
     errorMessage: this.store.error(),
     title: 'app.setup.title', size: 'small', height: 'auto',
@@ -70,10 +75,10 @@ export class AppSetupPopupComponent {
         || this.store.notificationConfigurationPending() || !this.store.messaging.notificationsConfigured }
   ]);
   readonly installActions = computed<AppMenuItem[]>(() => [
-    ...((this.store.pwa.installAvailable() || this.store.pwa.installActionPending()) ? [{ id: 'install', icon: 'install_desktop',
+    { id: 'install', icon: 'install_desktop',
       layout: 'pill' as const, label: 'install.app', palette: 'violet' as const,
-      disabled: this.store.actionPending() || this.store.pwa.installActionPending(),
-      progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }] : [])
+      disabled: !this.store.pwa.installAvailable() || this.store.actionPending() || this.store.pwa.installActionPending(),
+      progress: { state: this.store.pwa.installBusy() ? 'loading' as const : null } }
   ]);
   private controlProgress(control: 'location' | 'notifications'): AppMenuItem['progress'] {
     const active = this.store.activeControl() === control;
@@ -93,7 +98,7 @@ export class AppSetupPopupComponent {
 
   @HostListener('window:focus')
   refreshPermissions(): void {
-    void this.store.refreshPermissions();
+    if (this.store.isOpen()) void this.store.refreshPermissions();
   }
 
   toggle(event: AppMenuItemSelectEvent): void {
@@ -108,5 +113,6 @@ export class AppSetupPopupComponent {
   action(event: AppMenuItemSelectEvent): void {
     if (event.id === 'install') this.store.install();
     else if (event.id === 'open-browser') this.store.pwa.openInBrowser();
+    else if (event.id === 'privacy') this.store.openPrivacy();
   }
 }

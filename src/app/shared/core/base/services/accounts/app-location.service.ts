@@ -1,3 +1,4 @@
+import { markLandingDebug } from '../../../common/landing-debug';
 import {
   Injectable,
   Injector,
@@ -59,6 +60,11 @@ export class AppLocationService {
   private readTrackingEnabled(): boolean {
     try { return localStorage.getItem(APP_STORAGE_KEYS.locationTrackingEnabled) !== 'false'; }
     catch { return true; }
+  }
+
+  hasSavedTrackingApproval(): boolean {
+    try { return localStorage.getItem(APP_STORAGE_KEYS.locationTrackingEnabled) === 'true'; }
+    catch { return false; }
   }
 
   setTrackingEnabled(enabled: boolean): void {
@@ -233,7 +239,9 @@ export class AppLocationService {
   }
 
   async requestCurrentCoordinates(signal?: AbortSignal): Promise<LocationCoordinates | null> {
+    markLandingDebug('location.request');
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      markLandingDebug('location.unsupported');
       return null;
     }
 
@@ -247,23 +255,28 @@ export class AppLocationService {
         if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
         resolve(coordinates);
       };
-      const abort = () => finish(null);
+      const abort = () => { markLandingDebug('location.cancelled'); finish(null); };
       const success = (position: GeolocationPosition) => {
+        markLandingDebug('location.granted');
         const latitude = Number(position.coords.latitude);
         const longitude = Number(position.coords.longitude);
         finish(Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null);
       };
-      if (signal?.aborted) { finish(null); return; }
+      const failure = (error: GeolocationPositionError) => {
+        markLandingDebug(error.code === 1 ? 'location.denied' : error.code === 3 ? 'location.timeout' : 'location.unavailable');
+        finish(null);
+      };
+      if (signal?.aborted) { abort(); return; }
       if (signal) {
         // Setup owns the deadline, starting only at permission grant. A
         // cancellable one-shot watch avoids Android's earlier native timeout.
         signal.addEventListener('abort', abort, { once: true });
-        watchId = navigator.geolocation.watchPosition(success, () => finish(null), {
+        watchId = navigator.geolocation.watchPosition(success, failure, {
           enableHighAccuracy: false, maximumAge: 0
         });
         if (settled) navigator.geolocation.clearWatch(watchId);
       } else {
-        navigator.geolocation.getCurrentPosition(success, () => finish(null), {
+        navigator.geolocation.getCurrentPosition(success, failure, {
           enableHighAccuracy: false, timeout: APP_SETUP_CONFIG.locationRequestTimeoutMs, maximumAge: 0
         });
       }

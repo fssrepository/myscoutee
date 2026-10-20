@@ -1,5 +1,6 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { Injector, inject, provideAppInitializer } from '@angular/core';
+import { markLandingDebug } from './app/shared/core/common/landing-debug';
 import { prepareDemoFailover, demoFailoverSeedWarmupNeeded, demoFailoverLocalUser, startDemoFailover } from './app/shared/core/common/demo-failover';
 
 type MutableConsole = Console & Record<string, (...args: unknown[]) => void>;
@@ -71,6 +72,7 @@ function clearBootstrapResumeReloadGuard(): void {
 }
 
 function markBootstrapped(): void {
+  markLandingDebug('bootstrap.ready');
   bootstrapSettled = true;
   unbindBootstrapResumeRecovery();
   clearBootstrapResumeReloadGuard();
@@ -78,6 +80,7 @@ function markBootstrapped(): void {
 }
 
 function markBootstrapFailed(err: unknown): void {
+  markLandingDebug('bootstrap.failed');
   bootstrapSettled = true;
   unbindBootstrapResumeRecovery();
   console.error(err);

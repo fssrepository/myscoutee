@@ -1,5 +1,69 @@
 import { EntryPageComponent } from './entry-page.component';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
+import { automaticPrivacyConsentEnabled } from '../../../shared/core/base/services/help/privacy-policy.service';
+
+// Admission tests use prototype fixtures; component creation is covered separately.
+beforeEach(() => {
+  const prototype = EntryPageComponent.prototype as unknown as {
+    ensureFirebaseAuthPopupLoaded(): Promise<void>;
+    ensureOnboardingPopupLoaded(): Promise<void>;
+  };
+  vi.spyOn(prototype, 'ensureFirebaseAuthPopupLoaded').mockResolvedValue(undefined);
+  vi.spyOn(prototype, 'ensureOnboardingPopupLoaded').mockResolvedValue(undefined);
+});
+afterEach(() => vi.restoreAllMocks());
+
+describe('nginx automatic consent switch', () => {
+  beforeEach(() => {
+    const flag = document.createElement('script');
+    flag.id = 'myscoutee-consent-auto'; flag.textContent = '0';
+    document.head.appendChild(flag);
+  });
+  afterEach(() => document.getElementById('myscoutee-consent-auto')?.remove());
+
+  it('skips initial, async and login prompting without manufacturing consent', async () => {
+    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+      entryNetworkUnavailable: false, entryPrivacyLoading: true,
+      privacyPolicy: { state: () => null, activeRevision: () => ({ id: 'privacy', version: 1 }) },
+      loadEntryConsentState: () => null, loadEntryContent: vi.fn(),
+      entryConsentPopupOpen: false, landingContentRequestToken: 1,
+      endEntryPrivacyLoadingWindow: vi.fn(), syncEntryPrivacyApprovalsForRevision: vi.fn(),
+      changeDetectorRef: { markForCheck: vi.fn() }, onEntryConsentStateChanged: vi.fn()
+    });
+    const saved = localStorage.getItem(APP_STORAGE_KEYS.entryConsent);
+    expect(component.shouldPromptEntryConsent()).toBe(false);
+    component.finishEntryPrivacyLoad(1, true);
+    expect(component.showEntryConsentPopup).toBe(false);
+    expect(await component.ensureEntryConsent()).toBe(true);
+    expect(component.loadEntryContent).not.toHaveBeenCalled();
+    expect(component.hasEntryConsent).toBe(false);
+    expect(component.onEntryConsentStateChanged).toHaveBeenCalledWith(false);
+    expect(localStorage.getItem(APP_STORAGE_KEYS.entryConsent)).toBe(saved);
+  });
+
+  it('keeps a manually opened consent editable after the policy finishes loading', () => {
+    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+      entryNetworkUnavailable: false, landingContentRequestToken: 1,
+      privacyPolicy: { state: () => null }, loadEntryContent: vi.fn(),
+      syncEntryPrivacyApprovalsForRevision: vi.fn(), endEntryPrivacyLoadingWindow: vi.fn(),
+      changeDetectorRef: { markForCheck: vi.fn() }, onEntryConsentStateChanged: vi.fn(),
+      loadEntryConsentState: () => null
+    });
+    component.openEntryConsentPopup();
+    component.finishEntryPrivacyLoad(1, true);
+    expect(component.showEntryConsentPopup).toBe(true);
+    expect(component.entryConsentViewOnly).toBe(false);
+  });
+
+  it.each(['1', '', '<!--# echo var="myscoutee_consent_auto" -->', 'invalid'])('keeps the original behavior for %s', value => {
+    document.getElementById('myscoutee-consent-auto')!.textContent = value;
+    expect(automaticPrivacyConsentEnabled()).toBe(true);
+  });
+  it('keeps the original behavior without the nginx snapshot', () => {
+    document.getElementById('myscoutee-consent-auto')!.remove();
+    expect(automaticPrivacyConsentEnabled()).toBe(true);
+  });
+});
 
 describe('entry consent visibility while the policy loads', () => {
   afterEach(() => localStorage.removeItem(APP_STORAGE_KEYS.entryConsent));
@@ -544,8 +608,8 @@ describe('Demo location admission before session creation', () => {
       expect(component.usersService.checkLocationEligibility).not.toHaveBeenCalled();
       expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
       expect(local ? component.sessionService.startDemoSession : component.sessionService.startTrackedDemoSession).toHaveBeenCalledOnce();
-      if (local) expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game');
-      else expect(component.runPostSessionGate).toHaveBeenCalledOnce();
+      expect(component.router.navigateByUrl).toHaveBeenCalledWith('/game', ...local ? [] : [{ state: { avatarLoading: true } }]);
+      expect(component.runPostSessionGate).not.toHaveBeenCalled();
       expect(selection.complete).toHaveBeenCalledOnce();
     });
 
@@ -555,6 +619,38 @@ describe('Demo location admission before session creation', () => {
       expect(component.requestLocationAccessFromDialog).not.toHaveBeenCalled();
       expect(component.sessionService.startDemoSession).not.toHaveBeenCalled();
       expect(component.sessionService.startTrackedDemoSession).not.toHaveBeenCalled();
+      expect(selection.fail).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      ['dating', ['dating'], null],
+      ['work', ['work'], 'myscoutee-work'],
+      ['community', ['community'], 'myscoutee-community'],
+      ['work', ['dating'], undefined]
+    ])(`leaves %s data loading to the existing load ring after ${local ? 'local' : 'HTTP'} selection`, async (mode, baseGroupTypes, httpWorkspace) => {
+      const { component, selection } = fixture(local, accepted);
+      component.landingContent.mode = () => mode;
+      Object.assign(selection.user, { baseGroupTypes });
+      component.usersService.loadProfileExtById = vi.fn().mockResolvedValue({ profile: selection.user });
+      await component.onDemoUserSelected(selection);
+      expect(component.usersService.loadUserById).not.toHaveBeenCalled();
+      expect(component.usersService.loadProfileExtById).not.toHaveBeenCalled();
+      expect(component.router.navigateByUrl).toHaveBeenCalledExactlyOnceWith('/game', ...local ? [] : [{ state: { avatarLoading: true } }]);
+      const workspace = local && mode === 'work' ? 'myscoutee-work' : httpWorkspace;
+      if (!local && (mode === 'dating' || workspace === undefined)) {
+        expect(component.usersService.stageInitialWorkspace).not.toHaveBeenCalled();
+      } else {
+        expect(component.usersService.stageInitialWorkspace).toHaveBeenCalledExactlyOnceWith(workspace);
+      }
+      expect(selection.complete).toHaveBeenCalledOnce();
+      expect(selection.fail).not.toHaveBeenCalled();
+    });
+
+    it(`keeps a rejected ${local ? 'local' : 'HTTP'} navigation unsuccessful`, async () => {
+      const { component, selection } = fixture(local);
+      component.router.navigateByUrl.mockResolvedValue(false);
+      await component.onDemoUserSelected(selection);
+      expect(selection.complete).not.toHaveBeenCalled();
       expect(selection.fail).toHaveBeenCalledOnce();
     });
   }
@@ -676,5 +772,29 @@ describe('Authenticated entry location', () => {
     component.appLocationService.pendingLoginCoordinates.mockReturnValue({ latitude: 47, longitude: 19 });
     await component.runPostSessionGate(session, '/game');
     expect(component.ensureHttpLoginAccessAllowed).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('landing diagnostics for automatic privacy gating', () => {
+  it('reports the actual automatic popup transition once, including its close', () => {
+    const mark = vi.fn();
+    window.__myscouteeLandingDebug = { mark, error: vi.fn(), finish: vi.fn() };
+    try {
+      const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+        entryConsentPopupOpen: false, landingContentRequestToken: 1,
+        entryNetworkUnavailable: false, entryConsentViewOnly: false,
+        endEntryPrivacyLoadingWindow: vi.fn(), syncEntryPrivacyApprovalsForRevision: vi.fn(),
+        shouldPromptEntryConsent: () => true, loadEntryConsentState: () => null,
+        changeDetectorRef: { markForCheck: vi.fn() }, onEntryConsentStateChanged: vi.fn()
+      });
+      component.finishEntryPrivacyLoad(1, true);
+      expect(component.showEntryConsentPopup).toBe(true);
+      expect(mark).toHaveBeenCalledExactlyOnceWith('privacy.open');
+      component.finishEntryPrivacyLoad(1, true);
+      expect(mark).toHaveBeenCalledTimes(1);
+      component.showEntryConsentPopup = false;
+      expect(mark).toHaveBeenLastCalledWith('privacy.close');
+    } finally { delete window.__myscouteeLandingDebug; }
   });
 });

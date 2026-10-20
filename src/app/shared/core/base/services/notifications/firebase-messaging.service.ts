@@ -35,6 +35,7 @@ import {
   type FirebaseConfigFile
 } from '../accounts/firebase-app.service';
 import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
+import { SessionService } from '../accounts/session.service';
 import { DeviceRegistrationsService } from '../accounts/device-registrations.service';
 import { DeploymentConfigurationService } from '../platform/deployment-configuration.service';
 import { I18nService } from '../localization/i18n.service';
@@ -69,16 +70,25 @@ export class FirebaseMessagingService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly sessionService = inject(SessionService);
   private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private initialized = false;
   private nativeDenialOperation: Promise<void> | null = null;
+  private deviceRemovalOperation: { userId: string; token: string; result: Promise<void> } | null = null;
   private readonly deviceEnabled = signal(typeof localStorage === 'undefined'
     || localStorage.getItem(APP_STORAGE_KEYS.messagingDeviceEnabled) !== 'false');
   // The switch reflects this browser's saved preference and native permission.
   readonly deviceNotificationsEnabled = computed(() => this.deviceEnabled()
     && this.notificationsConfigured && this.notificationPermission() === 'granted');
   private deviceOperationRevision = 0;
+
+  private get activeDeviceUserId(): string {
+    // A cached token owner and a hydrated UI profile are not a login session.
+    // Local adapters retain their existing profile-based operation.
+    return this.deviceRegistrations.isLocal || this.sessionService.currentSession()
+      ? this.userProfileStore.activeUserId().trim() : '';
+  }
 
   async setDeviceNotificationsEnabled(enabled: boolean): Promise<void> {
     if (!this.notificationsConfigured) return;
@@ -160,7 +170,7 @@ export class FirebaseMessagingService {
 
     effect(
       () => {
-        const userId = this.userProfileStore.activeUserId().trim();
+        const userId = this.activeDeviceUserId;
         const permission = this.notificationPermission();
         if (!this.notificationsConfigured) {
           this.unbindForegroundMessages();
@@ -176,6 +186,13 @@ export class FirebaseMessagingService {
               if (this.deviceEnabled()) void this.updateLocalDevice(true).catch(() => undefined);
             });
           }
+          return;
+        }
+        if (userId && this.enabled && !untracked(() => this.deviceEnabled())) {
+          this.unbindForegroundMessages();
+          // A signed-out preference change retains its registration for cleanup
+          // when the same owner is authenticated again. No new queue or storage.
+          untracked(() => { void this.unregisterStoredDevice().catch(() => undefined); });
           return;
         }
         const runtime = this.firebaseAppService.activeRuntime();
@@ -219,7 +236,7 @@ export class FirebaseMessagingService {
       return;
     }
     const registered = await this.registerActiveDevice();
-    if (requireRegistration && this.userProfileStore.activeUserId().trim() && !registered) {
+    if (requireRegistration && this.activeDeviceUserId && !registered) {
       throw new Error(this.i18n.translate('entry.permissions.notifications.failed'));
     }
   }
@@ -335,7 +352,7 @@ export class FirebaseMessagingService {
       return false;
     }
     const revision = this.deviceOperationRevision;
-    const userId = this.userProfileStore.activeUserId().trim();
+    const userId = this.activeDeviceUserId;
     if (!userId) {
       return false;
     }
@@ -370,7 +387,7 @@ export class FirebaseMessagingService {
         !this.notificationsConfigured || revision !== this.deviceOperationRevision || !this.deviceEnabled()
         || this.firebaseAppService.activeRuntime()?.app
           !== firebaseRuntime.app
-        || this.userProfileStore.activeUserId().trim() !== userId
+        || this.activeDeviceUserId !== userId
       ) {
         return false;
       }
@@ -385,7 +402,7 @@ export class FirebaseMessagingService {
         !this.notificationsConfigured || revision !== this.deviceOperationRevision || !this.deviceEnabled()
         || this.firebaseAppService.activeRuntime()?.app
           !== firebaseRuntime.app
-        || this.userProfileStore.activeUserId().trim() !== userId
+        || this.activeDeviceUserId !== userId
       ) {
         await this.deleteDeviceRegistration(userId, firebaseToken);
         return false;
@@ -473,30 +490,38 @@ export class FirebaseMessagingService {
     }
     const userId = localStorage.getItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY)?.trim() ?? '';
     const firebaseToken = localStorage.getItem(FirebaseMessagingService.TOKEN_STORAGE_KEY)?.trim() ?? '';
-    if (!userId || !firebaseToken) {
+    if (!userId || !firebaseToken || this.activeDeviceUserId !== userId) {
       return;
     }
 
-    // Opt-out is a backend registration write. The browser permission and
-    // shared Push subscription remain browser-owned; Firebase availability
-    // must not delay disabling this member's notification delivery.
+    // Explicit OFF and the session effect can observe the same preference
+    // change. Share that owner's backend deletion rather than send it twice.
+    let operation = this.deviceRemovalOperation;
+    if (!operation || operation.userId !== userId || operation.token !== firebaseToken) {
+      operation = { userId, token: firebaseToken, result: this.deviceRegistrations.remove({
+        userId, deviceId: this.resolveDeviceId(), firebaseToken
+      }) };
+      this.deviceRemovalOperation = operation;
+    }
     try {
-      await this.deviceRegistrations.remove({
-          userId,
-          deviceId: this.resolveDeviceId(),
-          firebaseToken
-      });
+      await operation.result;
     } catch (error) {
       // Explicit device opt-out must report failure and retain the token for retry.
       if (strict) throw error;
+      return;
+    } finally {
+      if (this.deviceRemovalOperation === operation) this.deviceRemovalOperation = null;
     }
-    localStorage.removeItem(FirebaseMessagingService.TOKEN_STORAGE_KEY);
-    localStorage.removeItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY);
+    if (localStorage.getItem(FirebaseMessagingService.TOKEN_STORAGE_KEY) === firebaseToken
+      && localStorage.getItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY) === userId) {
+      localStorage.removeItem(FirebaseMessagingService.TOKEN_STORAGE_KEY);
+      localStorage.removeItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY);
+    }
   }
 
   private persistNativeDenial(): Promise<void> {
     if (this.nativeDenialOperation) return this.nativeDenialOperation;
-    const userId = this.userProfileStore.activeUserId().trim();
+    const userId = this.activeDeviceUserId;
     const deviceId = localStorage.getItem(FirebaseMessagingService.DEVICE_ID_STORAGE_KEY)?.trim() ?? '';
     if (!userId || !deviceId || this.notificationPermission() !== 'denied'
       || !this.userProfileStore.activeNotificationDevices().some(device =>
@@ -601,7 +626,7 @@ export class FirebaseMessagingService {
   }
 
   private async deleteDeviceRegistration(userId: string, firebaseToken: string): Promise<void> {
-    if (!this.enabled) {
+    if (!this.enabled || this.activeDeviceUserId !== userId) {
       return;
     }
     try {

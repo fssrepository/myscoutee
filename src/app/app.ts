@@ -1,3 +1,4 @@
+import { markLandingDebug } from './shared/core/common/landing-debug';
 import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
 import {
@@ -117,11 +118,16 @@ export class App implements OnDestroy {
     }
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
-        // Keep the current page shell until guards and lazy loading commit
-        // the destination. NavigationStart can still cancel or redirect.
+        // An accepted HTTP demo login hands off to the existing avatar shell
+        // before guards and lazy components finish. Keep the selector mounted
+        // so a rejected navigation can return to the same selection.
+        const avatarLoading = this.router.getCurrentNavigation()?.extras?.state?.['avatarLoading'] === true;
         if (this.initialLandingWarmupPending) {
           this.syncGameStartup(event.url);
           this.showRouteWarmup();
+        } else if (avatarLoading) {
+          this.syncGameStartup(event.url, true);
+          this.changeDetectorRef.detectChanges();
         } else {
           this.hideRouteWarmup(0);
         }
@@ -243,16 +249,21 @@ export class App implements OnDestroy {
     // without waiting for another change-detection turn after NavigationEnd.
     const destination = this.router.getCurrentNavigation()?.finalUrl?.toString();
     if (destination) this.syncSideMenuVisibility(destination);
+    // Guards have accepted the destination. Close the retained selector before
+    // removing the avatar shell, so it cannot reappear during the handoff.
+    if (this.gameStartupVisible && this.showSideMenu) {
+      this.demoSelectorStore.closeDemoBootstrapSelector();
+    }
     // The protected outlet has activated. The real header now takes over from
     // the public loading shell; profile/card loaders belong to the page.
     this.completeInitialLandingWarmup(0);
     this.changeDetectorRef.detectChanges();
   }
 
-  private syncGameStartup(url: string): void {
+  private syncGameStartup(url: string, avatarLoading = false): void {
     const path = url.split(/[?#]/)[0].replace(/\/$/, '') || '/';
     const session = this.sessionService.currentSession();
-    this.gameStartupVisible = this.initialLandingWarmupPending
+    this.gameStartupVisible = (this.initialLandingWarmupPending || avatarLoading)
       && Boolean(session && session.kind !== 'operator-bootstrap')
       && (path === '/' || path === '/game' || path === '/home');
     if (this.gameStartupVisible) this.avatarLoadStartedAt ||= Date.now();
@@ -273,6 +284,7 @@ export class App implements OnDestroy {
   private completeInitialLandingWarmup(delayMs = 120): void {
     this.initialLandingWarmupPending = false;
     this.gameStartupVisible = false;
+    if (!this.showSideMenu) this.avatarLoadStartedAt = 0;
     this.hideRouteWarmup(delayMs);
   }
 
@@ -282,12 +294,14 @@ export class App implements OnDestroy {
     if (delayMs <= 0) {
       this.routeWarmupVisible = false;
       this.changeDetectorRef.detectChanges();
+      markLandingDebug('route.ready');
       return;
     }
     this.routeWarmupHideTimer = setTimeout(() => {
       this.routeWarmupVisible = false;
       this.routeWarmupHideTimer = null;
       this.changeDetectorRef.detectChanges();
+      markLandingDebug('route.ready');
     }, delayMs);
   }
 

@@ -1,3 +1,4 @@
+import { markLandingDebug } from '../../../common/landing-debug';
 import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
@@ -45,6 +46,7 @@ export class PwaService {
   readonly appVersionLabel = this.appVersionLabelRef.asReadonly();
   private initialized = false;
   private updateCheckInFlight: Promise<void> | null = null;
+  private initialAppVersionPayload: Promise<AppVersionPayload | null> | null = null;
   private onBeforeInstallPrompt = (event: Event) => {
     const promptEvent = event as BeforeInstallPromptEvent;
     promptEvent.preventDefault();
@@ -102,13 +104,9 @@ export class PwaService {
       return;
     }
     try {
-      const response = await fetch(new URL(PwaService.APP_VERSION_URL, document.baseURI).toString(), {
-        cache: 'no-store'
-      });
-      if (!response.ok) {
-        return;
-      }
-      const payload = await response.json() as AppVersionPayload;
+      this.initialAppVersionPayload = this.fetchAppVersionPayload();
+      const payload = await this.initialAppVersionPayload;
+      if (!payload) return;
       const version = this.normalizeAppVersion(payload.version)
         || this.normalizeAppVersion(payload.buildId)
         || this.normalizeAppVersion(payload.gitSha);
@@ -135,21 +133,31 @@ export class PwaService {
   }
 
   get externalBrowserAvailable(): boolean {
-    if (typeof navigator === 'undefined' || this.isStandalone()) return false;
-    const userAgent = navigator.userAgent;
-    return /Android/i.test(userAgent) && /Instagram|FBAN|FBAV|FB_IAB|;\s*wv\b/i.test(userAgent);
+    return typeof window !== 'undefined' && typeof window.open === 'function';
   }
 
   openInBrowser(): void {
-    if (!this.externalBrowserAvailable || typeof window === 'undefined') return;
+    markLandingDebug('browser.request');
+    if (!this.externalBrowserAvailable) return;
     const url = new URL(window.location.href);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return;
-    // Keep the page, query and fragment. A user click launches Android's normal
-    // URL handler (or browser chooser), without depending on a particular browser.
-    window.location.assign(`intent:${url.href.slice(url.protocol.length)}#Intent;scheme=${url.protocol.slice(0, -1)};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`);
+    if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
+      // Android's URL handler is platform-specific, independent of browser brand.
+      window.location.assign(`intent:${url.href.slice(url.protocol.length)}#Intent;scheme=${url.protocol.slice(0, -1)};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`);
+      return;
+    }
+    const ios = typeof navigator !== 'undefined' && (
+      /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+    // iOS can route this HTTPS scheme to Safari. The embedding application may
+    // still refuse the request; do not infer successful handoff from window.open.
+    const target = ios && url.protocol === 'https:' ? `x-safari-${url.href}` : url.href;
+    window.open(target, '_blank', 'noopener,noreferrer');
   }
 
   async promptInstall(): Promise<boolean> {
+    markLandingDebug('install.request');
     const promptEvent = this.installPromptRef();
     if (!promptEvent || this.installActionPending()) {
       return false;
@@ -436,6 +444,15 @@ export class PwaService {
   }
 
   private async fetchLatestBuildId(): Promise<string> {
+    // The initial label and release check read the same response. Later checks
+    // still fetch fresh metadata so deployment/rollback detection is unchanged.
+    const initial = this.initialAppVersionPayload;
+    this.initialAppVersionPayload = null;
+    const payload = await (initial ?? this.fetchAppVersionPayload());
+    return this.normalizeBuildId(payload?.buildId);
+  }
+
+  private async fetchAppVersionPayload(): Promise<AppVersionPayload | null> {
     try {
       const versionUrl = new URL(PwaService.APP_VERSION_URL, document.baseURI).toString();
       const response = await fetch(versionUrl, {
@@ -445,12 +462,11 @@ export class PwaService {
         }
       });
       if (!response.ok) {
-        return '';
+        return null;
       }
-      const payload = await response.json() as AppVersionPayload;
-      return this.normalizeBuildId(payload.buildId);
+      return await response.json() as AppVersionPayload;
     } catch {
-      return '';
+      return null;
     }
   }
 

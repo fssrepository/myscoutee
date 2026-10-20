@@ -10,6 +10,7 @@ function runtime(entries = [], previousEntries = []) {
   const previous = new Map(previousEntries);
   const handlers = new Map();
   const fetched = [];
+  let offline = false;
   const match = (cache, request) => cache.has(request.url)
     ? new Response(cache.get(request.url)) : undefined;
   const context = vm.createContext({
@@ -25,6 +26,7 @@ function runtime(entries = [], previousEntries = []) {
     },
     fetch: async request => {
       fetched.push(request.url);
+      if (offline) throw new Error('Offline');
       return new Response('NETWORK BUNDLE');
     },
     self: {
@@ -35,10 +37,11 @@ function runtime(entries = [], previousEntries = []) {
   vm.runInContext(source, context);
   return {
     fetched,
+    goOffline() { offline = true; },
     async load(path) {
       let result;
       const request = new Request(`https://qa.example${path}`);
-      Object.defineProperty(request, 'destination', { value: path.endsWith('.css') ? 'style' : 'script' });
+      Object.defineProperty(request, 'destination', { value: path.endsWith('.css') ? 'style' : path.endsWith('.woff2') ? 'font' : 'script' });
       handlers.get('fetch')({
         request,
         respondWith: response => { result = response; }
@@ -48,7 +51,7 @@ function runtime(entries = [], previousEntries = []) {
   };
 }
 
-for (const path of ['/main-ABCDEFGH.js', '/chunk-1234ABCD.js', '/styles-ABCDEFGH.css']) {
+for (const path of ['/main-ABCDEFGH.js', '/chunk-1234ABCD.js', '/chunk-a1b2c3d4.js', '/styles-ABCDEFGH.css']) {
   test(`cached ${path} avoids another network download`, async () => {
     const app = runtime([[`https://qa.example${path}`, 'CACHED BUNDLE']]);
     assert.equal(await app.load(path), 'CACHED BUNDLE');
@@ -74,3 +77,12 @@ test('unhashed scripts still refresh from the network', async () => {
   assert.equal(await app.load('/config.js'), 'NETWORK BUNDLE');
   assert.equal(app.fetched.length, 1);
 });
+
+for (const path of ['/chunk-LAZY0001.js', '/media/roboto-latin-400-normal.woff2']) {
+  test(`an on-demand ${path} remains available offline after use`, async () => {
+    const app = runtime();
+    assert.equal(await app.load(path), 'NETWORK BUNDLE');
+    app.goOffline();
+    assert.equal(await app.load(path), 'NETWORK BUNDLE');
+  });
+}

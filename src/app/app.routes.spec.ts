@@ -102,6 +102,18 @@ describe('startup authentication routing', () => {
     expect(loadUserById).not.toHaveBeenCalled();
   });
 
+  it.each([
+    [{ id: 'demo-member', profileStatus: 'active', profileFormVersion: CURRENT_PROFILE_FORM_VERSION }, '/game'],
+    [{ id: 'demo-member', profileStatus: 'onboarding' }, '/entry?redirect=%2Fgame&onboarding=1'],
+    [null, '/entry?redirect=%2Fgame']
+  ])('validates an HTTP demo session at its destination (%s)', async (user, destination) => {
+    storedSession = { kind: 'demo', userId: 'demo-member', sessionId: 'demo-session' };
+    loadUserById.mockResolvedValue(user);
+    await RouterTestingHarness.create('/game');
+    expect(TestBed.inject(Router).url).toBe(destination);
+    expect(loadUserById).toHaveBeenCalledExactlyOnceWith('demo-member', 8000);
+  });
+
   it('checks authentication again on a later protected navigation', async () => {
     const harness = await RouterTestingHarness.create('/');
     await harness.navigateByUrl('/entry');

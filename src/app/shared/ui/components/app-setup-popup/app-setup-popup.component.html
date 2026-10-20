@@ -1,27 +1,43 @@
 @if (store.isOpen()) {
   <app-popup [model]="model()" (close)="store.close()">
     <div class="app-setup-content" appLandingGuideSurface="landing.setup">
-      @if (store.pwa.externalBrowserAvailable) {
-        <section class="app-setup-section app-setup-browser" aria-labelledby="setup-browser">
-          <h3 id="setup-browser">{{ 'app.setup.open.browser' | i18n }}</h3>
-          <p>{{ 'app.setup.open.browser.help' | i18n }}</p>
-          <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" [items]="browserActions" (itemSelect)="action($event)"></app-menu>
-        </section>
-      }
+      <section class="app-setup-section app-setup-browser" aria-labelledby="setup-browser">
+        <h3 id="setup-browser">{{ 'app.setup.open.browser' | i18n }}</h3>
+        <p>{{ 'app.setup.open.browser.help' | i18n }}</p>
+        <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" [items]="browserActions" (itemSelect)="action($event)"></app-menu>
+      </section>
+      <div class="app-setup-checklist">
       <section class="app-setup-section" aria-labelledby="setup-permissions">
         <h3 id="setup-permissions">{{ 'app.setup.permissions' | i18n }}</h3>
         <p>{{ 'app.setup.permission.help' | i18n }}</p>
         @for (item of toggles(); track item.id) {
-          <app-menu class="app-setup-toggle" [attr.data-guide-field]="item.id" kind="inline" [items]="[item]" (itemSelect)="toggle($event)"></app-menu>
+          @let complete = item.id === 'location' ? !store.locationSetupMissing() : store.messaging.deviceNotificationsEnabled();
+          @let unavailable = item.id === 'notifications' && !store.notificationConfigurationPending() && !store.messaging.notificationsConfigured;
+          <div class="app-setup-step" [class.is-complete]="complete" [class.is-blocked]="!complete && unavailable" [attr.data-step]="item.id" role="group" [attr.aria-label]="('app.setup.' + item.id | i18n) + ': ' + ((complete ? 'done' : unavailable ? 'blocked' : 'pending') | i18n)">
+            <span class="app-setup-step-badge"><mat-icon aria-hidden="true">{{ complete ? 'check' : unavailable ? 'block' : 'priority_high' }}</mat-icon></span>
+            <app-menu class="app-setup-toggle" [attr.data-guide-field]="item.id" kind="inline" [items]="[item]" (itemSelect)="toggle($event)"></app-menu>
+          </div>
         }
       </section>
-      @if (installActions().length) {
         <section class="app-setup-section app-setup-install" aria-labelledby="setup-install">
           <h3 id="setup-install">{{ 'install.app' | i18n }}</h3>
           <p>{{ 'app.setup.description' | i18n }}</p>
-          <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" data-guide-field="install" [items]="installActions()" (itemSelect)="action($event)"></app-menu>
+          @let installed = store.pwa.installed();
+          @let unavailable = !store.pwa.installAvailable() && !store.pwa.installActionPending();
+          @let actions = installed ? installedActions : installActions();
+          <div class="app-setup-step" [class.is-complete]="installed" [class.is-blocked]="!installed && unavailable" data-step="install" role="group" [attr.aria-label]="('install.app' | i18n) + ': ' + ((installed ? 'done' : unavailable ? 'blocked' : 'pending') | i18n)">
+            <span class="app-setup-step-badge"><mat-icon aria-hidden="true">{{ installed ? 'check' : unavailable ? 'block' : 'priority_high' }}</mat-icon></span>
+            <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" data-guide-field="install" [items]="actions" (itemSelect)="action($event)"></app-menu>
+          </div>
         </section>
-      }
+      <section class="app-setup-section app-setup-privacy" [attr.aria-label]="'privacy' | i18n">
+        @let complete = !store.privacyMissing();
+        <div class="app-setup-step" [class.is-complete]="complete" data-step="privacy" role="group" [attr.aria-label]="('privacy' | i18n) + ': ' + ((complete ? 'done' : 'pending') | i18n)">
+          <span class="app-setup-step-badge"><mat-icon aria-hidden="true">{{ complete ? 'check' : 'priority_high' }}</mat-icon></span>
+          <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" data-guide-field="privacy" [items]="privacyActions()" (itemSelect)="action($event)"></app-menu>
+        </div>
+      </section>
+      </div>
     </div>
   </app-popup>
   @if (helpOpen()) {

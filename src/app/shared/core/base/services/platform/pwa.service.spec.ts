@@ -2,41 +2,91 @@ import { Injector, runInInjectionContext } from '@angular/core';
 import { PwaService } from './pwa.service';
 import { environment } from '../../../../../../environments/environment';
 
-describe('External browser from an Android in-app browser', () => {
+describe('Browser opening without a browser-brand allowlist', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  function fixture(userAgent: string, href = 'https://myscoutee.com/?mode=work&utm_source=instagram#about') {
-    const assign = vi.fn();
+  function fixture(userAgent: string, href = 'https://myscoutee.com/?mode=work&utm_source=instagram#about', standalone = false) {
+    const assign = vi.fn(), open = vi.fn();
     vi.stubGlobal('navigator', { userAgent });
-    vi.stubGlobal('window', { navigator: {}, matchMedia: () => ({ matches: false }), location: { href, assign } });
+    vi.stubGlobal('window', { open, navigator: {}, matchMedia: () => ({ matches: standalone }), location: { href, assign } });
     const service = Object.create(PwaService.prototype) as PwaService;
-    return { service, assign };
+    return { service, assign, open };
   }
 
   it.each([
     'Mozilla/5.0 (Linux; Android 13; wv) Chrome/140.0 Instagram 400.0',
     'Mozilla/5.0 (Linux; Android 13) Chrome/140.0 [FBAN/FB4A;FBAV/500.0]',
-    'Mozilla/5.0 (Linux; Android 13; wv) Chrome/140.0'
-  ])('opens the same page, campaign query and fragment through Android URL handling: %s', userAgent => {
-    const { service, assign } = fixture(userAgent);
+    'Mozilla/5.0 (Linux; Android 13) Chrome/140.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Android 15; Mobile; rv:140.0) Gecko/140.0 Firefox/140.0',
+    'Android UnknownBrowser'
+  ])('retains Android URL handling without filtering browser names: %s', userAgent => {
+    const { service, assign, open } = fixture(userAgent);
     expect(service.externalBrowserAvailable).toBe(true);
     service.openInBrowser();
     expect(assign).toHaveBeenCalledExactlyOnceWith('intent://myscoutee.com/?mode=work&utm_source=instagram#about#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end');
+    expect(open).not.toHaveBeenCalled();
   });
 
   it.each([
-    'Mozilla/5.0 (Linux; Android 13) Chrome/140.0 Mobile Safari/537.36',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram 400.0',
-    'Mozilla/5.0 (X11; Linux x86_64) Chrome/140.0'
-  ])('does not offer Android navigation in a regular browser or on another platform: %s', userAgent => {
-    const { service, assign } = fixture(userAgent);
-    expect(service.externalBrowserAvailable).toBe(false);
+    'Mozilla/5.0 (X11; Linux x86_64) Chrome/140.0',
+    'UnknownBrowser'
+  ])('offers standard browser navigation on other platforms: %s', userAgent => {
+    const { service, assign, open } = fixture(userAgent);
+    expect(service.externalBrowserAvailable).toBe(true);
     service.openInBrowser();
+    expect(open).toHaveBeenCalledExactlyOnceWith('https://myscoutee.com/?mode=work&utm_source=instagram#about', '_blank', 'noopener,noreferrer');
     expect(assign).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3_2 like Mac OS X) Version/18.3.1 Mobile Safari/604.1',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram 400.0',
+    'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) Safari/604.1'
+  ])('requests Safari on iOS without a browser-brand filter: %s', userAgent => {
+    const { service, assign, open } = fixture(userAgent);
+    expect(service.externalBrowserAvailable).toBe(true);
+    service.openInBrowser();
+    expect(open).toHaveBeenCalledExactlyOnceWith('x-safari-https://myscoutee.com/?mode=work&utm_source=instagram#about', '_blank', 'noopener,noreferrer');
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('recognizes an iPad using its desktop user agent', () => {
+    const { service, open } = fixture('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) Safari/605.1');
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) Safari/605.1', platform: 'MacIntel', maxTouchPoints: 5 });
+    service.openInBrowser();
+    expect(open).toHaveBeenCalledExactlyOnceWith('x-safari-https://myscoutee.com/?mode=work&utm_source=instagram#about', '_blank', 'noopener,noreferrer');
+  });
+
+  it('changes only the leading scheme and preserves URLs inside the query', () => {
+    const { service, open } = fixture('iPhone', 'https://myscoutee.com/?next=https://example.test/path#anchor');
+    service.openInBrowser();
+    expect(open).toHaveBeenCalledExactlyOnceWith('x-safari-https://myscoutee.com/?next=https://example.test/path#anchor', '_blank', 'noopener,noreferrer');
+  });
+
+  it('keeps ordinary HTTP navigation on iOS instead of applying an HTTPS-only scheme', () => {
+    const { service, open } = fixture('iPhone', 'http://localhost/');
+    service.openInBrowser();
+    expect(open).toHaveBeenCalledExactlyOnceWith('http://localhost/', '_blank', 'noopener,noreferrer');
+  });
+
+  it('offers browser navigation from an installed app as well', () => {
+    const { service, open } = fixture('iPhone Safari', 'https://myscoutee.com/', true);
+    expect(service.externalBrowserAvailable).toBe(true);
+    service.openInBrowser();
+    expect(open).toHaveBeenCalledOnce();
+  });
+
   it.each(['javascript:alert(1)', 'https://name:password@myscoutee.com/'])('does not forward unsafe URLs: %s', href => {
-    const { service, assign } = fixture('Android Instagram', href);
+    const { service, assign, open } = fixture('Android Instagram', href);
+    service.openInBrowser();
+    expect(assign).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('does not offer an opening action when the browser has no window-opening API', () => {
+    const { service, assign } = fixture('UnknownBrowser');
+    vi.stubGlobal('window', { location: { href: 'https://myscoutee.com/', assign } });
+    expect(service.externalBrowserAvailable).toBe(false);
     service.openInBrowser();
     expect(assign).not.toHaveBeenCalled();
   });
@@ -168,6 +218,20 @@ describe('PWA automatic frontend release checks', () => {
   function fixture() {
     return runInInjectionContext(Injector.create({ providers: [] }), () => new PwaService());
   }
+
+  it('shares startup version metadata with the label and still fetches a later deployment', async () => {
+    const fetchVersion = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({version:'1.4.4',buildId:'current-build'})))
+      .mockResolvedValueOnce(new Response(JSON.stringify({version:'1.4.4',buildId:'next-build'})));
+    vi.stubGlobal('fetch', fetchVersion);
+    const service = fixture();
+    await (service as any).loadAppVersionLabel();
+    expect(service.appVersionLabel()).toBe('v1.4.4');
+    expect(await (service as any).fetchLatestBuildId()).toBe('current-build');
+    expect(fetchVersion).toHaveBeenCalledTimes(1);
+    expect(await (service as any).fetchLatestBuildId()).toBe('next-build');
+    expect(fetchVersion).toHaveBeenCalledTimes(2);
+  });
 
   it('checks on registration and whenever a visible browser or WebView returns to the foreground', async () => {
     const registration = new EventTarget() as ServiceWorkerRegistration;

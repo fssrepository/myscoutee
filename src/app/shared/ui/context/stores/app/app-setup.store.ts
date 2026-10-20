@@ -1,3 +1,4 @@
+import { markLandingDebug } from '../../../../core/common/landing-debug';
 import { Injectable, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { AppLocationService } from '../../../../core/base/services/accounts/app-location.service';
 import { FirebaseMessagingService } from '../../../../core/base/services/notifications/firebase-messaging.service';
@@ -22,7 +23,7 @@ export class AppSetupStore implements OnDestroy {
   readonly notificationsSelected = signal(false);
   private readonly locationEdited = signal(false);
   private readonly notificationsEdited = signal(false);
-  readonly locationGranted = signal(false);
+  readonly locationGranted = signal(this.location.hasSavedTrackingApproval());
   readonly locationPermission = signal<PermissionState | null>(null);
   readonly locationPermissionPending = signal(false);
   readonly nativePending = signal(false);
@@ -34,13 +35,16 @@ export class AppSetupStore implements OnDestroy {
   readonly activeControl = signal<'location' | 'notifications' | null>(null);
   readonly launcherDismissed = signal(false);
   readonly guideRequested = signal(false);
+  readonly privacyRequested = signal(false);
+  readonly privacyMissing = signal(true);
   readonly dragPosition = signal({ x: 0, y: 0 });
   // Count only device choices that this browser currently offers.
   readonly locationSetupMissing = computed(() => !this.locationGranted() || !this.location.trackingEnabled()
     || (this.loggedIn() && this.locationMissing()));
   readonly missingCount = computed(() => Number(this.locationSetupMissing())
     + Number(this.messaging.notificationsConfigured && !this.messaging.deviceNotificationsEnabled())
-    + Number(!this.pwa.installed() && (this.pwa.installAvailable() || this.pwa.installActionPending())));
+    + Number(!this.pwa.installed() && (this.pwa.installAvailable() || this.pwa.installActionPending()))
+    + Number(this.privacyMissing()));
   readonly launcherVisible = computed(() => this.missingCount() > 0 && !this.launcherDismissed());
   readonly permissionDenied = computed(() => this.locationPermission() === 'denied'
     || this.messaging.notificationPermission() === 'denied');
@@ -64,7 +68,6 @@ export class AppSetupStore implements OnDestroy {
   private checkLocation: ((coordinates: LocationCoordinates) => Promise<boolean>) | null = null;
 
   constructor() {
-    void this.refreshPermissions();
     effect(() => {
       const enabled = this.messaging.deviceNotificationsEnabled();
       if (this.isOpen() && !this.actionPending()
@@ -91,6 +94,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   open(): void {
+    markLandingDebug('setup.open');
     if (this.isOpen()) return;
     this.generation++;
     this.clearSaveFeedback();
@@ -131,6 +135,7 @@ export class AppSetupStore implements OnDestroy {
       if (this.permission) this.permission.onchange = null;
       this.permission = permission;
       const update = () => {
+        markLandingDebug('location.' + permission.state);
         this.locationPermission.set(permission.state);
         this.locationGranted.set(permission.state === 'granted');
         if (this.locationRequestPending && permission.state === 'granted') {
@@ -148,6 +153,7 @@ export class AppSetupStore implements OnDestroy {
   }
 
   close(): void {
+    markLandingDebug('setup.close');
     this.stopLocationRequest();
     this.nativePending.set(false);
     this.busy.set(false);
@@ -160,7 +166,13 @@ export class AppSetupStore implements OnDestroy {
     void this.pwa.promptInstall();
   }
 
+  openPrivacy(): void {
+    if (this.actionPending()) return;
+    this.privacyRequested.set(true);
+  }
+
   async allow(control?: 'location' | 'notifications'): Promise<void> {
+    markLandingDebug('setup.save');
     if (!this.isOpen() || this.actionPending()
       || (control !== 'notifications' && this.locationPermissionPending())
       || (control !== 'location' && this.notificationConfigurationPending())) return;
@@ -179,7 +191,9 @@ export class AppSetupStore implements OnDestroy {
       // Notifications need the original button gesture. Geolocation follows
       // only after that native decision settles. An enabled choice must succeed.
       if (updateNotifications && this.notificationsSelected()) {
+        markLandingDebug('notifications.request');
         const decision = await this.messaging.requestEntryPermission();
+        markLandingDebug('notifications.' + decision);
         if (generation !== this.generation) return;
         if (decision !== 'granted') {
           this.error.set(this.i18n.translate('entry.permissions.notifications.blocked'));
@@ -236,6 +250,7 @@ export class AppSetupStore implements OnDestroy {
         this.showSaveFeedback();
       }
     } catch (error) {
+      markLandingDebug('setup.failed');
       if (generation === this.generation) {
         this.error.set(error instanceof Error ? error.message : this.i18n.translate('entry.permissions.checking'));
       }

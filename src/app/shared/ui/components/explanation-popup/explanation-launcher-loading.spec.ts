@@ -40,13 +40,18 @@ describe('Guide launcher loading indication', () => {
     expect(overlay?.querySelector('.app-indicator--spinner-ring')).toBeNull();
     expect(fixture.debugElement.query(By.directive(IndicatorComponent)).componentInstance.durationMs).toBe(3000);
     expect(fixture.nativeElement.querySelector('app-explanation-popup')).toBeNull();
-    // Positioning already loaded content must not flash the loading backdrop.
+    // Keep the same shade through lazy rendering and initial positioning.
     loading.set(false);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).toBe(overlay);
+    expect(overlay?.querySelector('app-indicator')).toBeNull();
     visible.set(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).toBeNull();
+    // Closing before the guide is ready must also release the shade.
+    visible.set(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.explanation-guide-loading')).not.toBeNull();
     open.set(false); loading.set(false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role=status]')).toBeNull();

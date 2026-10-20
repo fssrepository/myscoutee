@@ -6,7 +6,9 @@
           <app-home-header [branding]="deploymentBranding()"></app-home-header>
         </div>
       }
-      <router-outlet (activate)="onRouteActivated()"></router-outlet>
+      <div class="route-content" [hidden]="gameStartupVisible">
+        <router-outlet (activate)="onRouteActivated()"></router-outlet>
+      </div>
     </section>
   </div>
 </main>
@@ -47,6 +49,8 @@
 <app-dialog></app-dialog>
 @if (demoBootstrapSelector()) {
   @if (demoBootstrapSelectorComponent(); as component) {
-    <ng-container *ngComponentOutlet="component"></ng-container>
+    <div class="route-content" [hidden]="gameStartupVisible">
+      <ng-container *ngComponentOutlet="component"></ng-container>
+    </div>
   }
 }

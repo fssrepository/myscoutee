@@ -28,24 +28,14 @@
   [config]="entryTermsDocumentConfig()"
 ></app-document-viewer>
 
-<app-entry-firebase-auth-popup
-  [open]="showFirebaseAuthPopup"
-  [busy]="firebaseAuthIsBusy"
-  [statusMessage]="firebaseAuthMessage"
-  [isMobileView]="isMobileView"
-  (closeRequested)="closeFirebaseAuthPopup()"
-  (authRequested)="onRequestFirebaseAuth($event)"
-></app-entry-firebase-auth-popup>
+<ng-container #firebaseAuthPopupHost></ng-container>
+<ng-container #onboardingPopupHost></ng-container>
 
-<app-profile-onboarding-popup
-  [open]="onboardingOpen"
-  [user]="onboardingUser"
-  [mobile]="isMobileView"
-  [title]="onboardingTitle"
-  [message]="onboardingMessage"
-  (completed)="onOnboardingCompleted($event)"
-  (dismissed)="onOnboardingDismissed()"
-></app-profile-onboarding-popup>
-
+@if ((showFirebaseAuthPopup && !firebaseAuthPopup()) || (onboardingOpen && !onboardingPopup())) {
+  <app-popup [model]="{ title: onboardingOpen ? onboardingTitle : 'login', size: 'small', height: 'auto' }"
+    [zIndex]="3200" (close)="onboardingOpen ? onOnboardingDismissed() : closeFirebaseAuthPopup()">
+    <app-indicator kind="load-ring" state="loading"></app-indicator>
+  </app-popup>
+}
 
 <app-explanation-launcher [introduce]="!entryPrivacyLoading"></app-explanation-launcher>

@@ -8,6 +8,12 @@ import type { EntryConsentStateDto, HelpCenterStateDto, PrivacyConsentDto, Priva
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';
 
+// Read the nginx HTML snapshot without another request or persisted preference.
+export function automaticPrivacyConsentEnabled(): boolean {
+  return typeof document === 'undefined'
+    || document.getElementById('myscoutee-consent-auto')?.textContent?.trim() !== '0';
+}
+
 /** These v1 records were byte-identical copies of the website policy. */
 export function canonicalPrivacyRevisionId(id: string): string {
   return id.replace(/^(work|community):(privacy-default(?:-hu)?-v1)$/, '$2');

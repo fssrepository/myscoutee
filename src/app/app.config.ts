@@ -1,5 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, ErrorHandler, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { LandingDebugErrorHandler } from './shared/core/common/landing-debug';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
@@ -15,6 +16,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     ...MYSCOUTEE_UI_PROVIDERS,
     provideBrowserGlobalErrorListeners(),
+    { provide: ErrorHandler, useClass: LandingDebugErrorHandler },
     provideRouter(routes),
     provideHttpClient(withInterceptors([
       connectivityInterceptor,

@@ -65,6 +65,12 @@ test('offline cached HTML never retains its former green readiness', async () =>
   assert.doesNotMatch(result.body, /"ready":true/);
 });
 
+test('offline cached HTML cannot reactivate a previously enabled debug probe', async () => {
+  const result = await navigate('/entry', true,
+    '<head><script id="myscoutee-landing-debug" type="application/json">1</script></head>');
+  assert.match(result.body, />0<\/script>/);
+});
+
 test('an unavailable uncached asset page does not fall back to the app shell', async () => {
   const result = await navigate('/assets/admin/affinity-graph/index.html', true);
   assert.equal(result.status, 503);

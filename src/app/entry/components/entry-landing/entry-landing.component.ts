@@ -1,3 +1,4 @@
+import { markLandingDebug } from '../../../shared/core/common/landing-debug';
 import {
   PopupPresenceStore,
   DeploymentBrandComponent,
@@ -25,7 +26,7 @@ import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/convert
 import { LandingGuideSurfaceDirective } from './landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, effect, inject } from '@angular/core';
+import { afterNextRender, ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, effect, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
@@ -333,6 +334,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   constructor() {
+    afterNextRender(() => markLandingDebug('landing.rendered'));
     effect(onCleanup => {
       const root = this.documentRef.documentElement;
       const mode = this.landingMode();
@@ -471,6 +473,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected requestHeaderAuth(): void {
+    markLandingDebug('login.click');
     if (this.networkUnavailable || this.authUnavailable) {
       return;
     }
@@ -498,6 +501,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected openAboutPopup(event?: Event): void {
+    markLandingDebug('about.open');
     event?.preventDefault();
     event?.stopPropagation();
     this.aboutPopupOpen = true;
@@ -527,6 +531,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected openCountriesPopup(): void {
+    markLandingDebug('countries.open');
     this.countriesPopupOpen = true;
     this.syncLandingPopupScrollLock();
   }
@@ -565,6 +570,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected openPreviewGuide(event?: Event): void {
+    markLandingDebug('bug.open');
     event?.preventDefault();
     event?.stopPropagation();
     this.previewGuideOpen = true;
@@ -592,6 +598,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected openPartnersPopup(event?: Event): void {
+    markLandingDebug('partners.open');
     event?.preventDefault();
     event?.stopPropagation();
     const trigger = event?.currentTarget as HTMLElement | null | undefined;
@@ -716,6 +723,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected openIdeaArticlePopup(card: InfoCardData, event?: Event): void {
+    markLandingDebug('article.open');
     event?.preventDefault();
     event?.stopPropagation();
     const detail = this.ideaCardDetail(card);
