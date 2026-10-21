@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { DestroyRef, Injectable, inject } from '@angular/core';
 
 import type {
@@ -14,11 +16,9 @@ import type {
   AdminNotificationTimingMode,
   AdminNotificationTriggerKind
 } from '../../../contracts/administration/admin.interface';
-import { HttpAdminNotificationsService } from '../../../http/services/administration/admin-notifications.service';
-import {
-  LocalAdminNotificationsService,
-  type LocalAdminNotificationDelayOptions
-} from '../../../local/source/services/administration/admin-notifications.service';
+
+import type { LocalAdminNotificationDelayOptions } from '../../../local/source/services/administration/admin-notifications.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import { RouteDelayService } from '../platform/route-delay.service';
 import { RouteIntervalSchedulerService } from '../platform/route-interval-scheduler.service';
@@ -53,8 +53,9 @@ export interface AdminNotificationDelayOptions {
   providedIn: 'root'
 })
 export class AdminNotificationsService extends BaseRouteModeService {
-  private readonly localService = inject(LocalAdminNotificationsService);
-  private readonly httpService = inject(HttpAdminNotificationsService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_NOTIFICATIONS);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_NOTIFICATIONS);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly scheduler = inject(RouteIntervalSchedulerService);
   private stopWorker?: () => void;
@@ -72,8 +73,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
       async () => { await this.localService.runCheckoutPurgeTick(); await this.localService.runStatsTick(); await this.localService.runCommunityTasksTick(); }, { fallbackIntervalMs: 60000 });
   }
 
-
-  private get notificationService(): LocalAdminNotificationsService | HttpAdminNotificationsService {
+  private get notificationService(): AdapterInstance<typeof LOCAL_ADAPTER.ADMIN_NOTIFICATIONS> | AdapterInstance<typeof HTTP_ADAPTER.ADMIN_NOTIFICATIONS> {
     return this.resolveRouteService(ADMIN_NOTIFICATION_ROUTE, this.localService, this.httpService);
   }
 
@@ -85,9 +85,9 @@ export class AdminNotificationsService extends BaseRouteModeService {
     adminUserId?: string | null,
     options?: AdminNotificationDelayOptions
   ): Promise<AdminNotificationCenterState> {
-    const state = this.notificationService instanceof LocalAdminNotificationsService
-      ? await this.notificationService.loadNotificationCenter(options, adminUserId)
-      : await this.notificationService.loadNotificationCenter(adminUserId, options?.filter);
+    const state = this.notificationService === this.localService
+      ? await this.localService.loadNotificationCenter(options, adminUserId)
+      : await this.httpService.loadNotificationCenter(adminUserId, options?.filter);
     return this.normalizeNotificationCenter(state);
   }
 
@@ -97,9 +97,9 @@ export class AdminNotificationsService extends BaseRouteModeService {
     options?: AdminNotificationDelayOptions
   ): Promise<AdminNotificationCenterState> {
     const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
-    const state = this.notificationService instanceof LocalAdminNotificationsService
-      ? await this.notificationService.saveNotificationCenter(normalizedRules, adminUserId, options as LocalAdminNotificationDelayOptions)
-      : await this.notificationService.saveNotificationCenter(normalizedRules, adminUserId, options?.filter);
+    const state = this.notificationService === this.localService
+      ? await this.localService.saveNotificationCenter(normalizedRules, adminUserId, options as LocalAdminNotificationDelayOptions)
+      : await this.httpService.saveNotificationCenter(normalizedRules, adminUserId, options?.filter);
     return this.normalizeNotificationCenter(state);
   }
 

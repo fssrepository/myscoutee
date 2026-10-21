@@ -11,6 +11,7 @@ import {
 } from '../../../core/contracts/platform/deployment-configuration.interface';
 import { DocumentViewerComponent } from './document-viewer.component';
 import type { DocumentViewerConfig } from './document-viewer.types';
+import enBundle from '../../../../../assets/i18n/en.json';
 
 describe('DocumentViewerComponent deployment privacy tokens', () => {
   const branding = signal({ ...DEFAULT_DEPLOYMENT_BRANDING });
@@ -19,6 +20,7 @@ describe('DocumentViewerComponent deployment privacy tokens', () => {
   );
   const i18nRevision = signal(0);
   const translations: Readonly<Record<string, string>> = {
+    ...enBundle.messages,
     'deployment.privacy.data.controller': 'Data controller',
     'deployment.privacy.contact.email': 'Privacy contact',
     'deployment.privacy.contact.not.published':

@@ -45,7 +45,7 @@ export class EventSubeventGroupFormPopupComponent {
       title: this.title,
       subtitle: this.stageTitle || null,
       ariaLabel: this.title,
-      closeAriaLabel: 'Close group form',
+      closeAriaLabel: 'event.group.editor.close.aria',
       closeOnBackdrop: true,
       size: 'default',
       height: 'auto',
@@ -71,7 +71,7 @@ export class EventSubeventGroupFormPopupComponent {
       kind: 'action',
       palette: this.saving || this.canSave ? 'success' : 'danger',
       disabled: !this.canSave || this.saving,
-      ariaLabel: 'Save group',
+      ariaLabel: 'event.group.editor.save.action',
       progress: this.saving
         ? {
             state: 'loading',
@@ -99,7 +99,7 @@ export class EventSubeventGroupFormPopupComponent {
       steps: [
         {
           id: 'group',
-          title: 'Group',
+          title: 'group',
           controls: [
             {
               id: 'name',
@@ -107,7 +107,7 @@ export class EventSubeventGroupFormPopupComponent {
               kind: 'text',
               layout: 'wide',
               label: 'name',
-              placeholder: 'Group name',
+              placeholder: 'event.group.editor.name.label',
               required: true
             },
             {

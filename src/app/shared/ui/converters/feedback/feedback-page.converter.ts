@@ -341,7 +341,8 @@ export class FeedbackOrganizerCarouselSectionConverter {
         count: countsByTraitId.get(option.id) ?? 0
       }))
       .filter(item => item.count > 0)
-      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+      .map(item => ({ ...item, label: APP_STATIC_DATA.personalityTraitCatalog.find(trait => trait.id === item.key)?.labelKey ?? item.label }));
   }
 
   private static optionStats(
@@ -441,7 +442,7 @@ export class FeedbackOrganizerMessageGroupConverter {
         improveLabel: answer ? this.optionLabel(answer.secondaryValue ?? '', APP_STATIC_DATA.feedbackHostImproveOptions) : null,
         traitLabels: answer
           ? (answer.personalityTraitIds ?? [])
-            .map(traitId => APP_STATIC_DATA.feedbackPersonalityTraitOptions.find(option => option.id === traitId)?.label ?? '')
+            .map(traitId => APP_STATIC_DATA.personalityTraitCatalog.find(option => option.id === traitId)?.labelKey ?? '')
             .filter(label => label.length > 0)
           : [],
         responseCount: entry.answers.length

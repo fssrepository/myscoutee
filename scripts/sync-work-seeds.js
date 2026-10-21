@@ -3,6 +3,7 @@
 // Browser-local seed data is the canonical Work/Community demo/content source. This
 // updates versioned Mongo fixtures only; it never writes to a running database.
 const fs = require('node:fs');
+const { backendArticleImages } = require('./generate-i18n-mongo-seed');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const data = path.join(root, 'src/app/shared/core/local/seed/data');
@@ -19,7 +20,16 @@ const group = read(path.join(data, 'work-group.json'));
 const locations = read(path.join(data, 'demo-locations.json'));
 const date = '2026-09-20T12:00:00.000Z';
 let stale = false;
-function write(file, value) { staged.set(file, structuredClone(value)); }
+function backendImages(value) {
+  if (typeof value === 'string') return backendArticleImages(value);
+  if (Array.isArray(value)) return value.map(backendImages);
+  if (value && typeof value === 'object') return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [backendArticleImages(key), backendImages(item)]));
+  return value;
+}
+function write(file, value) {
+  staged.set(file, structuredClone(file.startsWith(mongo + path.sep) ? backendImages(value) : value));
+}
 function flush() {
   // Validate every catalog before writing any file: Mongo's unique revision key must survive import.
   for (const [file, rows] of staged) if (file.endsWith('/helpCenterRevisions.json')) {

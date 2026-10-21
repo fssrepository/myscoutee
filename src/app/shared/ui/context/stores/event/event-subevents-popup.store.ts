@@ -1,4 +1,6 @@
-import { Injectable, Type, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, signal, inject } from '@angular/core';
 
 import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../../core/contracts/common/activity.interface';
 import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../../core/contracts/events/event.interface';
@@ -66,6 +68,7 @@ export interface EventSubeventsReloadRequest {
   providedIn: 'root'
 })
 export class EventSubeventsPopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly calendarSelectionRef = signal<{
     view: 'day' | 'week' | 'month';
     dateRange: {startAt: string; endAt: string; precision: 'date'} | null;
@@ -309,7 +312,7 @@ export class EventSubeventsPopupStore {
     if (this.eventSubeventsListPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-subevents-list-popup/event-subevents-list-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_SUBEVENTS_LIST_POPUP);
     this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
   }
 
@@ -317,7 +320,7 @@ export class EventSubeventsPopupStore {
     if (this.eventTournamentGroupsPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-tournament-groups-popup/event-tournament-groups-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_TOURNAMENT_GROUPS_POPUP);
     this.eventTournamentGroupsPopupComponentRef.set(module.EventTournamentGroupsPopupComponent);
   }
 }

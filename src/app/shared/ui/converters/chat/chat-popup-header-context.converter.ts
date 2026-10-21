@@ -66,7 +66,7 @@ export class ChatPopupHeaderContextConverter {
 
       controls.push({
         id: 'members',
-        label: 'Members',
+        label: 'members',
         summary: this.memberCountLabel(memberIds.length),
         visual: thumbs.length > 0
           ? { kind: 'thumbStack', thumbs, maxVisible: maxVisibleThumbs }

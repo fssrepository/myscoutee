@@ -77,7 +77,7 @@ export class ExplanationPopupComponent {
 
   protected loadingExplanationPopupModel(): PopupModel {
     return {
-      ariaLabel: 'Loading explanation',
+      ariaLabel: 'explanation.loading.aria',
       size: 'wide',
       height: 'full',
       headerLayout: 'document',

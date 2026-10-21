@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -9,8 +11,7 @@ import type {
   AdminParamsSectionDto,
   AdminParamsStateDto
 } from '../../../contracts/administration/admin.interface';
-import { HttpAdminParamsService } from '../../../http/services/affinity/admin-params.service';
-import { LocalAdminParamsService } from '../../../local/source/services/affinity/admin-params.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 const ADMIN_PARAMS_ROUTE = '/admin/params';
@@ -23,17 +24,18 @@ export interface AdminParamsDelayOptions {
   providedIn: 'root'
 })
 export class AdminParamsService extends BaseRouteModeService {
-  private readonly localService = inject(LocalAdminParamsService);
-  private readonly httpService = inject(HttpAdminParamsService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_PARAMS);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_PARAMS);
 
-  private get paramsService(): LocalAdminParamsService | HttpAdminParamsService {
+  private get paramsService(): AdapterInstance<typeof LOCAL_ADAPTER.ADMIN_PARAMS> | AdapterInstance<typeof HTTP_ADAPTER.ADMIN_PARAMS> {
     return this.resolveRouteService(ADMIN_PARAMS_ROUTE, this.localService, this.httpService);
   }
 
   async loadParamsState(adminUserId?: string | null, options?: AdminParamsDelayOptions): Promise<AdminParamsStateDto> {
-    const state = this.paramsService instanceof LocalAdminParamsService
-      ? await this.paramsService.loadParamsState(options, adminUserId)
-      : await this.paramsService.loadParamsState(adminUserId);
+    const state = this.paramsService === this.localService
+      ? await this.localService.loadParamsState(options, adminUserId)
+      : await this.httpService.loadParamsState(adminUserId);
     return this.normalizeParamsState(state);
   }
 
@@ -46,9 +48,9 @@ export class AdminParamsService extends BaseRouteModeService {
   ): Promise<AdminParamsStateDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
     const normalizedFields = fields.map(field => this.normalizeParamField(field));
-    const state = this.paramsService instanceof LocalAdminParamsService
-      ? await this.paramsService.saveParamsSection(normalizedSectionKey, normalizedFields, summary, adminUserId, options)
-      : await this.paramsService.saveParamsSection(normalizedSectionKey, normalizedFields, summary, adminUserId);
+    const state = this.paramsService === this.localService
+      ? await this.localService.saveParamsSection(normalizedSectionKey, normalizedFields, summary, adminUserId, options)
+      : await this.httpService.saveParamsSection(normalizedSectionKey, normalizedFields, summary, adminUserId);
     return this.normalizeParamsState(state);
   }
 
@@ -58,9 +60,9 @@ export class AdminParamsService extends BaseRouteModeService {
     options?: AdminParamsDelayOptions
   ): Promise<AdminParamsHistoryDto> {
     const normalizedSectionKey = `${sectionKey ?? ''}`.trim();
-    const history = this.paramsService instanceof LocalAdminParamsService
-      ? await this.paramsService.loadParamsHistory(normalizedSectionKey, options, adminUserId)
-      : await this.paramsService.loadParamsHistory(normalizedSectionKey, adminUserId);
+    const history = this.paramsService === this.localService
+      ? await this.localService.loadParamsHistory(normalizedSectionKey, options, adminUserId)
+      : await this.httpService.loadParamsHistory(normalizedSectionKey, adminUserId);
     return this.normalizeParamsHistory(history);
   }
 

@@ -832,9 +832,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     this.dialogStore.open({
       title: this.mode === 'Tournament' ? 'event.editor.subevents.stage.delete.title' : 'event.editor.subevents.definition.delete.title',
       message: `Delete ${label} - ${item.name}?`,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
       confirmTone: 'danger',
       failureMessage: 'event.editor.subevents.definition.delete.failure',
       onConfirm: () => {

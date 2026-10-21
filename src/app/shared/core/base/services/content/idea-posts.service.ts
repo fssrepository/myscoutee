@@ -1,8 +1,8 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../common/content-languages.json';
 import { Injectable, inject, signal } from '@angular/core';
 
-import { LocalIdeaPostsService } from '../../../local/source/services/content/idea-posts.service';
-import { HttpIdeaPostsService } from '../../../http/services/content/idea-posts.service';
 import type {
   IdeaArticleDetailDto,
   IdeaPostAdminFilter,
@@ -15,17 +15,21 @@ import type {
 } from '../../../contracts/content/content.interface';
 import { type PageResult, type InfoCardData, type CardMenuActionId } from '@fssrepository/myscoutee-components';
 
+import { I18nService } from '../localization/i18n.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class IdeaPostsService extends BaseRouteModeService {
+  private readonly i18n = inject(I18nService);
+  private readonly transportAdapters = inject(AdapterProxyService);
   private static readonly ARTICLE_FALLBACK_IMAGE_URL = 'assets/idea/article-fallback.svg';
   private static readonly PUBLIC_IDEAS_ROUTE = '/landing/articles';
 
-  private readonly localIdeaPostsService = inject(LocalIdeaPostsService);
-  private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
+  private readonly localIdeaPostsService = this.transportAdapters.reference(LOCAL_ADAPTER.IDEA_POSTS);
+  private readonly httpIdeaPostsService = this.transportAdapters.reference(HTTP_ADAPTER.IDEA_POSTS);
   private readonly postsRef = signal<IdeaPostDto[]>([]);
   private readonly adminPostsRef = signal<IdeaPostDto[]>([]);
   private readonly adminPostSyncRef = signal<IdeaPostDto | null>(null);
@@ -158,8 +162,8 @@ export class IdeaPostsService extends BaseRouteModeService {
       dateIso: post.submittedAtIso,
       title: post.title,
       imageUrl: this.ideaImageUrl(post) || null,
-      placeholderLabel: 'No image',
-      metaRows: [this.ideaDateLabel(post, 'Fresh article')],
+      placeholderLabel: 'no.image',
+      metaRows: [this.ideaDateLabel(post, 'fresh.article')],
       metaRowsLimit: 1,
       description: post.excerpt,
       descriptionLines: 3,
@@ -173,19 +177,19 @@ export class IdeaPostsService extends BaseRouteModeService {
             variant: 'badge',
             tone: 'selected',
             icon: 'star',
-            label: 'Featured',
+            label: 'featured',
             selected: true,
             selectedIcon: 'star',
-            selectedLabel: 'Featured',
-            ariaLabel: 'Featured article',
+            selectedLabel: 'featured',
+            ariaLabel: 'featured.article',
             interactive: false
           }
         : null,
       footerChips: [
-        { label: 'Read more', actionId: 'viewArticle' }
+        { label: 'read.more', actionId: 'viewArticle' }
       ],
       clickable: true,
-      eagerDetail: this.ideaArticleDetail(post, 'Fresh article')
+      eagerDetail: this.ideaArticleDetail(post, 'fresh.article')
     };
   }
 
@@ -209,8 +213,8 @@ export class IdeaPostsService extends BaseRouteModeService {
       dateIso: post.submittedAtIso,
       title: post.title,
       imageUrl: this.ideaImageUrl(post) || null,
-      placeholderLabel: 'No image',
-      metaRows: [this.ideaDateLabel(post, 'No date')],
+      placeholderLabel: 'no.image',
+      metaRows: [this.ideaDateLabel(post, 'no.date')],
       metaRowsLimit: 1,
       description: post.excerpt,
       descriptionLines: 3,
@@ -231,18 +235,18 @@ export class IdeaPostsService extends BaseRouteModeService {
         variant: 'badge',
         tone: 'selected',
         icon: 'star',
-        label: 'Featured',
+        label: 'featured',
         selected: true,
-        selectedLabel: 'Featured',
+        selectedLabel: 'featured',
         selectedIcon: 'star',
-        ariaLabel: 'Featured article',
+        ariaLabel: 'featured.article',
         interactive: false
       },
       menuActions,
       menuTitle: null,
       footerChips: [],
       clickable: false,
-      eagerDetail: this.ideaArticleDetail(post, 'No date')
+      eagerDetail: this.ideaArticleDetail(post, 'no.date')
     };
   }
 
@@ -299,11 +303,11 @@ export class IdeaPostsService extends BaseRouteModeService {
       || right.id.localeCompare(left.id);
   }
 
-  private ideaService(): LocalIdeaPostsService | HttpIdeaPostsService {
+  private ideaService(): AdapterInstance<typeof LOCAL_ADAPTER.IDEA_POSTS> | AdapterInstance<typeof HTTP_ADAPTER.IDEA_POSTS> {
     return this.resolveRouteService('/ideas', this.localIdeaPostsService, this.httpIdeaPostsService);
   }
 
-  private publicIdeaService(): LocalIdeaPostsService | HttpIdeaPostsService {
+  private publicIdeaService(): AdapterInstance<typeof LOCAL_ADAPTER.IDEA_POSTS> | AdapterInstance<typeof HTTP_ADAPTER.IDEA_POSTS> {
     return this.resolveRouteService(
       IdeaPostsService.PUBLIC_IDEAS_ROUTE,
       this.localIdeaPostsService,
@@ -368,7 +372,7 @@ export class IdeaPostsService extends BaseRouteModeService {
   ): string {
     const parsed = Date.parse(post?.submittedAtIso || post?.updatedAtIso || post?.createdAtIso || '');
     if (!Number.isFinite(parsed)) {
-      return fallback;
+      return this.i18n.translate(fallback);
     }
     return new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
@@ -379,12 +383,12 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   private adminPostStatusLabel(post: Pick<IdeaPostDto, 'published' | 'trashed'>): string {
     if (post.trashed) {
-      return 'Trashed';
+      return 'trashed';
     }
     if (!post.published) {
-      return 'Draft';
+      return 'draft';
     }
-    return 'Published';
+    return 'published';
   }
 
 }

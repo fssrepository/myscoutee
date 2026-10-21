@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../shared/core/base/services/localization/i18n.service';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -27,13 +29,15 @@ export type EventResourceAssetViewModel = ResourceAssetViewState;
 @Component({
   selector: 'app-event-resource-asset-view',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, PopupComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, PopupComponent, I18nPipe],
   templateUrl: './event-resource-asset-view.component.html',
   styleUrl: './event-resource-asset-view.component.scss',
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventResourceAssetViewComponent implements OnChanges {
+  private readonly i18n = inject(I18nService);
+
   @Input() view: EventResourceAssetViewModel | null = null;
   @Input() parentZIndex = 2600;
 
@@ -77,7 +81,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
       title: this.title(view),
       subtitle: view.card.title,
       ariaLabel: this.title(view),
-      closeAriaLabel: 'Close asset view',
+      closeAriaLabel: 'asset.view.close.aria',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -102,8 +106,8 @@ export class EventResourceAssetViewComponent implements OnChanges {
     return [{
       id: 'members',
       icon: 'groups',
-      label: pending > 0 ? `Members ${pending}` : 'Members',
-      ariaLabel: 'Open asset members',
+      label: pending > 0 ? `Members ${pending}` : 'members',
+      ariaLabel: 'open.asset.members',
       palette: 'blue'
     }];
   }
@@ -118,7 +122,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
   }
 
   protected title(view: EventResourceAssetViewModel): string {
-    return view.mode === 'edit' ? 'Edit Asset' : 'View Asset';
+    return view.mode === 'edit' ? this.i18n.translate('edit.asset') : this.i18n.translate('view.asset');
   }
 
   protected resourceTypeClass(type: AppConstants.SubEventResourceFilter): string {
@@ -174,7 +178,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
   }
 
   protected policyMetaLabel(policy: ContractTypes.EventPolicyDTO): string {
-    return policy.required === false ? 'Optional policy' : 'Required approval';
+    return policy.required === false ? this.i18n.translate('event.editor.policy.optional') : this.i18n.translate('event.editor.policy.required');
   }
 
   protected policyPreview(policy: ContractTypes.EventPolicyDTO): string {

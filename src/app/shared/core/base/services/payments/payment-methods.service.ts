@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject, signal } from '@angular/core';
 
 import type { ListQuery } from '@fssrepository/myscoutee-components';
@@ -9,16 +11,16 @@ import type {
   PaymentMethodRegistrationRequestDto,
   SavedPaymentMethodsPageDto
 } from '../../../contracts/payments/payment-method.interface';
-import { HttpPaymentMethodsService } from '../../../http/services/payments/payment-methods.service';
-import { LocalPaymentMethodsService } from '../../../local/source/services/payments/payment-methods.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 @Injectable({ providedIn: 'root' })
 export class PaymentMethodsService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   static readonly ROUTE = '/payment-methods';
   static readonly HISTORY_POLL_INTERVAL_MS = 15000;
-  private readonly localService = inject(LocalPaymentMethodsService);
-  private readonly httpService = inject(HttpPaymentMethodsService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.PAYMENT_METHODS);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.PAYMENT_METHODS);
 
   private readonly displayExchangeRef = signal<{ currency: string; eurRates: Readonly<Record<string, number>> }>(
     { currency: 'EUR', eurRates: { EUR: 1 } },
@@ -130,7 +132,7 @@ export class PaymentMethodsService extends BaseRouteModeService {
     return this.service.approveRefund(userId, paymentId, signal);
   }
 
-  private get service(): LocalPaymentMethodsService | HttpPaymentMethodsService {
+  private get service(): AdapterInstance<typeof LOCAL_ADAPTER.PAYMENT_METHODS> | AdapterInstance<typeof HTTP_ADAPTER.PAYMENT_METHODS> {
     return this.resolveRouteService(PaymentMethodsService.ROUTE, this.localService, this.httpService);
   }
 }

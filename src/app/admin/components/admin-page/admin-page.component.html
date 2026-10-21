@@ -9,8 +9,8 @@
 
       <section data-guide-field="overview" class="admin-entry-hero admin-home-hero">
         <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
-        <h1>Moderation workspace</h1>
-        <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
+        <h1>{{ 'moderation.workspace' | i18n }}</h1>
+        <p class="admin-entry-lead">{{ 'moderation.workspace.description' | i18n }}</p>
       </section>
     </div>
   </section>
@@ -25,8 +25,8 @@
 
       <section data-guide-field="overview" class="admin-entry-hero admin-home-hero">
         <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
-        <h1>Moderation workspace</h1>
-        <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
+        <h1>{{ 'moderation.workspace' | i18n }}</h1>
+        <p class="admin-entry-lead">{{ 'moderation.workspace.description' | i18n }}</p>
       </section>
     </div>
 
@@ -80,13 +80,13 @@
           (click)="requestAdminLogin()"
         >
           <mat-icon>{{ isFirebaseAdminMode ? 'login' : 'group' }}</mat-icon>
-          <span>Admin login</span>
+          <span>{{ 'admin.login' | i18n }}</span>
         </button>
       </header>
       <section data-guide-field="overview" class="admin-entry-hero">
         <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
-        <h1>Moderation workspace</h1>
-        <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
+        <h1>{{ 'moderation.workspace' | i18n }}</h1>
+        <p class="admin-entry-lead">{{ 'moderation.workspace.description' | i18n }}</p>
         @if (workspace.error()) {
           <p class="admin-entry-error">{{ workspace.error() }}</p>
         }

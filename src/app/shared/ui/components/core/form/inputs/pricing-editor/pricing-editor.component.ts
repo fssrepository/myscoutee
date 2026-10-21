@@ -1220,7 +1220,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const start = this.formatSlotTime(slot.startAt);
     const end = this.formatSlotTime(slot.endAt);
     if (!start && !end) {
-      return 'Time follows this slot.';
+      return this.i18n.translate('pricing.slot.time.follows');
     }
     if (!start) {
       return `Ends ${end}`;

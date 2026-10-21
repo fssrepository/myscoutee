@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 
@@ -38,7 +39,7 @@ export interface AssignedAssetJoinDialogViewState {
 @Component({
   selector: 'app-event-resource-assigned-asset-join-dialog',
   standalone: true,
-  imports: [CommonModule, PopupComponent, AppMenuComponent],
+  imports: [CommonModule, PopupComponent, AppMenuComponent, I18nPipe],
   templateUrl: './event-resource-assigned-asset-join-dialog.component.html',
   styleUrl: './event-resource-assigned-asset-join-dialog.component.scss',
   encapsulation: ViewEncapsulation.None,
@@ -55,7 +56,7 @@ export class EventResourceAssignedAssetJoinDialogComponent {
       title: dialog.title,
       subtitle: dialog.subtitle,
       ariaLabel: dialog.title,
-      closeAriaLabel: 'Close join request',
+      closeAriaLabel: 'asset.join.close.aria',
       closeOnBackdrop: !dialog.busy,
       size: 'wide',
       height: 'full',
@@ -78,11 +79,11 @@ export class EventResourceAssignedAssetJoinDialogComponent {
     return [
       {
         id: 'join-cancel',
-        label: 'Cancel',
+        label: 'cancel',
         layout: 'action',
         palette: 'neutral',
         disabled: dialog.busy,
-        ariaLabel: 'Cancel'
+        ariaLabel: 'cancel'
       },
       {
         id: 'join-confirm',

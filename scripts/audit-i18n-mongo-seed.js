@@ -3,6 +3,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const { backendArticleImages } = require('./generate-i18n-mongo-seed');
 const path = require('node:path');
 const ts = require('typescript');
 const auditPolicy = require('./i18n-audit-policy.json');
@@ -518,7 +519,7 @@ function validateSeedMessages(databaseName, filePath) {
       issues.push(`${file}: missing message ${formatPair(expected.language, expected.key)}`);
       continue;
     }
-    if (actual.value !== expected.value) {
+    if (actual.value !== backendArticleImages(expected.value)) {
       issues.push(
         `${file}: value differs for ${formatPair(expected.language, expected.key)}; ` +
           `expected ${formatValue(expected.value)}, got ${formatValue(actual.value)}`

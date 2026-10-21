@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -9,8 +11,7 @@ import type {
   NotificationSyncResponseDto
 } from '../../../contracts/notifications/notification.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
-import { LocalNotificationsService } from '../../../local/source/services/notifications/notifications.service';
-import { HttpNotificationsService } from '../../../http/services/notifications/notifications.service';
+
 import { RouteDelayService } from '../platform/route-delay.service';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
@@ -18,10 +19,11 @@ import { BaseRouteModeService } from '../platform/base-route-mode.service';
   providedIn: 'root'
 })
 export class NotificationsService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   static readonly ROUTE = '/notifications';
 
-  private readonly localNotificationsService = inject(LocalNotificationsService);
-  private readonly httpNotificationsService = inject(HttpNotificationsService);
+  private readonly localNotificationsService = this.transportAdapters.reference(LOCAL_ADAPTER.NOTIFICATIONS);
+  private readonly httpNotificationsService = this.transportAdapters.reference(HTTP_ADAPTER.NOTIFICATIONS);
   private readonly routeDelay = inject(RouteDelayService);
 
   async queryPage(
@@ -90,7 +92,7 @@ export class NotificationsService extends BaseRouteModeService {
     return this.routeDelay.resolveIntervalMs(NotificationsService.ROUTE, 30_000);
   }
 
-  private get notificationService(): LocalNotificationsService | HttpNotificationsService {
+  private get notificationService(): AdapterInstance<typeof LOCAL_ADAPTER.NOTIFICATIONS> | AdapterInstance<typeof HTTP_ADAPTER.NOTIFICATIONS> {
     return this.resolveRouteService(
       NotificationsService.ROUTE,
       this.localNotificationsService,

@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { type RatingSnapshot, DialogStore, type AppMenuItem, type ListQuery } from '@fssrepository/myscoutee-components';
 import { CaseAppointmentsService } from '../../../../core/base/services/community/case-appointments.service';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
@@ -17,6 +19,7 @@ import type { ServiceOfferingItem, ServiceOfferingFilters, SaveServiceOffering, 
 import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
 @Injectable({providedIn:'root'})
 export class ServiceOfferingsStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly appointments=inject(CaseAppointmentsService);
   readonly calendarCancelled=signal<string|null>(null);
   private readonly service=inject(ServiceOfferingsService);
@@ -49,7 +52,7 @@ export class ServiceOfferingsStore {
   constructor(){effect(()=>{if(!this.workspace.isCommunity()&&(this.session()||this.editor()))this.close();const account=this.accountId();if(account!==this.account){this.account=account;this.close();this.scores.set({});this.changed.set(null);}});}
   async open(pick:((item:ServiceOfferingItem)=>void)|null=null):Promise<void>{if(!this.workspace.isCommunity())return;
     this.close();const gen=this.generation;this.session.set({pick});
-    if(!this.component()){const component=(await import('../../../components/service-offerings/service-offerings-popup.component')).ServiceOfferingsPopupComponent;if(gen===this.generation)this.component.set(component);}}
+    if(!this.component()){const component=(await this.popupAdapters.load(POPUP_ADAPTER.SERVICE_OFFERINGS_POPUP)).ServiceOfferingsPopupComponent;if(gen===this.generation)this.component.set(component);}}
   async openProviders(title:string,ids:string[]):Promise<void>{
     await this.open();if(this.session())this.session.set({pick:null,providers:{title,ids:[...new Set(ids)]}});
   }

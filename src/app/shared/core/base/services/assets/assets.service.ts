@@ -1,7 +1,7 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalAssetsService } from '../../../local/source/services/assets/assets.service';
-import { HttpAssetsService } from '../../../http/services/assets/assets.service';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 import type * as AppDTOs from '../../../contracts';
@@ -9,17 +9,17 @@ import type * as AppDTOs from '../../../contracts';
   providedIn: 'root'
 })
 export class AssetsService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private static readonly ASSETS_ROUTE = '/assets';
   private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
-  private readonly localAssetsService = inject(LocalAssetsService);
-  private readonly httpAssetsService = inject(HttpAssetsService);
+  private readonly localAssetsService = this.transportAdapters.reference(LOCAL_ADAPTER.ASSETS);
+  private readonly httpAssetsService = this.transportAdapters.reference(HTTP_ADAPTER.ASSETS);
 
-
-  private get assetsService(): LocalAssetsService | HttpAssetsService {
+  private get assetsService(): AdapterInstance<typeof LOCAL_ADAPTER.ASSETS> | AdapterInstance<typeof HTTP_ADAPTER.ASSETS> {
     return this.resolveRouteService(AssetsService.ASSETS_ROUTE, this.localAssetsService, this.httpAssetsService);
   }
 
-  private get assetAvailabilityService(): LocalAssetsService | HttpAssetsService {
+  private get assetAvailabilityService(): AdapterInstance<typeof LOCAL_ADAPTER.ASSETS> | AdapterInstance<typeof HTTP_ADAPTER.ASSETS> {
     return this.resolveRouteService(
       AssetsService.ASSET_AVAILABILITY_ROUTE,
       this.localAssetsService,

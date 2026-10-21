@@ -1,0 +1,14 @@
+{
+  "activityList": [
+    "src/app/activity/components/activities-popup/activities-popup.component.ts"
+  ],
+  "eventResources": [
+    "src/app/activity/components/event-resource-popup/event-resource-popup.component.ts",
+    "src/app/activity/components/event-resource-popup/asset-view/event-resource-asset-view.component.ts",
+    "src/app/activity/components/event-resource-popup/assigned-asset-join-dialog/event-resource-assigned-asset-join-dialog.component.ts"
+  ],
+  "assets": [
+    "src/app/asset/components/asset-popup/asset-popup.component.ts",
+    "src/app/asset/components/asset-availability-popup/asset-availability-popup.component.ts"
+  ]
+}

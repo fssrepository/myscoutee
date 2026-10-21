@@ -1,4 +1,6 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, computed, signal, inject } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../../core/common/constants';
 import type { UserDto } from '../../../../core/contracts/accounts/user.interface';
@@ -52,6 +54,7 @@ export interface ProfileImpressionsPopupContext {
   providedIn: 'root'
 })
 export class ProfileStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly bindingsRef = signal<ProfileBindings | null>(null);
   private readonly settingsPopupRef = signal<ProfileSettingsPopup | null>(null);
   private readonly reportUserContextRef = signal<ProfileReportUserContext | null>(null);
@@ -215,7 +218,7 @@ export class ProfileStore {
     if (this.impressionsPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../profile/components/impressions-popup/impressions-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.IMPRESSIONS_POPUP);
     this.impressionsPopupComponentRef.set(module.ProfileImpressionsPopupComponent);
   }
 
@@ -226,7 +229,7 @@ export class ProfileStore {
     if (this.profileEditorLoad) return this.profileEditorLoad;
     this.profileEditorLoadFailed.set(false);
     this.profileEditorLoad = new Promise<void>(resolve => scheduleAfterPaint(resolve))
-      .then(() => import('../../../../../profile/components/profile-editor/profile-editor.component'))
+      .then(() => this.popupAdapters.load(POPUP_ADAPTER.PROFILE_EDITOR))
       .then(module => { this.profileEditorComponentRef.set(module.ProfileEditorComponent); })
       .catch(() => { this.profileEditorLoadFailed.set(true); })
       .finally(() => { this.profileEditorLoad = null; });
@@ -237,7 +240,7 @@ export class ProfileStore {
     if (this.profileViewPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../profile/components/profile-view-popup/profile-view-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.PROFILE_VIEW_POPUP);
     this.profileViewPopupComponentRef.set(module.ProfileViewPopupComponent);
   }
 
@@ -245,7 +248,7 @@ export class ProfileStore {
     if (this.contactsPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../profile/components/contacts-popup/contacts-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.CONTACTS_POPUP);
     this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
   }
 

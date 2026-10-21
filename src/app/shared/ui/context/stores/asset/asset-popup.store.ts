@@ -1,4 +1,6 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, computed, signal, inject } from '@angular/core';
 
 import type * as AssetContracts from '../../../../core/contracts/assets/asset.interface';
 
@@ -9,6 +11,7 @@ export type AssetTicketScannerState = 'idle' | 'reading' | 'validating' | 'valid
   providedIn: 'root'
 })
 export class AssetPopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   readonly primaryVisibleRef = signal(false);
   readonly stackedVisibleRef = signal(false);
   readonly basketVisibleRef = signal(false);
@@ -143,7 +146,7 @@ export class AssetPopupStore {
     if (this.assetPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../asset/components/asset-popup/asset-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ASSET_POPUP);
     this.assetPopupComponentRef.set(module.AssetPopupComponent);
   }
 
@@ -151,7 +154,7 @@ export class AssetPopupStore {
     if (this.assetMemberPickerPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ASSET_MEMBER_PICKER_POPUP);
     this.assetMemberPickerPopupComponentRef.set(module.AssetMemberPickerPopupComponent);
   }
 

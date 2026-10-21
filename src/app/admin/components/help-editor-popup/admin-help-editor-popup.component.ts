@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../shared/core/common/content-languages.json';
 import {
   CommonModule
@@ -162,7 +163,7 @@ type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLang
     IndicatorComponent,
     LazyBgImageDirective,
     PopupComponent,
-    AppMenuComponent
+    AppMenuComponent, I18nPipe
   ],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
@@ -283,7 +284,7 @@ export class AdminHelpEditorPopupComponent {
                 {
                   id: 'explanations',
                   kind: 'branch',
-                  label: this.uiText('Explanations'),
+                  label: this.uiText('explanations'),
                   icon: 'tips_and_updates',
                   palette: 'violet',
                   active: this.documentKind === 'explanation',
@@ -319,7 +320,7 @@ export class AdminHelpEditorPopupComponent {
               label: this.languageMenuItemLabel(this.selectedContentLang),
               palette: this.languagePalette(this.selectedContentLang),
               disabled,
-              ariaLabel: 'Content language',
+              ariaLabel: 'admin.help.language.title',
               items: this.contentLanguages().map(language => ({
                 id: `language:${this.normalizeContentLang(language.lang)}`,
                 kind: 'radio',
@@ -341,9 +342,9 @@ export class AdminHelpEditorPopupComponent {
   }
   private stateLoadedForPopup = false;
   protected readonly panelSpanOptions: readonly HelpPanelSpanOption[] = [
-    { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'One grid column' },
-    { value: 'span-2', icon: 'looks_two', label: 'span-2', title: 'Two grid columns' },
-    { value: 'span-3', icon: 'view_stream', label: 'span-3', title: 'Full row' }
+    { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'admin.help.panel.width.single' },
+    { value: 'span-2', icon: 'looks_two', label: 'span-2', title: 'admin.help.panel.width.double' },
+    { value: 'span-3', icon: 'view_stream', label: 'span-3', title: 'admin.help.panel.width.full' }
   ];
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
@@ -351,78 +352,78 @@ export class AdminHelpEditorPopupComponent {
   protected readonly headerColorOptions = APP_STATIC_DATA.helpCenterHeaderColorOptions;
   protected readonly iconPickerGroups: HelpIconOption['group'][] = ['Common', 'Planning', 'People', 'Logistics', 'Safety'];
   protected readonly helpIconOptions: HelpIconOption[] = [
-    { icon: 'help_outline', label: 'Help', group: 'Common', keywords: ['support', 'question', 'guide'] },
-    { icon: 'info', label: 'Info', group: 'Common', keywords: ['about', 'details', 'notice'] },
-    { icon: 'tips_and_updates', label: 'Tips', group: 'Common', keywords: ['hint', 'idea', 'learn'] },
-    { icon: 'menu_book', label: 'Guide', group: 'Common', keywords: ['manual', 'docs', 'read'] },
-    { icon: 'article', label: 'Article', group: 'Common', keywords: ['page', 'content', 'document'] },
-    { icon: 'edit_note', label: 'Notes', group: 'Common', keywords: ['write', 'edit', 'draft'] },
-    { icon: 'question_answer', label: 'Questions', group: 'Common', keywords: ['faq', 'answer', 'support'] },
-    { icon: 'contact_support', label: 'Contact support', group: 'Common', keywords: ['helpdesk', 'service', 'agent'] },
-    { icon: 'lightbulb', label: 'Idea', group: 'Common', keywords: ['tip', 'hint', 'suggestion'] },
-    { icon: 'school', label: 'Learn', group: 'Common', keywords: ['training', 'education', 'lesson'] },
-    { icon: 'auto_stories', label: 'Stories', group: 'Common', keywords: ['book', 'guide', 'reading'] },
-    { icon: 'fact_check', label: 'Fact check', group: 'Common', keywords: ['verify', 'check', 'review'] },
-    { icon: 'event_note', label: 'Events', group: 'Planning', keywords: ['calendar', 'schedule', 'sub event'] },
-    { icon: 'local_activity', label: 'Activities', group: 'Planning', keywords: ['ticket', 'program', 'session'] },
-    { icon: 'checklist', label: 'Checklist', group: 'Planning', keywords: ['todo', 'task', 'steps'] },
-    { icon: 'task_alt', label: 'Tasks', group: 'Planning', keywords: ['complete', 'done', 'status'] },
-    { icon: 'route', label: 'Route', group: 'Planning', keywords: ['path', 'flow', 'journey'] },
-    { icon: 'map', label: 'Map', group: 'Planning', keywords: ['location', 'place', 'area'] },
-    { icon: 'calendar_month', label: 'Calendar', group: 'Planning', keywords: ['date', 'month', 'schedule'] },
-    { icon: 'event_available', label: 'Event ready', group: 'Planning', keywords: ['confirmed', 'available', 'date'] },
-    { icon: 'date_range', label: 'Date range', group: 'Planning', keywords: ['start', 'end', 'period'] },
-    { icon: 'timeline', label: 'Timeline', group: 'Planning', keywords: ['sequence', 'flow', 'history'] },
-    { icon: 'account_tree', label: 'Structure', group: 'Planning', keywords: ['hierarchy', 'tree', 'sub event'] },
-    { icon: 'flag', label: 'Milestone', group: 'Planning', keywords: ['goal', 'marker', 'stage'] },
-    { icon: 'category', label: 'Category', group: 'Planning', keywords: ['type', 'group', 'segment'] },
-    { icon: 'playlist_add_check', label: 'Plan check', group: 'Planning', keywords: ['list', 'ready', 'steps'] },
-    { icon: 'groups', label: 'Groups', group: 'People', keywords: ['team', 'members', 'participants'] },
-    { icon: 'person', label: 'Profile', group: 'People', keywords: ['user', 'identity', 'account'] },
-    { icon: 'admin_panel_settings', label: 'Admin', group: 'People', keywords: ['manager', 'owner', 'permission'] },
-    { icon: 'diversity_3', label: 'Community', group: 'People', keywords: ['social', 'friends', 'network'] },
-    { icon: 'forum', label: 'Chat', group: 'People', keywords: ['conversation', 'message', 'talk'] },
-    { icon: 'support_agent', label: 'Support', group: 'People', keywords: ['helpdesk', 'contact', 'service'] },
-    { icon: 'person_add', label: 'Invite', group: 'People', keywords: ['add', 'member', 'guest'] },
-    { icon: 'manage_accounts', label: 'Manage accounts', group: 'People', keywords: ['profile', 'settings', 'users'] },
-    { icon: 'badge', label: 'Badge', group: 'People', keywords: ['identity', 'credential', 'role'] },
-    { icon: 'how_to_reg', label: 'Registration', group: 'People', keywords: ['signup', 'join', 'approved'] },
-    { icon: 'supervisor_account', label: 'Hosts', group: 'People', keywords: ['admin', 'leaders', 'owners'] },
-    { icon: 'group_add', label: 'Add group', group: 'People', keywords: ['invite', 'team', 'members'] },
-    { icon: 'record_voice_over', label: 'Announcements', group: 'People', keywords: ['speak', 'message', 'broadcast'] },
-    { icon: 'volunteer_activism', label: 'Care', group: 'People', keywords: ['support', 'community', 'help'] },
-    { icon: 'inventory_2', label: 'Resources', group: 'Logistics', keywords: ['asset', 'capacity', 'supplies'] },
+    { icon: 'help_outline', label: 'admin.help.icon.help_outline.label', group: 'Common', keywords: ['support', 'question', 'guide'] },
+    { icon: 'info', label: 'admin.help.icon.info.label', group: 'Common', keywords: ['about', 'details', 'notice'] },
+    { icon: 'tips_and_updates', label: 'admin.help.icon.tips_and_updates.label', group: 'Common', keywords: ['hint', 'idea', 'learn'] },
+    { icon: 'menu_book', label: 'admin.help.icon.menu_book.label', group: 'Common', keywords: ['manual', 'docs', 'read'] },
+    { icon: 'article', label: 'admin.help.icon.article.label', group: 'Common', keywords: ['page', 'content', 'document'] },
+    { icon: 'edit_note', label: 'admin.help.icon.edit_note.label', group: 'Common', keywords: ['write', 'edit', 'draft'] },
+    { icon: 'question_answer', label: 'admin.help.icon.question_answer.label', group: 'Common', keywords: ['faq', 'answer', 'support'] },
+    { icon: 'contact_support', label: 'admin.help.icon.contact_support.label', group: 'Common', keywords: ['helpdesk', 'service', 'agent'] },
+    { icon: 'lightbulb', label: 'admin.help.icon.lightbulb.label', group: 'Common', keywords: ['tip', 'hint', 'suggestion'] },
+    { icon: 'school', label: 'admin.help.icon.school.label', group: 'Common', keywords: ['training', 'education', 'lesson'] },
+    { icon: 'auto_stories', label: 'admin.help.icon.auto_stories.label', group: 'Common', keywords: ['book', 'guide', 'reading'] },
+    { icon: 'fact_check', label: 'admin.help.icon.fact_check.label', group: 'Common', keywords: ['verify', 'check', 'review'] },
+    { icon: 'event_note', label: 'admin.help.icon.event_note.label', group: 'Planning', keywords: ['calendar', 'schedule', 'sub event'] },
+    { icon: 'local_activity', label: 'admin.help.icon.local_activity.label', group: 'Planning', keywords: ['ticket', 'program', 'session'] },
+    { icon: 'checklist', label: 'admin.help.icon.checklist.label', group: 'Planning', keywords: ['todo', 'task', 'steps'] },
+    { icon: 'task_alt', label: 'admin.help.icon.task_alt.label', group: 'Planning', keywords: ['complete', 'done', 'status'] },
+    { icon: 'route', label: 'admin.help.icon.route.label', group: 'Planning', keywords: ['path', 'flow', 'journey'] },
+    { icon: 'map', label: 'admin.help.icon.map.label', group: 'Planning', keywords: ['location', 'place', 'area'] },
+    { icon: 'calendar_month', label: 'admin.help.icon.calendar_month.label', group: 'Planning', keywords: ['date', 'month', 'schedule'] },
+    { icon: 'event_available', label: 'admin.help.icon.event_available.label', group: 'Planning', keywords: ['confirmed', 'available', 'date'] },
+    { icon: 'date_range', label: 'admin.help.icon.date_range.label', group: 'Planning', keywords: ['start', 'end', 'period'] },
+    { icon: 'timeline', label: 'admin.help.icon.timeline.label', group: 'Planning', keywords: ['sequence', 'flow', 'history'] },
+    { icon: 'account_tree', label: 'admin.help.icon.account_tree.label', group: 'Planning', keywords: ['hierarchy', 'tree', 'sub event'] },
+    { icon: 'flag', label: 'admin.help.icon.flag.label', group: 'Planning', keywords: ['goal', 'marker', 'stage'] },
+    { icon: 'category', label: 'admin.help.icon.category.label', group: 'Planning', keywords: ['type', 'group', 'segment'] },
+    { icon: 'playlist_add_check', label: 'admin.help.icon.playlist_add_check.label', group: 'Planning', keywords: ['list', 'ready', 'steps'] },
+    { icon: 'groups', label: 'admin.help.icon.groups.label', group: 'People', keywords: ['team', 'members', 'participants'] },
+    { icon: 'person', label: 'admin.help.icon.person.label', group: 'People', keywords: ['user', 'identity', 'account'] },
+    { icon: 'admin_panel_settings', label: 'admin.help.icon.admin_panel_settings.label', group: 'People', keywords: ['manager', 'owner', 'permission'] },
+    { icon: 'diversity_3', label: 'admin.help.icon.diversity_3.label', group: 'People', keywords: ['social', 'friends', 'network'] },
+    { icon: 'forum', label: 'admin.help.icon.forum.label', group: 'People', keywords: ['conversation', 'message', 'talk'] },
+    { icon: 'support_agent', label: 'admin.help.icon.support_agent.label', group: 'People', keywords: ['helpdesk', 'contact', 'service'] },
+    { icon: 'person_add', label: 'admin.help.icon.person_add.label', group: 'People', keywords: ['add', 'member', 'guest'] },
+    { icon: 'manage_accounts', label: 'admin.help.icon.manage_accounts.label', group: 'People', keywords: ['profile', 'settings', 'users'] },
+    { icon: 'badge', label: 'admin.help.icon.badge.label', group: 'People', keywords: ['identity', 'credential', 'role'] },
+    { icon: 'how_to_reg', label: 'admin.help.icon.how_to_reg.label', group: 'People', keywords: ['signup', 'join', 'approved'] },
+    { icon: 'supervisor_account', label: 'admin.help.icon.supervisor_account.label', group: 'People', keywords: ['admin', 'leaders', 'owners'] },
+    { icon: 'group_add', label: 'admin.help.icon.group_add.label', group: 'People', keywords: ['invite', 'team', 'members'] },
+    { icon: 'record_voice_over', label: 'admin.help.icon.record_voice_over.label', group: 'People', keywords: ['speak', 'message', 'broadcast'] },
+    { icon: 'volunteer_activism', label: 'admin.help.icon.volunteer_activism.label', group: 'People', keywords: ['support', 'community', 'help'] },
+    { icon: 'inventory_2', label: 'admin.help.icon.inventory_2.label', group: 'Logistics', keywords: ['asset', 'capacity', 'supplies'] },
     { icon: 'directions_car', label: AppConstants.ASSET_TYPE_TRANSPORT, group: 'Logistics', keywords: ['transport', 'travel', 'vehicle'] },
     { icon: 'apartment', label: AppConstants.ASSET_TYPE_ACCOMMODATION, group: 'Logistics', keywords: ['accommodation', 'room', 'hotel'] },
-    { icon: 'restaurant', label: 'Food', group: 'Logistics', keywords: ['meal', 'catering', 'dining'] },
-    { icon: 'payments', label: 'Payments', group: 'Logistics', keywords: ['price', 'money', 'cost'] },
-    { icon: 'qr_code_2', label: 'Tickets', group: 'Logistics', keywords: ['qr', 'pass', 'entry'] },
-    { icon: 'warehouse', label: 'Warehouse', group: 'Logistics', keywords: ['storage', 'stock', 'inventory'] },
-    { icon: 'luggage', label: 'Luggage', group: 'Logistics', keywords: ['bag', 'travel', 'equipment'] },
-    { icon: 'hotel', label: 'Hotel', group: 'Logistics', keywords: ['room', 'bed', 'sleep'] },
-    { icon: 'flight', label: 'Flight', group: 'Logistics', keywords: ['air', 'travel', 'transport'] },
-    { icon: 'train', label: 'Train', group: 'Logistics', keywords: ['rail', 'travel', 'transport'] },
-    { icon: 'local_shipping', label: 'Shipping', group: 'Logistics', keywords: ['delivery', 'truck', 'move'] },
-    { icon: 'build', label: 'Tools', group: 'Logistics', keywords: ['fix', 'setup', 'equipment'] },
-    { icon: 'construction', label: 'Construction', group: 'Logistics', keywords: ['work', 'setup', 'build'] },
-    { icon: 'room_service', label: 'Service', group: 'Logistics', keywords: ['hospitality', 'food', 'support'] },
+    { icon: 'restaurant', label: 'admin.help.icon.restaurant.label', group: 'Logistics', keywords: ['meal', 'catering', 'dining'] },
+    { icon: 'payments', label: 'admin.help.icon.payments.label', group: 'Logistics', keywords: ['price', 'money', 'cost'] },
+    { icon: 'qr_code_2', label: 'admin.help.icon.qr_code_2.label', group: 'Logistics', keywords: ['qr', 'pass', 'entry'] },
+    { icon: 'warehouse', label: 'admin.help.icon.warehouse.label', group: 'Logistics', keywords: ['storage', 'stock', 'inventory'] },
+    { icon: 'luggage', label: 'admin.help.icon.luggage.label', group: 'Logistics', keywords: ['bag', 'travel', 'equipment'] },
+    { icon: 'hotel', label: 'admin.help.icon.hotel.label', group: 'Logistics', keywords: ['room', 'bed', 'sleep'] },
+    { icon: 'flight', label: 'admin.help.icon.flight.label', group: 'Logistics', keywords: ['air', 'travel', 'transport'] },
+    { icon: 'train', label: 'admin.help.icon.train.label', group: 'Logistics', keywords: ['rail', 'travel', 'transport'] },
+    { icon: 'local_shipping', label: 'admin.help.icon.local_shipping.label', group: 'Logistics', keywords: ['delivery', 'truck', 'move'] },
+    { icon: 'build', label: 'admin.help.icon.build.label', group: 'Logistics', keywords: ['fix', 'setup', 'equipment'] },
+    { icon: 'construction', label: 'admin.help.icon.construction.label', group: 'Logistics', keywords: ['work', 'setup', 'build'] },
+    { icon: 'room_service', label: 'admin.help.icon.room_service.label', group: 'Logistics', keywords: ['hospitality', 'food', 'support'] },
     { icon: 'shopping_bag', label: AppConstants.ASSET_TYPE_SUPPLIES, group: 'Logistics', keywords: ['items', 'goods', 'purchase'] },
-    { icon: 'verified_user', label: 'Verified', group: 'Safety', keywords: ['trust', 'profile', 'approved'] },
-    { icon: 'shield', label: 'Shield', group: 'Safety', keywords: ['safe', 'protect', 'security'] },
-    { icon: 'policy', label: 'Policy', group: 'Safety', keywords: ['rules', 'moderation', 'terms'] },
-    { icon: 'health_and_safety', label: 'Health', group: 'Safety', keywords: ['care', 'emergency', 'medical'] },
-    { icon: 'lock', label: 'Privacy', group: 'Safety', keywords: ['private', 'secure', 'access'] },
-    { icon: 'report', label: 'Report', group: 'Safety', keywords: ['flag', 'issue', 'warning'] },
-    { icon: 'security', label: 'Security', group: 'Safety', keywords: ['protect', 'guard', 'safe'] },
-    { icon: 'privacy_tip', label: 'Privacy tip', group: 'Safety', keywords: ['data', 'safe', 'notice'] },
-    { icon: 'lock_open', label: 'Unlock', group: 'Safety', keywords: ['access', 'permission', 'open'] },
-    { icon: 'visibility', label: 'Visible', group: 'Safety', keywords: ['show', 'view', 'public'] },
-    { icon: 'visibility_off', label: 'Hidden', group: 'Safety', keywords: ['private', 'hide', 'restricted'] },
-    { icon: 'emergency', label: 'Emergency', group: 'Safety', keywords: ['urgent', 'alert', 'medical'] },
-    { icon: 'warning', label: 'Warning', group: 'Safety', keywords: ['alert', 'risk', 'attention'] },
-    { icon: 'block', label: 'Blocked', group: 'Safety', keywords: ['deny', 'stop', 'ban'] },
-    { icon: 'rule', label: 'Rules', group: 'Safety', keywords: ['policy', 'terms', 'check'] },
-    { icon: 'gavel', label: 'Decision', group: 'Safety', keywords: ['moderation', 'rules', 'legal'] }
+    { icon: 'verified_user', label: 'admin.help.icon.verified_user.label', group: 'Safety', keywords: ['trust', 'profile', 'approved'] },
+    { icon: 'shield', label: 'admin.help.icon.shield.label', group: 'Safety', keywords: ['safe', 'protect', 'security'] },
+    { icon: 'policy', label: 'admin.help.icon.policy.label', group: 'Safety', keywords: ['rules', 'moderation', 'terms'] },
+    { icon: 'health_and_safety', label: 'admin.help.icon.health_and_safety.label', group: 'Safety', keywords: ['care', 'emergency', 'medical'] },
+    { icon: 'lock', label: 'admin.help.icon.lock.label', group: 'Safety', keywords: ['private', 'secure', 'access'] },
+    { icon: 'report', label: 'admin.help.icon.report.label', group: 'Safety', keywords: ['flag', 'issue', 'warning'] },
+    { icon: 'security', label: 'admin.help.icon.security.label', group: 'Safety', keywords: ['protect', 'guard', 'safe'] },
+    { icon: 'privacy_tip', label: 'admin.help.icon.privacy_tip.label', group: 'Safety', keywords: ['data', 'safe', 'notice'] },
+    { icon: 'lock_open', label: 'admin.help.icon.lock_open.label', group: 'Safety', keywords: ['access', 'permission', 'open'] },
+    { icon: 'visibility', label: 'admin.help.icon.visibility.label', group: 'Safety', keywords: ['show', 'view', 'public'] },
+    { icon: 'visibility_off', label: 'admin.help.icon.visibility_off.label', group: 'Safety', keywords: ['private', 'hide', 'restricted'] },
+    { icon: 'emergency', label: 'admin.help.icon.emergency.label', group: 'Safety', keywords: ['urgent', 'alert', 'medical'] },
+    { icon: 'warning', label: 'admin.help.icon.warning.label', group: 'Safety', keywords: ['alert', 'risk', 'attention'] },
+    { icon: 'block', label: 'admin.help.icon.block.label', group: 'Safety', keywords: ['deny', 'stop', 'ban'] },
+    { icon: 'rule', label: 'admin.help.icon.rule.label', group: 'Safety', keywords: ['policy', 'terms', 'check'] },
+    { icon: 'gavel', label: 'admin.help.icon.gavel.label', group: 'Safety', keywords: ['moderation', 'rules', 'legal'] }
   ];
   constructor() {
     effect(() => {
@@ -574,7 +575,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected explanationSurfaceLabel(contextKey: string | null | undefined): string {
-    return this.explanationSurface(contextKey)?.label ?? 'Home cards';
+    return this.explanationSurface(contextKey)?.label ?? this.i18n.translate('ui.home.cards');
   }
 
   protected explanationSurface(contextKey: string | null | undefined): ExplainableSurface | null {
@@ -617,7 +618,7 @@ export class AdminHelpEditorPopupComponent {
       id: 'canonical-screen-menu',
       label: surface?.label ?? this.uiText('Choose screen'),
       icon: surface?.icon ?? 'add',
-      ariaLabel: this.uiText('Canonical screen'),
+      ariaLabel: this.uiText('canonical.screen'),
       layout: 'field',
       palette: surface ? this.explanationSurfacePalette(surface) : 'amber',
       disabled: this.loading() || this.saving || this.isAnyActionPending()
@@ -1001,7 +1002,7 @@ export class AdminHelpEditorPopupComponent {
       density: 'compact',
       groups: this.iconPickerGroups.map(group => ({
         id: group,
-        label: group,
+        label: `admin.help.icon.group.${group.toLowerCase()}`,
         icon: this.iconPickerGroupIcon(group),
         palette: this.iconPickerGroupPalette(group),
         items: this.helpIconOptions
@@ -1016,7 +1017,7 @@ export class AdminHelpEditorPopupComponent {
             active: section.icon === option.icon,
             checked: section.icon === option.icon,
             closeOnSelect: true,
-            ariaLabel: `${this.uiText('Use')} ${this.uiText(option.label)} ${this.uiText('icon')}`,
+            ariaLabel: this.i18n.translateParams('admin.help.icon.select.aria', { label: this.uiText(option.label) }),
             context: {
               action: 'select-section-icon',
               icon: option.icon
@@ -1166,8 +1167,8 @@ export class AdminHelpEditorPopupComponent {
     this.dialogStore.open({
       title: this.i18n.translate('confirmation.delete.help.revision').replace('{version}', String(revision.version)),
       message: revision.title,
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      confirmLabel: 'delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
       confirmTone: 'danger',
       onConfirm: async () => {
         this.saving = true;
@@ -1236,24 +1237,24 @@ export class AdminHelpEditorPopupComponent {
   protected documentLabel(): string {
     switch (this.documentKind) {
       case 'privacy':
-        return 'Privacy';
+        return this.i18n.translate('privacy');
       case 'terms':
-        return 'Terms';
+        return this.i18n.translate('terms');
       case 'explanation':
-        return 'Explanation';
+        return this.i18n.translate('explanation');
       default:
-        return 'Help';
+        return this.i18n.translate('help');
     }
   }
 
   private documentMenuKindLabel(kind: Extract<HelpCenterDocumentKind, 'help' | 'privacy' | 'terms'>): string {
     switch (kind) {
       case 'privacy':
-        return 'Privacy';
+        return this.i18n.translate('privacy');
       case 'terms':
-        return 'Terms';
+        return this.i18n.translate('terms');
       default:
-        return 'Help';
+        return this.i18n.translate('help');
     }
   }
 
@@ -1445,7 +1446,7 @@ export class AdminHelpEditorPopupComponent {
       id: 'header-color-menu',
       label,
       icon: 'palette',
-      ariaLabel: `${this.uiText('Header color')}: ${label}`,
+      ariaLabel: `${this.uiText('admin.help.header.color.label')}: ${label}`,
       palette: option.id,
       layout: 'icon',
       hideLabel: true,

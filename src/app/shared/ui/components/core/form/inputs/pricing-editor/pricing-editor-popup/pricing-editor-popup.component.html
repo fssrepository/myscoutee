@@ -731,7 +731,7 @@
                       [ngModel]="promo.code"
                       (ngModelChange)="onPromoCodeTextChange(promo, $event)"
                       [disabled]="readOnly"
-                      placeholder="EARLY"
+                      [attr.placeholder]="'pricing.discount.code.placeholder' | i18n"
                       />
                   </label>
                   <label class="pricing-editor__field">
@@ -798,7 +798,7 @@
         </div>
         @if (currentPreview.quantityDelta !== 0) {
           <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
-            <span>{{ currentPreview.quantityLabel || 'Quantity pricing' }}</span>
+            <span>{{ currentPreview.quantityLabel || ('pricing.quantity.title' | i18n) }}</span>
             <strong [class.positive]="currentPreview.quantityDelta > 0" [class.negative]="currentPreview.quantityDelta < 0">
               {{ currentPreview.quantityDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.quantityDelta | number:'1.0-2' }}
             </strong>
@@ -852,7 +852,7 @@
         </div>
         @if (currentPreview.quantityDelta !== 0) {
           <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
-            <span>{{ currentPreview.quantityLabel || 'Quantity pricing' }}</span>
+            <span>{{ currentPreview.quantityLabel || ('pricing.quantity.title' | i18n) }}</span>
             <strong [class.positive]="currentPreview.quantityDelta > 0" [class.negative]="currentPreview.quantityDelta < 0">
               {{ currentPreview.quantityDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.quantityDelta | number:'1.0-2' }}
             </strong>

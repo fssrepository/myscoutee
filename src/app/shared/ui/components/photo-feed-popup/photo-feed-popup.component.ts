@@ -115,7 +115,7 @@ export class PhotoFeedPopupComponent implements OnDestroy {
       if (post.creatorUserId !== this.store.userId()) return;
       this.appMenuDispatcher.close();
       this.dialogStore.open({ title: 'feed.remove.question', message: 'feed.removeConfirm', confirmLabel: 'feed.remove',
-        cancelLabel: 'Cancel', confirmPalette: 'danger', failureMessage: 'feed.removeFailed',
+        cancelLabel: 'cancel', confirmPalette: 'danger', failureMessage: 'feed.removeFailed',
         onConfirm: async () => {
           await this.store.remove(post.id);
           this.list?.removeVisibleItemByIdentity(post.id, { totalDelta: -1 });

@@ -8,11 +8,11 @@
             type="text"
             [ngModel]="searchText()"
             (ngModelChange)="searchText.set(($event ?? '').toString())"
-            placeholder="Filter contacts A-Z"
-            aria-label="Filter contacts"
+            [attr.placeholder]="'contacts.filter.input.aria' | i18n"
+            [attr.aria-label]="'contacts.filter.aria' | i18n"
             />
           @if (searchText()) {
-            <button type="button" class="contacts-search-clear" (click)="clearSearch($event)" aria-label="Clear contact filter">
+            <button type="button" class="contacts-search-clear" (click)="clearSearch($event)" [attr.aria-label]="'contacts.filter.clear.aria' | i18n">
               <mat-icon>close</mat-icon>
             </button>
           }
@@ -53,7 +53,7 @@
                 <h3>{{ contact.name }}</h3>
                 <p class="contact-city">
                   <mat-icon>location_on</mat-icon>
-                  <span>{{ contact.city || 'City not set yet' }}</span>
+                  <span>{{ contact.city || ('profile.city.empty.description' | i18n) }}</span>
                 </p>
                 @if (chatAccess.requestsOnly() && contact.chatAccess?.requestedAtIso; as requestedAt) {
                   <p class="contact-request-date">{{ requestedAt | date:'short' }}</p>
@@ -64,7 +64,7 @@
                   type="button"
                 class="experience-action-btn contact-profile-trigger"
                 data-guide-field="contact-card-start"
-                  aria-label="View profile"
+                  [attr.aria-label]="'view.profile' | i18n"
                   (click)="viewContactProfile(contact, $event)"
                   >
                   <mat-icon>visibility</mat-icon>
@@ -107,7 +107,7 @@
                 }
               </div>
             } @else {
-              <p class="contact-empty-methods">No availability methods yet. Use Edit to add phone, Facebook, email, and more.</p>
+              <p class="contact-empty-methods">{{ 'contacts.methods.empty.description' | i18n }}</p>
             }
         </article>
       </ng-template>
@@ -121,22 +121,22 @@
           <section class="contact-form-summary">
             <div>
               <strong>{{ contactForm.name }}</strong>
-              <p>{{ contactForm.headline || 'Create one-tap ways to reach this member from the contact list.' }}</p>
+              <p>{{ contactForm.headline || ('contact.methods.description' | i18n) }}</p>
             </div>
             <span class="contact-form-summary-pill">
               <mat-icon>hub</mat-icon>
-              <span>{{ contactForm.methods.length === 1 ? '1 method' : contactForm.methods.length + ' methods' }}</span>
+              <span>{{ contactForm.methods.length === 1 ? ('contact.methods.count.singular' | i18n) : contactForm.methods.length + ' methods' }}</span>
             </span>
           </section>
 
           <section class="contact-form-actions">
             <div class="contact-form-section-title">
-              <h4>Availability Methods</h4>
-              <p>Add one or more routes like phone, Facebook, email, Telegram, or a custom link.</p>
+              <h4>{{ 'contact.methods.title' | i18n }}</h4>
+              <p>{{ 'contact.methods.editor.description' | i18n }}</p>
             </div>
-            <button type="button" class="popup-view-fab" (click)="addMethodRow($event)" aria-label="Add availability method">
+            <button type="button" class="popup-view-fab" (click)="addMethodRow($event)" [attr.aria-label]="'contact.methods.add.aria' | i18n">
               <mat-icon>add_link</mat-icon>
-              <span>Add method</span>
+              <span>{{ 'contacts.methods.add' | i18n }}</span>
             </button>
           </section>
 
@@ -144,7 +144,7 @@
           @if (contactForm.methods.length === 0) {
             <div class="contact-form-empty">
               <mat-icon>contact_phone</mat-icon>
-              <p>No methods added yet.</p>
+              <p>{{ 'contact.methods.empty.description' | i18n }}</p>
             </div>
           }
 
@@ -164,7 +164,7 @@
                   type="button"
                   class="experience-action-btn contact-method-remove-btn"
                   (click)="removeMethodRow(method.id, $event)"
-                  aria-label="Remove method"
+                  [attr.aria-label]="'contact.methods.remove.aria' | i18n"
                   >
                   <mat-icon>delete</mat-icon>
                 </button>

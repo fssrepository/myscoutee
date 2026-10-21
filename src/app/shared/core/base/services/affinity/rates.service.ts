@@ -1,11 +1,12 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { type RatingSnapshot, type ListQuery } from '@fssrepository/myscoutee-components';
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesFeedFilters } from '../../../contracts';
 import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../../contracts/common/activity.interface';
 import type { IRatesService } from '../../../contracts/common/activity.interface';
-import { LocalRatesService } from '../../../local';
-import { HttpRatesService } from '../../../http';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import { GameService } from '../accounts/game.service';
 import { RateOutboxService } from './rate-outbox.service';
@@ -14,12 +15,13 @@ import { RateOutboxService } from './rate-outbox.service';
   providedIn: 'root'
 })
 export class RatesService extends BaseRouteModeService implements IRatesService {
-  private readonly localRatesService = inject(LocalRatesService);
-  private readonly httpRatesService = inject(HttpRatesService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localRatesService = this.transportAdapters.reference(LOCAL_ADAPTER.RATES);
+  private readonly httpRatesService = this.transportAdapters.reference(HTTP_ADAPTER.RATES);
   private readonly gameService = inject(GameService);
   private readonly rateOutboxService = inject(RateOutboxService);
 
-  private get ratesService(): LocalRatesService | HttpRatesService {
+  private get ratesService(): AdapterInstance<typeof LOCAL_ADAPTER.RATES> | AdapterInstance<typeof HTTP_ADAPTER.RATES> {
     return this.resolveRouteService('/activities/rates', this.localRatesService, this.httpRatesService);
   }
 

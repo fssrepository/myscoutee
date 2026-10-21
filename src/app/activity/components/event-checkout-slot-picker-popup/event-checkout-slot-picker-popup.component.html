@@ -16,7 +16,7 @@
         ></app-smart-list>
 
         @if (isMonthView()) {
-          <section class="event-checkout-slot-picker__month-overlay" aria-label="Available slot calendar">
+          <section class="event-checkout-slot-picker__month-overlay" [attr.aria-label]="'checkout.slot.calendar.aria' | i18n">
             <app-smart-list
               class="event-checkout-slot-picker__month-list"
               [config]="monthListConfig"
@@ -60,7 +60,7 @@
             selectPalette="picker"
             selectIcon="add"
             selectedIcon="check"
-            [selectAriaLabel]="isSelected(slot) ? 'Remove slot from basket' : 'Add slot to basket'"
+            [selectAriaLabel]="isSelected(slot) ? ('checkout.slot.basket.remove.aria' | i18n) : ('checkout.slot.basket.add.aria' | i18n)"
             (selectionToggle)="selectItem($event)"
             (badgeClick)="openPricingSummary(slot, $event)"
             (menuSelect)="onSlotMenuSelect(slot, $event)"

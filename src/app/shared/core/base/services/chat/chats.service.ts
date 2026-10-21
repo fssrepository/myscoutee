@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
@@ -11,8 +13,6 @@ import type {
 } from '../../../contracts/chat/chat.interface';
 import type { IChatsService } from '../../../contracts/common/activity.interface';
 
-import { LocalChatsService } from '../../../local';
-import { HttpChatsService } from '../../../http';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import { ActivityMembersService } from '../events/activity-members.service';
 import { RouteDelayService } from '../platform/route-delay.service';
@@ -28,14 +28,15 @@ type ChatMessagesLoadContext = {
   providedIn: 'root'
 })
 export class ChatsService extends BaseRouteModeService implements IChatsService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private static readonly CHAT_ROUTE = '/activities/chats';
 
-  private readonly localChatsService = inject(LocalChatsService);
-  private readonly httpChatsService = inject(HttpChatsService);
+  private readonly localChatsService = this.transportAdapters.reference(LOCAL_ADAPTER.CHATS);
+  private readonly httpChatsService = this.transportAdapters.reference(HTTP_ADAPTER.CHATS);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly routeDelay = inject(RouteDelayService);
 
-  private get chatsService(): LocalChatsService | HttpChatsService {
+  private get chatsService(): AdapterInstance<typeof LOCAL_ADAPTER.CHATS> | AdapterInstance<typeof HTTP_ADAPTER.CHATS> {
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
   }
 

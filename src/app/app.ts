@@ -95,7 +95,7 @@ export class App implements OnDestroy {
     return [{
       id: 'navigator-avatar', kind: 'action', layout: 'image', palette: 'neutral',
       imageUrl: AppUtils.mediaImageVariantUrl(imageUrl, 'small'),
-      icon: 'schedule', disabled: true, ariaLabel: 'Loading profile', imageAlt: 'Loading profile',
+      icon: 'schedule', disabled: true, ariaLabel: 'loading.profile', imageAlt: 'loading.profile',
       progress: { state: 'loading', shape: 'circle', durationMs: 3000 }
     }];
   });

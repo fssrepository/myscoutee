@@ -35,7 +35,7 @@
                                   type="text"
                                   name="helpTitle"
                                   [(ngModel)]="editDraft.title"
-                                  placeholder="Revision title"
+                                  [attr.placeholder]="'admin.help.revision.title.aria' | i18n"
                                   required
                                 />
                               </span>
@@ -59,8 +59,8 @@
                                   type="submit"
                                   class="help-editor-icon-btn help-editor-confirm-btn" data-guide-field="revision-save"
                                   [disabled]="saving"
-                                  [attr.aria-label]="saving ? 'Saving revision' : 'Save v' + nextRevisionVersion()"
-                                  [title]="saving ? 'Saving revision' : 'Save v' + nextRevisionVersion()"
+                                  [attr.aria-label]="saving ? ('admin.help.revision.saving' | i18n) : 'Save v' + nextRevisionVersion()"
+                                  [title]="saving ? ('admin.help.revision.saving' | i18n) : 'Save v' + nextRevisionVersion()"
                                   >
                                   <mat-icon>check</mat-icon>
                                 </button>
@@ -70,8 +70,8 @@
                                 class="help-editor-icon-btn"
                                 [disabled]="saving"
                                 (click)="cancelEditing($event)"
-                                data-guide-field="revision-cancel" aria-label="Cancel editing"
-                                title="Cancel editing"
+                                data-guide-field="revision-cancel" [attr.aria-label]="'admin.help.revision.cancel.aria' | i18n"
+                                [attr.title]="'admin.help.revision.cancel.aria' | i18n"
                                 >
                                 <mat-icon>close</mat-icon>
                               </button>
@@ -80,7 +80,7 @@
                                 class="help-editor-inline-icon-btn help-editor-caret-btn"
                                 [attr.aria-expanded]="draftAccordionOpen"
                                 (click)="toggleDraftRevision($event)"
-                                data-guide-field="draft-toggle" aria-label="Toggle draft revision"
+                                data-guide-field="draft-toggle" [attr.aria-label]="'admin.help.revision.draft.toggle.aria' | i18n"
                                 >
                                 <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                               </button>
@@ -93,7 +93,7 @@
                               <div class="help-editor-description-row">
                                 <div class="help-editor-summary-line">
                                   <label class="help-editor-inline-field">
-                                    <span>Header</span>
+                                    <span>{{ 'admin.help.revision.header.label' | i18n }}</span>
                                     <input
                                       class="help-editor-draft-summary-input" data-guide-field="revision-header"
                                       type="text"
@@ -128,7 +128,7 @@
                                 }
                                 <div class="help-editor-description-line">
                                   <label class="help-editor-inline-field help-editor-inline-field-compact">
-                                    <span>Description</span>
+                                    <span>{{ 'description' | i18n }}</span>
                                     <textarea
                                       name="helpDescription" data-guide-field="revision-description"
                                       [(ngModel)]="editDraft.description"
@@ -142,7 +142,7 @@
                                     class="help-editor-hero-add-section-btn" data-guide-field="section-add"
                                     (click)="addDraftSection($event)"
                                     [attr.aria-label]="addSectionLabel()"
-                                    title="Add section"
+                                    [attr.title]="'admin.help.section.add.aria' | i18n"
                                     >
                                     <mat-icon>add</mat-icon>
                                   </button>
@@ -162,7 +162,7 @@
                                     <app-menu
                                       class="help-editor-section-icon-menu" data-guide-field="section-icon"
                                       kind="select"
-                                      title="Search Material icons"
+                                      [attr.title]="'admin.help.icon.search.placeholder' | i18n"
                                       [trigger]="sectionIconMenuTrigger(section)"
                                       [model]="sectionIconMenuModel(section)"
                                       [filterable]="true"
@@ -176,7 +176,7 @@
                                       [name]="'sectionTitle' + sectionIndex"
                                       [(ngModel)]="section.title"
                                       [ngModelOptions]="{ standalone: true }"
-                                      placeholder="Section label"
+                                      [attr.placeholder]="'admin.help.section.label.aria' | i18n"
                                       required
                                       [attr.aria-label]="sectionTitleAriaLabel()"
                                     />
@@ -188,7 +188,7 @@
                                         (itemSelect)="onGuideFieldSelect(section, $event)"></app-menu>
                                     }
                                     @if (documentKind === 'explanation' && editDraft.presentation !== 'tour') {
-                                      <div class="help-editor-panel-span-toggle" data-guide-field="section-panel-span" role="group" aria-label="Panel grid span">
+                                      <div class="help-editor-panel-span-toggle" data-guide-field="section-panel-span" role="group" [attr.aria-label]="'admin.help.section.span.aria' | i18n">
                                         @for (option of panelSpanOptions; track option.value) {
                                           <button
                                             type="button"
@@ -210,18 +210,18 @@
                                         [class.is-optional]="section.optional"
                                         [class.is-mandatory]="!section.optional"
                                         (click)="$event.stopPropagation()"
-                                        title="Optional sections do not block privacy approval"
+                                        [attr.title]="'admin.help.section.optional.description' | i18n"
                                         >
                                         <input
                                           type="checkbox"
                                           [name]="'sectionOptional' + sectionIndex"
                                           [(ngModel)]="section.optional"
                                           [ngModelOptions]="{ standalone: true }"
-                                          [attr.aria-label]="section.optional ? 'Mark section mandatory' : 'Mark section optional'"
+                                          [attr.aria-label]="section.optional ? ('admin.help.section.mandatory.action' | i18n) : ('admin.help.section.optional.action' | i18n)"
                                         />
                                         <span>
                                           <mat-icon>{{ section.optional ? 'check_circle' : 'priority_high' }}</mat-icon>
-                                          <span>{{ section.optional ? 'Optional' : 'Mandatory' }}</span>
+                                          <span>{{ section.optional ? ('optional' | i18n) : ('mandatory' | i18n) }}</span>
                                         </span>
                                       </label>
                                     }
@@ -229,18 +229,18 @@
                                       type="button"
                                       class="help-editor-mode-toggle" data-guide-field="section-mode"
                                       (click)="toggleDraftSectionMode(section, $event)"
-                                      [attr.aria-label]="section.mode === 'html' ? 'Switch to preview' : 'Switch to HTML'"
-                                      [title]="section.mode === 'html' ? 'Switch to preview' : 'Switch to HTML'"
+                                      [attr.aria-label]="section.mode === 'html' ? ('admin.help.section.preview.action' | i18n) : ('admin.help.section.html.action' | i18n)"
+                                      [title]="section.mode === 'html' ? ('admin.help.section.preview.action' | i18n) : ('admin.help.section.html.action' | i18n)"
                                       >
                                       <mat-icon>{{ section.mode === 'html' ? 'code' : 'visibility' }}</mat-icon>
-                                      <span>{{ section.mode === 'html' ? 'HTML' : 'Preview' }}</span>
+                                      <span>{{ section.mode === 'html' ? ('admin.help.section.html.label' | i18n) : ('preview' | i18n) }}</span>
                                     </button>
                                     <button
                                       type="button"
                                       class="help-editor-inline-icon-btn help-editor-danger-btn"
                                       (click)="removeDraftSection(section, $event)"
                                       data-guide-field="section-remove" [attr.aria-label]="removeSectionLabel()"
-                                      title="Remove section"
+                                      [attr.title]="'admin.help.section.remove.aria' | i18n"
                                       >
                                       <mat-icon>delete</mat-icon>
                                     </button>
@@ -272,7 +272,7 @@
                                           [name]="'sectionHtml' + sectionIndex"
                                           [(ngModel)]="section.contentHtml"
                                           [ngModelOptions]="{ standalone: true }"
-                                          placeholder="Paste or edit the section HTML"
+                                          [attr.placeholder]="'admin.help.section.html.placeholder' | i18n"
                                           spellcheck="false"
                                           (paste)="formatPastedSectionHtml(section, $event)"
                                         ></textarea>
@@ -320,7 +320,7 @@
                             <small>{{ revisionSubtitle(revision) }}</small>
                           </span>
                           @if (revision.active) {
-                            <span class="help-editor-active-badge" data-guide-field="revision-active">Active</span>
+                            <span class="help-editor-active-badge" data-guide-field="revision-active">{{ 'active' | i18n }}</span>
                           }
                         </button>
                         <div class="help-editor-revision-actions">
@@ -338,8 +338,8 @@
                             class="help-editor-icon-btn"
                             [disabled]="saving || !!activatingRevisionId"
                             (click)="startEditingRevision(revision, $event)"
-                            data-guide-field="revision-edit" aria-label="Edit revision"
-                            title="Edit this revision"
+                            data-guide-field="revision-edit" [attr.aria-label]="'admin.help.revision.edit.aria' | i18n"
+                            [attr.title]="'admin.help.revision.edit.aria' | i18n"
                             >
                             <mat-icon>edit</mat-icon>
                           </button>
@@ -352,8 +352,8 @@
                               class="help-editor-icon-btn"
                               [disabled]="revision.active || saving || !!activatingRevisionId"
                               (click)="activateRevision(revision, $event)"
-                              data-guide-field="revision-activate" aria-label="Activate revision"
-                              title="Switch to this revision"
+                              data-guide-field="revision-activate" [attr.aria-label]="'admin.help.revision.activate.aria' | i18n"
+                              [attr.title]="'admin.help.revision.select.aria' | i18n"
                               >
                               <mat-icon>published_with_changes</mat-icon>
                             </button>
@@ -363,8 +363,8 @@
                             class="help-editor-icon-btn help-editor-danger-btn"
                             [disabled]="saving || !!activatingRevisionId"
                             (click)="deleteRevision(revision, $event)"
-                            data-guide-field="revision-delete" aria-label="Delete revision"
-                            title="Delete revision"
+                            data-guide-field="revision-delete" [attr.aria-label]="'admin.help.revision.delete.aria' | i18n"
+                            [attr.title]="'admin.help.revision.delete.aria' | i18n"
                             >
                             <mat-icon>delete</mat-icon>
                           </button>
@@ -373,7 +373,7 @@
                             class="help-editor-inline-icon-btn help-editor-caret-btn"
                             [attr.aria-expanded]="isRevisionOpen(revision)"
                             (click)="toggleRevision(revision, $event)"
-                            data-guide-field="revision-toggle" aria-label="Toggle revision"
+                            data-guide-field="revision-toggle" [attr.aria-label]="'admin.help.revision.toggle.aria' | i18n"
                             >
                             <mat-icon class="help-editor-section-caret">expand_more</mat-icon>
                           </button>
@@ -439,7 +439,7 @@
                   <p>{{ createRevisionToEnablePopupLabel() }}</p>
                   <button type="button" class="help-editor-primary-btn" data-guide-field="help-new-revision" (click)="startNewRevision($event)">
                     <mat-icon>add</mat-icon>
-                    <span>Create revision</span>
+                    <span>{{ 'create.revision' | i18n }}</span>
                   </button>
                 </div>
               }

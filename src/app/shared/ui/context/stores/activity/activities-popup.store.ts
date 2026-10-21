@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
 import type * as ContractTypes from '../../../../core/contracts';
@@ -186,6 +188,7 @@ export const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
@@ -636,7 +639,7 @@ export class ActivitiesPopupStore {
     if (this.activitiesPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/activities-popup/activities-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ACTIVITIES_POPUP);
     this.activitiesPopupComponentRef.set(module.ActivitiesPopupComponent);
   }
 
@@ -644,7 +647,7 @@ export class ActivitiesPopupStore {
     if (this.eventChatPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-chat-popup/event-chat-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_CHAT_POPUP);
     this.eventChatPopupComponentRef.set(module.EventChatPopupComponent);
   }
 
@@ -652,7 +655,7 @@ export class ActivitiesPopupStore {
     if (this.eventExplorePopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-explore-popup/event-explore-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_EXPLORE_POPUP);
     this.eventExplorePopupComponentRef.set(module.EventExplorePopupComponent);
   }
 
@@ -660,7 +663,7 @@ export class ActivitiesPopupStore {
     if (this.eventMembersPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-members-popup/event-members-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_MEMBERS_POPUP);
     this.eventMembersPopupComponentRef.set(module.EventMembersPopupComponent);
   }
 
@@ -668,7 +671,7 @@ export class ActivitiesPopupStore {
     if (this.feedbackPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../components/feedback-popup/feedback-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.FEEDBACK_POPUP);
     this.feedbackPopupComponentRef.set(module.FeedbackPopupComponent);
   }
 
@@ -676,9 +679,7 @@ export class ActivitiesPopupStore {
     if (this.feedbackRatedDetailPopupComponentRef()) {
       return;
     }
-    const module = await import(
-      '../../../components/feedback-rated-detail-popup/feedback-rated-detail-popup.component'
-    );
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.FEEDBACK_RATED_DETAIL_POPUP);
     this.feedbackRatedDetailPopupComponentRef.set(module.FeedbackRatedDetailPopupComponent);
   }
 

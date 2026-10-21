@@ -1,9 +1,10 @@
+import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { EventSubeventsPopupStore } from './event-subevents-popup.store';
 
 describe('Subevents calendar selection state', () => {
   it('opens immediately and keeps date-input identity stable across repeated selection', () => {
-    const store = new EventSubeventsPopupStore();
+    const store = TestBed.runInInjectionContext(() => new EventSubeventsPopupStore());
     store.openEventSubeventsListPopup({eventId: 'event', title: 'Event'});
     expect(store.eventSubeventsListPopup()?.eventId).toBe('event');
     store.selectCalendarRange('2027-02-09');
@@ -16,7 +17,7 @@ describe('Subevents calendar selection state', () => {
     }
   });
   it('clears the day filter on view change, close and opening another event', () => {
-    const store = new EventSubeventsPopupStore();
+    const store = TestBed.runInInjectionContext(() => new EventSubeventsPopupStore());
     store.openEventSubeventsListPopup({eventId: 'first'});
     store.selectCalendarRange('2027-02-09');
     store.selectListView('week');

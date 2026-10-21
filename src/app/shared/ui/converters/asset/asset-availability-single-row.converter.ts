@@ -26,7 +26,7 @@ export class AssetAvailabilitySingleRowConverter {
       ownerId: row.assetId,
       status: row.status,
       dateIso: row.startAtIso ?? row.dateIso,
-      title: row.title || 'Request',
+      title: row.title || this.translate(options, 'contact.chat.request', 'Request'),
       subtitle: row.subtitle ?? null,
       detail: row.detail || schedule || null,
       groupLabel: options.groupLabel ?? null,

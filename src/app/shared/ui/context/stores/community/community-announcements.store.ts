@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { ActivityStore } from '../activity/activity.store';
 import { ActivitiesPopupStore } from '../activity/activities-popup.store';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
@@ -12,6 +14,7 @@ import type { CommunityAnnouncement, AnnouncementAction, AnnouncementFilters, Sa
 export type AnnouncementEditor = { value: CommunityAnnouncement | null; readOnly: boolean; defaultVoting?: boolean; view?: 'details' | 'voting' };
 @Injectable({ providedIn: 'root' })
 export class CommunityAnnouncementsStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly activity = inject(ActivityStore);
   readonly votesCount = computed(() => this.activity.getUserCounterOverrides(this.profile.activeUserId())?.menuCounters?.['votes']
     ?? this.profile.activeUserProfile()?.activities?.menuCounters?.['votes'] ?? 0);
@@ -39,7 +42,7 @@ export class CommunityAnnouncementsStore {
   constructor() { effect(() => { const key = this.identity; if (key !== this.previousIdentity) { this.previousIdentity = key; this.close(); this.changed.set(null); } }); }
   async open(): Promise<void> {
     if (!this.groupId()) return; const key = this.identity;
-    if (!this.component()) this.component.set((await import('../../../components/community-announcements/community-announcements.component')).CommunityAnnouncementsComponent);
+    if (!this.component()) this.component.set((await this.popupAdapters.load(POPUP_ADAPTER.COMMUNITY_ANNOUNCEMENTS)).CommunityAnnouncementsComponent);
     if (key === this.identity) this.popup.set(true);
   }
   async openReference(id: string): Promise<void> {
@@ -72,7 +75,7 @@ export class CommunityAnnouncementsStore {
     this.dialogs.open({ title: `announcement.confirm.${action}`, message: item.title,
         warningMessage: action === 'vote' ? 'announcement.vote.final' : null,
         confirmLabel: action === 'vote' ? `announcement.choice.${choice}` : `announcement.action.${action}`,
-        confirmPalette: palette, cancelLabel: 'Cancel', failureMessage: 'announcement.failed', onConfirm: apply });
+        confirmPalette: palette, cancelLabel: 'cancel', failureMessage: 'announcement.failed', onConfirm: apply });
   }
   feedback(item: CommunityAnnouncement): void {
     if (!this.groupId() || this.canManage() || item.status !== 'published' || item.communityId !== this.groupId()) return;

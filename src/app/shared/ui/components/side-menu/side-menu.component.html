@@ -90,7 +90,7 @@
             <button
               type="button"
               class="user-menu-close-btn" data-guide-field="close"
-              aria-label="Close menu"
+              [attr.aria-label]="'close.menu' | i18n"
               (click)="$event.stopPropagation(); onCloseMenu()"
             >
               <mat-icon>close</mat-icon>

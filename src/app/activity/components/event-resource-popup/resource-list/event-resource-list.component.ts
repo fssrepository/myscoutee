@@ -129,7 +129,7 @@ export class EventResourceListComponent implements DoCheck {
     headerProgress: {
       enabled: true
     },
-    emptyLabel: 'No assigned resources yet.',
+    emptyLabel: 'event.resources.empty.title',
     emptyDescription: () => this.currentModel().canAssign === false
       ? 'The organizer has not published resources for this category.'
       : 'Assign current-user assets to see them here.',
@@ -169,7 +169,7 @@ export class EventResourceListComponent implements DoCheck {
     return {
       label: this.resourceTypeLabel(model.filter).toLowerCase(),
       icon: this.resourceTypeIcon(model.filter),
-      ariaLabel: 'Open asset filter',
+      ariaLabel: 'open.asset.filter',
       palette: this.resourceTypePalette(model.filter),
       counter: count > 0 ? { value: count, max: 99 } : null,
       layout: 'pill'
@@ -199,7 +199,7 @@ export class EventResourceListComponent implements DoCheck {
     return {
       icon: 'add',
       closeIcon: 'close',
-      ariaLabel: 'Open sub-event asset actions',
+      ariaLabel: 'open.sub.event.asset.actions',
       hideLabel: true,
       palette: 'green',
       layout: 'icon'
@@ -211,7 +211,7 @@ export class EventResourceListComponent implements DoCheck {
     if (this.currentModel().canAssign !== false) {
       actions.push({
         id: 'quick-assign',
-        label: 'Assign',
+        label: 'assign',
         icon: 'assignment_ind',
         palette: 'blue',
         surface: 'tinted',

@@ -1,4 +1,6 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, computed, signal, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 
 import type { AppMenuItem, AppMenuItemSelectEvent } from '@fssrepository/myscoutee-components';
@@ -84,6 +86,7 @@ export interface EventEditorState {
   providedIn: 'root'
 })
 export class EventEditorPopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly _isOpen = signal(false);
   private readonly _mode = signal<'create' | 'edit'>('create');
   private readonly _sourceEvent = signal<any>(null);
@@ -207,7 +210,7 @@ export class EventEditorPopupStore {
     if (this.eventEditorPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-editor-popup/event-editor-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_EDITOR_POPUP);
     this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
   }
 

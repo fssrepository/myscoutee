@@ -1,11 +1,12 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 
 import { type UiBranding as DeploymentBrandingDto } from '@fssrepository/myscoutee-components';
 import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_PRIVACY_CONTACT, DEFAULT_DEPLOYMENT_SOCIAL_LINKS, type DeploymentConfigurationDto, type DeploymentPrivacyContactDto, type DeploymentConfigurationServiceContract, type DeploymentSocialLinkDto } from '../../../contracts/platform/deployment-configuration.interface';
 import { OperatorConfigurationMapper } from '../../mappers/operator/operator-configuration.mapper';
-import { HttpDeploymentConfigurationService } from '../../../http/services/platform/deployment-configuration.service';
-import { LocalDeploymentConfigurationService } from '../../../local/source/services/platform/deployment-configuration.service';
+
 import { BaseRouteModeService } from './base-route-mode.service';
 
 const DEPLOYMENT_CONFIGURATION_ROUTE = '/deployment/configuration';
@@ -16,9 +17,10 @@ const DEPLOYMENT_CONFIGURATION_ROUTE = '/deployment/configuration';
 export class DeploymentConfigurationService
   extends BaseRouteModeService
   implements OnDestroy {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private readonly documentRef = inject(DOCUMENT);
-  private readonly localService = inject(LocalDeploymentConfigurationService);
-  private readonly httpService = inject(HttpDeploymentConfigurationService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.DEPLOYMENT_CONFIGURATION);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.DEPLOYMENT_CONFIGURATION);
   private readonly brandingRef = signal<DeploymentBrandingDto>(
     structuredClone(DEFAULT_DEPLOYMENT_BRANDING)
   );

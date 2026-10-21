@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   UiDateUtils,
   ExplanationGuideService,
@@ -69,7 +70,7 @@ type SlotListView = 'day' | 'basket';
     PopupComponent,
     SmartListComponent,
     TextCardComponent,
-    EventBasketInputComponent
+    EventBasketInputComponent, I18nPipe
   ],
   templateUrl: './event-checkout-slot-picker-popup.component.html',
   styleUrl: './event-checkout-slot-picker-popup.component.scss',
@@ -102,8 +103,8 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected slotListQuery: Partial<ListQuery<SlotPickerFilters>> = this.buildSlotListQuery();
 
   protected readonly pricingSummaryBasketConfig: EventBasketInputConfig = {
-    title: 'Pricing',
-    subtitle: 'Read-only checkout price review',
+    title: 'pricing',
+    subtitle: 'checkout.pricing.review.description',
     readOnly: true,
     showAdd: false,
     showItemMenu: false,
@@ -148,7 +149,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     initialPageSize: 240,
     defaultView: 'month',
     views: [
-      { key: 'month', label: 'Month', mode: 'month', pageSize: 240 }
+      { key: 'month', label: 'month', mode: 'month', pageSize: 240 }
     ],
     calendarVariant: 'counter',
     calendar: {
@@ -173,7 +174,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     showBackgroundLoadingProgress: true,
     showStickyHeader: true,
     trackBy: (_index, item) => item.dateKey,
-    emptyLabel: 'No slots in this month.'
+    emptyLabel: 'checkout.slots.month.empty.description'
   };
 
   protected readonly slotLoadPage = (query: ListQuery<SlotPickerFilters>) =>
@@ -203,10 +204,10 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected popupModel(): PopupModel {
     const state = this.popupState();
     return {
-      title: state?.record.title ?? 'Slots',
+      title: state?.record.title ?? 'event.editor.slots.title',
       subtitle: this.formatRecordRange(state?.record ?? null),
-      ariaLabel: 'Select checkout slots',
-      closeAriaLabel: 'Close slot picker',
+      ariaLabel: 'checkout.slots.select.aria',
+      closeAriaLabel: 'checkout.slots.close.aria',
       closeOnBackdrop: !this.saving,
       showClose: true,
       size: 'wide',
@@ -238,7 +239,7 @@ export class EventCheckoutSlotPickerPopupComponent {
           id: 'slot-picker-calendar',
           align: 'end',
           icon: 'calendar_month',
-          ariaLabel: 'Open slot calendar',
+          ariaLabel: 'checkout.slots.calendar.open.aria',
           palette: this.monthOverlayOpen ? 'teal' : 'neutral',
           active: this.monthOverlayOpen
         }
@@ -270,7 +271,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         counter: selectedCount,
         active: this.basketMode,
         closeOnSelect: false,
-        ariaLabel: selectedCount === 1 ? 'Show selected basket item' : `Show ${selectedCount} selected basket items`
+        ariaLabel: selectedCount === 1 ? 'checkout.basket.item.show.aria' : `Show ${selectedCount} selected basket items`
       },
       {
         id: 'save',
@@ -279,7 +280,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         palette: this.errorMessage || hasSelectionChanges ? 'danger' : 'success',
         disabled: this.saving || !hasSelectionChanges,
         closeOnSelect: false,
-        ariaLabel: 'Save basket',
+        ariaLabel: 'checkout.basket.save.aria',
         progress: {
           state: () => this.saving ? 'loading' : (this.errorMessage ? 'error' : null),
           shape: 'circle'
@@ -481,7 +482,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       }] : []),
       {
         id: 'pricing',
-        label: 'Price summary',
+        label: 'checkout.price.summary.action',
         icon: 'price_check',
         palette: 'gold',
         surface: 'tinted',
@@ -765,11 +766,11 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected pricingSummaryPopupModel(): PopupModel {
     const slot = this.pricingSummarySlot;
     return {
-      title: 'Price summary',
+      title: 'checkout.price.summary.action',
       subtitle: slot?.title ?? null,
       secondarySubtitle: slot?.timeframe ?? null,
-      ariaLabel: 'Slot price summary',
-      closeAriaLabel: 'Close price summary',
+      ariaLabel: 'checkout.slot.price.summary.title',
+      closeAriaLabel: 'checkout.price.summary.close.aria',
       closeOnBackdrop: true,
       showClose: true,
       size: 'default',
@@ -821,7 +822,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       const pricing = this.resolveOptionalSubEventPricing(subEvent);
       items.push({
         id: `subevent:${subEvent.id}:${slot.id}`,
-        title: subEvent.name || 'Optional sub event',
+        title: subEvent.name || 'event.checkout.optional.sub.event',
         meta: 'Optional add-on',
         detail: subEvent.description || null,
         amount: pricing.amount,
@@ -1158,7 +1159,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         ? subEvent.pricingSummaryRows
         : [{
             key: `subevent:${subEvent.id}:base`,
-            label: subEvent.name || 'Optional sub event',
+            label: subEvent.name || 'event.checkout.optional.sub.event',
             detail: null,
             amount,
             currency,

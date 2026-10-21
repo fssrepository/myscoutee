@@ -38,8 +38,8 @@ export class FeedbackEvaluationPopupComponent implements OnDestroy {
     const readOnly = this.store.readOnly(), t = (key: string) => this.i18n.translate(key);
     return {
       title: t('feedback.list.title'), layout: 'carousel',
-      save: readOnly ? null : { label: 'Submit feedback', icon: 'send' },
-      summary: readOnly ? { enabled: false } : { title: 'Overview', subtitle: 'Review your answers before submitting.', icon: 'fact_check' },
+      save: readOnly ? null : { label: 'submit.feedback', icon: 'send' },
+      summary: readOnly ? { enabled: false } : { title: 'feedback.evaluation.overview.title', subtitle: 'feedback.evaluation.overview.description', icon: 'fact_check' },
       steps: [{
         id: 'service-rating', title: this.store.selected()?.providerName ?? '',
         subtitle: this.store.selected()?.feedback.caseTitle, icon: 'home_repair_service', palette: 'gold',

@@ -6,7 +6,7 @@
             <div class="demo-user-loading-shell">
               <div class="demo-user-loading-copy-group">
                 <p class="demo-user-loading-eyebrow">
-                  {{ (submitting ? 'Opening demo session' : 'Preparing demo selector') | i18n }}
+                  {{ (submitting ? 'demo.session.opening.title' : 'demo.selector.loading.title') | i18n }}
                 </p>
                 @if (submitting && selectedUser(); as user) {
                   <div class="demo-user-selected-session">
@@ -31,15 +31,15 @@
                     }
                     <span class="demo-user-selected-copy">
                       <strong>{{ user.name }}</strong>
-                      <small>{{ 'Auto selected' | i18n }}</small>
+                      <small>{{ 'demo.selector.selection.automatic' | i18n }}</small>
                     </span>
                   </div>
                 }
-                <p class="demo-user-loading-copy">{{ (submitting && !loading ? 'Opening demo session...' : loadingLabel) | i18n }}</p>
+                <p class="demo-user-loading-copy">{{ (submitting && !loading ? 'demo.session.opening.description' : loadingLabel) | i18n }}</p>
                 <div
                   class="demo-user-progress-shell"
                   role="progressbar"
-                  [attr.aria-label]="'Demo data loading progress' | i18n"
+                  [attr.aria-label]="'demo.bootstrap.progress.aria' | i18n"
                   [attr.aria-valuemin]="0"
                   [attr.aria-valuemax]="100"
                   [attr.aria-valuenow]="loadingUserList || !loading ? null : loadingProgress"
@@ -68,7 +68,7 @@
             <div class="demo-user-grid demo-user-grid-loading">
               <div class="demo-user-loading-shell">
                 <div class="demo-user-loading-copy-group">
-                  <p class="demo-user-loading-eyebrow">{{ 'Selector unavailable' | i18n }}</p>
+                  <p class="demo-user-loading-eyebrow">{{ 'demo.selector.unavailable.title' | i18n }}</p>
                   <p class="demo-user-loading-copy">{{ errorMessage | i18n }}</p>
                   <button
                     mat-flat-button
@@ -77,7 +77,7 @@
                     [disabled]="submitting"
                     (click)="requestRetry()"
                   >
-                    {{ 'Try again' | i18n }}
+                    {{ 'try.again' | i18n }}
                   </button>
                 </div>
               </div>
@@ -138,7 +138,7 @@
             </div>
           } @else {
             <div class="demo-user-grid demo-user-grid-loading">
-              <p class="demo-user-loading-copy">{{ 'No demo users available.' | i18n }}</p>
+              <p class="demo-user-loading-copy">{{ 'demo.selector.empty.description' | i18n }}</p>
             </div>
           }
         }

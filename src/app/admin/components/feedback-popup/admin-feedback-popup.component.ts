@@ -343,15 +343,15 @@ export class AdminFeedbackPopupComponent {
   protected feedbackCategoryLabel(item: AdminFeedbackDto): string {
     const category = `${item.category ?? ''}`.trim();
     if (this.feedbackCategories.has(category)) {
-      return category;
+      return APP_STATIC_DATA.feedbackCategoryLabelKeys[category] ?? category;
     }
     if (category === 'Safety') {
-      return 'UX improvement';
+      return 'ux.improvement';
     }
     if (category === 'Events') {
-      return 'Feature request';
+      return 'feature.request';
     }
-    return 'General';
+    return 'general';
   }
 
   protected feedbackCategoryToneClass(item: AdminFeedbackDto): string {
@@ -363,13 +363,13 @@ export class AdminFeedbackPopupComponent {
 
   protected feedbackSingleRowTone(item: AdminFeedbackDto): NonNullable<SingleRowData['surfaceTone']> {
     switch (this.feedbackCategoryLabel(item)) {
-      case 'Bug report':
+      case 'bug.report':
         return 'danger';
-      case 'Feature request':
+      case 'feature.request':
         return 'success';
-      case 'UX improvement':
+      case 'ux.improvement':
         return 'accent';
-      case 'Performance':
+      case 'performance':
         return 'warning';
       default:
         return 'info';

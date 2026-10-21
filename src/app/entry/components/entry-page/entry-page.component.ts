@@ -217,14 +217,14 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   protected landingIdeaCount = 0;
   protected landingSupportedCountries: SupportedCountryDto[] = [];
   protected entryAuthUnavailable = false;
-  protected entryAuthUnavailableLabel = 'Unavailable here';
+  protected entryAuthUnavailableLabel = 'entry.auth.unavailable';
   private entryTransportUnavailable = false;
   protected get entryNetworkUnavailable(): boolean {
     return this.entryTransportUnavailable
       || (environment.activitiesDataSource === 'http' && backendUnavailable());
   }
   protected set entryNetworkUnavailable(value: boolean) { this.entryTransportUnavailable = value; }
-  protected entryNetworkUnavailableLabel = 'No network';
+  protected entryNetworkUnavailableLabel = 'network.offline';
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
 
@@ -555,18 +555,18 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       open: this.showEntryConsentPopup,
       shell: 'popup',
       onClose: () => this.closeEntryConsentPopup(),
-      ariaLabel: this.uiText('GDPR consent'),
-      closeAriaLabel: this.uiText('Close privacy popup'),
+      ariaLabel: this.uiText('privacy.consent.aria'),
+      closeAriaLabel: this.uiText('privacy.popup.close'),
       closeOnBackdrop: this.entryConsentViewOnly,
-      titleFallback: this.uiText('Privacy first'),
-      descriptionFallback: this.uiText('Privacy first'),
+      titleFallback: this.uiText('privacy.document.title'),
+      descriptionFallback: this.uiText('privacy.document.title'),
       versionLabel: this.privacyPolicy.activeVersionLabel(),
       loading: this.entryPrivacyLoading,
-      loadingLabel: this.uiText('Loading privacy content'),
+      loadingLabel: this.uiText('privacy.document.loading'),
       emptyState: {
         icon: 'policy',
-        title: this.uiText('Privacy is not available'),
-        description: this.uiText('Privacy content is not available right now.')
+        title: this.uiText('privacy.document.unavailable.title'),
+        description: this.uiText('privacy.document.unavailable.description')
       },
       sectionMode: 'privacy',
       selectedSectionIds: this.entryApprovedPrivacySectionIds,
@@ -583,17 +583,17 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       open: this.showEntryTermsPopup,
       shell: 'popup',
       onClose: () => this.closeEntryTermsPopup(),
-      ariaLabel: this.uiText('Terms of service'),
-      closeAriaLabel: this.uiText('Close terms popup'),
-      titleFallback: this.uiText('Usage terms'),
-      descriptionFallback: this.uiText('Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.'),
+      ariaLabel: this.uiText('terms.document.aria'),
+      closeAriaLabel: this.uiText('terms.popup.close'),
+      titleFallback: this.uiText('terms.document.title'),
+      descriptionFallback: this.uiText('document.terms.description'),
       versionLabel: this.helpCenter.activeTermsVersionLabel(),
       loading: this.termsPolicy.loading() || (this.landingArticlesLoading && !revision),
-      loadingLabel: this.uiText('Loading terms content'),
+      loadingLabel: this.uiText('terms.document.loading'),
       emptyState: {
         icon: 'rule',
-        title: this.uiText('Terms are not available'),
-        description: this.uiText('Terms content is not available right now.')
+        title: this.uiText('terms.document.unavailable.title'),
+        description: this.uiText('terms.document.unavailable.description')
       }
     });
   }
@@ -624,7 +624,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     try {
       this.saveEntryPrivacyApprovalState(selectedSectionIds);
     } catch {
-      this.entryPrivacySaveError = this.uiText('Privacy choices could not be saved.');
+      this.entryPrivacySaveError = this.uiText('privacy.preferences.save.error');
       this.entryPrivacySaving = false;
       return;
     }
@@ -1025,7 +1025,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
         this.buildFirebaseRegistrationUser(session.profile),
         redirectUrl,
         {
-          title: 'please.register',
+          title: 'account.registration.required',
           message: 'profile.setup.registration.message'
         }
       );
@@ -1068,7 +1068,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       redirectUrl,
       user.profileStatus === 'onboarding'
         ? {
-            title: 'please.register',
+            title: 'account.registration.required',
             message: 'profile.setup.registration.message'
           }
         : undefined
@@ -1421,13 +1421,13 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     return [
       {
         id: 'entry-privacy-reject',
-        label: this.uiText(this.hasEntryConsent ? 'Revoke' : 'Cancel'),
+        label: this.uiText(this.hasEntryConsent ? 'privacy.consent.revoke' : 'cancel'),
         palette: 'slate',
         disabled: this.entryPrivacySaving
       },
       {
         id: 'entry-privacy-accept',
-        label: this.uiText('Accept and continue'),
+        label: this.uiText('privacy.consent.accept'),
         icon: this.entryPrivacySaving ? 'hourglass_top' : null,
         palette: 'blue',
         disabled: !this.canAcceptEntryPrivacy(),
@@ -1467,9 +1467,9 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   private entryPrivacySaveButtonLabel(): string {
     if (this.entryPrivacySaving) {
-      return this.uiText('Saving...');
+      return this.uiText('saving');
     }
-    return this.uiText(!this.hasEntryConsent ? 'Approve privacy' : 'Save choices');
+    return this.uiText(!this.hasEntryConsent ? 'privacy.preferences.approve' : 'privacy.preferences.save');
   }
 
   private async saveEntryPrivacyChoices(selectedSectionIds: readonly string[]): Promise<void> {
@@ -1481,7 +1481,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     this.entryPrivacySaveError = '';
     try {
       this.saveEntryPrivacyApprovalState(selectedSectionIds);
-      this.entryPrivacySaveMessage = this.uiText('Privacy choices saved.');
+      this.entryPrivacySaveMessage = this.uiText('privacy.preferences.save.success');
       if (!this.hasEntryConsent) {
         this.entryPrivacySaving = false;
         await this.acceptEntryConsent(selectedSectionIds);
@@ -1490,7 +1490,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
         this.closeEntryConsentPopup();
       }
     } catch {
-      this.entryPrivacySaveError = this.uiText('Privacy choices could not be saved.');
+      this.entryPrivacySaveError = this.uiText('privacy.preferences.save.error');
     } finally {
       this.entryPrivacySaving = false;
     }
@@ -1584,7 +1584,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   private markEntryNetworkUnavailable(): void {
     this.entryNetworkUnavailable = true;
-    this.entryNetworkUnavailableLabel = 'No network';
+    this.entryNetworkUnavailableLabel = 'network.offline';
     this.syncLandingLoginAvailability(null, 'reset');
   }
 
@@ -1592,7 +1592,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     // A previous rejected browser sample must not turn Login into a permanent block.
     // The selected profile and the retryable Setup flow decide admission on click.
     this.entryAuthUnavailable = demoFailoverEnabled() && environment.activitiesDataSource === 'local';
-    this.entryAuthUnavailableLabel = this.entryAuthUnavailable ? 'No network' : 'Unavailable here';
+    this.entryAuthUnavailableLabel = this.entryAuthUnavailable ? 'network.offline' : 'entry.auth.unavailable';
     // Device setup stays available from its launcher during and after sign-in.
     this.changeDetectorRef.markForCheck();
   }
@@ -1611,7 +1611,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   private openBundledLoginUnavailableInfo(): void {
     this.dialogStore.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
-      title: 'please.register',
+      title: 'account.registration.required',
       confirmLabel: 'OK'
     });
   }

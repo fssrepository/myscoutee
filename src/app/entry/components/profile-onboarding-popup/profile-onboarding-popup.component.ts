@@ -126,7 +126,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       title: this.title,
       subtitle: this.message || null,
       ariaLabel: this.title,
-      closeAriaLabel: 'Close profile setup',
+      closeAriaLabel: 'close.profile.setup',
       closeOnBackdrop: false,
       size: 'wide',
       height: 'full',
@@ -140,9 +140,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   protected experienceManagerPopupModel(): PopupModel {
     return {
-      title: 'Experience',
-      ariaLabel: 'Experience manager',
-      closeAriaLabel: 'Close experience manager',
+      title: 'experience',
+      ariaLabel: 'profile.experience.manager.aria',
+      closeAriaLabel: 'profile.experience.manager.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',

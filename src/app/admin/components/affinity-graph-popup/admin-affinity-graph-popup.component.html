@@ -5,7 +5,7 @@
         data-guide-field="overview"
         class="affinity-graph-frame"
         [src]="sourceUrl"
-        title="Affinity graph view"
+        [attr.title]="'admin.affinity.graph.view' | i18n"
         (load)="onGraphFrameLoad()"
       ></iframe>
     }
@@ -14,32 +14,32 @@
         class="affinity-graph-static-stack"
         [class.affinity-graph-static-stack--leaving]="graphFrameLoaded()"
       >
-        <section class="affinity-graph-static-panel" aria-label="Graph controls">
+        <section class="affinity-graph-static-panel" [attr.aria-label]="'admin.affinity.controls.aria' | i18n">
           <header class="affinity-graph-static-header">
-            <h1>Affinity graph</h1>
-            <button class="affinity-graph-static-reset" type="button" tabindex="-1">Reset</button>
+            <h1>{{ 'admin.affinity.graph.title' | i18n }}</h1>
+            <button class="affinity-graph-static-reset" type="button" tabindex="-1">{{ 'admin.affinity.reset.action' | i18n }}</button>
           </header>
         </section>
 
-        <aside class="affinity-graph-static-help" aria-label="Graph legend">
+        <aside class="affinity-graph-static-help" [attr.aria-label]="'admin.affinity.legend.aria' | i18n">
           <div class="affinity-graph-static-legend">
-            <span><i class="affinity-graph-static-dot affinity-graph-static-dot--woman"></i>Women</span>
-            <span><i class="affinity-graph-static-dot affinity-graph-static-dot--man"></i>Men</span>
+            <span><i class="affinity-graph-static-dot affinity-graph-static-dot--woman"></i>{{ 'admin.affinity.women.label' | i18n }}</span>
+            <span><i class="affinity-graph-static-dot affinity-graph-static-dot--man"></i>{{ 'admin.affinity.men.label' | i18n }}</span>
           </div>
           <div class="affinity-graph-static-actions">
             <div class="affinity-graph-static-card">
               <div class="affinity-graph-static-card-title">
                 <span class="affinity-graph-static-mouse" aria-hidden="true"><i></i></span>
-                <strong>Mouse</strong>
+                <strong>{{ 'admin.affinity.mouse.label' | i18n }}</strong>
               </div>
-              <p><b>Pan</b> left <b>Rotate</b> right <b>Zoom</b> wheel</p>
+              <p><b>{{ 'admin.affinity.pan.label' | i18n }}</b> {{ 'admin.affinity.mouse.left.label' | i18n }} <b>{{ 'admin.affinity.rotate.label' | i18n }}</b> {{ 'admin.affinity.mouse.right.label' | i18n }} <b>{{ 'admin.affinity.zoom.label' | i18n }}</b> {{ 'admin.affinity.mouse.wheel.label' | i18n }}</p>
             </div>
             <div class="affinity-graph-static-card">
               <div class="affinity-graph-static-card-title">
                 <span class="affinity-graph-static-arrows" aria-hidden="true"><i>↑</i><i>←</i><i>↓</i><i>→</i></span>
-                <strong>Arrow pad</strong>
+                <strong>{{ 'admin.affinity.arrows.label' | i18n }}</strong>
               </div>
-              <p><b>Pan</b> step</p>
+              <p><b>{{ 'admin.affinity.pan.label' | i18n }}</b> {{ 'admin.affinity.pan.step.label' | i18n }}</p>
             </div>
           </div>
         </aside>

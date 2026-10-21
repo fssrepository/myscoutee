@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   UiDateUtils,
   ExplanationGuideService,
@@ -108,6 +109,8 @@ type ProfileEditorMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileEditorComponent implements OnDestroy {
+  private readonly i18n = inject(I18nService);
+
   private readonly groupWorkspace = inject(GroupWorkspaceContextService);
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
   @ViewChild(IntegrationSettingsPopupComponent) private integrationSettingsPopup?: IntegrationSettingsPopupComponent;
@@ -290,12 +293,12 @@ export class ProfileEditorComponent implements OnDestroy {
 
   protected popupTitle(): string {
     if (this.activeUserIsAdmin()) {
-      return 'Admin profile';
+      return this.i18n.translate('admin.profile');
     }
     if (this.activeUserIsOperator()) {
       return 'Operator profile';
     }
-    return 'Profile';
+    return this.i18n.translate('profile');
   }
 
   protected profileEditorPopupModel(): PopupModel<ProfileEditorMenuContext> {
@@ -303,7 +306,7 @@ export class ProfileEditorComponent implements OnDestroy {
     return {
       title,
       ariaLabel: title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',
@@ -316,7 +319,7 @@ export class ProfileEditorComponent implements OnDestroy {
   protected nestedEditorPopupModel(): PopupModel {
     const title = this.panel === 'image' ? 'Images' : 'Experience';
     return {
-      title, ariaLabel: title, closeAriaLabel: 'Close',
+      title, ariaLabel: title, closeAriaLabel: 'close',
       size: 'wide', height: 'full', bodyLayout: 'fill',
       onClose: () => this.handleCloseAction()
     };
@@ -405,7 +408,7 @@ export class ProfileEditorComponent implements OnDestroy {
       icon: this.profileStatusIcon(status),
       palette: this.profileStatusPalette(status),
       layout: 'pill' as const,
-      ariaLabel: 'Open profile status selector'
+      ariaLabel: 'profile.status.select.aria'
     };
   }
 
@@ -439,7 +442,7 @@ export class ProfileEditorComponent implements OnDestroy {
           : null,
         shape: 'circle'
       },
-      ariaLabel: 'Save profile',
+      ariaLabel: 'save.profile',
       context: { kind: 'profileSave' }
     }];
   }
@@ -519,7 +522,7 @@ export class ProfileEditorComponent implements OnDestroy {
       age: this.profileEditorAge,
       completionPercent: this.profileCompletionPercent,
       showEdit: true,
-      editAriaLabel: 'Open image editor'
+      editAriaLabel: 'open.image.editor'
     });
     return operator
       ? {
@@ -577,7 +580,7 @@ export class ProfileEditorComponent implements OnDestroy {
     this.profileEditorFlowModel = ProfileFormFlowConverter.convert(
       this.profileEditorDraft(this.profileEditorData),
       {
-        title: 'Profile',
+        title: 'profile',
         subtitle: '',
         userId: this.profileEditorData.profile.id,
         layout: 'grouped',
@@ -644,7 +647,7 @@ export class ProfileEditorComponent implements OnDestroy {
     }
     if (showAlert) {
       this.dialogStore.openInfo('Profile saved', {
-        title: 'Profile updated',
+        title: 'profile.save.success.title',
         confirmTone: 'neutral'
       });
     }

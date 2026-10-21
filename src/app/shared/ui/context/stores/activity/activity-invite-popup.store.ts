@@ -1,8 +1,9 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import {
   Injectable,
   Type,
-  signal
-} from '@angular/core';
+  signal, inject } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../../core/common/constants';
 import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
@@ -29,12 +30,13 @@ export interface ActivityInvitePopupState {
   providedIn: 'root'
 })
 export class ActivityInvitePopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   readonly externalInvite = signal<{ ownerType: 'event' | 'community' | 'asset'; entityId: string; title: string; userId: string; assetType?: import('../../../../core/common/constants').AssetType } | null>(null);
   readonly externalInviteComponent = signal<Type<unknown> | null>(null);
   async openExternalInvitePopup(ownerType: 'event' | 'community' | 'asset', entityId: string, title: string, userId: string, assetType?: import('../../../../core/common/constants').AssetType): Promise<void> {
     this.externalInvite.set({ ownerType, entityId, title, userId, assetType });
     if (!this.externalInviteComponent()) {
-      const module = await import('../../../components/external-invite-popup/external-invite-popup.component');
+      const module = await this.popupAdapters.load(POPUP_ADAPTER.EXTERNAL_INVITE_POPUP);
       this.externalInviteComponent.set(module.ExternalInvitePopupComponent);
     }
   }
@@ -101,7 +103,7 @@ export class ActivityInvitePopupStore {
     if (this.assetMemberPickerPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ASSET_MEMBER_PICKER_POPUP);
     this.assetMemberPickerPopupComponentRef.set(module.AssetMemberPickerPopupComponent);
   }
 }

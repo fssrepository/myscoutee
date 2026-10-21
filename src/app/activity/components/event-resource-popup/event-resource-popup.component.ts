@@ -311,7 +311,7 @@ export class EventResourcePopupComponent {
       bodyLayout: 'fill',
       backdropTone: 'dim',
       showHeader,
-      closeAriaLabel: 'Close resource assignment',
+      closeAriaLabel: 'event.resources.close.aria',
       onClose: () => this.closeResourcePopup()
     };
   }
@@ -803,7 +803,7 @@ export class EventResourcePopupComponent {
       origin: 'chat',
       ownerId: this.activeUser().id,
       parentTitle: 'Assets',
-      popupHeader: { title: 'Assets', subtitle: null },
+      popupHeader: { title: 'assets', subtitle: null },
       subEvent,
       fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
     }, type, { hydrate: false });
@@ -2431,8 +2431,8 @@ export class EventResourcePopupComponent {
         rows: [{
           key: `assigned-asset-join:${sourceCard.id}`,
           label: takeOver
-            ? 'Replacement payment'
-            : pricing.chargeType === 'per_attendee' ? 'Per-member price' : 'Your share',
+            ? 'ui.replacement.payment'
+            : pricing.chargeType === 'per_attendee' ? 'ui.per.member.price' : 'event.resource.share.label',
           detail: timeframe,
           amount: checkoutAmount,
           currency: checkoutCurrency
@@ -2506,12 +2506,12 @@ export class EventResourcePopupComponent {
       {
         id: 'join-confirm',
         label: dialog.busy
-          ? (takeOver ? 'Taking over...' : 'Sending request...')
+          ? (takeOver ? 'taking.over' : 'asset.borrow.sending.request')
           : takeOver
             ? paymentRequired
-              ? dialog.paymentStep ? (this.cashOnly() ? 'Confirm payment' : 'Pay and take over') : 'Continue to payment'
-              : 'Take Over'
-            : 'Send join request',
+              ? dialog.paymentStep ? (this.cashOnly() ? 'Confirm payment' : 'Pay and take over') : 'checkout.payment.continue.action'
+              : 'take.over'
+            : 'asset.join.request.submit.action',
         layout: 'action',
         palette: hasError ? 'danger' : takeOver && dialog.paymentStep ? 'success' : 'blue',
         disabled: !this.canSubmitAssignedAssetJoin()
@@ -2570,13 +2570,13 @@ export class EventResourcePopupComponent {
     this.dialogStore.open({
       title: this.i18n.translate('confirmation.leave.named.asset').replace('{name}', sourceCard.title),
       message: isPending
-        ? 'You will leave this asset and withdraw your pending request.'
-        : 'You will leave this asset.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Leave',
+        ? 'asset.request.withdraw.confirmation.description'
+        : 'asset.member.leave.confirmation.description',
+      cancelLabel: 'cancel',
+      confirmLabel: 'leave.resource',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
-      failureMessage: 'Unable to leave this asset.',
+      failureMessage: 'asset.member.leave.error',
       onConfirm: () => this.confirmAssignedAssetLeave(
         sourceCard.id,
         sourceCard.type,
@@ -2931,7 +2931,7 @@ export class EventResourcePopupComponent {
     };
     const pricingSummaryRows: ActivityContracts.EventCheckoutPricingSummaryRow[] = [{
       key: `asset-takeover:${sourceCard.id}`,
-      label: 'Replacement payment',
+      label: 'ui.replacement.payment',
       detail: timeframe || null,
       amount,
       currency,
@@ -3256,12 +3256,12 @@ export class EventResourcePopupComponent {
     };
     this.dialogStore.open({
       title: this.i18n.translate('confirmation.remove.named.asset').replace('{name}', pending.title),
-      message: `Remove this Asset from the event?`,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Remove',
-      busyConfirmLabel: 'Removing...',
+      message: 'event.asset.remove.confirmation.title',
+      cancelLabel: 'cancel',
+      confirmLabel: 'remove',
+      busyConfirmLabel: 'removing',
       confirmTone: 'danger',
-      failureMessage: 'Unable to remove this Asset.',
+      failureMessage: 'event.asset.remove.error',
       onConfirm: () => this.removeResourceAssignment(pending)
     });
   }

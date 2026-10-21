@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   UiLinkUtils,
   UiDateUtils,
@@ -82,6 +83,8 @@ type CheckoutFooterDecisionState = {
   styleUrl: './event-checkout-popup.component.scss'
 })
 export class EventCheckoutPopupComponent {
+  private readonly i18n = inject(I18nService);
+
   private static readonly MAX_VISIBLE_SLOTS = 10;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
@@ -357,21 +360,21 @@ export class EventCheckoutPopupComponent {
   protected sectionTitle(): string {
     const dialog = this.dialog();
     if (!dialog) {
-      return 'Checkout';
+      return this.i18n.translate('checkout');
     }
     if (dialog.mode === 'invitation') {
-      return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
+      return this.totalAmount() > 0 ? this.i18n.translate('accept.invitation.and.pay') : this.i18n.translate('accept.invitation');
     }
     if (dialog.readOnlySummary) {
       return 'event.checkout.payment.summary';
     }
     if (this.isWaitingListSelection()) {
-      return 'Join Waiting List';
+      return this.i18n.translate('join.waiting.list');
     }
     if (this.shouldAwaitApprovalBeforePayment()) {
-      return 'Review Join Request';
+      return this.i18n.translate('review.join.request');
     }
-    return this.totalAmount() > 0 ? 'Review Booking & Pay' : 'Join Event';
+    return this.totalAmount() > 0 ? this.i18n.translate('review.booking.and.pay') : this.i18n.translate('join.event');
   }
 
   protected availableSlots(): readonly ContractTypes.EventSlotOccurrenceDTO[] {
@@ -1393,27 +1396,27 @@ export class EventCheckoutPopupComponent {
       title: this.checkoutRemoveItemTitle(item.status),
       message: item.label,
       warningMessage: this.checkoutRemoveItemWarning(item.status),
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: this.checkoutRemoveItemLabel(item.status),
       busyConfirmLabel: `${this.checkoutRemoveItemLabel(item.status)}...`,
       confirmTone: 'danger',
       confirmPalette: this.checkoutRemoveItemPalette(item.status),
-      failureMessage: 'Unable to remove this checkout item.',
+      failureMessage: 'checkout.basket.item.remove.error',
       onConfirm: async () => this.removeCheckoutBasketItem(normalizedItemId)
     });
   }
 
   private checkoutRemoveItemTitle(status: string | null | undefined): string {
     if (status === 'waiting') {
-      return 'Leave waitlist?';
+      return this.i18n.translate('confirmation.leave.waitlist');
     }
     if (status === 'approval-pending' || status === 'approved') {
-      return 'Cancel request?';
+      return this.i18n.translate('confirmation.cancel.request');
     }
     if (status === 'pay') {
-      return 'Cancel payment item?';
+      return this.i18n.translate('confirmation.cancel.payment.item');
     }
-    return 'Remove checkout item?';
+    return this.i18n.translate('confirmation.remove.checkout.item');
   }
 
   private checkoutRemoveItemWarning(status: string | null | undefined): string {
@@ -1681,7 +1684,7 @@ export class EventCheckoutPopupComponent {
     if (!applicableRule) {
       return {
         refundAmount: 0,
-        refundLabel: 'No refund right now',
+        refundLabel: 'no.refund.right.now',
         note: 'The selected booking is already inside the last reimbursement window.'
       };
     }
@@ -1691,7 +1694,7 @@ export class EventCheckoutPopupComponent {
       refundAmount,
       refundLabel: refundAmount > 0
         ? `${this.formatMoney(refundAmount)} refundable right now`
-        : 'No refund right now',
+        : 'no.refund.right.now',
       note: this.describeCancellationRule(applicableRule)
     };
   }
@@ -1723,10 +1726,10 @@ export class EventCheckoutPopupComponent {
 
   protected cancellationRuleRefundLabel(rule: ContractTypes.PricingCancellationRule): string {
     if (rule.refundKind === 'full') {
-      return 'Full refund';
+      return this.i18n.translate('full.refund');
     }
     if (rule.refundKind === 'none') {
-      return 'No refund';
+      return this.i18n.translate('no.refund');
     }
     if (rule.refundKind === 'fixed_amount') {
       return this.formatMoney(Number(rule.refundValue) || 0, this.currency());
@@ -1763,13 +1766,13 @@ export class EventCheckoutPopupComponent {
   protected continueLabel(): string {
     const dialog = this.dialog();
     if (!dialog) {
-      return 'Continue';
+      return 'continue';
     }
     if (this.checkoutTargetUnavailable()) {
-      return 'Unavailable';
+      return 'status.unavailable';
     }
     if (this.checkoutUpdateStepActive()) {
-      return 'Update';
+      return 'update';
     }
     if (this.paymentStep) {
       return this.cashOnly()
@@ -1782,20 +1785,20 @@ export class EventCheckoutPopupComponent {
     const pendingReason = this.checkoutActionPendingReason();
     if (pendingReason) {
       if (this.hasCheckoutSelectionChanges()) {
-        return 'Update';
+        return 'update';
       }
       return pendingReason === 'waitlist' ? 'waiting.list' : 'event.editor.checkout.waiting.approval';
     }
-    return 'Join';
+    return 'join.resource';
   }
 
   protected busyLabel(): string {
     const dialog = this.dialog();
     if (!dialog) {
-      return 'Working...';
+      return 'working';
     }
     if (this.checkoutUpdateStepActive()) {
-      return 'Updating...';
+      return 'updating';
     }
     if (this.paymentStep) {
       return this.cashOnly()
@@ -1807,7 +1810,7 @@ export class EventCheckoutPopupComponent {
     }
     const pendingReason = this.checkoutActionPendingReason();
     if (pendingReason) {
-      return this.hasCheckoutSelectionChanges() ? 'Updating...' : 'Continuing...';
+      return this.hasCheckoutSelectionChanges() ? 'updating' : 'continuing';
     }
     if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
       return dialog.busyConfirmLabel;
@@ -1910,13 +1913,13 @@ export class EventCheckoutPopupComponent {
 
   private checkoutContinueLabel(state: CheckoutFooterDecisionState): string {
     if (!state.dialog) {
-      return 'Continue';
+      return 'continue';
     }
     if (state.targetUnavailable) {
-      return 'Unavailable';
+      return 'status.unavailable';
     }
     if (state.updateStepActive) {
-      return 'Update';
+      return 'update';
     }
     if (this.paymentStep) {
       return this.cashOnly()
@@ -1928,19 +1931,19 @@ export class EventCheckoutPopupComponent {
     }
     if (state.pendingReason) {
       if (state.selectionChanged) {
-        return 'Update';
+        return 'update';
       }
       return state.pendingReason === 'waitlist' ? 'waiting.list' : 'event.editor.checkout.waiting.approval';
     }
-    return 'Join';
+    return 'join.resource';
   }
 
   private checkoutBusyLabel(state: CheckoutFooterDecisionState): string {
     if (!state.dialog) {
-      return 'Working...';
+      return this.i18n.translate('working');
     }
     if (state.updateStepActive) {
-      return 'Updating...';
+      return this.i18n.translate('updating');
     }
     if (this.paymentStep) {
       return this.cashOnly()
@@ -1951,7 +1954,7 @@ export class EventCheckoutPopupComponent {
       return state.selectionChanged ? 'updating' : 'continuing';
     }
     if (state.pendingReason) {
-      return state.selectionChanged ? 'Updating...' : 'Continuing...';
+      return state.selectionChanged ? this.i18n.translate('updating') : this.i18n.translate('continuing');
     }
     if (this.shouldAwaitApprovalBeforePaymentForAmount(state.totalAmount) || this.isWaitingListSelection()) {
       return state.dialog.busyConfirmLabel;
@@ -2064,14 +2067,14 @@ export class EventCheckoutPopupComponent {
     }
     this.confirmationDialogStore.open({
       title: `${this.checkoutLifecycleCancelLabel()}?`,
-      message: this.dialog()?.record.title ?? 'Checkout',
+      message: this.dialog()?.record.title ?? 'checkout',
       warningMessage: this.checkoutLifecycleCancelWarning(),
-      cancelLabel: 'Back',
+      cancelLabel: 'back',
       confirmLabel: this.checkoutLifecycleCancelLabel(),
       busyConfirmLabel: 'Cancelling...',
       confirmTone: 'danger',
       confirmPalette: 'danger',
-      failureMessage: 'Unable to cancel this checkout.',
+      failureMessage: 'checkout.cancel.error',
       onConfirm: async () => this.cancelCheckoutLifecycle()
     });
   }
@@ -2255,14 +2258,14 @@ export class EventCheckoutPopupComponent {
     this.confirmationDialogStore.open({
       title: this.paymentStep
         ? 'event.checkout.payment.confirm.title'
-        : label === 'Join' ? 'event.checkout.join.confirm.title'
-        : label.toLowerCase() === 'update' ? 'event.checkout.update.confirm.title'
+        : label === 'join.resource' ? 'event.checkout.join.confirm.title'
+        : label === 'update' ? 'event.checkout.update.confirm.title'
         : this.checkoutActionPendingReason() === 'waitlist' ? 'event.checkout.waitlist.confirm.title'
         : this.checkoutActionPendingReason() === 'approval' ? 'event.checkout.request.confirm.title'
         : 'event.checkout.continue.confirm.title',
-      message: this.dialog()?.record.title ?? 'Checkout',
+      message: this.dialog()?.record.title ?? 'checkout',
       warningMessage: this.checkoutConfirmWarningMessage(),
-      cancelLabel: 'Back',
+      cancelLabel: 'back',
       confirmLabel: label,
       busyConfirmLabel: this.busyLabel(),
       confirmTone: 'accent',
@@ -2733,7 +2736,7 @@ export class EventCheckoutPopupComponent {
   }
 
   protected pendingNoticeTitle(): string {
-    return this.isWaitingListSelection() ? 'Waiting List' : 'Approval Required';
+    return this.isWaitingListSelection() ? this.i18n.translate('waiting.list') : this.i18n.translate('approval.required');
   }
 
   protected pendingNoticeText(): string {
@@ -2756,7 +2759,7 @@ export class EventCheckoutPopupComponent {
       return;
     }
     if (this.checkoutTargetUnavailable()) {
-      this.errorMessage = 'This place is no longer available.';
+      this.errorMessage = 'checkout.availability.error';
       throw new Error(this.errorMessage);
     }
     const pendingActionReason = this.checkoutActionPendingReason();
@@ -3617,16 +3620,16 @@ export class EventCheckoutPopupComponent {
     try {
       const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
       if (!session?.id) {
-        this.errorMessage = 'Checkout details changed. Start checkout again.';
+        this.errorMessage = 'checkout.changed.restart.notice';
         return true;
       }
       this.checkoutSessionId = session.id;
       this.paymentStep = true;
       await this.persistCheckoutDraft(false);
-      this.errorMessage = 'Checkout details changed. A fresh payment session is ready.';
+      this.errorMessage = 'checkout.changed.ready.notice';
       return true;
     } catch (recoveryError) {
-      this.errorMessage = this.resolveErrorMessage(recoveryError, 'Checkout details changed. Start checkout again.');
+      this.errorMessage = this.resolveErrorMessage(recoveryError, 'checkout.changed.restart.notice');
       return true;
     }
   }

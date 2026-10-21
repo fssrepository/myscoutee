@@ -86,7 +86,7 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
       eventType: 'random-room',
       creatorName: 'MyScoutee System',
       creatorAvatarUrl: '/unexpected-user-avatar.webp',
-      imageUrl: '/media/public?key=images/system/random-room-default.png',
+      imageUrl: '/media/public?key=images/system/random-room-default.webp',
       status: 'A'
     } as ActivityEventDTO);
 

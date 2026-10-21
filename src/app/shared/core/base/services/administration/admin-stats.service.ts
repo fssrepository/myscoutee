@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -9,8 +11,7 @@ import type {
   AdminStatsSegmentDto,
   AdminStatsTimelinePointDto
 } from '../../../contracts/administration/admin.interface';
-import { HttpAdminStatsService } from '../../../http/services/administration/admin-stats.service';
-import { LocalAdminStatsService } from '../../../local/source/services/administration/admin-stats.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
@@ -19,18 +20,17 @@ const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
   providedIn: 'root'
 })
 export class AdminStatsService extends BaseRouteModeService {
-  private readonly localService = inject(LocalAdminStatsService);
-  private readonly httpService = inject(HttpAdminStatsService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_STATS);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_STATS);
 
-  private get statsService(): LocalAdminStatsService | HttpAdminStatsService {
+  private get statsService(): AdapterInstance<typeof LOCAL_ADAPTER.ADMIN_STATS> | AdapterInstance<typeof HTTP_ADAPTER.ADMIN_STATS> {
     return this.resolveRouteService(ADMIN_STATS_LOAD_ROUTE, this.localService, this.httpService);
   }
 
   async loadStatsDashboard(adminUserId?: string | null): Promise<AdminStatsDashboardDto> {
     const statsService = this.statsService;
-    const dashboard = statsService instanceof LocalAdminStatsService
-      ? await statsService.loadStatsDashboard(adminUserId)
-      : await statsService.loadStatsDashboard(adminUserId);
+    const dashboard = await statsService.loadStatsDashboard(adminUserId);
     return this.normalizeStatsDashboard(dashboard, statsService.source);
   }
 

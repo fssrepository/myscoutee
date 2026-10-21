@@ -182,7 +182,7 @@ export class EventSubeventsListPopupComponent {
   protected slotSections: EventSubeventsSlotModel[] = [];
   protected get view(): EventSubeventsListView { return this.eventSubeventsStore.calendarSelection().view; }
   private readonly calendarDateModel: DateInputModel = {mode: 'range', precision: 'date', valueFormat: 'iso-date',
-    range: {layout: 'compact', start: {placeholder: 'Start date'}, end: {placeholder: 'End date'}}};
+    range: {layout: 'compact', start: {placeholder: 'start.date'}, end: {placeholder: 'end.date'}}};
   private readonly calendarDateControls = computed<PopupControl<EventSubeventsListPopupMenuContext>[]>(() => {
     const selection = this.eventSubeventsStore.calendarSelection();
     return selection.view === 'day' && selection.dateRange
@@ -228,9 +228,9 @@ export class EventSubeventsListPopupComponent {
     pageSize: 12,
     defaultView: 'day',
     views: [
-      { key: 'day', label: 'Day', mode: 'list', pageSize: 12 },
-      { key: 'week', label: 'Week', mode: 'week', pageSize: 240 },
-      { key: 'month', label: 'Month', mode: 'month', pageSize: 240 }
+      { key: 'day', label: 'day', mode: 'list', pageSize: 12 },
+      { key: 'week', label: 'week', mode: 'week', pageSize: 240 },
+      { key: 'month', label: 'month', mode: 'month', pageSize: 240 }
     ],
     calendar: {
       weekdayLabels: APP_STATIC_DATA.calendarWeekdayLabels,
@@ -536,7 +536,7 @@ export class EventSubeventsListPopupComponent {
       title: this.popupSubtitle(),
       subtitle: this.popupHeaderSubtitle(),
       ariaLabel: this.popupSubtitle(),
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -551,12 +551,12 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected popupTitle(): string {
-    return 'Sub Events';
+    return this.i18n.translate('event.editor.subevents.title');
   }
 
   protected popupSubtitle(): string {
     const requestTitle = this.eventSubeventsStore.eventSubeventsListPopup()?.title ?? '';
-    return this.event?.title || requestTitle || 'Event';
+    return this.event?.title || requestTitle || this.i18n.translate('event');
   }
 
   private subEventsEmptyDescription(): string {
@@ -630,7 +630,7 @@ export class EventSubeventsListPopupComponent {
     const item = this.orderMenuItems().find(option => option.id === this.order);
     return {
       icon: item?.icon ?? 'schedule',
-      label: (item?.label as string | null | undefined) ?? 'Upcoming',
+      label: (item?.label as string | null | undefined) ?? 'upcoming',
       palette: item?.palette ?? 'blue',
       layout: 'pill',
       hideLabel: this.isMobileView
@@ -641,7 +641,7 @@ export class EventSubeventsListPopupComponent {
     return [
       {
         id: 'upcoming',
-        label: 'Upcoming',
+        label: 'upcoming',
         icon: 'schedule',
         palette: 'blue',
         surface: 'tinted',
@@ -649,7 +649,7 @@ export class EventSubeventsListPopupComponent {
       },
       {
         id: 'past',
-        label: 'Past',
+        label: 'past',
         icon: 'history',
         palette: 'slate',
         surface: 'tinted',
@@ -667,7 +667,7 @@ export class EventSubeventsListPopupComponent {
     const item = this.viewMenuItems().find(option => option.id === this.view);
     return {
       icon: item?.icon ?? 'today',
-      label: (item?.label as string | null | undefined) ?? 'Day',
+      label: (item?.label as string | null | undefined) ?? 'day',
       palette: item?.palette ?? 'blue',
       layout: 'pill',
       hideLabel: this.isMobileView
@@ -678,7 +678,7 @@ export class EventSubeventsListPopupComponent {
     return [
       {
         id: 'month',
-        label: 'Month',
+        label: 'month',
         icon: 'calendar_month',
         palette: 'gold',
         surface: 'tinted',
@@ -686,7 +686,7 @@ export class EventSubeventsListPopupComponent {
       },
       {
         id: 'week',
-        label: 'Week',
+        label: 'week',
         icon: 'date_range',
         palette: 'green',
         surface: 'tinted',
@@ -694,7 +694,7 @@ export class EventSubeventsListPopupComponent {
       },
       {
         id: 'day',
-        label: 'Day',
+        label: 'day',
         icon: 'today',
         palette: 'blue',
         surface: 'tinted',
@@ -912,7 +912,7 @@ export class EventSubeventsListPopupComponent {
     this.dialogStore.open({
       title: context.title,
       message: context.description,
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: context.confirmLabel,
       busyConfirmLabel: context.busyLabel,
       confirmTone: context.destructive ? 'danger' : 'accent',
@@ -968,12 +968,12 @@ export class EventSubeventsListPopupComponent {
     this.dialogStore.open({
       title: context.title,
       message: context.description,
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: context.confirmLabel,
       busyConfirmLabel: context.busyLabel,
       confirmTone: context.destructive ? 'danger' : 'accent',
       confirmPalette: context.confirmPalette,
-      failureMessage: 'Action failed.',
+      failureMessage: 'event.stage.action.error',
       onConfirm: async () => {
         await this.applyStageStatusAction(context);
       }

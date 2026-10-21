@@ -1,4 +1,6 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, computed, signal, inject } from '@angular/core';
 
 import * as AppConstants from '../../../../core/common/constants';
 import type {
@@ -215,6 +217,7 @@ export interface AssignedAssetJoinPricingPreview {
   providedIn: 'root'
 })
 export class SubEventResourcePopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   readonly assignedAssetIdsByKey: Record<string, string[]> = {};
   readonly assignedAssetSettingsByKey: Record<string, Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO>> = {};
   readonly supplyContributionEntriesByAssignmentKey: Record<string, AppDTOs.SubEventSupplyContributionEntryDTO[]> = {};
@@ -495,7 +498,7 @@ export class SubEventResourcePopupStore {
     if (this.eventResourcePopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-resource-popup/event-resource-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_RESOURCE_POPUP);
     this.eventResourcePopupComponentRef.set(module.EventResourcePopupComponent);
   }
 
@@ -503,7 +506,7 @@ export class SubEventResourcePopupStore {
     if (this.eventResourceAssetExploreComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-resource-popup/asset-explore/event-resource-asset-explore.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_RESOURCE_ASSET_EXPLORE);
     this.eventResourceAssetExploreComponentRef.set(module.EventResourceAssetExploreComponent);
   }
 
@@ -511,7 +514,7 @@ export class SubEventResourcePopupStore {
     if (this.eventSupplyContributionsPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_SUPPLY_CONTRIBUTIONS_POPUP);
     this.eventSupplyContributionsPopupComponentRef.set(module.EventSupplyContributionsPopupComponent);
   }
 
@@ -519,7 +522,7 @@ export class SubEventResourcePopupStore {
     if (this.eventResourceAssetViewComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-resource-popup/asset-view/event-resource-asset-view.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_RESOURCE_ASSET_VIEW);
     this.eventResourceAssetViewComponentRef.set(module.EventResourceAssetViewComponent);
   }
 
@@ -527,7 +530,7 @@ export class SubEventResourcePopupStore {
     if (this.eventResourceAssignedAssetJoinDialogComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-resource-popup/assigned-asset-join-dialog/event-resource-assigned-asset-join-dialog.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_RESOURCE_ASSIGNED_ASSET_JOIN_DIALOG);
     this.eventResourceAssignedAssetJoinDialogComponentRef.set(module.EventResourceAssignedAssetJoinDialogComponent);
   }
 
@@ -535,7 +538,7 @@ export class SubEventResourcePopupStore {
     if (this.eventResourceAssetExploreBorrowDialogComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-resource-popup/asset-explore-borrow-dialog/event-resource-asset-explore-borrow-dialog.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_RESOURCE_ASSET_EXPLORE_BORROW_DIALOG);
     this.eventResourceAssetExploreBorrowDialogComponentRef.set(module.EventResourceAssetExploreBorrowDialogComponent);
   }
 

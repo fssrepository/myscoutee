@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   NgComponentOutlet
 } from '@angular/common';
@@ -33,7 +34,7 @@ import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-me
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
-  imports: [NgComponentOutlet],
+  imports: [NgComponentOutlet, I18nPipe],
   templateUrl: './admin-help-session-page.component.html',
   styleUrl: './admin-help-session-page.component.scss'
 })
@@ -164,7 +165,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
           ownerType: 'event',
           viewOnly: true,
           canManage: false,
-          subtitle: 'Reported member context'
+          subtitle: 'admin.report.member.context'
         });
       } else {
         this.memberMenuStore.openNavigatorActivitiesRequest('events');

@@ -26,8 +26,10 @@ import {
 } from '../../../common/storage-scope';
 import { GroupWorkspaceContextService } from '../groups/group-workspace-context.service';
 import { UserProfileStore } from '../../../../ui/context/stores/profile/user-profile.store';
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 
-type HttpUsersServiceInstance = import('../../../http/services/accounts/users.service').HttpUsersService;
+type HttpUsersServiceInstance = AdapterInstance<typeof HTTP_ADAPTER.USERS>;
 
 @Injectable({
   providedIn: 'root'
@@ -38,8 +40,8 @@ export class AppLocationService {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly injector = inject(Injector);
+  private readonly transportAdapters = inject(AdapterProxyService);
   private readonly sessionService = inject(SessionService);
-  private httpUsersServicePromise: Promise<HttpUsersServiceInstance> | null = null;
   private readonly syncingUserIds = new Set<string>();
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
   private readonly lastPersistedCoordinatesByUserId = new Map<string, LocationCoordinates>();
@@ -604,7 +606,7 @@ export class AppLocationService {
 
   private async persistCoordinates(userId: string, user: UserDto, coordinates: LocationCoordinates): Promise<boolean> {
     const users = this.isLocalUserRouteEnabled()
-      ? this.injector.get((await import('../../../local/source/services/accounts/users.service')).LocalUsersService)
+      ? await this.transportAdapters.get(LOCAL_ADAPTER.USERS)
       : await this.httpUsersService();
     const savedUser = await users.saveUserProfile({ ...user, locationCoordinates: coordinates });
     if (savedUser?.id?.trim()) {
@@ -630,11 +632,7 @@ export class AppLocationService {
   }
 
   private async httpUsersService(): Promise<HttpUsersServiceInstance> {
-    if (!this.httpUsersServicePromise) {
-      this.httpUsersServicePromise = import('../../../http/services/accounts/users.service')
-        .then(module => this.injector.get(module.HttpUsersService));
-    }
-    return this.httpUsersServicePromise;
+    return this.transportAdapters.get(HTTP_ADAPTER.USERS);
   }
 
   private storageKey(userId: string): string {

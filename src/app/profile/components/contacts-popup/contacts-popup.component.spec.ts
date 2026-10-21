@@ -37,7 +37,7 @@ describe('Contacts permission buckets', () => {
     expect(component.chatAccess.change).not.toHaveBeenCalled();
     expect(component.profileStore.closeContactsPopup).not.toHaveBeenCalled();
     const dialog = component.dialogStore.open.mock.calls[0][0];
-    expect(dialog.cancelLabel).toBe('Cancel');
+    expect(dialog.cancelLabel).toBe('cancel');
     await dialog.onConfirm();
     expect(component.chatAccess.change).toHaveBeenCalledWith(contact.chatAccess, 'new', 'approve');
   });

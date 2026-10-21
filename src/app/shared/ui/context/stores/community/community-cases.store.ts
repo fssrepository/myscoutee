@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { CommunityCaseChangesStore } from './community-case-changes.store';
 import { CommunityCaseConverter } from '../../../converters/community/community-case.converter';
 import { CaseAppointmentsStore } from './case-appointments.store';
@@ -24,6 +26,7 @@ import type { ActivityMemberDTO } from '../../../../core/contracts/common/activi
 export type CaseEditorState = { kind: 'case'; value: CommunityCase | null; readOnly: boolean } | { kind: 'task'; value: CommunityScheduledTask | null; readOnly: boolean };
 @Injectable({ providedIn: 'root' })
 export class CommunityCasesStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly changes = inject(CommunityCaseChangesStore);
   private readonly activity = inject(ActivityStore);
   readonly appointments = inject(CaseAppointmentsStore);
@@ -86,7 +89,7 @@ export class CommunityCasesStore {
     this.close();
     const session = { userId: this.workspace.accountId(this.profile.activeUserId()), tasks: false, list };
     this.session.set(session);
-    if (!this.component()) this.component.set((await import('../../../components/community-cases-popup/community-cases-popup.component')).CommunityCasesPopupComponent);
+    if (!this.component()) this.component.set((await this.popupAdapters.load(POPUP_ADAPTER.COMMUNITY_CASES_POPUP)).CommunityCasesPopupComponent);
     if (list && session === this.session()) void this.tasks({page:0,pageSize:1,filters:{status:'active'}}).catch(()=>{});
   }
   async openReference(id: string, list = true): Promise<void> {

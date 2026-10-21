@@ -3,18 +3,18 @@
     <div class="subevent-asset-view-content">
       <section class="experience-form-panel subevent-form-panel subevent-asset-view-panel" [ngClass]="resourceTypeClass(view.card.type)">
         <div class="subevent-asset-view-image-field">
-          <span>Image</span>
+          <span>{{ 'asset.view.image.label' | i18n }}</span>
           <div class="subevent-asset-view-media">
             <img [src]="imageUrl(view)" [alt]="view.card.title" loading="lazy" decoding="async" />
           </div>
         </div>
         <label class="subevent-asset-view-source-field">
-          <span>Source Link</span>
+          <span>{{ 'asset.view.source.label' | i18n }}</span>
           <input type="text" [ngModel]="sourceLink(view)" disabled />
         </label>
         <div class="experience-form-grid subevent-asset-view-grid">
           <label>
-            <span>Type</span>
+            <span>{{ 'asset.view.type.label' | i18n }}</span>
             <div class="profile-status-select-wrap selector-like experience-type-select subevent-asset-view-selector" [ngClass]="resourceTypeClass(view.card.type)">
               <span class="status-option-content">
                 <mat-icon [class]="resourceTypeClass(view.card.type)">{{ resourceTypeIcon(view.card.type) }}</mat-icon>
@@ -24,15 +24,15 @@
             </div>
           </label>
           <label>
-            <span>Title</span>
+            <span>{{ 'title' | i18n }}</span>
             <input type="text" [ngModel]="view.card.title" disabled />
           </label>
           <label>
-            <span>Subtitle</span>
+            <span>{{ 'subtitle' | i18n }}</span>
             <input type="text" [ngModel]="view.card.subtitle" disabled />
           </label>
           <label>
-            <span>Category</span>
+            <span>{{ 'category' | i18n }}</span>
             <div class="profile-status-select-wrap selector-like experience-type-select subevent-asset-view-selector" [ngClass]="categoryClass(view)">
               <span class="status-option-content">
                 <mat-icon [class]="categoryClass(view)">{{ categoryIcon(view) }}</mat-icon>
@@ -42,19 +42,19 @@
             </div>
           </label>
           <label>
-            <span>Total capacity</span>
+            <span>{{ 'total.capacity' | i18n }}</span>
             <input type="text" [ngModel]="totalCapacity(view)" disabled />
           </label>
           <label>
-            <span>Quantity</span>
+            <span>{{ 'quantity' | i18n }}</span>
             <input type="text" [ngModel]="quantity(view)" disabled />
           </label>
           <label>
-            <span>City</span>
+            <span>{{ 'city' | i18n }}</span>
             <input type="text" [ngModel]="view.card.city" disabled />
           </label>
           <label class="experience-description-field">
-            <span>Details</span>
+            <span>{{ 'details' | i18n }}</span>
             <textarea rows="3" [ngModel]="view.card.details" disabled></textarea>
           </label>
           @if (view.card.type === assetTypeTransport) {
@@ -63,15 +63,15 @@
                 <div class="event-policies-panel-title-wrap">
                   <span class="event-policies-panel-title">
                     <mat-icon>route</mat-icon>
-                    <span>Route</span>
+                    <span>{{ 'route' | i18n }}</span>
                   </span>
-                  <p class="event-policies-panel-subtitle">Route for this event asset.</p>
+                  <p class="event-policies-panel-subtitle">{{ 'asset.view.route.description' | i18n }}</p>
                 </div>
               </div>
               <div class="subevent-asset-view-summary-body">
                 <div class="event-slots-summary">
                   <section class="event-slots-summary-block">
-                    <span class="event-slots-summary-label">Summary</span>
+                    <span class="event-slots-summary-label">{{ 'summary' | i18n }}</span>
                     @if (hasRoute(view)) {
                       <div class="event-slots-summary-list">
                         <article class="event-slots-summary-item">
@@ -80,7 +80,7 @@
                         </article>
                       </div>
                     } @else {
-                      <p class="event-slots-summary-note">No route is set for this event asset.</p>
+                      <p class="event-slots-summary-note">{{ 'asset.assignment.route.empty' | i18n }}</p>
                     }
                   </section>
                 </div>
@@ -92,28 +92,28 @@
               <div class="event-policies-panel-title-wrap">
                 <span class="event-policies-panel-title">
                   <mat-icon>monetization_on</mat-icon>
-                  <span>Asset Pricing</span>
+                  <span>{{ 'pricing.asset.title' | i18n }}</span>
                 </span>
                 @if (view.mode === 'edit') {
-                  <p class="event-policies-panel-subtitle">Default charge preview for using this asset.</p>
+                  <p class="event-policies-panel-subtitle">{{ 'asset.view.pricing.description' | i18n }}</p>
                 }
               </div>
             </div>
             <div class="subevent-asset-view-summary-body">
               <div class="subevent-asset-view-summary-card">
-                <span class="event-slots-summary-label">Current Price Review</span>
+                <span class="event-slots-summary-label">{{ 'event.editor.pricing.current.review' | i18n }}</span>
                 <div class="subevent-asset-view-price-row">
-                  <span>Base</span>
-                  <strong>{{ pricingEnabled(view) ? pricingBaseLabel(view) : 'Included' }}</strong>
+                  <span>{{ 'pricing.base' | i18n }}</span>
+                  <strong>{{ pricingEnabled(view) ? pricingBaseLabel(view) : ('included' | i18n) }}</strong>
                 </div>
                 <div class="subevent-asset-view-price-final">
-                  <span>Final price</span>
-                  <strong>{{ pricingEnabled(view) ? pricingBaseLabel(view) : 'Included' }}</strong>
+                  <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
+                  <strong>{{ pricingEnabled(view) ? pricingBaseLabel(view) : ('included' | i18n) }}</strong>
                 </div>
                 <p>{{ pricingEnabled(view) ? pricingModeLabel(view) + ' · ' + pricingChargeLabel(view) : pricingWhyLabel(view) }}</p>
               </div>
               <div class="subevent-asset-view-summary-card subevent-asset-view-summary-card-muted">
-                <span class="event-slots-summary-label">Why this price?</span>
+                <span class="event-slots-summary-label">{{ 'asset.view.pricing.explanation.action' | i18n }}</span>
                 <p>{{ pricingWhyLabel(view) }}</p>
               </div>
             </div>
@@ -123,25 +123,25 @@
               <div class="event-policies-panel-title-wrap">
                 <span class="event-policies-panel-title">
                   <mat-icon>policy</mat-icon>
-                  <span>Lending Policies</span>
+                  <span>{{ 'lending.policies' | i18n }}</span>
                 </span>
                 @if (view.mode === 'edit') {
-                  <p class="event-policies-panel-subtitle">Rules borrowers need to read and approve before borrowing this asset.</p>
+                  <p class="event-policies-panel-subtitle">{{ 'asset.view.policy.description' | i18n }}</p>
                 }
               </div>
             </div>
             <div class="subevent-asset-view-summary-body">
               <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
                 <mat-icon>gavel</mat-icon>
-                <span>View Policies</span>
+                <span>{{ 'event.editor.policies.view' | i18n }}</span>
               </button>
               @if (policies(view).length > 0) {
                 <div class="event-slots-summary">
                   <section class="event-slots-summary-block">
-                    <span class="event-slots-summary-label">Summary</span>
+                    <span class="event-slots-summary-label">{{ 'summary' | i18n }}</span>
                     <div class="event-slots-summary-list">
                       <article class="event-slots-summary-item">
-                        <span class="event-slots-summary-title">{{ policies(view).length }} {{ policies(view).length === 1 ? 'policy' : 'policies' }}</span>
+                        <span class="event-slots-summary-title">{{ policies(view).length }} {{ policies(view).length === 1 ? ('asset.policy.count.singular' | i18n) : ('asset.policy.count.plural' | i18n) }}</span>
                         <span class="event-slots-summary-meta">
                           {{ requiredPoliciesCount(view) }} required · {{ optionalPoliciesCount(view) }} optional
                         </span>
@@ -152,8 +152,8 @@
               } @else {
                 <div class="event-slots-summary">
                   <section class="event-slots-summary-block">
-                    <span class="event-slots-summary-label">Summary</span>
-                    <p class="event-slots-summary-note">No lending policies are configured for this asset.</p>
+                    <span class="event-slots-summary-label">{{ 'summary' | i18n }}</span>
+                    <p class="event-slots-summary-note">{{ 'asset.view.policy.empty.description' | i18n }}</p>
                   </section>
                 </div>
               }
@@ -164,13 +164,13 @@
 
     @if (showPoliciesPopup) {
       <div class="subevent-asset-view-policy-backdrop" (click)="closePoliciesPopup($event)"></div>
-      <section class="subevent-asset-view-policy-popup" role="dialog" aria-modal="true" aria-label="Lending policies">
+      <section class="subevent-asset-view-policy-popup" role="dialog" aria-modal="true" [attr.aria-label]="'asset.view.policy.popup.aria' | i18n">
         <header class="subevent-asset-view-policy-popup-head">
           <div>
-            <span class="subevent-asset-view-policy-popup-title">Lending Policies</span>
+            <span class="subevent-asset-view-policy-popup-title">{{ 'lending.policies' | i18n }}</span>
             <span class="subevent-asset-view-policy-popup-subtitle">Policies borrowers need to review for {{ view.card.title }}.</span>
           </div>
-          <button type="button" class="experience-form-close-btn" (click)="closePoliciesPopup($event)" aria-label="Close policies">
+          <button type="button" class="experience-form-close-btn" (click)="closePoliciesPopup($event)" [attr.aria-label]="'asset.view.policy.close.aria' | i18n">
             <mat-icon>close</mat-icon>
           </button>
         </header>
@@ -189,7 +189,7 @@
             </div>
           } @else {
             <div class="event-slot-empty-state event-policy-empty-state">
-              <span>No policies yet.</span>
+              <span>{{ 'event.editor.policies.empty.short' | i18n }}</span>
             </div>
           }
         </div>

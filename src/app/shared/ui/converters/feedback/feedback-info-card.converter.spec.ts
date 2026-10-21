@@ -16,7 +16,7 @@ describe('FeedbackInfoCardConverter submitted feedback', () => {
   it('shows service identity and uses the same muted badge as the removed filter', () => {
     const card = FeedbackInfoCardConverter.convertService(service, false);
     expect(card).toMatchObject({ title: 'Plumbing', imageUrl: '/service.webp',
-      metaRows: ['Provider', 'Meter replacement'], mediaEnd: { label: 'Removed', tone: 'slate', interactive: false } });
+      metaRows: ['Provider', 'Meter replacement'], mediaEnd: { label: 'feedback.evaluation.removed', tone: 'slate', interactive: false } });
     expect(card.menuActions).toEqual(['restoreFeedback']);
   });
 

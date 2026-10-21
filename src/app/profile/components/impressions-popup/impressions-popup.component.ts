@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { clampNumber, ExplanationGuideService, PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
 import {
   CommonModule
@@ -23,7 +24,7 @@ import {
 import {
   AppUtils
 } from '../../../shared/core/base/app-utils';
-import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
+import { I18nService, type UserDto, type UserImpressionsDto, type UserImpressionsSectionDto } from '../../../shared/core';
 
 import {
   resolveSideMenuPresentation,
@@ -78,6 +79,7 @@ interface ProfileImpressionsViewModel {
 interface ProfileImpressionsTraitCardViewModel {
   id: string;
   label: string;
+  labelKey: string;
   icon: string;
   coreVibe: string;
   highlights: string[];
@@ -90,7 +92,7 @@ interface ProfileImpressionsTraitCardViewModel {
 @Component({
   selector: 'app-profile-impressions-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatRippleModule, PopupComponent],
+  imports: [CommonModule, MatIconModule, MatRippleModule, PopupComponent, I18nPipe],
   templateUrl: './impressions-popup.component.html',
   styleUrl: './impressions-popup.component.scss'
 })
@@ -103,6 +105,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
     memberChips: false
   };
 
+  private readonly i18nService = inject(I18nService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly profileStore = inject(ProfileStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -184,7 +187,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
       title,
       subtitle: sourceLabel || null,
       ariaLabel: title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       translateTitle: false,
       translateSubtitle: false,
       size: 'wide',
@@ -199,12 +202,12 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   }
 
   protected displayTitle(user: UserDto): string {
-    const name = `${user.name ?? ''}`.trim() || 'Profile';
+    const name = `${user.name ?? ''}`.trim() || this.i18nService.translate('profile');
     return user.age > 0 ? `${name}, ${user.age}` : name;
   }
 
   protected profileInitials(user: UserDto): string {
-    const source = `${user.initials ?? ''}`.trim() || `${user.name ?? ''}`.trim() || 'Profile';
+    const source = `${user.initials ?? ''}`.trim() || `${user.name ?? ''}`.trim() || this.i18nService.translate('profile');
     return AppUtils.initialsFromText(source);
   }
 
@@ -577,9 +580,10 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
     return {
       id: match.id,
       label: match.label,
+      labelKey: match.labelKey,
       icon: match.icon,
-      coreVibe: match.coreVibe,
-      highlights: [...match.highlights],
+      coreVibe: match.coreVibeKey,
+      highlights: [...match.highlightKeys],
       percent: 0,
       evidenceCount: 0,
       lastRatedAtIso: null,
@@ -638,7 +642,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   private resolveHostPersonalityBadgeItems(user: UserDto): string[] {
     const traitCards = this.resolveTraitCards(user, 'host');
     if (traitCards.length > 0) {
-      return traitCards.map(trait => `${trait.label} ${trait.percent}%`);
+      return traitCards.map(trait => `${this.i18nService.translate(trait.labelKey)} ${trait.percent}%`);
     }
     const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection(user, 'host')?.personalityBadges);
     if (loaded) {
@@ -698,7 +702,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   private resolveMemberPersonalityBadgeItems(user: UserDto): string[] {
     const traitCards = this.resolveTraitCards(user, 'member');
     if (traitCards.length > 0) {
-      return traitCards.map(trait => `${trait.label} ${trait.percent}%`);
+      return traitCards.map(trait => `${this.i18nService.translate(trait.labelKey)} ${trait.percent}%`);
     }
     const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection(user, 'member')?.personalityBadges);
     if (loaded) {

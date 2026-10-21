@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import type { UiTranslations } from '@fssrepository/myscoutee-components';
 
 import { environment } from '../../../../../../environments/environment';
+import { version as catalogVersion } from '../../../../../../assets/i18n/en.json';
 import {
   I18nBundleRepository,
   type I18nBundleScope,
@@ -79,9 +80,10 @@ export class I18nService implements UiTranslations {
   private readonly zone = inject(NgZone);
   private readonly bundleRepository = inject(I18nBundleRepository);
   private readonly sessionService = inject(SessionService);
-  private readonly currentLanguageSignal = signal(I18nService.DEFAULT_LANGUAGE);
+  private readonly currentLanguageSignal = signal(this.localizedBrowserCandidates()[0] ?? I18nService.DEFAULT_LANGUAGE);
   private readonly messagesSignal = signal<Record<string, string>>({});
   private readonly sourceMessagesSignal = signal<Record<string, string>>({});
+  private sourceMessagesScope: I18nBundleScope | null = null;
   private readonly messagesByLanguageSignal = signal<Record<string, Record<string, string>>>({});
   private readonly sourceKeyByTextSignal = signal<Record<string, string>>({});
   private readonly revisionSignal = signal(0);
@@ -99,6 +101,7 @@ export class I18nService implements UiTranslations {
   private missingKeyRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private lastMissingKeyRefreshAt = 0;
   private bundleRefreshPromise: Promise<void> | null = null;
+  private initializationPromise: Promise<void> | null = null;
 
   readonly currentLanguage = this.currentLanguageSignal.asReadonly();
   readonly isDefaultLanguage = computed(() => this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE);
@@ -115,13 +118,18 @@ export class I18nService implements UiTranslations {
     });
   }
 
-  initialize(): void {
+  initialize(): Promise<void> {
     if (this.initialized) {
-      return;
+      return this.initializationPromise ?? Promise.resolve();
     }
     this.initialized = true;
+    this.updateDocumentLanguage(this.currentLanguageSignal());
     this.installDomObserver();
-    this.startLanguageLoad(this.resolveBundleScope());
+    this.initializationPromise = new Promise<void>((resolve, reject) => {
+      const loading = this.startLanguageLoad(this.resolveBundleScope(), resolve);
+      void loading.then(resolve, reject);
+    });
+    return this.initializationPromise;
   }
 
   translate(value: string | null | undefined, fallback?: string | null): string {
@@ -149,7 +157,7 @@ export class I18nService implements UiTranslations {
     const scope = this.activeBundleScope;
     const generation = this.bundleLoadGeneration;
     if (lang === I18nService.DEFAULT_LANGUAGE) {
-      if (Object.keys(this.sourceMessagesSignal()).length > 0) {
+      if (this.sourceMessagesScope === scope && Object.keys(this.sourceMessagesSignal()).length > 0) {
         return;
       }
       await this.loadDefaultSourceBundle(scope, generation);
@@ -263,7 +271,7 @@ export class I18nService implements UiTranslations {
     );
   }
 
-  private startLanguageLoad(scope: I18nBundleScope): void {
+  private startLanguageLoad(scope: I18nBundleScope, onReady?: () => void): Promise<void> {
     this.activeBundleScope = scope;
     const generation = ++this.bundleLoadGeneration;
     // Keep the displayed language until its replacement is ready. Clearing the
@@ -271,30 +279,38 @@ export class I18nService implements UiTranslations {
     // during login/logout. Generation checks still reject the previous scope.
     this.messagesByLanguageSignal.set({});
     let pending: Promise<void>;
-    pending = this.loadPreferredLanguage(scope, generation).finally(() => {
+    pending = this.loadPreferredLanguage(scope, generation, onReady).finally(() => {
       if (this.bundleRefreshPromise === pending) {
         this.bundleRefreshPromise = null;
       }
     });
     this.bundleRefreshPromise = pending;
+    return pending;
   }
 
   private async loadPreferredLanguage(
     scope: I18nBundleScope,
-    generation: number
+    generation: number,
+    onReady?: () => void
   ): Promise<void> {
-    await this.loadDefaultSourceBundle(scope, generation);
+    if (this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE) {
+      await this.loadDefaultSourceBundle(scope, generation);
+    }
     if (!this.isCurrentBundleLoad(scope, generation)) {
       return;
     }
 
     const candidates = this.localizedBrowserCandidates();
+    const preferredLang = candidates[0] ?? I18nService.DEFAULT_LANGUAGE;
     const stored = await this.bundleRepository.firstStoredBundle(scope, candidates);
     if (!this.isCurrentBundleLoad(scope, generation)) {
       return;
     }
-    if (stored) {
+    if (stored?.lang === preferredLang) {
       this.applyBundle(stored.lang, stored.version, stored.data);
+      if (Object.keys(stored.data).length > 0 && this.compareVersions(stored.version, catalogVersion) >= 0) {
+        onReady?.();
+      }
     }
 
     const seed = this.usesHttpBundles()
@@ -315,8 +331,13 @@ export class I18nService implements UiTranslations {
         }
       }
       this.applyBundle(seed.lang, seed.version, seed.data);
+      onReady?.();
     }
     await this.refreshFromServer(scope, generation, candidates);
+    if (this.isCurrentBundleLoad(scope, generation) && stored && stored.lang !== preferredLang
+      && Object.keys(this.messagesByLanguageSignal()).length === 0) {
+      this.applyBundle(stored.lang, stored.version, stored.data);
+    }
   }
 
   private async loadDefaultSourceBundle(
@@ -359,29 +380,8 @@ export class I18nService implements UiTranslations {
     if (!this.usesHttpBundles()) {
       return;
     }
-    const activeLang = this.currentLanguageSignal();
-    const preferredLang = activeLang === I18nService.DEFAULT_LANGUAGE
-      ? candidates[0] ?? null
-      : activeLang;
-    const requests = [
-      this.refreshLanguageFromServer(
-        scope,
-        generation,
-        I18nService.DEFAULT_LANGUAGE,
-        false
-      )
-    ];
-    if (preferredLang && preferredLang !== I18nService.DEFAULT_LANGUAGE) {
-      requests.push(
-        this.refreshLanguageFromServer(
-          scope,
-          generation,
-          preferredLang,
-          true
-        )
-      );
-    }
-    await Promise.all(requests);
+    await this.refreshLanguageFromServer(scope, generation,
+      candidates[0] ?? I18nService.DEFAULT_LANGUAGE, true);
   }
 
   private async refreshLanguageFromServer(
@@ -490,11 +490,15 @@ export class I18nService implements UiTranslations {
     storedVersion: string | null
   ): Promise<StoredI18nBundle | null> {
     for (const lang of candidates) {
+      if (lang === I18nService.DEFAULT_LANGUAGE && this.sourceMessagesScope === this.activeBundleScope
+        && Object.keys(this.sourceMessagesSignal()).length > 0) {
+        continue;
+      }
       const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
       if (!assetUrl) {
         continue;
       }
-      const seed = await this.loadLocalSeedBundle(assetUrl);
+      const seed = await this.loadLocalSeedBundle(assetUrl, lang === I18nService.DEFAULT_LANGUAGE);
       if (!seed || seed.lang !== lang || Object.keys(seed.data).length === 0) {
         continue;
       }
@@ -563,6 +567,7 @@ export class I18nService implements UiTranslations {
     data: Record<string, string>,
     preserveTextAliases = false
   ): void {
+    this.sourceMessagesScope = this.activeBundleScope;
     this.sourceMessagesSignal.set(data);
     this.cacheLanguageMessages(I18nService.DEFAULT_LANGUAGE, data);
     const nextIndex = this.buildSourceKeyIndex(data);
@@ -614,7 +619,7 @@ export class I18nService implements UiTranslations {
     const candidates: string[] = [];
     for (const raw of rawLanguages) {
       const lang = this.normalizeLanguage(raw);
-      if (!lang || lang === I18nService.DEFAULT_LANGUAGE || candidates.includes(lang)) {
+      if (!lang || candidates.includes(lang)) {
         continue;
       }
       candidates.push(lang);

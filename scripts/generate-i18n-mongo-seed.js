@@ -10,24 +10,36 @@ const seedDatabases = ['demo_db', 'e2e_db', 'myscoutee_db'];
 const languages = require('../src/app/shared/core/common/content-languages.json');
 const bundlePaths = languages.map(({ lang }) => path.join(frontendRoot, `src/assets/i18n/${lang}.json`));
 
-const bundles = bundlePaths.map(readBundle);
-const bundleDocs = bundles.map(bundle => ({
-  _id: `i18n-bundle-${bundle.lang}`,
-  lang: bundle.lang,
-  version: bundle.version,
-  updatedAt: bundleUpdatedAt(bundle.version)
-}));
-const messageDocs = buildMessageDocs(bundles);
+// Local/GitHub content uses the bundled illustration; HTTP content uses the
+// same illustration in the existing three-variant object-store layout.
+const images = require('../src/assets/articles/work-community-provenance.json').images;
+const urls = images.map(({ file }) => {
+  const before = `assets/articles/${file}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return [new RegExp('(^|["\x27])/?' + before + '(?=$|[?#"\x27])', 'g'),
+    `/media/public?key=images/system/idea-posts/${file.replace(/\.webp$/, '')}/v1/large.webp`];
+});
 
-for (const databaseName of seedDatabases) {
-  const databaseDir = path.join(mongoRoot, databaseName);
-  fs.mkdirSync(databaseDir, { recursive: true });
-  writeJson(path.join(databaseDir, 'i18n_messages.json'), messageDocs);
-  // Expose the new version only after its messages are ready for the seed watcher.
-  writeJson(path.join(databaseDir, 'i18n_bundles.json'), bundleDocs);
+if (require.main === module) {
+  const bundles = bundlePaths.map(readBundle);
+  const bundleDocs = bundles.map(bundle => ({
+    _id: `i18n-bundle-${bundle.lang}`,
+    lang: bundle.lang,
+    version: bundle.version,
+    updatedAt: bundleUpdatedAt(bundle.version)
+  }));
+  const messageDocs = buildMessageDocs(bundles);
+
+  for (const databaseName of seedDatabases) {
+    const databaseDir = path.join(mongoRoot, databaseName);
+    fs.mkdirSync(databaseDir, { recursive: true });
+    writeJson(path.join(databaseDir, 'i18n_messages.json'), messageDocs);
+    // Expose the new version only after its messages are ready for the seed watcher.
+    writeJson(path.join(databaseDir, 'i18n_bundles.json'), bundleDocs);
+  }
+
+  console.log(`Generated i18n Mongo seed for ${seedDatabases.join(', ')}.`);
+
 }
-
-console.log(`Generated i18n Mongo seed for ${seedDatabases.join(', ')}.`);
 
 function readBundle(filePath) {
   const bundle = JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -99,7 +111,7 @@ function buildMessageDocs(sourceBundles) {
         _id: id,
         key,
         lang: bundle.lang,
-        value
+        value: backendArticleImages(value)
       };
     })
   );
@@ -113,3 +125,14 @@ function hashText(value) {
   }
   return (hash >>> 0).toString(36);
 }
+
+function backendArticleImages(value) {
+  if (typeof value !== 'string' || !value.includes('assets/articles/')) return value;
+  for (const [pattern, after] of urls) {
+    // Exact URL fields or quoted HTML attributes, never another origin's URL.
+    value = value.replace(pattern, (_match, quote) => quote + after);
+  }
+  return value;
+}
+
+module.exports = { backendArticleImages };

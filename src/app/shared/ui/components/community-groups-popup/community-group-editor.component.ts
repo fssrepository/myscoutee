@@ -194,7 +194,7 @@ export class CommunityGroupEditorComponent implements OnChanges, OnInit, OnDestr
   protected policyFlowModel(): FormFlowModel {
     return { title: 'groups.visibility.rules', layout: 'grouped', deferPreparation: false, header: false, save: null, summary: { enabled: false },
       steps: APP_STATIC_DATA.profileDetailGroupTemplates.map((group, index) => ({
-        id: `policy-${index}`, title: this.t(group.title), palette: this.policyPalettes[index], controls: group.rows
+        id: `policy-${index}`, title: this.t(group.titleKey), palette: this.policyPalettes[index], controls: group.rows
           .filter(row => this.optionalPolicyField(row.labelKey))
           .map(row => {
             const trigger = (this.profileControl(row.labelKey)?.config as FormFlowMenuControlConfig)?.trigger;

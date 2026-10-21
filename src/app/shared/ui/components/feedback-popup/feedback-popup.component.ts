@@ -1,3 +1,5 @@
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import * as FeedbackContracts from '../../../core/contracts/feedback/feedback.interface';
 import { FeedbackService } from '../../../core/base/services/feedback/feedback.service';
 import {
@@ -93,12 +95,14 @@ interface FeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'onCanc
     IndicatorComponent,
     PopupComponent,
     SmartListComponent,
-    InfoCardComponent
+    InfoCardComponent, I18nPipe
   ],
   templateUrl: './feedback-popup.component.html',
   styleUrl: './feedback-popup.component.scss'
 })
 export class FeedbackPopupComponent implements OnDestroy {
+  private readonly i18n = inject(I18nService);
+
   private readonly feedbackService = inject(FeedbackService);
   private readonly feedbackStore = inject(FeedbackStore);
   private readonly campaigns = inject(CampaignsStore);
@@ -243,7 +247,7 @@ export class FeedbackPopupComponent implements OnDestroy {
       subtitle: this.campaigns.feedbackCampaign()?.title ?? '',
       onAction: event => { if (event.action.id === 'campaign-filter') void this.campaigns.open(c => this.campaigns.feedbackCampaign.set(c), this.campaigns.feedbackCampaign()?.id); },
       ariaLabel: 'feedback.list.title',
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -265,7 +269,7 @@ export class FeedbackPopupComponent implements OnDestroy {
       title: this.feedbackStackedPopupTitle(),
       subtitle: this.feedbackStackedPopupSubtitle(),
       ariaLabel: this.feedbackStackedPopupTitle(),
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: isFullHeight ? 'wide' : 'default',
       height: isFullHeight ? 'full' : 'auto',
       headerTone: 'accent',
@@ -296,9 +300,9 @@ export class FeedbackPopupComponent implements OnDestroy {
       case 'feedbackCounts':
         return 'feedback.list.title';
       case 'organizerFeedback':
-        return 'Own Feedback';
+        return this.i18n.translate('own.feedback');
       default:
-        return 'Organizer Feedback';
+        return this.i18n.translate('organizer.feedback');
     }
   }
 

@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { FeedbackService } from '../../../../core/base/services/feedback/feedback.service';
@@ -21,6 +23,7 @@ function counterSnapshot(events: Partial<FeedbackPageCountsDto> = {}, evaluation
 
 @Injectable({ providedIn: 'root' })
 export class FeedbackStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly profile = inject(UserProfileStore);
   private readonly menus = inject(MemberMenuStore);
@@ -87,7 +90,7 @@ export class FeedbackStore {
 
   async openDetail(item: FeedbackEvaluationItem, received = false): Promise<void> {
     const generation = ++this.generation;
-    const component = (await import('../../../components/feedback-evaluation/feedback-evaluation-popup.component')).FeedbackEvaluationPopupComponent;
+    const component = (await this.popupAdapters.load(POPUP_ADAPTER.FEEDBACK_EVALUATION_POPUP)).FeedbackEvaluationPopupComponent;
     if (generation !== this.generation) return;
     this.selected.set(item);
     this.readOnly.set(received || item.feedback.status !== 'pending');

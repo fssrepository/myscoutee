@@ -176,7 +176,7 @@ export class GroupWorkspaceStore {
   menuItems(selected: string, includeAll = false): AppMenuItem[] {
     const accountCount = this.accountAttention();
     const items: AppMenuItem[] = [
-      ...(includeAll ? [{ id: 'all', label: 'All', icon: 'apps', palette: 'slate' as const }] : []),
+      ...(includeAll ? [{ id: 'all', label: 'all', icon: 'apps', palette: 'slate' as const }] : []),
       { id: 'main', ...this.trigger(null),
         counter: includeAll ? null : accountCount || null, counterTone: 'alert' },
       ...this.workspaces().filter(workspace => !this.profile.activeUserProfile()?.admin || isBaseGroupId(workspace.groupId))

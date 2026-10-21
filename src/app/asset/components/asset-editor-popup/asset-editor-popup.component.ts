@@ -140,28 +140,28 @@ export class AssetEditorPopupComponent implements OnDestroy {
     paymentIntegrationEnabled: environment.paymentIntegrationEnabled
   };
   protected readonly assetLocationInputConfig: LocationInputConfig = {
-    label: 'Location',
-    placeholder: 'Accommodation address',
+    label: 'location',
+    placeholder: 'accommodation.address',
     required: true,
     routeStops: () => this.assetFormRouteStops(),
     mapMode: 'search',
-    mapAriaLabel: 'Open location on map'
+    mapAriaLabel: 'route.location.map.aria'
   };
   protected readonly assetPoliciesInputConfig: PoliciesInputConfig = {
-    title: 'Lending Policies',
-    subtitle: 'Add the rules borrowers need to read and approve before borrowing this asset.',
+    title: 'lending.policies',
+    subtitle: 'asset.lending.policies.description',
     toggleable: true,
-    openLabel: 'Open Policy Setup',
-    viewLabel: 'View Policies',
-    emptyLabel: 'No lending policies yet. Add policies if borrowers must review terms before sending the request.',
-    readOnlyEmptyLabel: 'No lending policies are configured for this asset.',
-    popupSubtitle: 'Open a policy to edit its details.',
-    editorSubtitle: 'Describe the policy and choose if approval is required.',
+    openLabel: 'event.editor.policies.setup.open',
+    viewLabel: 'event.editor.policies.view',
+    emptyLabel: 'asset.lending.policies.empty',
+    readOnlyEmptyLabel: 'asset.view.policy.empty.description',
+    popupSubtitle: 'asset.lending.policies.popup.subtitle',
+    editorSubtitle: 'asset.lending.policies.editor.subtitle',
     requiredApprovalLabel: 'required',
     optionalPolicyLabel: 'optional',
-    requiredPreview: 'This lending policy always applies to the borrow.',
-    optionalPreview: 'Optional lending policy shown during the request flow.',
-    requiredCheckboxLabel: 'Borrowers must approve this policy',
+    requiredPreview: 'asset.lending.policy.required.preview',
+    optionalPreview: 'asset.lending.policy.optional.preview',
+    requiredCheckboxLabel: 'asset.lending.policy.approval.label',
     approval: {
       enabled: () => this.assetCheckout()?.phase === 'review',
       acceptedPolicyIds: () => this.assetCheckout()?.acceptedPolicyIds ?? [],
@@ -209,8 +209,8 @@ export class AssetEditorPopupComponent implements OnDestroy {
     const mode = this.assetEditorReadOnly()
       ? 'View'
       : this.assetStore.editingAssetId()
-        ? 'Edit'
-        : 'Add';
+        ? 'edit'
+        : 'add';
     const assetType = AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type);
     return `${this.i18n.translate(mode.toLowerCase())} ${this.i18n.translate(assetType.toLowerCase(), assetType)}`;
   }
@@ -222,7 +222,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       ariaLabel: this.title,
       closeAriaLabel: this.assetCheckout()
         ? this.i18n.translate('asset.borrow.close.aria')
-        : 'Close asset editor',
+        : 'asset.editor.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -286,7 +286,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       ...this.assetCheckoutFlowSteps(checkout),
       {
         id: 'basics',
-        title: 'Basics',
+        title: 'basics',
         icon: this.assetCategoryIcon(this.assetForm.category),
         palette: this.assetCategoryPalette(this.assetForm.category),
         presentation: 'media',
@@ -302,7 +302,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
               slotCount: 1,
               compact: true,
               autoSize: true,
-              ariaLabel: 'Asset image',
+              ariaLabel: 'asset.image',
               uploadOwnerId: this.assetImageUploadOwnerId,
               uploadEntityId: this.assetImageUploadEntity()
             },
@@ -314,7 +314,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
             id: 'title',
             bind: 'title',
             kind: 'text',
-            label: 'Title',
+            label: 'title',
             required: true,
             disabled
           },
@@ -322,14 +322,14 @@ export class AssetEditorPopupComponent implements OnDestroy {
             id: 'subtitle',
             bind: 'subtitle',
             kind: 'text',
-            label: 'Subtitle',
+            label: 'subtitle',
             disabled
           },
           {
             id: 'capacityTotal',
             bind: 'capacityTotal',
             kind: 'number',
-            label: 'Total capacity',
+            label: 'total.capacity',
             required: true,
             min: 1,
             step: 1,
@@ -340,7 +340,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
             id: 'quantity',
             bind: 'quantity',
             kind: 'number',
-            label: runtimeAssignment?.quantityLabel ?? 'Quantity',
+            label: runtimeAssignment?.quantityLabel ?? 'quantity',
             description: runtimeAssignment?.quantityDescription,
             required: true,
             min: 1,
@@ -353,14 +353,14 @@ export class AssetEditorPopupComponent implements OnDestroy {
       },
       {
         id: 'details',
-        title: 'Details',
+        title: 'details',
         icon: 'notes',
         controls: [
           {
             id: 'sourceLink',
             bind: 'sourceLink',
             kind: 'link',
-            label: 'Source link',
+            label: 'source.link',
             placeholder: 'https://...',
             disabled
           },
@@ -368,7 +368,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
             id: 'category',
             bind: 'category',
             kind: 'menu',
-            label: 'Category',
+            label: 'category',
             disabled,
             config: {
               kind: 'select',
@@ -381,7 +381,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
             id: 'details',
             bind: 'details',
             kind: 'textarea',
-            label: 'Details',
+            label: 'details',
             rows: 4,
             layout: 'wide',
             disabled
@@ -449,7 +449,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       id: 'routeLocation',
       bind: 'routeLocation',
       kind: 'location',
-      label: 'Location',
+      label: 'location',
       required: true,
       layout: 'wide',
       disabled,
@@ -512,13 +512,13 @@ export class AssetEditorPopupComponent implements OnDestroy {
   private assetRuntimeRouteInputConfig(): RouteInputConfig {
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
     return {
-      title: runtimeRoute?.title ?? 'Route',
+      title: runtimeRoute?.title ?? 'route',
       mapAriaLabel: 'asset.assignment.route.map.aria',
       stopCountLabel: count => this.i18n.translateParams(count === 1 ? 'asset.assignment.route.stop.one' : 'asset.assignment.route.stop.many', { count }),
-      subtitle: runtimeRoute?.subtitle ?? 'Runtime route for this event asset.',
-      openLabel: runtimeRoute?.openLabel ?? 'Open Route Setup',
-      emptyLabel: runtimeRoute?.emptyLabel ?? 'No route is set for this event asset.',
-      readOnlyEmptyLabel: runtimeRoute?.readOnlyEmptyLabel ?? 'No route is set for this event asset.',
+      subtitle: runtimeRoute?.subtitle ?? 'asset.assignment.route.subtitle',
+      openLabel: runtimeRoute?.openLabel ?? 'asset.assignment.route.open',
+      emptyLabel: runtimeRoute?.emptyLabel ?? 'asset.assignment.route.empty',
+      readOnlyEmptyLabel: runtimeRoute?.readOnlyEmptyLabel ?? 'asset.assignment.route.empty',
       popupTitle: runtimeRoute?.popupTitle ?? 'Route Setup',
       popupSubtitle: runtimeRoute?.popupSubtitle ?? 'Set the runtime route for this event asset.',
       enabled: () => this.assetStore.assetFormRuntimeRoute()?.routeEnabled === true,
@@ -667,7 +667,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       layout: 'action',
       palette: canSave || this.isSavePending ? 'success' : 'danger',
       disabled: !canSave || this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
-      ariaLabel: 'Save asset',
+      ariaLabel: 'save.asset',
       progress: this.isSavePending
         ? {
             state: 'loading',
@@ -686,7 +686,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       layout: 'action',
       palette: canSave || this.isSavePending ? 'success' : 'danger',
       disabled: !canSave || this.isLoading,
-      ariaLabel: 'Save route assignment',
+      ariaLabel: 'save.route.assignment',
       progress: this.isSavePending
         ? {
             state: 'loading',
@@ -704,7 +704,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       palette: this.visibilityPalette(this.assetFormVisibility),
       disabled: () => this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
       layout: 'pill',
-      ariaLabel: 'Open asset visibility selector'
+      ariaLabel: 'open.asset.visibility.selector'
     };
   }
 
@@ -729,7 +729,7 @@ export class AssetEditorPopupComponent implements OnDestroy {
       palette: this.assetCategoryPalette(this.assetForm.category),
       layout: 'field',
       disabled: () => this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
-      ariaLabel: 'Open asset category'
+      ariaLabel: 'open.asset.category'
     };
   }
 

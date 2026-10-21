@@ -88,12 +88,12 @@
         <div class="idea-editor-form-content">
           <div class="idea-editor-fields">
             <label class="idea-editor-field idea-editor-field-title">
-              <span>Title</span>
+              <span>{{ 'title' | i18n }}</span>
               <input type="text" name="ideaTitle" data-guide-field="article-title" [(ngModel)]="editDraft.title" required />
             </label>
             <label class="idea-editor-field idea-editor-field-wide">
-              <span>Description</span>
-              <textarea name="ideaExcerpt" data-guide-field="article-description" [(ngModel)]="editDraft.excerpt" rows="3" placeholder="Short card description"></textarea>
+              <span>{{ 'description' | i18n }}</span>
+              <textarea name="ideaExcerpt" data-guide-field="article-description" [(ngModel)]="editDraft.excerpt" rows="3" [attr.placeholder]="'article.description.placeholder' | i18n"></textarea>
             </label>
           </div>
 
@@ -113,7 +113,7 @@
 
           <section class="idea-editor-html-panel">
             <div class="idea-editor-html-head">
-              <span>Article HTML</span>
+              <span>{{ 'article.html' | i18n }}</span>
             </div>
             <textarea
               class="idea-editor-html-textarea"

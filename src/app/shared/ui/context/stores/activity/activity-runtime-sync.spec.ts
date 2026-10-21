@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { GroupWorkspaceContextService } from '../../../../core/base/services/groups/group-workspace-context.service';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -347,7 +348,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('exposes a published resource activity delta to its parent exactly once', () => {
-    const store = new SubEventResourcePopupStore();
+    const store = TestBed.runInInjectionContext(() => new SubEventResourcePopupStore());
     const context = {
       ownerId: 'event-1',
       subEvent: {
@@ -382,7 +383,7 @@ describe('activity runtime counter signals', () => {
 
   it('propagates the stage pending delta separately from its current value', () => {
     vi.spyOn(Date, 'now').mockReturnValue(200);
-    const store = new EventSubeventsPopupStore();
+    const store = TestBed.runInInjectionContext(() => new EventSubeventsPopupStore());
 
     store.emitEventTournamentGroupsUpdate({
       eventId: 'event-1',
@@ -404,7 +405,7 @@ describe('activity runtime counter signals', () => {
 
   it('replaces and discards the full event sub-event definition draft with monotonic revisions', () => {
     vi.spyOn(Date, 'now').mockReturnValue(300);
-    const store = new EventSubeventsPopupStore();
+    const store = TestBed.runInInjectionContext(() => new EventSubeventsPopupStore());
 
     store.emitEventSubeventsDefinitionDraftPreview({
       eventId: 'event-1',
@@ -457,7 +458,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('keeps event-save sub-event reload requests durable and monotonic', () => {
-    const store = new EventSubeventsPopupStore();
+    const store = TestBed.runInInjectionContext(() => new EventSubeventsPopupStore());
 
     store.requestEventSubeventsReload('event-1');
     const first = store.eventSubeventsReloadRequest();
@@ -476,7 +477,7 @@ describe('activity runtime counter signals', () => {
   });
 
   it('preserves event member counters for the sub-event header converter', () => {
-    const store = new EventSubeventsPopupStore();
+    const store = TestBed.runInInjectionContext(() => new EventSubeventsPopupStore());
 
     store.openEventSubeventsListPopup({
       eventId: 'event-1',

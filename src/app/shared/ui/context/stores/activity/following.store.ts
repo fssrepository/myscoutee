@@ -27,7 +27,7 @@ export class FollowingStore {
     const label = followed ? 'event.following.follow' : 'event.following.unfollow';
     this.dialogStore.open({
       title: `${label}.question`, message: organizerName, confirmLabel: label,
-      cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
+      cancelLabel: 'cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
       onConfirm: async () => {
         await this.change(organizerId, followed);
         onCommitted?.();

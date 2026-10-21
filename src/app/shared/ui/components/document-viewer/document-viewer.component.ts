@@ -102,12 +102,12 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
 
   protected ariaLabel(): string {
     const config = this.activeConfig();
-    return this.uiText(config?.ariaLabel?.trim() || config?.title || 'Document');
+    return this.uiText(config?.ariaLabel?.trim() || config?.title || 'document.title');
   }
 
   protected title(): string {
     return this.uiText(
-      this.activeConfig()?.title?.trim() || 'Document'
+      this.activeConfig()?.title?.trim() || 'document.title'
     );
   }
 
@@ -480,22 +480,22 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
 
   private defaultAriaLabel(kind: HelpCenterDocumentKind): string {
     if (kind === 'privacy') {
-      return 'GDPR consent';
+      return 'privacy.consent.aria';
     }
     if (kind === 'terms') {
-      return 'Terms of service';
+      return 'terms.document.aria';
     }
-    return 'Help';
+    return this.i18n.translate('help');
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind): string {
     if (kind === 'privacy') {
-      return 'Privacy first';
+      return 'privacy.document.title';
     }
     if (kind === 'terms') {
-      return 'Usage terms';
+      return 'terms.document.title';
     }
-    return 'Help';
+    return this.i18n.translate('help');
   }
 
   private defaultDescription(kind: HelpCenterDocumentKind): string {
@@ -507,12 +507,12 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
 
   private defaultLoadingLabel(kind: HelpCenterDocumentKind): string {
     if (kind === 'privacy') {
-      return 'Loading privacy content';
+      return 'privacy.document.loading';
     }
     if (kind === 'terms') {
-      return 'Loading terms content';
+      return 'terms.document.loading';
     }
-    return 'Loading help content';
+    return 'help.document.loading';
   }
 
   private defaultEmptyIcon(kind: HelpCenterDocumentKind): string {
@@ -527,21 +527,21 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
 
   private defaultEmptyTitle(kind: HelpCenterDocumentKind): string {
     if (kind === 'privacy') {
-      return 'Privacy is not available';
+      return 'privacy.document.unavailable.title';
     }
     if (kind === 'terms') {
-      return 'Terms are not available';
+      return 'terms.document.unavailable.title';
     }
-    return 'Help is not available';
+    return 'help.document.unavailable.title';
   }
 
   private defaultEmptyDescription(kind: HelpCenterDocumentKind): string {
     if (kind === 'privacy') {
-      return 'Privacy content is not available right now.';
+      return 'privacy.document.unavailable.description';
     }
     if (kind === 'terms') {
-      return 'Terms content is not available right now.';
+      return 'terms.document.unavailable.description';
     }
-    return 'Help content is not available right now.';
+    return 'help.document.unavailable.description';
   }
 }

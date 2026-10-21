@@ -1,4 +1,6 @@
-import { Injectable, Type, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, signal, inject } from '@angular/core';
 
 import type {
   ActivityEventRecord,
@@ -31,6 +33,7 @@ export interface EventCheckoutSlotPickerState extends EventCheckoutSlotPickerReq
   providedIn: 'root'
 })
 export class EventCheckoutSlotPickerStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly stateRef = signal<EventCheckoutSlotPickerState | null>(null);
   private readonly slotPickerPopupComponentRef = signal<Type<unknown> | null>(null);
   private nextId = 0;
@@ -61,7 +64,7 @@ export class EventCheckoutSlotPickerStore {
     if (this.slotPickerPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../activity/components/event-checkout-slot-picker-popup/event-checkout-slot-picker-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.EVENT_CHECKOUT_SLOT_PICKER_POPUP);
     this.slotPickerPopupComponentRef.set(module.EventCheckoutSlotPickerPopupComponent);
   }
 }

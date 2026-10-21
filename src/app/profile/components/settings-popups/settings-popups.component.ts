@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
   ChangeDetectorRef,
@@ -52,6 +53,8 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user
   styleUrl: './settings-popups.component.scss'
 })
 export class ProfileSettingsPopupsComponent {
+  private readonly i18n = inject(I18nService);
+
   private readonly profileStore = inject(ProfileStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -92,9 +95,9 @@ export class ProfileSettingsPopupsComponent {
   protected popupTitle(popup: ProfileSettingsPopup): string {
     switch (popup) {
       case 'feedback':
-        return 'Send Feedback';
+        return this.i18n.translate('feedback.send.action');
       case 'report-user':
-        return 'Report User';
+        return this.i18n.translate('report.user');
       default:
         return '';
     }
@@ -111,7 +114,7 @@ export class ProfileSettingsPopupsComponent {
       title,
       subtitle,
       ariaLabel: title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'auto',
       headerTone: 'accent',
@@ -145,17 +148,17 @@ export class ProfileSettingsPopupsComponent {
       open: this.activePopup() === 'privacy',
       shell: 'popup',
       onClose: () => this.closePopup(),
-      ariaLabel: 'GDPR consent',
-      closeAriaLabel: 'Close privacy popup',
+      ariaLabel: 'privacy.consent.aria',
+      closeAriaLabel: 'privacy.popup.close',
       closeOnBackdrop: !this.privacyConsentRequired(),
-      titleFallback: 'Privacy first',
+      titleFallback: 'privacy.document.title',
       versionLabel: this.helpCenter.activePrivacyVersionLabel(),
       loading: !revision,
-      loadingLabel: 'Loading privacy content',
+      loadingLabel: 'privacy.document.loading',
       emptyState: {
         icon: 'policy',
-        title: 'Privacy is not available',
-        description: 'Privacy content is not available right now.'
+        title: 'privacy.document.unavailable.title',
+        description: 'privacy.document.unavailable.description'
       },
       sectionMode: 'privacy',
       selectedSectionIds: this.settingsApprovedPrivacySectionIds,
@@ -172,17 +175,17 @@ export class ProfileSettingsPopupsComponent {
       open: this.activePopup() === 'terms',
       shell: 'popup',
       onClose: () => this.closePopup(),
-      ariaLabel: 'Terms of service',
-      closeAriaLabel: 'Close terms popup',
-      titleFallback: 'Usage terms',
+      ariaLabel: 'terms.document.aria',
+      closeAriaLabel: 'terms.popup.close',
+      titleFallback: 'terms.document.title',
       descriptionFallback: 'document.terms.description',
       versionLabel: this.helpCenter.activeTermsVersionLabel(),
       loading: !revision,
-      loadingLabel: 'Loading terms content',
+      loadingLabel: 'terms.document.loading',
       emptyState: {
         icon: 'rule',
-        title: 'Terms are not available',
-        description: 'Terms content is not available right now.'
+        title: 'terms.document.unavailable.title',
+        description: 'terms.document.unavailable.description'
       }
     });
   }
@@ -199,17 +202,17 @@ export class ProfileSettingsPopupsComponent {
       open: this.activePopup() === 'help',
       shell: 'popup',
       onClose: () => this.closePopup(),
-      ariaLabel: 'Help',
-      closeAriaLabel: 'Close help popup',
-      titleFallback: 'Help',
+      ariaLabel: 'help',
+      closeAriaLabel: 'help.popup.close.aria',
+      titleFallback: 'help',
       versionLabel: this.helpCenter.activeVersionLabel(),
       headerPalette: headerPalette === 'amber' ? 'teal' : headerPalette,
       loading: !revision,
-      loadingLabel: 'Loading help content',
+      loadingLabel: 'help.document.loading',
       emptyState: {
         icon: 'help_outline',
-        title: 'Help is not available',
-        description: 'Help content is not available right now.'
+        title: 'help.document.unavailable.title',
+        description: 'help.document.unavailable.description'
       },
     });
   }
@@ -257,11 +260,11 @@ export class ProfileSettingsPopupsComponent {
 
   private settingsPrivacySaveButtonLabel(): string {
     if (this.settingsPrivacySaving) {
-      return 'Saving...';
+      return this.i18n.translate('saving');
     }
     return this.privacyConsentRequired() || !this.settingsPrivacyActiveRevisionConsentSaved
-      ? 'Approve privacy'
-      : 'Save choices';
+      ? this.i18n.translate('privacy.preferences.approve')
+      : this.i18n.translate('privacy.preferences.save');
   }
 
   private async saveSettingsPrivacyChoices(selectedSectionIds: readonly string[]): Promise<void> {
@@ -288,7 +291,7 @@ export class ProfileSettingsPopupsComponent {
       this.settingsPrivacyActiveRevisionConsentSaved = this.isPrivacyConsentCurrent(consent, revision);
       this.appSetupStore.privacyMissing.set(!this.settingsPrivacyActiveRevisionConsentSaved);
       this.settingsApprovedPrivacySectionIds = new Set(consent.approvedOptionalSectionIds);
-      this.settingsPrivacySaveMessage = 'Privacy choices saved.';
+      this.settingsPrivacySaveMessage = 'privacy.preferences.save.success';
       this.completePrivacyPopup();
     } catch {
       this.settingsPrivacySaveError = 'Privacy choices could not be saved.';

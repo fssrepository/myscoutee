@@ -65,19 +65,19 @@ import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/acti
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   {
     value: 'phone',
-    label: 'Phone',
+    label: 'phone',
     icon: 'call',
     placeholder: '+421 900 123 456',
     helpText: 'Opens the phone app on mobile or the default calling handler.',
     inputType: 'tel',
     inputMode: 'tel',
     autocomplete: 'tel',
-    actionLabel: 'Call',
+    actionLabel: 'chat.call.title',
     openBehavior: 'same-tab'
   },
   {
     value: 'sms',
-    label: 'SMS',
+    label: 'sms',
     icon: 'sms',
     placeholder: '+421 900 123 456',
     helpText: 'Starts a text message with the number filled in.',
@@ -89,7 +89,7 @@ const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   },
   {
     value: 'whatsapp',
-    label: 'WhatsApp',
+    label: 'whatsapp',
     icon: 'chat',
     placeholder: '+421900123456',
     helpText: 'Uses the WhatsApp deep link when available.',
@@ -101,19 +101,19 @@ const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   },
   {
     value: 'email',
-    label: 'Email',
+    label: 'email',
     icon: 'mail',
     placeholder: 'hello@example.com',
     helpText: 'Opens the default mail app with the address ready.',
     inputType: 'email',
     inputMode: 'email',
     autocomplete: 'email',
-    actionLabel: 'Email',
+    actionLabel: 'email',
     openBehavior: 'same-tab'
   },
   {
     value: 'facebook',
-    label: 'Facebook',
+    label: 'facebook',
     icon: 'thumb_up',
     placeholder: '@username or https://facebook.com/username',
     helpText: 'Opens the Facebook profile in the app or a browser tab.',
@@ -125,7 +125,7 @@ const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   },
   {
     value: 'instagram',
-    label: 'Instagram',
+    label: 'instagram',
     icon: 'photo_camera',
     placeholder: '@username or https://instagram.com/username',
     helpText: 'Opens the Instagram profile.',
@@ -137,7 +137,7 @@ const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   },
   {
     value: 'telegram',
-    label: 'Telegram',
+    label: 'telegram',
     icon: 'send',
     placeholder: '@username or https://t.me/username',
     helpText: 'Opens the Telegram contact.',
@@ -149,7 +149,7 @@ const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   },
   {
     value: 'linkedin',
-    label: 'LinkedIn',
+    label: 'linkedin',
     icon: 'work',
     placeholder: 'username or https://linkedin.com/in/username',
     helpText: 'Opens the LinkedIn profile.',
@@ -161,7 +161,7 @@ const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   },
   {
     value: 'website',
-    label: 'Website',
+    label: 'website',
     icon: 'language',
     placeholder: 'https://example.com',
     helpText: 'Opens any profile, portfolio, or custom contact URL.',
@@ -307,9 +307,9 @@ export class ContactsPopupComponent implements OnDestroy {
   protected readonly contactSmartListConfig = computed<SmartListConfig<ContactListItem, ContactListFilters>>(() => ({
     pageSize: 10,
     defaultView: 'list',
-    emptyLabel: this.chatAccess.requestsOnly() ? 'contact.chat.requests.empty' : 'No contacts saved yet',
-    emptyDescription: this.chatAccess.requestsOnly() ? '' : 'Use Create contact to add members into your personal quick-reach list.',
-    emptyStickyLabel: 'No contacts',
+    emptyLabel: this.chatAccess.requestsOnly() ? 'contact.chat.requests.empty' : 'contacts.empty.title',
+    emptyDescription: this.chatAccess.requestsOnly() ? '' : 'contacts.empty.description',
+    emptyStickyLabel: 'contacts.empty.sticky.label',
     headerProgress: {
       enabled: true,
       state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
@@ -329,14 +329,14 @@ export class ContactsPopupComponent implements OnDestroy {
   }));
 
   protected readonly bucketMenuItems = computed<AppMenuItem[]>(() => [
-    { id: 'contacts', label: 'Contacts', icon: 'contacts', palette: 'sky', surface: 'tinted',
+    { id: 'contacts', label: 'contacts', icon: 'contacts', palette: 'sky', surface: 'tinted',
       active: !this.chatAccess.requestsOnly(), counter: this.chatAccess.contactCount() },
     { id: 'requests', label: 'contact.chat.requests', icon: 'mark_chat_unread', palette: 'orange', surface: 'tinted',
       active: this.chatAccess.requestsOnly(), counter: this.chatAccess.pendingCount(), counterTone: 'alert' }
   ]);
 
   protected readonly bucketMenuTrigger = computed<AppMenuTrigger>(() => ({
-    label: this.chatAccess.requestsOnly() ? 'contact.chat.requests' : 'Contacts',
+    label: this.chatAccess.requestsOnly() ? 'contact.chat.requests' : 'contacts',
     icon: this.chatAccess.requestsOnly() ? 'mark_chat_unread' : 'contacts',
     palette: this.chatAccess.requestsOnly() ? 'orange' : 'sky', layout: 'pill', collapsible: false,
     counter: this.chatAccess.pendingCount()
@@ -349,10 +349,10 @@ export class ContactsPopupComponent implements OnDestroy {
   protected contactsPopupModel(): PopupModel<ContactsMenuContext> {
     return {
       errorMessage: this.chatAccess.error() ? 'contact.chat.error' : null,
-      title: 'Contacts',
+      title: 'contacts',
       subtitle: this.summaryLabel(),
-      ariaLabel: 'Contacts',
-      closeAriaLabel: 'Close contacts',
+      ariaLabel: 'contacts',
+      closeAriaLabel: 'close.contacts',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -362,8 +362,8 @@ export class ContactsPopupComponent implements OnDestroy {
         id: 'create-contact',
         guideFieldId: 'contact-add',
         icon: 'person_add',
-        label: 'Create contact',
-        ariaLabel: 'Create contact',
+        label: 'create.contact',
+        ariaLabel: 'create.contact',
         palette: 'sky',
         compactOnMobile: true
       }],
@@ -379,17 +379,17 @@ export class ContactsPopupComponent implements OnDestroy {
   protected contactFormPopupModel(contact: ContactFormValue): PopupModel<ContactsMenuContext> {
     return {
       errorMessage: this.formErrorMessage(),
-      title: 'Edit Contact',
+      title: 'edit.contact',
       subtitle: `${contact.name}${contact.city ? ' - ' + contact.city : ''}`,
-      ariaLabel: 'Edit Contact',
-      closeAriaLabel: 'Close contact form',
+      ariaLabel: 'edit.contact',
+      closeAriaLabel: 'contacts.editor.close.aria',
       headerTone: 'accent',
       bodyLayout: 'overflow',
       backdropTone: 'dim',
       headerActions: [{
         id: 'save-contact',
         icon: 'done',
-        ariaLabel: 'Save contact',
+        ariaLabel: 'save.contact',
         palette: 'green',
         disabled: this.isFormSavePending()
       }],
@@ -535,7 +535,7 @@ export class ContactsPopupComponent implements OnDestroy {
   private confirmChatAccess(contact: ContactListItem, action: ContactChatAccessAction): void {
     this.closeActionMenu();
     this.dialogStore.open({ title: `contact.chat.${action}.question`, message: `contact.chat.${action}.message`,
-      confirmLabel: `contact.chat.${action}`, cancelLabel: 'Cancel',
+      confirmLabel: `contact.chat.${action}`, cancelLabel: 'cancel',
       confirmPalette: action === 'approve' ? 'green' : 'red',
       failureMessage: 'contact.chat.error',
       onConfirm: () => this.chatAccess.change(contact.chatAccess, contact.userId, action) });
@@ -643,11 +643,11 @@ export class ContactsPopupComponent implements OnDestroy {
     this.closeActionMenu();
     this.dialogStore.open({
       title: this.i18n.translate('confirmation.delete.contact').replace('{name}', contact.name),
-      message: 'This removes the contact and all saved availability methods from your local list.',
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      message: 'contacts.delete.confirmation.description',
+      confirmLabel: 'delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
       confirmTone: 'danger',
-      failureMessage: 'Unable to delete this contact right now.',
+      failureMessage: 'contacts.delete.error',
       onConfirm: async () => {
         // Optimistically remove from the visible list
         if (this.contactsSmartList) {
@@ -697,7 +697,7 @@ export class ContactsPopupComponent implements OnDestroy {
       hideLabel: true,
       layout: 'icon',
       palette: 'neutral',
-      ariaLabel: this.isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'
+      ariaLabel: this.isActionMenuOpen(contact) ? 'close.contact.actions' : 'open.contact.actions'
     };
   }
 
@@ -727,13 +727,13 @@ export class ContactsPopupComponent implements OnDestroy {
       ...(methodItems.length > 0 ? [{ id: `contact-${contact.id}-methods-divider`, kind: 'divider' as const }] : []),
       {
         id: `contact-${contact.id}-edit`,
-        label: 'Edit',
+        label: 'edit',
         icon: 'edit',
         context: { menu: 'contact-action', action: 'edit', contactId: contact.id }
       },
       ...(contact.saved !== false ? [{
         id: `contact-${contact.id}-delete`,
-        label: 'Delete',
+        label: 'delete',
         icon: 'delete',
         palette: 'danger' as const,
         context: { menu: 'contact-action' as const, action: 'delete' as const, contactId: contact.id }
@@ -749,7 +749,7 @@ export class ContactsPopupComponent implements OnDestroy {
       palette: this.methodMenuPalette(method.type),
       layout: 'field',
       disabled: () => this.isFormSavePending(),
-      ariaLabel: 'Open contact method type'
+      ariaLabel: 'contacts.methods.type.aria'
     };
   }
 
@@ -817,7 +817,7 @@ export class ContactsPopupComponent implements OnDestroy {
     this.activityInviteStore.openActivityInvitePopup({
       ownerId: activeUserId,
       ownerType: 'asset',
-      title: 'Create contact',
+      title: 'create.contact',
       onApply: async selectedCandidates => {
         await this.addContacts(selectedCandidates);
       }

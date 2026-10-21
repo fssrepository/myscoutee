@@ -1,18 +1,20 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import type { ShareTokenCreateRequest, ShareTokenResolvedItem } from '../../../contracts/content/share.interface';
-import { LocalShareTokensService } from '../../../local/source/services/content/share-tokens.service';
-import { HttpShareTokensService } from '../../../http/services/content/share-tokens.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ShareTokensService extends BaseRouteModeService {
-  private readonly localShareTokensService = inject(LocalShareTokensService);
-  private readonly httpShareTokensService = inject(HttpShareTokensService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localShareTokensService = this.transportAdapters.reference(LOCAL_ADAPTER.SHARE_TOKENS);
+  private readonly httpShareTokensService = this.transportAdapters.reference(HTTP_ADAPTER.SHARE_TOKENS);
 
-  private get shareTokensService(): LocalShareTokensService | HttpShareTokensService {
+  private get shareTokensService(): AdapterInstance<typeof LOCAL_ADAPTER.SHARE_TOKENS> | AdapterInstance<typeof HTTP_ADAPTER.SHARE_TOKENS> {
     return this.resolveRouteService('/share-tokens', this.localShareTokensService, this.httpShareTokensService);
   }
 

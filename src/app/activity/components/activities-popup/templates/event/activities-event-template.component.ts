@@ -406,12 +406,12 @@ export class ActivitiesEventsController {
 
   public activityServiceChatActionLabel(row: InfoCardData): string {
     if (this.isActivityRowAdmin(row)) {
-      return 'Notify Participants';
+      return this.host.i18nService.translate('notify.participants');
     }
     if (this.isActivityInvitationRow(row)) {
-      return 'Ask Organizer';
+      return this.host.i18nService.translate('ask.organizer');
     }
-    return 'Ask Organizer';
+    return this.host.i18nService.translate('ask.organizer');
   }
 
   private isActivityInvitationRow(row: InfoCardData): boolean {
@@ -522,9 +522,9 @@ export class ActivitiesEventsController {
       loading: true,
       readOnlySummary,
       title: readOnlySummary ? 'event.checkout.payment.summary' : 'event.checkout.continue.booking',
-      confirmLabel: 'Join',
+      confirmLabel: 'join.resource',
       busyConfirmLabel: 'Joining...',
-      failureMessage: readOnlySummary ? 'Unable to open payment summary.' : 'Unable to continue booking.',
+      failureMessage: readOnlySummary ? 'event.payment.summary.open.error' : 'event.booking.continue.error',
       onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.submitActivityCheckoutContinuation(row, selection)
     });
     const loadingDialogId = loadingDialog?.id ?? null;
@@ -535,7 +535,7 @@ export class ActivitiesEventsController {
     if (!record) {
       this.eventCheckoutDialogStore.close();
       this.dialogStore.openInfo('This checkout can no longer be restored.', {
-        title: 'Basket unavailable',
+        title: 'checkout.basket.unavailable.title',
         confirmTone: 'neutral'
       });
       this.cdr.markForCheck();
@@ -557,9 +557,9 @@ export class ActivitiesEventsController {
       pendingReason,
       title: readOnlySummary ? 'event.checkout.payment.summary' : 'event.checkout.continue.booking',
       subtitle: record.timeframe,
-      confirmLabel: 'Join',
+      confirmLabel: 'join.resource',
       busyConfirmLabel: 'Joining...',
-      failureMessage: readOnlySummary ? 'Unable to open payment summary.' : 'Unable to continue booking.',
+      failureMessage: readOnlySummary ? 'event.payment.summary.open.error' : 'event.booking.continue.error',
       onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.submitActivityCheckoutContinuation(row, selection)
     });
   }
@@ -943,10 +943,10 @@ export class ActivitiesEventsController {
       userId: activeUserId,
       record: this.buildInvitationCheckoutLoadingRecord(row, activeUserId, relatedSource),
       loading: true,
-      title: 'Accept invitation?',
-      confirmLabel: 'Accept',
-      busyConfirmLabel: 'Accepting...',
-      failureMessage: 'Unable to accept invitation.',
+      title: 'confirmation.accept.invitation',
+      confirmLabel: 'accept',
+      busyConfirmLabel: 'accepting',
+      failureMessage: 'event.invitation.accept.error',
       onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
     });
     const loadingDialogId = loadingDialog?.id ?? null;
@@ -972,24 +972,24 @@ export class ActivitiesEventsController {
         record,
         preloadedCheckoutBasket: invitationContext?.checkoutBasket ?? null,
         requiresApprovalBeforePayment: requiresAdminApproval,
-        title: 'Accept invitation?',
+        title: 'confirmation.accept.invitation',
         subtitle: record.timeframe,
-        confirmLabel: 'Accept',
-        busyConfirmLabel: 'Accepting...',
-        failureMessage: 'Unable to accept invitation.',
+        confirmLabel: 'accept',
+        busyConfirmLabel: 'accepting',
+        failureMessage: 'event.invitation.accept.error',
         onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection, approvalContext)
       });
       return;
     }
     this.eventCheckoutDialogStore.close();
     this.dialogStore.open({
-      title: 'Accept invitation?',
+      title: 'confirmation.accept.invitation',
       message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Accept',
-      busyConfirmLabel: 'Accepting...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'accept',
+      busyConfirmLabel: 'accepting',
       confirmTone: 'accent',
-      failureMessage: 'Unable to accept invitation.',
+      failureMessage: 'event.invitation.accept.error',
       onConfirm: () => this.confirmActivityInvitationApproval(row, null, approvalContext)
     });
   }
@@ -1085,14 +1085,14 @@ export class ActivitiesEventsController {
   public runActivityItemRestoreAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Restore event?',
+      title: 'confirmation.restore.event',
       message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Restore',
-      busyConfirmLabel: 'Restoring...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'restore',
+      busyConfirmLabel: 'restoring',
       confirmTone: 'accent',
       confirmPalette: this.confirmationPaletteForCardAction(action),
-      failureMessage: 'Unable to restore event.',
+      failureMessage: 'event.restore.error',
       onConfirm: () => this.restoreActivityRow(row)
     });
   }
@@ -1102,7 +1102,7 @@ export class ActivitiesEventsController {
     this.dialogStore.open({
       title: organizer ? 'event.cancel.confirm.title' : 'event.cancel.booking.confirm.title',
       message: row.title,
-      cancelLabel: 'Back',
+      cancelLabel: 'back',
       confirmLabel: organizer ? 'cancel.event' : 'cancel.booking.refund',
       busyConfirmLabel: 'event.cancel.busy',
       confirmTone: 'danger',
@@ -1129,7 +1129,7 @@ export class ActivitiesEventsController {
     this.dialogStore.open({
       title: this.activitySecondaryConfirmTitle(row, isRejectInvitation),
       message: row.title,
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: this.activitySecondaryConfirmActionLabel(row, isRejectInvitation),
       busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row, isRejectInvitation),
       confirmTone: 'danger',
@@ -1144,12 +1144,12 @@ export class ActivitiesEventsController {
     this.dialogStore.open({
       title: 'event.editor.publish.question',
       message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Publish',
-      busyConfirmLabel: 'Publishing...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'publish',
+      busyConfirmLabel: 'publishing',
       confirmTone: 'accent',
       confirmPalette: this.confirmationPaletteForCardAction(action),
-      failureMessage: 'Unable to publish event.',
+      failureMessage: 'event.editor.publish.failure',
       onConfirm: () => this.confirmActivityPublish(row)
     });
   }
@@ -1159,12 +1159,12 @@ export class ActivitiesEventsController {
     this.dialogStore.open({
       title: 'event.editor.unpublish.question',
       message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Unpublish',
-      busyConfirmLabel: 'Unpublishing...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'unpublish',
+      busyConfirmLabel: 'unpublishing',
       confirmTone: 'neutral',
       confirmPalette: this.confirmationPaletteForCardAction(action),
-      failureMessage: 'Unable to unpublish event.',
+      failureMessage: 'event.editor.unpublish.failure',
       onConfirm: () => this.confirmActivityUnpublish(row)
     });
   }
@@ -1172,14 +1172,14 @@ export class ActivitiesEventsController {
   public runActivityItemTakeOverAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Take over event?',
+      title: 'event.takeover.confirm.title',
       message: row.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Take Over',
-      busyConfirmLabel: 'Taking over...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'take.over',
+      busyConfirmLabel: 'taking.over',
       confirmTone: 'accent',
       confirmPalette: this.confirmationPaletteForCardAction(action),
-      failureMessage: 'Unable to take over event.',
+      failureMessage: 'event.takeover.error',
       onConfirm: () => this.confirmActivityTakeOver(row)
     });
   }
@@ -1297,32 +1297,32 @@ export class ActivitiesEventsController {
 
   private activitySecondaryConfirmTitle(row: InfoCardData, isRejectInvitation = false): string {
     if (isRejectInvitation) {
-      return 'Reject invitation?';
+      return this.host.i18nService.translate('confirmation.reject.invitation');
     }
     if (!this.isActivityRowAdmin(row)) {
-      return 'Leave event?';
+      return this.host.i18nService.translate('confirmation.leave.event');
     }
     return 'Delete event?';
   }
 
   private activitySecondaryConfirmActionLabel(row: InfoCardData, isRejectInvitation = false): string {
     if (isRejectInvitation) {
-      return 'Reject Invitation';
+      return this.host.i18nService.translate('reject.invitation');
     }
     if (!this.isActivityRowAdmin(row)) {
-      return 'Leave';
+      return this.host.i18nService.translate('leave.resource');
     }
-    return 'Delete';
+    return this.host.i18nService.translate('delete');
   }
 
   private activitySecondaryConfirmBusyLabel(row: InfoCardData, isRejectInvitation = false): string {
     if (isRejectInvitation) {
-      return 'Rejecting...';
+      return this.host.i18nService.translate('request.reject.busy');
     }
     if (!this.isActivityRowAdmin(row)) {
       return 'Leaving...';
     }
-    return 'Deleting...';
+    return this.host.i18nService.translate('delete.busy');
   }
 
   private activitySecondaryConfirmFailureMessage(row: InfoCardData, isRejectInvitation = false): string {
@@ -1330,7 +1330,7 @@ export class ActivitiesEventsController {
       return 'Unable to reject invitation.';
     }
     if (!this.isActivityRowAdmin(row)) {
-      return 'Unable to leave event.';
+      return this.host.i18nService.translate('event.leave.error');
     }
     return 'Unable to delete event.';
   }

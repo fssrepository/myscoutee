@@ -29,7 +29,7 @@
           } @else if (explore.cards.length === 0 && !explore.loading) {
             <section class="asset-explore-empty-state">
               <mat-icon>travel_explore</mat-icon>
-              <span>No visible assets match this date range and category yet.</span>
+              <span>{{ 'asset.explore.range.empty.description' | i18n }}</span>
             </section>
           } @else {
             <app-smart-list
@@ -49,7 +49,7 @@
         <app-menu
           data-guide-field="borrow-basket" class="asset-explore-basket-menu"
           kind="fab"
-          title="Borrow Basket"
+          [attr.title]="'asset.borrow.basket.aria' | i18n"
           [trigger]="borrowDraftMenuTrigger()"
           [items]="borrowDraftMenuItems()"
           [panelAlign]="'end'"

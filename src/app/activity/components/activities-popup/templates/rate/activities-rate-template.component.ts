@@ -1,3 +1,4 @@
+import { I18nService } from '../../../../../shared/core/base/services/localization/i18n.service';
 import {
   type RatingSnapshot,
   type AppMenuItemSelectEvent,
@@ -23,7 +24,7 @@ import {
   OnChanges,
   Output,
   SimpleChanges,
-  ViewEncapsulation
+  ViewEncapsulation, inject
 } from '@angular/core';
 
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/common/activity.interface';
@@ -79,6 +80,8 @@ export interface ActivitiesRateTemplateContext {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesRateTemplateComponent implements OnChanges {
+  private readonly i18n = inject(I18nService);
+
 
   @Input() row: ImageCardData | null = null;
   @Input() groupLabel: string | null = null;
@@ -242,7 +245,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 
   private activityRateBadgeLabel(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): string {
     const ownLabel = this.activityOwnRatingLabel(row, context, item);
-    return ownLabel ? ownLabel : 'Rate';
+    return ownLabel ? ownLabel : this.i18n.translate('profile.impressions.rate.label');
   }
 
   private activityRateBadgeAriaLabel(row: ImageCardData, context: ActivitiesRateTemplateContext, item: ActivityRateDTO | null): string {

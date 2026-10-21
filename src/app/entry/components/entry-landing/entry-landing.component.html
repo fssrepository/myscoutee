@@ -62,11 +62,11 @@
           ></app-menu>
         </div>
 
-        <aside class="entry-hero-how" id="how" aria-label="How it works">
+        <aside class="entry-hero-how" id="how" [attr.aria-label]="'landing.guide.title' | i18n">
           <div
             class="entry-how-region"
             role="region"
-            aria-label="How it works carousel"
+            [attr.aria-label]="'landing.guide.carousel.aria' | i18n"
             aria-roledescription="carousel"
             >
             <app-smart-list
@@ -77,8 +77,9 @@
               [itemTemplate]="entryHowCardTemplate"
             ></app-smart-list>
 
-            <ng-template #entryHowCardTemplate let-slide>
-              <app-warp-image-card [card]="slide"></app-warp-image-card>
+            <ng-template #entryHowCardTemplate let-slide let-index="index">
+              <app-warp-image-card [card]="slide" [headingLevel]="2"
+                [imagePriority]="index === 0 ? 'high' : 'auto'"></app-warp-image-card>
             </ng-template>
           </div>
         </aside>
@@ -95,7 +96,7 @@
         @if (articlesLoading || featuredIdeaCards().length > 0) {
           <div
             role="region"
-            aria-label="Featured article posts"
+            [attr.aria-label]="'landing.articles.carousel.aria' | i18n"
             aria-roledescription="carousel"
             >
             <app-smart-list
@@ -110,6 +111,7 @@
               <app-info-card
                 class="entry-idea-info-card"
                 [card]="entryFeaturedIdeaInfoCard(card)"
+                [headingLevel]="2"
                 (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
               ></app-info-card>
             </ng-template>
@@ -124,7 +126,7 @@
       </section>
     }
 
-    <footer class="entry-footer" aria-label="Site footer">
+    <footer class="entry-footer" [attr.aria-label]="'landing.footer.aria' | i18n">
       <div class="entry-footer-topline"></div>
       <div class="entry-footer-grid">
         <section class="entry-footer-brand">
@@ -137,7 +139,7 @@
         </section>
 
         <section class="entry-footer-links">
-          <h3>Explore</h3>
+          <h2>{{ 'explore' | i18n }}</h2>
           <button
             type="button"
             class="entry-footer-text-action entry-footer-about-action"
@@ -167,17 +169,17 @@
             [class.entry-footer-link-disabled]="networkUnavailable"
             [attr.aria-disabled]="networkUnavailable ? 'true' : null"
             (click)="requestConsent($event)"
-            >Data privacy</a>
+            >{{ 'privacy.data' | i18n }}</a>
           <a
             href="/terms"
             [class.entry-footer-link-disabled]="networkUnavailable"
             [attr.aria-disabled]="networkUnavailable ? 'true' : null"
             (click)="requestTerms($event)"
-            >Terms</a>
+            >{{ 'terms' | i18n }}</a>
         </section>
 
         <section class="entry-footer-contact">
-          <h3>{{ 'footer.connect' | i18n }}</h3>
+          <h2>{{ 'footer.connect' | i18n }}</h2>
           @if (deploymentSocialLinks().length > 0) {
             <div class="entry-footer-socials">
               @for (

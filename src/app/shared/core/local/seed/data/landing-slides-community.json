@@ -9,7 +9,7 @@
     "tone": "blue",
     "sliceX": "0%",
     "sliceY": "0%",
-    "imageUrl": "assets/logo/community_cards_no_edges.png"
+    "imageUrl": "assets/logo/community_cards_no_edges.webp"
   },
   {
     "id": "community-case",
@@ -21,7 +21,7 @@
     "tone": "purple",
     "sliceX": "100%",
     "sliceY": "0%",
-    "imageUrl": "assets/logo/community_cards_no_edges.png"
+    "imageUrl": "assets/logo/community_cards_no_edges.webp"
   },
   {
     "id": "community-decide",
@@ -33,7 +33,7 @@
     "tone": "pink",
     "sliceX": "0%",
     "sliceY": "100%",
-    "imageUrl": "assets/logo/community_cards_no_edges.png"
+    "imageUrl": "assets/logo/community_cards_no_edges.webp"
   },
   {
     "id": "community-visit",
@@ -45,6 +45,6 @@
     "tone": "orange",
     "sliceX": "100%",
     "sliceY": "100%",
-    "imageUrl": "assets/logo/community_cards_no_edges.png"
+    "imageUrl": "assets/logo/community_cards_no_edges.webp"
   }
 ]

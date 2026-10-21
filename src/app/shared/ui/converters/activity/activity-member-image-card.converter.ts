@@ -4,6 +4,7 @@ import { type AppMenuPalette, type ImageCardData, type UiListConverter } from '@
 
 export interface ActivityMemberImageCardConverterOptions {
   ownerType?: ActivityMemberOwnerType | null;
+  translate?: (key: string) => string;
   menuOpen?: boolean;
   checkedInLabel?: string;
   voterLabel?: string;
@@ -19,7 +20,7 @@ export class ActivityMemberImageCardConverter {
     const voterLabel = options.voterLabel || 'Voter';
     const voter = options.ownerType === 'community' && dto.status === 'accepted' && dto.votingEligible === true;
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
-    const statusLabel = this.statusLabel(dto, options.ownerType);
+    const statusLabel = this.statusLabel(dto, options);
     const checkedIn = this.isCheckedIn(dto);
     const checkedInLabel = options.checkedInLabel?.trim() || 'Checked in';
     const checkedInAt = `${dto.checkedInAtIso ?? ''}`.trim();
@@ -40,12 +41,12 @@ export class ActivityMemberImageCardConverter {
       : null;
     const statusChipLabel = paymentPending ? paymentPendingLabel : checkedIn
       ? checkedInDetail || checkedInLabel
-      : (dto.status === 'deleted' ? this.roleLabel(dto) : statusLabel);
+      : (dto.status === 'deleted' ? this.roleLabel(dto, options) : statusLabel);
 
     return {
       id: dto.id,
       title: age > 0 ? `${dto.name}, ${age}` : dto.name,
-      subtitle: `${this.roleLabel(dto)} · ${dto.city}`,
+      subtitle: `${this.roleLabel(dto, options)} · ${dto.city}`,
       detail: checkedInDetail || pendingDetail,
       imageUrl: dto.avatarUrl,
       aspectRatio: '3 / 4',
@@ -151,32 +152,32 @@ export class ActivityMemberImageCardConverter {
     return 'outgoing_mail';
   }
 
-  private static statusLabel(dto: ActivityMemberDTO, ownerType?: ActivityMemberOwnerType | null): string {
+  private static statusLabel(dto: ActivityMemberDTO, options: ActivityMemberImageCardConverterOptions): string {
     if (dto.status === 'disqualified') {
-      return 'Disqualified';
+      return options.translate?.('members.status.disqualified') ?? 'Disqualified';
     }
     if (dto.status === 'deleted') {
-      return 'Deleted';
+      return options.translate?.('deleted') ?? 'Deleted';
     }
     if (dto.status === 'accepted') {
-      return this.roleLabel(dto);
+      return this.roleLabel(dto, options);
     }
     if (dto.requestKind === 'payment') {
-      return 'Waiting for payment';
+      return options.translate?.('event.member.payment.pending') ?? 'Waiting for payment';
     }
     if (this.isJoinRequest(dto)) {
       if (dto.requestKind === 'waitlist') {
         return 'waiting.list';
       }
-      if (ownerType === 'asset') {
-        return 'Waiting For Owner Approval';
+      if (options.ownerType === 'asset') {
+        return options.translate?.('asset.member.approval.pending') ?? 'Waiting For Owner Approval';
       }
-      return 'Waiting For Admin Approval';
+      return options.translate?.('event.member.approval.pending') ?? 'Waiting For Admin Approval';
     }
     if (dto.pendingSource === 'admin') {
-      return 'Invitation Pending';
+      return options.translate?.('invitation.pending') ?? 'Invitation Pending';
     }
-    return 'Waiting For Admin Approval';
+    return options.translate?.('event.member.approval.pending') ?? 'Waiting For Admin Approval';
   }
 
   private static statusPalette(dto: ActivityMemberDTO): AppMenuPalette {
@@ -198,14 +199,14 @@ export class ActivityMemberImageCardConverter {
     return 'orange';
   }
 
-  private static roleLabel(dto: ActivityMemberDTO): string {
+  private static roleLabel(dto: ActivityMemberDTO, options: ActivityMemberImageCardConverterOptions): string {
     if (dto.role === 'Admin') {
-      return 'Admin';
+      return options.translate?.('admin.role.label') ?? 'Admin';
     }
     if (dto.role === 'Manager') {
-      return 'Manager';
+      return options.translate?.('members.role.manager') ?? 'Manager';
     }
-    return 'Member';
+    return options.translate?.('member') ?? 'Member';
   }
 
   private static isJoinRequest(dto: ActivityMemberDTO): boolean {

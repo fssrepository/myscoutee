@@ -333,7 +333,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly pollCoordinator = inject(UiPollCoordinator);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly profileEditorLoadingModel: PopupModel = {
-    title: 'Profile', ariaLabel: 'Profile', size: 'wide', height: 'full', bodyLayout: 'fill',
+    title: 'profile', ariaLabel: 'profile', size: 'wide', height: 'full', bodyLayout: 'fill',
     onClose: () => this.profileStore.closeProfileEditor()
   };
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -460,15 +460,15 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly showProfileSaveRing = computed(() => this.isAvatarRingLoading() || this.hasProfileSaveError());
   protected readonly profileSaveAvatarTitle = computed(() => {
     if (this.isLoggingOut()) {
-      return 'Logging out';
+      return this.i18n.translate('session.logout.loading');
     }
     if (this.isProfileSaving()) {
-      return 'Saving profile';
+      return this.i18n.translate('saving.profile');
     }
     if (this.hasProfileSaveError()) {
       return this.profileSaveLoadState().status === 'timeout'
-        ? 'Profile save timed out'
-        : 'Profile was not able to save';
+        ? this.i18n.translate('profile.save.timed.out')
+        : this.i18n.translate('profile.save.failure.title');
     }
     return null;
   });
@@ -503,18 +503,18 @@ export class SideMenuComponent implements OnDestroy {
   );
   protected readonly avatarAriaLabel = computed(() => {
     if (this.canToggleAvatarMenu() && this.isProfileSaving()) {
-      return 'Saving profile';
+      return this.i18n.translate('saving.profile');
     }
     if (this.canToggleAvatarMenu() && this.hasProfileSaveError()) {
-      return 'Profile save failed';
+      return this.i18n.translate('profile.save.failed.title');
     }
     if (this.canToggleAvatarMenu()) {
-      return this.isMenuOpen() ? 'Close user menu' : 'Open user menu';
+      return this.isMenuOpen() ? this.i18n.translate('menu.user.close.aria') : this.i18n.translate('menu.user.open.aria');
     }
     if (this.avatarLoadError()) {
-      return 'Profile failed to load';
+      return this.i18n.translate('game.profile.load.failed.title');
     }
-    return 'Loading profile';
+    return this.i18n.translate('loading.profile');
   });
   protected readonly avatarMenuItems = computed<readonly AppMenuItem<NavigatorAvatarMenuItemId, NavigatorAvatarMenuContext>[]>(() => {
     const user = this.userProfileStore.activeUserProfile();
@@ -651,59 +651,59 @@ export class SideMenuComponent implements OnDestroy {
     }
     items.push({
       id: 'help',
-      label: 'Help',
+      label: 'help',
       icon: 'help_outline',
       counter: this.helpCenterService.activeVersionLabel(),
       disabled: !this.helpCenterService.hasActiveRevision(),
-      ariaLabel: 'Open help'
+      ariaLabel: 'open.help'
     });
     if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'feedback',
-        label: 'Send Feedback',
+        label: 'feedback.send.action',
         icon: 'feedback',
-        ariaLabel: 'Send feedback'
+        ariaLabel: 'send.feedback'
       });
     }
     items.push(
       {
         id: 'report-bugs',
-        label: 'Report Bugs',
+        label: 'report.bugs',
         icon: 'bug_report',
         href: 'https://github.com/fssrepository/myscoutee/issues',
         target: '_blank',
         rel: 'noopener noreferrer',
-        ariaLabel: 'Report bugs'
+        ariaLabel: 'bug.report.action'
       },
       {
         id: 'privacy',
-        label: 'Privacy',
+        label: 'privacy',
         icon: 'policy',
         counter: this.privacyPolicy.activeVersionLabel(),
-        ariaLabel: 'Open privacy'
+        ariaLabel: 'open.privacy'
       },
       {
         id: 'terms',
-        label: 'Terms',
+        label: 'terms',
         icon: 'rule',
         counter: this.termsPolicy.activeVersionLabel(),
-        ariaLabel: 'Open terms'
+        ariaLabel: 'open.terms'
       }
     );
     if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'delete-account',
-        label: 'Delete account',
+        label: 'delete.account',
         icon: 'delete_forever',
         palette: 'danger',
-        ariaLabel: 'Delete account'
+        ariaLabel: 'delete.account'
       });
     }
     items.push({
       id: 'logout',
-      label: 'Logout',
+      label: 'logout',
       icon: 'logout',
-      ariaLabel: 'Logout'
+      ariaLabel: 'logout'
     });
     return items;
   });
@@ -719,7 +719,7 @@ export class SideMenuComponent implements OnDestroy {
     {
       items.push({
         id: 'notifications',
-        label: 'Notifications',
+        label: 'notifications',
         disabled: this.notificationCenterStore.permissionActionPending() || this.accountLocationMissing(),
         progress: { state: this.notificationCenterStore.permissionBusy() ? 'loading' : null },
         icon: this.connectionOffline() ? 'cloud_off' : this.accountLocationMissing() || notificationsMuted ? 'notifications_off' : 'notifications',
@@ -745,23 +745,23 @@ export class SideMenuComponent implements OnDestroy {
       items.push(
         {
           id: 'explanations',
-          label: 'Explanations',
+          label: 'explanations',
           icon: 'tips_and_updates',
           kind: 'toggle',
           checked: this.explanationGuide.enabled(),
-          ariaLabel: this.explanationGuide.enabled() ? 'Turn explanations off' : 'Turn explanations on'
+          ariaLabel: this.explanationGuide.enabled() ? 'turn.explanations.off' : 'turn.explanations.on'
         }
       );
     }
     items.push({
       id: 'settings',
-      label: 'Settings',
+      label: 'settings',
       icon: 'settings',
       ariaLabel: this.isOperatorMode()
-        ? 'Open operator settings menu'
+        ? 'operator.settings.menu.aria'
         : this.isAdminMode()
-          ? 'Open admin settings menu'
-          : 'Open settings menu',
+          ? 'open.admin.settings.menu'
+          : 'open.settings.menu',
       items: this.settingsMenuItems()
     });
     return {
@@ -842,27 +842,27 @@ export class SideMenuComponent implements OnDestroy {
       nodes: [
         {
           id: 'impressions',
-          label: 'Impressions',
+          label: 'impressions',
           icon: 'psychology',
           palette: 'violet',
           items: [
             {
               id: 'impressions',
               span: 4,
-              ariaLabel: 'Open impressions',
+              ariaLabel: 'open.impressions',
               disabled: primaryDisabled,
               segments: [
                 {
                   id: 'host',
                   label: user.hostTier.replace(' Host', ''),
-                  description: 'Host',
+                  description: 'host',
                   icon: hostTierPresentation.icon,
                   palette: hostTierPresentation.menuPalette
                 },
                 {
                   id: 'member',
                   label: user.memberImpressionTitle.replace(' Attendee', ''),
-                  description: 'Attendee',
+                  description: 'attendee',
                   icon: traitPresentation.icon,
                   palette: traitPresentation.menuPalette
                 }
@@ -874,14 +874,14 @@ export class SideMenuComponent implements OnDestroy {
               icon: 'rate_review',
               palette: 'purple',
               guideId: 'navigation-feedback',
-              ariaLabel: 'Open feedback',
+              ariaLabel: 'open.feedback',
               disabled: primaryDisabled
             }
           ]
         },
         {
           id: 'activities',
-          label: 'Activities',
+          label: 'activities',
           icon: 'local_activity',
           palette: 'blue',
           items: [
@@ -894,34 +894,34 @@ export class SideMenuComponent implements OnDestroy {
               disabled: primaryDisabled
             }] : [{
               id: 'rates' as const,
-              label: 'Rates',
+              label: 'rates',
               icon: 'star',
               palette: 'gold' as const,
-              ariaLabel: 'Open rates',
+              ariaLabel: 'open.rates',
               disabled: primaryDisabled
             }]),
             {
               id: 'chat',
-              label: 'Chats',
+              label: 'chats',
               icon: 'chat',
               palette: 'blue',
-              ariaLabel: 'Open chat',
+              ariaLabel: 'open.chat',
               disabled: this.serverActionsUnavailable()
             },
             {
               id: 'invitations',
-              label: 'Invitations',
+              label: 'invitations',
               icon: 'mail',
               palette: 'purple',
-              ariaLabel: 'Open invitations',
+              ariaLabel: 'open.invitations',
               disabled: primaryDisabled
             },
             {
               id: 'events',
-              label: 'Events',
+              label: 'events',
               icon: 'event',
               palette: 'blue',
-              ariaLabel: 'Open events',
+              ariaLabel: 'open.events',
               disabled: primaryDisabled
             },
             {
@@ -937,7 +937,7 @@ export class SideMenuComponent implements OnDestroy {
         },
         {
           id: 'assets',
-          label: 'My Assets',
+          label: 'my.assets',
           icon: 'inventory_2',
           palette: 'brown',
           items: [
@@ -977,10 +977,10 @@ export class SideMenuComponent implements OnDestroy {
               id: 'contacts',
               counter: user.activities.contactRequestsPending || undefined,
               counterTone: 'alert',
-              label: 'Contacts',
+              label: 'contacts',
               icon: 'contacts',
               palette: 'teal',
-              ariaLabel: 'Contacts',
+              ariaLabel: 'contacts',
               disabled: primaryDisabled
             }
           ]
@@ -1001,7 +1001,7 @@ export class SideMenuComponent implements OnDestroy {
       nodes: [
         {
           id: 'admin-moderation',
-          label: 'Moderation & support',
+          label: 'moderation.and.support',
           icon: 'admin_panel_settings',
           palette: 'orange',
           items: [
@@ -1010,33 +1010,33 @@ export class SideMenuComponent implements OnDestroy {
             },
             {
               id: 'adminReports',
-              label: 'Reports',
+              label: 'reports',
               icon: 'report',
               palette: 'orange',
-              ariaLabel: 'Open reports',
+              ariaLabel: 'open.reports',
               disabled
             },
             {
               id: 'adminFeedback',
-              label: 'Feedback',
+              label: 'feedback',
               icon: 'feedback',
               palette: 'purple',
-              ariaLabel: 'Open application feedback',
+              ariaLabel: 'open.application.feedback',
               disabled
             },
             {
               id: 'adminChat',
-              label: 'Chats',
+              label: 'chats',
               icon: 'chat',
               palette: 'blue',
-              ariaLabel: 'Open admin chats',
+              ariaLabel: 'open.admin.chats',
               disabled
             }
           ]
         },
         {
           id: 'admin-configuration',
-          label: 'Configuration',
+          label: 'configuration',
           icon: 'tune',
           palette: 'teal',
           items: [
@@ -1045,7 +1045,7 @@ export class SideMenuComponent implements OnDestroy {
               label: 'jobs',
               icon: 'pending_actions',
               palette: 'blue',
-              ariaLabel: 'Open jobs',
+              ariaLabel: 'open.jobs',
               disabled
             },
             {
@@ -1053,23 +1053,23 @@ export class SideMenuComponent implements OnDestroy {
               label: 'params',
               icon: 'tune',
               palette: 'purple',
-              ariaLabel: 'Open parameters',
+              ariaLabel: 'open.parameters',
               disabled
             },
             {
               id: 'adminContent',
-              label: 'Content',
+              label: 'content',
               icon: 'edit_note',
               palette: 'green',
-              ariaLabel: 'Open content editor',
+              ariaLabel: 'open.content.editor',
               disabled
             },
             {
               id: 'adminArticle',
-              label: 'Article',
+              label: 'article',
               icon: 'tips_and_updates',
               palette: 'gold',
-              ariaLabel: 'Open article editor',
+              ariaLabel: 'open.article.editor',
               disabled
             }
           ]
@@ -1085,7 +1085,7 @@ export class SideMenuComponent implements OnDestroy {
               label: 'stats',
               icon: 'query_stats',
               palette: 'green',
-              ariaLabel: 'Open stats',
+              ariaLabel: 'open.stats',
               disabled
             },
             {
@@ -1093,15 +1093,15 @@ export class SideMenuComponent implements OnDestroy {
               label: 'metrics',
               icon: 'monitoring',
               palette: 'cyan',
-              ariaLabel: 'Open monitoring metrics',
+              ariaLabel: 'open.monitoring.metrics',
               disabled
             },
             {
               id: 'adminGraph',
-              label: 'Graph',
+              label: 'graph',
               icon: 'hub',
               palette: 'violet',
-              ariaLabel: 'Open affinity graph',
+              ariaLabel: 'open.affinity.graph',
               disabled
             }
           ]
@@ -1721,7 +1721,7 @@ export class SideMenuComponent implements OnDestroy {
       admin,
       showEdit: !this.serverActionsUnavailable(),
       editDisabled: admin ? this.serverActionsUnavailable() : this.serverActionsUnavailable() || this.isBlockedUser(user),
-      editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
+      editAriaLabel: admin ? 'open.admin.profile' : 'open.profile.editor',
       showRing: !admin && (this.showProfileSaveRing() || this.groupWorkspaces.context.switching()),
       ringState: this.hasProfileSaveError() ? 'error' : 'loading',
       ringTitle: admin ? null : this.profileSaveAvatarTitle()
@@ -2030,18 +2030,18 @@ export class SideMenuComponent implements OnDestroy {
     }
     this.reactivationPromptUserId = userId;
     this.dialogStore.open({
-      title: 'Reactivate account?',
+      title: 'reactivate.account.question',
       message: this.i18n.translateParams(
         'account.reactivation.message',
         { productName: this.deploymentBranding().productName }
       ),
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: 'Reactivate',
       busyConfirmLabel: 'Reactivating...',
       confirmTone: 'accent',
       allowBackdropClose: false,
       allowEscapeClose: false,
-      failureMessage: 'Unable to reactivate account.',
+      failureMessage: 'account.reactivate.error',
       onCancel: async () => {
         this.reactivationPromptUserId = '';
         this.profileStore.setDeletedAccountReactivationPending(false);
@@ -2212,11 +2212,11 @@ export class SideMenuComponent implements OnDestroy {
   private openDeleteAccountConfirm(): void {
     const activeUserName = this.userProfileStore.getUserProfile(this.groupWorkspaces.context.accountId(this.userProfileStore.activeUserId()))?.name?.trim() || 'this account';
     this.dialogStore.open({
-      title: 'Delete account?',
+      title: 'delete.account.question',
       message: activeUserName,
       warningMessage: 'You can reactivate within 30 days. After that, the account is permanently purged.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Delete',
+      cancelLabel: 'cancel',
+      confirmLabel: 'delete',
       confirmTone: 'danger',
       onConfirm: async () => {
         this.closeSideMenu();
@@ -2240,7 +2240,7 @@ export class SideMenuComponent implements OnDestroy {
             this.dialogStore.openInfo(
               result.message ?? 'Unable to delete account.',
               {
-                title: 'Delete account',
+                title: 'delete.account',
                 confirmLabel: 'OK',
                 confirmTone: 'danger'
               }
@@ -2259,8 +2259,8 @@ export class SideMenuComponent implements OnDestroy {
     this.dialogStore.open({
       title: 'logout.question',
       message: activeUserName,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Logout',
+      cancelLabel: 'cancel',
+      confirmLabel: 'logout',
       confirmTone: 'accent',
       onConfirm: async () => {
         this.closeSideMenu();
@@ -2276,7 +2276,7 @@ export class SideMenuComponent implements OnDestroy {
               this.dialogStore.openInfo(
                 result.message ?? 'Unable to log out.',
                 {
-                  title: 'Logout',
+                  title: 'logout',
                   confirmLabel: 'OK',
                   confirmTone: 'neutral'
                 }
@@ -2298,7 +2298,7 @@ export class SideMenuComponent implements OnDestroy {
             this.dialogStore.openInfo(
               result.message ?? 'Unable to log out.',
               {
-                title: 'Logout',
+                title: 'logout',
                 confirmLabel: 'OK',
                 confirmTone: 'neutral'
               }
@@ -2723,7 +2723,7 @@ export class SideMenuComponent implements OnDestroy {
       .catch(() => null);
     if (!chat) {
       this.dialogStore.openInfo('The support chat could not be found. Please contact MyScoutee support.', {
-        title: 'Unable to open support chat'
+        title: 'support.chat.open.error.title'
       });
       return;
     }

@@ -196,10 +196,10 @@ export class AssetAvailabilityPopupComponent {
     range: {
       layout: 'compact',
       start: {
-        placeholder: 'Start date'
+        placeholder: 'start.date'
       },
       end: {
-        placeholder: 'End date'
+        placeholder: 'end.date'
       }
     }
   };
@@ -271,9 +271,9 @@ export class AssetAvailabilityPopupComponent {
     initialPageSize: 40,
     defaultView: 'day',
     views: [
-      { key: 'month', label: 'Month', mode: 'month', pageSize: 42 },
-      { key: 'week', label: 'Week', mode: 'week', pageSize: 14 },
-      { key: 'day', label: 'Day', mode: 'list', pageSize: 20 }
+      { key: 'month', label: 'month', mode: 'month', pageSize: 42 },
+      { key: 'week', label: 'week', mode: 'week', pageSize: 14 },
+      { key: 'day', label: 'day', mode: 'list', pageSize: 20 }
     ],
     calendarVariant: query => query.view === 'week' || query.view === 'month' ? 'counter' : 'default',
     calendar: {
@@ -309,7 +309,7 @@ export class AssetAvailabilityPopupComponent {
     pageSize: 20,
     defaultView: 'day',
     views: [
-      { key: 'day', label: 'Day', mode: 'list', pageSize: 20 }
+      { key: 'day', label: 'day', mode: 'list', pageSize: 20 }
     ],
     emptyLabel: 'asset.requests.empty.day.label',
     emptyDescription: query => this.assetAvailabilityEmptyDescription(query),
@@ -363,7 +363,7 @@ export class AssetAvailabilityPopupComponent {
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',
-      closeAriaLabel: 'Close asset availability',
+      closeAriaLabel: 'asset.availability.close.aria',
       headerControls: this.availabilityHeaderControls(),
       toolbarControls: this.availabilityToolbarControls(),
       onClose: () => this.availabilityPopupStore.closeAvailabilityPopup(),
@@ -380,7 +380,7 @@ export class AssetAvailabilityPopupComponent {
       height: 'full',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      closeAriaLabel: 'Close day availability',
+      closeAriaLabel: 'asset.availability.day.close.aria',
       toolbarControls: this.dayListToolbarControls(),
       onClose: () => this.availabilityPopupStore.closeDayListPopup(),
       onMenuSelect: event => this.onPopupMenuSelect(event),
@@ -830,7 +830,7 @@ export class AssetAvailabilityPopupComponent {
       label: option?.label ?? 'View',
       icon: option?.icon ?? 'view_agenda',
       palette: this.viewPalette(view),
-      ariaLabel: 'Open availability view',
+      ariaLabel: 'open.availability.view',
       collapsible: true
     });
   }

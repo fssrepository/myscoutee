@@ -1,3 +1,5 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   UiLinkUtils,
   UiDateUtils,
@@ -139,7 +141,7 @@ type EventExploreMenuContext =
     AppMenuOutletComponent,
     InfoCardComponent,
     PopupComponent,
-    SmartListComponent
+    SmartListComponent, I18nPipe
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -147,6 +149,8 @@ type EventExploreMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventExplorePopupComponent implements OnDestroy {
+  private readonly i18n = inject(I18nService);
+
   protected readonly followingStore = inject(FollowingStore);
   private requestedFollowedOnly = false;
 
@@ -310,8 +314,8 @@ export class EventExplorePopupComponent implements OnDestroy {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'list',
-    emptyLabel: 'No visible events right now.',
-    emptyDescription: 'Try another filter or check back later.',
+    emptyLabel: 'event.explore.empty.title',
+    emptyDescription: 'event.explore.empty.description',
     headerProgress: {
       enabled: true,
       state: () => this.runtimeStore.isDataSourceAvailable() ? 'active' : 'inactive'
@@ -478,7 +482,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     return {
       title: this.eventExploreHeaderTitle(),
       ariaLabel: this.eventExploreHeaderTitle(),
-      closeAriaLabel: 'Close event explore',
+      closeAriaLabel: 'event.explore.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -556,7 +560,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     return {
       label: this.eventExploreOrderLabel(),
       icon: this.eventExploreOrderIcon(),
-      ariaLabel: 'Open event explore order',
+      ariaLabel: 'event.explore.order.aria',
       collapsible: true,
       palette: this.eventExploreOrderPalette(this.eventExploreOrder),
       layout: 'pill'
@@ -581,7 +585,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     return {
       label: this.eventExploreCurrentViewLabel(),
       icon: this.eventExploreCurrentViewIcon(),
-      ariaLabel: 'Open event explore view',
+      ariaLabel: 'event.explore.view.aria',
       collapsible: true,
       palette: this.eventExploreViewPalette(this.eventExploreView),
       layout: 'pill'
@@ -711,7 +715,7 @@ export class EventExplorePopupComponent implements OnDestroy {
   }
 
   protected eventExploreOrderLabel(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {
-    return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
+    return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? this.i18n.translate('upcoming');
   }
 
   protected eventExploreOrderIcon(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {
@@ -719,7 +723,7 @@ export class EventExplorePopupComponent implements OnDestroy {
   }
 
   protected eventExploreCurrentViewLabel(view: ContractTypes.EventExploreView = this.eventExploreView): string {
-    return this.eventExploreViewOptions.find(option => option.key === view)?.label ?? 'Day';
+    return this.eventExploreViewOptions.find(option => option.key === view)?.label ?? this.i18n.translate('day');
   }
 
   protected eventExploreCurrentViewIcon(view: ContractTypes.EventExploreView = this.eventExploreView): string {
@@ -757,7 +761,7 @@ export class EventExplorePopupComponent implements OnDestroy {
   }
 
   protected eventExploreHeaderTitle(): string {
-    return 'Event Explore';
+    return this.i18n.translate('event.explore');
   }
 
   protected openEventExploreMembers(
@@ -852,7 +856,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     }
     if (record.creatorUserId === activeUserId) {
       this.dialogStore.openInfo(`You already host ${record.title}.`, {
-        title: 'Already hosting',
+        title: 'event.join.hosting.title',
         confirmTone: 'neutral'
       });
       return;
@@ -879,7 +883,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     this.dialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: record.title,
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: this.eventExploreJoinConfirmLabel(record),
       busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
       confirmTone: 'accent',
@@ -1240,7 +1244,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     if (!record) {
       this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
       this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
-        title: 'Basket unavailable',
+        title: 'checkout.basket.unavailable.title',
         confirmTone: 'neutral'
       });
       this.cdr.markForCheck();
@@ -1269,7 +1273,7 @@ export class EventExplorePopupComponent implements OnDestroy {
     if (!record) {
       this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
       this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
-        title: 'Basket unavailable',
+        title: 'checkout.basket.unavailable.title',
         confirmTone: 'neutral'
       });
       this.cdr.markForCheck();
@@ -1319,7 +1323,7 @@ export class EventExplorePopupComponent implements OnDestroy {
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, sourceId);
     if (!record) {
       this.dialogStore.openInfo('This event can no longer be opened.', {
-        title: 'Event unavailable',
+        title: 'event.unavailable.title',
         confirmTone: 'neutral'
       });
       this.cdr.markForCheck();
@@ -1472,12 +1476,12 @@ export class EventExplorePopupComponent implements OnDestroy {
       title,
       message: draft.eventTitle,
       warningMessage: 'The basket item will be cancelled and removed from the visible checkout basket.',
-      cancelLabel: 'Back',
+      cancelLabel: 'back',
       confirmLabel,
       busyConfirmLabel: `${confirmLabel}...`,
       confirmTone: visual.palette === 'danger' ? 'danger' : 'accent',
       confirmPalette: visual.palette,
-      failureMessage: 'Unable to cancel this basket item.',
+      failureMessage: 'checkout.basket.item.cancel.error',
       onConfirm: async () => this.clearCheckoutDraft(draft)
     });
   }
@@ -2068,12 +2072,12 @@ export class EventExplorePopupComponent implements OnDestroy {
     options: { approvalGranted?: boolean } = {}
   ): string {
     if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
-      return 'Join waiting list?';
+      return this.i18n.translate('confirmation.join.waiting.list');
     }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
-      return 'Request to join?';
+      return this.i18n.translate('confirmation.request.to.join');
     }
-    return record.ticketing ? 'Continue booking?' : 'Request to join?';
+    return record.ticketing ? this.i18n.translate('confirmation.continue.booking') : this.i18n.translate('confirmation.request.to.join');
   }
 
   private eventExploreJoinConfirmLabel(
@@ -2081,12 +2085,12 @@ export class EventExplorePopupComponent implements OnDestroy {
     options: { approvalGranted?: boolean } = {}
   ): string {
     if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
-      return 'Join waiting list';
+      return this.i18n.translate('event.waitlist.join.action');
     }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
       return 'Send request';
     }
-    return record.ticketing ? 'Continue' : 'Send request';
+    return record.ticketing ? this.i18n.translate('continue') : 'Send request';
   }
 
   private eventExploreJoinBusyLabel(
@@ -2097,9 +2101,9 @@ export class EventExplorePopupComponent implements OnDestroy {
       return 'Joining waitlist...';
     }
     if (this.requiresApprovalBeforePayment(record) && options.approvalGranted !== true) {
-      return 'Sending request...';
+      return this.i18n.translate('request.send.busy');
     }
-    return record.ticketing ? 'Continuing...' : 'Sending request...';
+    return record.ticketing ? this.i18n.translate('continuing') : this.i18n.translate('request.send.busy');
   }
 
   private eventExploreJoinFailureMessage(

@@ -100,9 +100,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input() ideaCount = 0;
   @Input() supportedCountries: readonly SupportedCountryDto[] = [];
   @Input() authUnavailable = false;
-  @Input() authUnavailableLabel = 'Unavailable here';
+  @Input() authUnavailableLabel = 'entry.auth.unavailable';
   @Input() networkUnavailable = false;
-  @Input() networkUnavailableLabel = 'No network';
+  @Input() networkUnavailableLabel = 'network.offline';
 
   @Output() readonly modeSelected = new EventEmitter<GroupType>();
   @Output() readonly demoRequested = new EventEmitter<void>();
@@ -242,7 +242,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     pageSize: 8,
     initialPageSize: 8,
     initialPageCount: 1,
-    emptyLabel: 'No articles yet',
+    emptyLabel: 'landing.articles.empty.title',
     emptyDescription: 'landing.articles.empty.description',
     showStickyHeader: false,
     showFirstGroupMarker: false,
@@ -282,9 +282,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     defaultView: 'day',
     defaultDirection: 'desc',
     defaultGroupBy: 'submittedDay',
-    emptyLabel: 'No articles yet',
+    emptyLabel: 'landing.articles.empty.title',
     emptyDescription: 'landing.articles.empty.description',
-    emptyStickyLabel: 'Articles',
+    emptyStickyLabel: 'articles',
     showStickyHeader: true,
     showFirstGroupMarker: true,
     groupBy: card => this.ideaDayGroupLabel(this.ideaCardDetail(card)),
@@ -427,7 +427,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected get entryPrimaryCtaLabel(): string {
-    return this.networkUnavailable ? this.networkUnavailableLabel : 'Start exploring';
+    return this.networkUnavailable ? this.networkUnavailableLabel : 'landing.explore.action';
   }
 
   protected readonly entryHeroCtaModel: AppMenuModel<EntryHeroCtaId> = { actionSizing: 'content' };
@@ -585,7 +585,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected previewGuidePopupModel(): PopupModel {
     return {
       title: 'bug.report',
-      ariaLabel: 'Bug report',
+      ariaLabel: 'bug.report',
       closeAriaLabel: 'close',
       size: 'small',
       height: 'auto',

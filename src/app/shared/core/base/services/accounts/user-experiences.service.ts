@@ -1,4 +1,4 @@
-import { Injectable, Injector, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import type {
   ExperienceImportProgressCallback,
@@ -9,8 +9,8 @@ import type {
 import type { ExperienceEntry } from '../../../contracts/accounts/profile.interface';
 import { BaseRouteModeService, type RouteModeConfig } from '../platform/base-route-mode.service';
 import { ExperienceDocumentImportService } from './experience-document-import.service';
-import { LocalUserExperiencesService } from '../../../local';
-import { HttpUserExperiencesService } from '../../../http';
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 
 export type UserExperiencesRouteConfig = RouteModeConfig;
 
@@ -18,27 +18,13 @@ export type UserExperiencesRouteConfig = RouteModeConfig;
   providedIn: 'root'
 })
 export class UserExperiencesService extends BaseRouteModeService {
-  private readonly injector = inject(Injector);
+  private readonly adapters = inject(AdapterProxyService);
   private readonly parser = inject(ExperienceDocumentImportService);
-  private localServiceRef: LocalUserExperiencesService | null = null;
-  private httpServiceRef: HttpUserExperiencesService | null = null;
 
-  private get localService(): LocalUserExperiencesService {
-    if (!this.localServiceRef) {
-      this.localServiceRef = this.injector.get(LocalUserExperiencesService);
-    }
-    return this.localServiceRef;
-  }
-
-  private get httpService(): HttpUserExperiencesService {
-    if (!this.httpServiceRef) {
-      this.httpServiceRef = this.injector.get(HttpUserExperiencesService);
-    }
-    return this.httpServiceRef;
-  }
-
-  private persistenceService(config: UserExperiencesRouteConfig | null = null): UserExperiencesPersistenceService {
-    return this.resolveRouteService('/auth/me/experiences', this.localService, this.httpService, config);
+  private persistenceService(config: UserExperiencesRouteConfig | null = null): Promise<UserExperiencesPersistenceService> {
+    const key = this.resolveRouteService('/auth/me/experiences',
+      LOCAL_ADAPTER.USER_EXPERIENCES, HTTP_ADAPTER.USER_EXPERIENCES, config);
+    return this.adapters.get(key);
   }
 
   async loadUserExperiences(userId: string, config: UserExperiencesRouteConfig | null = null): Promise<ExperienceEntry[]> {
@@ -46,7 +32,8 @@ export class UserExperiencesService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    return this.cloneEntries(await this.persistenceService(config).queryUserExperiences(normalizedUserId));
+    const persistence = await this.persistenceService(config);
+    return persistence.queryUserExperiences(normalizedUserId);
   }
 
   async saveUserExperiences(
@@ -59,7 +46,8 @@ export class UserExperiencesService extends BaseRouteModeService {
       return [];
     }
     const normalizedEntries = this.normalizeEntries(entries);
-    return this.cloneEntries(await this.persistenceService(config).saveUserExperiences(normalizedUserId, normalizedEntries));
+    const persistence = await this.persistenceService(config);
+    return persistence.saveUserExperiences(normalizedUserId, normalizedEntries);
   }
 
   prepareUserExperienceImport(

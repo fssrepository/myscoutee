@@ -10,7 +10,7 @@
     <app-menu
       class="experience-filter-select"
       kind="select"
-      [title]="'Experience'"
+      [title]="('experience' | i18n)"
       [trigger]="experienceFilterMenuTrigger()"
       [items]="experienceFilterMenuItems()"
       (itemSelect)="onProfileExperienceMenuSelect($event)"
@@ -44,7 +44,7 @@
         <section class="experience-import-panel">
           <div class="experience-import-progress-card">
             <div class="experience-import-progress-meta">
-              <span>{{ experienceImportDialog.progress.label || 'Preparing upload' }}</span>
+              <span>{{ (experienceImportDialog.progress.label || 'profile.experience.upload.preparing') | i18n }}</span>
               <strong>{{ experienceImportDialog.progress.percent }}%</strong>
             </div>
             <div class="experience-import-progress-bar">
@@ -55,7 +55,7 @@
             <div class="experience-import-error">
               <mat-icon>error</mat-icon>
               <div>
-                <strong>Invalid document</strong>
+                <strong>{{ 'profile.experience.import.invalid' | i18n }}</strong>
                 <p>{{ experienceImportDialog.error }}</p>
               </div>
             </div>
@@ -63,15 +63,15 @@
           @if (!experienceImportDialog.error) {
             <div class="experience-import-stats">
               <div class="experience-import-stat">
-                <span>Detected</span>
+                <span>{{ 'profile.experience.import.detected' | i18n }}</span>
                 <strong>{{ experienceImportDialog.statistics.detectedCount }}</strong>
               </div>
               <div class="experience-import-stat">
-                <span>Ready to add</span>
+                <span>{{ 'profile.experience.import.ready' | i18n }}</span>
                 <strong>{{ experienceImportDialog.statistics.importedCount }}</strong>
               </div>
               <div class="experience-import-stat">
-                <span>Duplicates skipped</span>
+                <span>{{ 'profile.experience.import.duplicates' | i18n }}</span>
                 <strong>{{ experienceImportDialog.statistics.duplicateCount }}</strong>
               </div>
             </div>
@@ -89,13 +89,13 @@
           }
           @if (!experienceImportDialog.error && experienceImportDialog.statistics.detectedCount === 0) {
             <div class="editor-list-card">
-              <h4>No categorized items found</h4>
-              <p>The document was parsed, but no experience cards were recognized in any category.</p>
+              <h4>{{ 'profile.experience.import.empty.title' | i18n }}</h4>
+              <p>{{ 'profile.experience.import.empty.description' | i18n }}</p>
             </div>
           }
           @if (experienceImportDialog.warnings.length > 0) {
             <div class="experience-import-warnings">
-              <h4>Import notes</h4>
+              <h4>{{ 'profile.experience.import.notes.title' | i18n }}</h4>
               <ul>
                 @for (warning of experienceImportDialog.warnings; track warning) {
                   <li>{{ warning }}</li>
@@ -109,7 +109,7 @@
               class="link-btn neutral-btn"
               (click)="cancelExperienceImportDialog()"
               >
-              Cancel
+              {{ 'cancel' | i18n }}
             </button>
             <button
               type="button"
@@ -117,7 +117,7 @@
               [disabled]="!canSubmitExperienceImport"
               (click)="submitExperienceImport()"
               >
-              Submit
+              {{ 'profile.experience.import.submit' | i18n }}
             </button>
           </div>
         </section>

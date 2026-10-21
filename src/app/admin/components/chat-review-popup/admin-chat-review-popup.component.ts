@@ -56,12 +56,12 @@ export class AdminChatReviewPopupComponent {
   protected chatReviewPopupModel(): PopupModel {
     const isWarning = this.admin.activePopup() === 'warn-chat';
     return {
-      title: isWarning ? 'Warn user' : 'Reported chat message',
+      title: isWarning ? 'warn.user' : 'reported.chat.message',
       subtitle: isWarning
-        ? 'Send a support chat message before blocking.'
-        : (this.admin.selectedReport()?.chatTitle || 'Reported conversation'),
-      ariaLabel: isWarning ? 'Warn user' : 'Reported chat message',
-      closeAriaLabel: 'Close',
+        ? 'moderation.user.block.message.required'
+        : (this.admin.selectedReport()?.chatTitle || 'reported.conversation'),
+      ariaLabel: isWarning ? 'warn.user' : 'reported.chat.message',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -76,8 +76,8 @@ export class AdminChatReviewPopupComponent {
 
   protected warningFlowModel(user: AdminReportedUserDto | null | undefined): FormFlowModel {
     return {
-      title: 'Warning message',
-      subtitle: user ? `${user.name} · ${user.reportCount} reports` : 'Send a support chat message before blocking.',
+      title: 'warning.message',
+      subtitle: user ? `${user.name} · ${user.reportCount} reports` : 'moderation.user.block.message.required',
       layout: 'grouped',
       tone: 'orange',
       header: false,
@@ -87,7 +87,7 @@ export class AdminChatReviewPopupComponent {
       steps: [
         {
           id: 'warning',
-          title: 'Warning',
+          title: 'moderation.warning.title',
           icon: 'chat',
           controls: [
             {
@@ -95,7 +95,7 @@ export class AdminChatReviewPopupComponent {
               bind: 'message',
               kind: 'textarea',
               layout: 'wide',
-              label: 'Warning message',
+              label: 'warning.message',
               rows: 5,
               required: true
             }

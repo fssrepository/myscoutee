@@ -22,12 +22,12 @@
   @if (slotCatalog.length === 0) {
     <div class="pricing-slot-panel__empty">
       <mat-icon>schedule</mat-icon>
-      <span>Add slots to unlock slot-specific pricing.</span>
+      <span>{{ 'pricing.slot.empty.description' | i18n }}</span>
     </div>
   } @else if (!enabled) {
     <div class="pricing-slot-panel__empty pricing-slot-panel__empty--muted">
       <mat-icon>grid_view</mat-icon>
-      <span>Global pricing will apply to every slot until overrides are enabled.</span>
+      <span>{{ 'pricing.slot.defaults.description' | i18n }}</span>
     </div>
   } @else {
     <div class="pricing-slot-panel__cards">
@@ -40,24 +40,24 @@
               class="pricing-slot-panel__remove"
               [disabled]="readOnly"
               (click)="removeOverride($index)"
-              aria-label="Remove slot price override"
+              [attr.aria-label]="'pricing.slot.override.remove.aria' | i18n"
               >
               <mat-icon>close</mat-icon>
             </button>
           </div>
           <div class="pricing-slot-panel__card-grid">
             <label class="pricing-slot-panel__field">
-              <span>Slot</span>
+              <span>{{ 'pricing.slot.label' | i18n }}</span>
               <app-menu-trigger
                 [menuId]="slotMenuId(override)"
                 kind="select"
-                title="Slot"
+                [attr.title]="'pricing.slot.label' | i18n"
                 [trigger]="slotMenuTrigger(override)"
                 [items]="slotMenuItems(override, $index)"
               ></app-menu-trigger>
             </label>
             <label class="pricing-slot-panel__field">
-              <span>Price</span>
+              <span>{{ 'pricing.slot.price.label' | i18n }}</span>
               <div class="pricing-slot-panel__money-field">
                 <span class="pricing-slot-panel__money-prefix">{{ currencySymbol(currency) }}</span>
                 <input
@@ -79,7 +79,7 @@
       @if (workingOverrides.length === 0) {
         <div class="pricing-slot-panel__empty">
           <mat-icon>event_available</mat-icon>
-          <span>No slot overrides yet. Add the first one below.</span>
+          <span>{{ 'pricing.slot.override.empty.description' | i18n }}</span>
         </div>
       }
     </div>
@@ -90,7 +90,7 @@
       (click)="addOverride()"
       >
       <mat-icon>add</mat-icon>
-      <span>{{ hasRemainingSlots() ? 'Add Slot Price Override' : 'All Slots Already Customized' }}</span>
+      <span>{{ hasRemainingSlots() ? ('pricing.slot.override.add' | i18n) : ('pricing.slot.override.complete' | i18n) }}</span>
     </button>
   }
 </section>

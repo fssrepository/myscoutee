@@ -2,7 +2,7 @@
   @if (!reportUserSubmitted) {
     @if (!isContextualReport()) {
       <div class="support-submit-error" role="alert">
-        {{ 'Reports can only be started from an event organizer or a member card tied to an event.' | i18n }}
+        {{ 'report.context.required' | i18n }}
       </div>
     }
     @if (submitErrorMessage(); as errorMessage) {

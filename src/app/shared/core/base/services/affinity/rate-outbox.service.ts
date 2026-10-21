@@ -1,10 +1,12 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserGameMode, UserRatesSyncResult } from '../../../contracts/common/activity.interface';
 import type { ActivityRateDTO } from '../../../contracts/common/activity.interface';
 import type { UserRateOutboxRecord } from '../../../local/source/entity/affinity/rate.entity';
-import { HttpRatesService } from '../../../http/services/affinity/rates.service';
+
 import { LocalRatesRepository } from '../../../local/source/repositories/affinity/rates.repository';
 import {
   BaseUserRatesMapper,
@@ -18,9 +20,10 @@ import { BaseRouteModeService } from '../platform/base-route-mode.service';
   providedIn: 'root'
 })
 export class RateOutboxService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private readonly rateOutboxRepository = inject(RateOutboxRepository);
   private readonly localRatesRepository = inject(LocalRatesRepository);
-  private readonly httpRatesService = inject(HttpRatesService);
+  private readonly httpRatesService = this.transportAdapters.reference(HTTP_ADAPTER.RATES);
 
   enqueueGameCardRatingOutbox(input: UserRateGameCardRecordDTO): void {
     const nextRecord = BaseUserRatesMapper.toRecord(input);

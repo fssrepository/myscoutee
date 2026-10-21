@@ -21,12 +21,45 @@ describe('IdeaPostsService admin pagination', () => {
   });
 });
 
+describe('IdeaPostsService card captions', () => {
+  it('uses UI keys while preserving article content', () => {
+    const service = ideaPostsServiceWith(vi.fn());
+    const post = { ...ideaPost('article'), featured: true, published: true, title: 'Cancel' };
+    const [card] = service.publishedIdeaInfoCards([post]);
+    expect(card.title).toBe('Cancel');
+    expect(card.description).toBe(post.excerpt);
+    expect(card.placeholderLabel).toBe('no.image');
+    expect(card.footerChips).toEqual([{ label: 'read.more', actionId: 'viewArticle' }]);
+    expect(card.mediaEnd).toMatchObject({ label: 'featured', selectedLabel: 'featured', ariaLabel: 'featured.article' });
+  });
+
+  it('translates missing-date captions before placing them beside article data', () => {
+    const service = ideaPostsServiceWith(vi.fn());
+    const post = { ...ideaPost('article'), submittedAtIso: '', updatedAtIso: '', createdAtIso: '' };
+    const [card] = service.publishedIdeaInfoCards([post]);
+    expect(card.metaRows).toEqual(['Friss cikk']);
+    expect(card.eagerDetail?.dateLabel).toBe('Friss cikk');
+    expect(service.adminIdeaInfoCards([post])[0].metaRows).toEqual(['Nincs dátum']);
+  });
+
+  it.each([
+    { published: true, trashed: true, label: 'trashed' },
+    { published: false, trashed: false, label: 'draft' },
+    { published: true, trashed: false, label: 'published' }
+  ])('uses the $label key for the admin status', ({ published, trashed, label }) => {
+    const service = ideaPostsServiceWith(vi.fn());
+    const [card] = service.adminIdeaInfoCards([{ ...ideaPost('article'), published, trashed }]);
+    expect(card.mediaStart).toMatchObject({ label, ariaLabel: label });
+  });
+});
+
 function ideaPostsServiceWith(
   loadAdminPostsPage: () => Promise<IdeaPostAdminPageResultDto>
 ): IdeaPostsServiceTestView {
   const service = Object.create(IdeaPostsService.prototype) as IdeaPostsServiceTestView;
   service.adminPostsRef = signal<IdeaPostDto[]>([]);
   service.adminPostsLang = 'en';
+  service.i18n = { translate: key => key === 'fresh.article' ? 'Friss cikk' : key === 'no.date' ? 'Nincs dátum' : key };
   service.ideaService = () => ({ loadAdminPostsPage });
   return service;
 }
@@ -34,6 +67,9 @@ function ideaPostsServiceWith(
 interface IdeaPostsServiceTestView {
   adminPostsRef: WritableSignal<IdeaPostDto[]>;
   adminPostsLang: string;
+  i18n: { translate: (key: string) => string };
+  publishedIdeaInfoCards: IdeaPostsService['publishedIdeaInfoCards'];
+  adminIdeaInfoCards: IdeaPostsService['adminIdeaInfoCards'];
   ideaService: () => {
     loadAdminPostsPage: () => Promise<IdeaPostAdminPageResultDto>;
   };

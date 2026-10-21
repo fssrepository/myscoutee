@@ -36,7 +36,7 @@ export class AppSetupPopupComponent {
   readonly model = computed<PopupModel>(() => ({
     errorMessage: this.store.error(),
     title: 'app.setup.title', size: 'small', height: 'auto',
-    mobilePresentation: 'compact', headerTone: 'accent', headerPalette: 'violet',
+    mobilePresentation: 'fullscreen', headerTone: 'accent', headerPalette: 'violet',
     showClose: true, closeOnBackdrop: false, backdropTone: 'dim',
     headerActions: [{ id: 'help', icon: 'question_mark', palette: 'blue',
       ariaLabel: this.i18n.translate('app.setup.help.title') }],

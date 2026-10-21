@@ -8,7 +8,7 @@
                 <mat-icon>{{ itemIcon(report.sourceType) }}</mat-icon>
               </span>
               <div class="admin-detail-heading-main">
-                <h3>{{ report.eventTitle || report.assetType || report.sourceType || 'Reported item' }}</h3>
+                <h3>{{ report.eventTitle || report.assetType || report.sourceType || ('admin.report.preview.title' | i18n) }}</h3>
                 <p>{{ report.eventStartAtIso || report.sourceId || report.assetId }}</p>
               </div>
             </div>
@@ -22,14 +22,14 @@
             <div class="admin-card-list">
               @if (report.eventId) {
                 <article class="admin-feedback-card">
-                  <h4>Event</h4>
+                  <h4>{{ 'event' | i18n }}</h4>
                   <p class="admin-muted">{{ report.eventTitle }}</p>
                   <p>{{ report.eventId }}</p>
                 </article>
               }
               @if (report.assetId) {
                 <article class="admin-feedback-card">
-                  <h4>Asset</h4>
+                  <h4>{{ 'asset' | i18n }}</h4>
                   <p class="admin-muted">{{ report.assetType }}</p>
                   <p>{{ report.assetId }}</p>
                 </article>

@@ -1,7 +1,10 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import {
   Injectable,
   Type,
-  signal
+  signal,
+  inject
 } from '@angular/core';
 
 import type { UserSelectorListItemDto } from '../../../../core/contracts/accounts/user.interface';
@@ -31,6 +34,7 @@ export interface DemoBootstrapSelectorState {
   providedIn: 'root'
 })
 export class DemoBootstrapSelectorStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly demoBootstrapSelectorRef = signal<DemoBootstrapSelectorState | null>(null);
   private readonly demoBootstrapSelectorComponentRef = signal<Type<unknown> | null>(null);
 
@@ -107,7 +111,7 @@ export class DemoBootstrapSelectorStore {
     if (this.demoBootstrapSelectorComponentRef()) {
       return;
     }
-    const module = await import('../../../components/demo-bootstrap-selector/demo-bootstrap-selector.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.DEMO_BOOTSTRAP_SELECTOR);
     this.demoBootstrapSelectorComponentRef.set(module.DemoBootstrapSelectorComponent);
   }
 }

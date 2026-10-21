@@ -10,6 +10,7 @@ import { NOTIFICATIONS_TABLE_NAME } from '../../../source/entity/notifications/n
 import { USERS_TABLE_NAME } from '../../../source/entity/accounts/user.entity';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
+import { BootstrapProcessService } from '../../../../base/services/platform/bootstrap.service';
 
 import { LocalMemoryDb } from '../../../../common/app.db';
 import {
@@ -45,12 +46,19 @@ describe('Demo bootstrap seeding', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({});
+    // These tests verify seeded state/progress, not browser animation timing.
+    vi.spyOn(TestBed.inject(BootstrapProcessService), 'waitForUiYield').mockResolvedValue();
     memoryDb = TestBed.inject(LocalMemoryDb);
     await memoryDb.resetStorage();
     const persisted=new Map<string,unknown>();
     vi.spyOn(memoryDb,'readIndexedDbTableEntry').mockImplementation(async <T>(key:string)=>structuredClone(persisted.get(key)??null) as T|null);
     vi.spyOn(memoryDb,'writeIndexedDbTableEntry').mockImplementation(async (key,value)=>{persisted.set(key,structuredClone(value));});
     vi.spyOn(memoryDb,'deleteIndexedDbTableEntry').mockImplementation(async key=>{persisted.delete(key);});
+    vi.spyOn(memoryDb, 'flushToIndexedDb').mockImplementation(async () => {
+      for (const [key, value] of Object.entries(memoryDb.read())) {
+        persisted.set(key, structuredClone(value));
+      }
+    });
     vi.spyOn(memoryDb,'updateIndexedDbTableEntry').mockImplementation(async <T>(key:string,update:(value:T|null)=>T)=>{
       const next=update(await memoryDb.readIndexedDbTableEntry<T>(key));await memoryDb.writeIndexedDbTableEntry(key,next);return next;
     });
@@ -558,46 +566,55 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).not.toContain(CHATS_TABLE_NAME);
   });
 
-  it.each([
+  describe.each([
     ['operator-demo-dev', 'operator', 3],
     ['admin-demo-ava', 'admin', 4]
-  ] as const)('seeds %s notifications and persists the matching unread count', async (userId, mode, count) => {
-    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
-    await bootstrap.ensureDemoSelectorReady(mode);
-    await bootstrap.ensureUserReady(userId, mode);
-    const table = memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
-    const ids = table.idsByRecipientUserId[userId] ?? [];
-    expect(ids).toHaveLength(count);
-    expect(ids.filter(id => !table.byId[id].readAtIso)).toHaveLength(count);
-    expect(memoryDb.read()[USERS_TABLE_NAME].byId[userId].activities.notifications).toBe(count);
-    const persisted = await memoryDb.readIndexedDbTableEntry<any>(USERS_TABLE_NAME);
-    expect(persisted.byId[userId].activities.notifications).toBe(count);
-    await bootstrap.ensureUserReady(userId, mode);
-    expect(memoryDb.read()[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId[userId]).toEqual(ids);
+  ] as const)('Selected %s demo session', (userId, mode, count) => {
+    beforeEach(async () => {
+      await TestBed.inject(SeedDemoBootstrapService).ensureDemoSelectorReady(mode);
+    });
+
+    it('seeds notifications and persists the matching unread count', async () => {
+      const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+      await bootstrap.ensureUserReady(userId, mode);
+      const table = memoryDb.read()[NOTIFICATIONS_TABLE_NAME];
+      const ids = table.idsByRecipientUserId[userId] ?? [];
+      expect(ids).toHaveLength(count);
+      expect(ids.filter(id => !table.byId[id].readAtIso)).toHaveLength(count);
+      expect(memoryDb.read()[USERS_TABLE_NAME].byId[userId].activities.notifications).toBe(count);
+      const persisted = await memoryDb.readIndexedDbTableEntry<any>(USERS_TABLE_NAME);
+      expect(persisted.byId[userId].activities.notifications).toBe(count);
+      await bootstrap.ensureUserReady(userId, mode);
+      expect(memoryDb.read()[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId[userId]).toEqual(ids);
+    });
   });
 
-  it('runs admin workspace bootstrap when an admin demo user is selected', async () => {
-    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
-    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+  describe('Admin workspace bootstrap', () => {
+    beforeEach(async () => {
+      await TestBed.inject(SeedDemoBootstrapService).ensureDemoSelectorReady('union');
+    });
 
-    await bootstrap.ensureDemoSelectorReady('union');
-    tableWriteSpy.mockClear();
+    it('runs when an admin demo user is selected', async () => {
+      const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+      const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+      tableWriteSpy.mockClear();
 
-    await bootstrap.ensureUserReady('admin-demo-ava', 'admin');
+      await bootstrap.ensureUserReady('admin-demo-ava', 'admin');
 
-    const state = memoryDb.read();
-    const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
-    expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
-    expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBeGreaterThan(0);
-    expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
-    expect(state[SHARE_TOKENS_TABLE_NAME].tokens.length).toBeGreaterThan(0);
-    expect(flushedTables).toContain(HELP_CENTER_TABLE_NAME);
-    expect(flushedTables).toContain(IDEA_POSTS_TABLE_NAME);
-    expect(flushedTables).toContain(USERS_TABLE_NAME);
-    expect(flushedTables).toContain(CHATS_TABLE_NAME);
-    expect(flushedTables).toContain(SHARE_TOKENS_TABLE_NAME);
-    expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
-    expect(flushedTables).not.toContain(ACTIVITY_RESOURCES_TABLE_NAME);
+      const state = memoryDb.read();
+      const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
+      expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
+      expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBeGreaterThan(0);
+      expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+      expect(state[SHARE_TOKENS_TABLE_NAME].tokens.length).toBeGreaterThan(0);
+      expect(flushedTables).toContain(HELP_CENTER_TABLE_NAME);
+      expect(flushedTables).toContain(IDEA_POSTS_TABLE_NAME);
+      expect(flushedTables).toContain(USERS_TABLE_NAME);
+      expect(flushedTables).toContain(CHATS_TABLE_NAME);
+      expect(flushedTables).toContain(SHARE_TOKENS_TABLE_NAME);
+      expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
+      expect(flushedTables).not.toContain(ACTIVITY_RESOURCES_TABLE_NAME);
+    });
   });
 
   it('the local landing service prepares public content without clearing unrelated demo tables', async () => {
@@ -633,7 +650,7 @@ describe('Demo bootstrap seeding', () => {
     expect(content.terms.activeRevision?.documentKind).toBe('terms');
   });
 
-  it('builds the admin affinity graph with two rated clusters covering the 50 active demo profiles', async () => {
+  it('builds two rated clusters while excluding blocked and deleted demo profiles', async () => {
     const usersSeed = TestBed.inject(SeedUsersRepository);
     const usersRatingsSeed = TestBed.inject(SeedUsersRatingsRepository);
     const affinityGraphRepository = TestBed.inject(SeedAdminAffinityGraphRepository);
@@ -642,8 +659,14 @@ describe('Demo bootstrap seeding', () => {
     usersRatingsSeed.seedDefaults(seededUsers);
     const snapshot = await affinityGraphRepository.buildGraphSnapshot();
 
-    expect(snapshot.nodes.length).toBe(50);
-    expect(componentSizes(snapshot.nodes.map(node => node.id), snapshot.edges)).toEqual([34, 16]);
+    const inactiveIds = seededUsers
+      .filter(user => user.profileStatus === 'blocked' || user.profileStatus === 'deleted')
+      .map(user => user.id);
+    expect(seededUsers).toHaveLength(50);
+    expect(inactiveIds).toHaveLength(2);
+    expect(snapshot.nodes).toHaveLength(48);
+    expect(snapshot.nodes.some(node => inactiveIds.includes(node.id))).toBe(false);
+    expect(componentSizes(snapshot.nodes.map(node => node.id), snapshot.edges)).toEqual([32, 16]);
   });
 
   it('seeds member rows for event cards that advertise accepted members', async () => {

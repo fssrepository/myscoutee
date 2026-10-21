@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../shared/core/common/content-languages.json';
 import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/media/image-gallery.interface';
 import {
@@ -145,6 +146,8 @@ interface IdeaPostLangCache {
   providers: [AppMenuDispatcher]
 })
 export class AdminIdeaEditorPopupComponent {
+  private readonly i18n = inject(I18nService);
+
   private static readonly IMAGE_LIMIT = 8;
 
   @ViewChild('ideaSmartList')
@@ -185,11 +188,11 @@ export class AdminIdeaEditorPopupComponent {
   private articlePreviewHtmlRendered = '';
 
   protected readonly filterOptions: Array<{ id: IdeaPostFilter; label: string; icon: string }> = [
-    { id: 'all', label: 'All', icon: 'view_day' },
-    { id: 'featured', label: 'Featured', icon: 'star' },
-    { id: 'published', label: 'Published', icon: 'visibility' },
-    { id: 'drafts', label: 'Drafts', icon: 'drafts' },
-    { id: 'trashed', label: 'Trashed', icon: 'delete_outline' }
+    { id: 'all', label: 'all', icon: 'view_day' },
+    { id: 'featured', label: 'featured', icon: 'star' },
+    { id: 'published', label: 'published', icon: 'visibility' },
+    { id: 'drafts', label: 'drafts', icon: 'drafts' },
+    { id: 'trashed', label: 'trashed', icon: 'delete_outline' }
   ];
 
   private readonly ideaSmartListItemConverter: SmartListConverter<
@@ -210,7 +213,7 @@ export class AdminIdeaEditorPopupComponent {
     defaultGroupBy: 'submittedDay',
     emptyLabel: query => this.ideaEmptyLabel(query.filters?.status ?? 'all'),
     emptyDescription: query => this.ideaEmptyDescription(query.filters?.status ?? 'all'),
-    emptyStickyLabel: 'Articles',
+    emptyStickyLabel: 'articles',
     showStickyHeader: true,
     showFirstGroupMarker: true,
     groupBy: card => this.ideaCardDayGroupLabel(card),
@@ -265,7 +268,7 @@ export class AdminIdeaEditorPopupComponent {
         context: { counts: result.counts }
       };
     } catch (error) {
-      this.error = 'Unable to load articles.';
+      this.error = 'article.load.error';
       throw error;
     } finally {
       this.loading = false;
@@ -337,9 +340,9 @@ export class AdminIdeaEditorPopupComponent {
 
   protected ideaEditorPopupModel(): PopupModel<IdeaPopupMenuContext> {
     return {
-      title: 'Article editor',
-      ariaLabel: 'Article editor',
-      closeAriaLabel: 'Close article editor',
+      title: 'article.editor',
+      ariaLabel: 'article.editor',
+      closeAriaLabel: 'article.editor.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -357,7 +360,7 @@ export class AdminIdeaEditorPopupComponent {
         {
           id: 'idea-new',
           icon: 'add',
-          ariaLabel: 'New article',
+          ariaLabel: 'new.article',
           palette: 'green',
           disabled: this.saving,
           compactOnMobile: true
@@ -407,8 +410,8 @@ export class AdminIdeaEditorPopupComponent {
 
   protected articleViewerLoadingPopupModel(): PopupModel {
     return {
-      ariaLabel: 'Article',
-      closeAriaLabel: 'Close article',
+      ariaLabel: 'article',
+      closeAriaLabel: 'close.article',
       size: 'wide',
       height: 'full',
       headerLayout: 'article',
@@ -423,8 +426,8 @@ export class AdminIdeaEditorPopupComponent {
       headerLabelIcon: 'calendar_today',
       title: post.title,
       subtitle: post.excerpt,
-      ariaLabel: 'Article',
-      closeAriaLabel: 'Close article',
+      ariaLabel: 'article',
+      closeAriaLabel: 'close.article',
       translateHeaderLabel: false,
       translateTitle: false,
       translateSubtitle: false,
@@ -443,8 +446,8 @@ export class AdminIdeaEditorPopupComponent {
   protected articleEditorLoadingPopupModel(): PopupModel {
     return {
       title: 'edit.article',
-      ariaLabel: 'Edit article',
-      closeAriaLabel: 'Close editor',
+      ariaLabel: 'edit.article',
+      closeAriaLabel: 'article.editor.loading.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -458,8 +461,8 @@ export class AdminIdeaEditorPopupComponent {
     return {
       title: draft.id ? 'edit.article' : 'new.article',
       subtitle: draft.published ? 'published' : 'draft',
-      ariaLabel: draft.id ? 'Edit article' : 'New article',
-      closeAriaLabel: 'Close editor',
+      ariaLabel: draft.id ? 'edit.article' : 'new.article',
+      closeAriaLabel: 'article.editor.loading.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -479,7 +482,7 @@ export class AdminIdeaEditorPopupComponent {
         {
           id: 'article-preview',
           icon: 'visibility',
-          ariaLabel: 'Preview article',
+          ariaLabel: 'article.preview.action',
           palette: 'amber',
           disabled: this.saving
         },
@@ -487,7 +490,7 @@ export class AdminIdeaEditorPopupComponent {
           id: 'article-close',
           guideFieldId: 'close',
           icon: 'close',
-          ariaLabel: 'Close editor',
+          ariaLabel: 'article.editor.loading.close.aria',
           palette: 'neutral',
           disabled: this.saving
         }
@@ -528,7 +531,7 @@ export class AdminIdeaEditorPopupComponent {
       kind: 'action',
       palette: 'success',
       disabled: this.saving,
-      ariaLabel: 'Save article',
+      ariaLabel: 'save.article',
       progress: this.saving
         ? {
             state: 'loading',
@@ -671,7 +674,7 @@ export class AdminIdeaEditorPopupComponent {
       this.draft = null;
       return saved;
     } catch {
-      this.error = 'Unable to save article.';
+      this.error = 'article.save.error';
       return null;
     } finally {
       this.saving = false;
@@ -682,10 +685,10 @@ export class AdminIdeaEditorPopupComponent {
   protected deletePost(post: IdeaPostDto, event?: Event): void {
     event?.stopPropagation();
     this.dialogStore.open({
-      title: 'Move article to trash?',
+      title: 'confirmation.move.article.to.trash',
       message: post.title,
-      confirmLabel: 'Move to trash',
-      busyConfirmLabel: 'Moving...',
+      confirmLabel: 'trash.move.action',
+      busyConfirmLabel: 'trash.move.busy',
       confirmTone: 'danger',
       onConfirm: async () => {
         this.saving = true;
@@ -702,7 +705,7 @@ export class AdminIdeaEditorPopupComponent {
             this.draft = null;
           }
         } catch {
-          this.error = 'Unable to move article to trash.';
+          this.error = 'article.trash.error';
         } finally {
           this.saving = false;
           this.refreshView();
@@ -718,13 +721,13 @@ export class AdminIdeaEditorPopupComponent {
     }
     const nextPublished = !post.published;
     this.dialogStore.open({
-      title: nextPublished ? 'Publish article?' : 'Unpublish article?',
+      title: nextPublished ? 'publish.article.question' : 'unpublish.article.question',
       message: post.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: nextPublished ? 'Publish' : 'Unpublish',
-      busyConfirmLabel: nextPublished ? 'Publishing...' : 'Unpublishing...',
+      cancelLabel: 'cancel',
+      confirmLabel: nextPublished ? 'publish' : 'unpublish',
+      busyConfirmLabel: nextPublished ? 'publishing' : 'unpublishing',
       confirmTone: nextPublished ? 'accent' : 'danger',
-      failureMessage: nextPublished ? 'Unable to publish article.' : 'Unable to unpublish article.',
+      failureMessage: nextPublished ? 'article.publish.error' : 'article.unpublish.error',
       onConfirm: () => this.confirmPublishedToggle(post, nextPublished)
     });
   }
@@ -735,13 +738,13 @@ export class AdminIdeaEditorPopupComponent {
       return;
     }
     this.dialogStore.open({
-      title: 'Restore article?',
+      title: 'restore.article.question',
       message: post.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Restore',
-      busyConfirmLabel: 'Restoring...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'restore',
+      busyConfirmLabel: 'restoring',
       confirmTone: 'accent',
-      failureMessage: 'Unable to restore article.',
+      failureMessage: 'article.restore.error',
       onConfirm: () => this.confirmRestorePost(post)
     });
   }
@@ -807,13 +810,13 @@ export class AdminIdeaEditorPopupComponent {
     }
     const nextFeatured = !post.featured;
     this.dialogStore.open({
-      title: nextFeatured ? 'Feature article?' : 'Remove featured article?',
+      title: nextFeatured ? 'feature.article.question' : 'remove.featured.article.question',
       message: post.title,
-      cancelLabel: 'Cancel',
-      confirmLabel: nextFeatured ? 'Feature' : 'Unfeature',
-      busyConfirmLabel: nextFeatured ? 'Featuring...' : 'Unfeaturing...',
+      cancelLabel: 'cancel',
+      confirmLabel: nextFeatured ? 'feature' : 'unfeature',
+      busyConfirmLabel: nextFeatured ? 'featuring' : 'unfeaturing',
       confirmTone: nextFeatured ? 'accent' : 'danger',
-      failureMessage: nextFeatured ? 'Unable to feature article.' : 'Unable to unfeature article.',
+      failureMessage: nextFeatured ? 'article.feature.error' : 'article.unfeature.error',
       onConfirm: () => this.confirmFeaturedToggle(post, nextFeatured)
     });
   }
@@ -983,7 +986,7 @@ export class AdminIdeaEditorPopupComponent {
       const loaded = this.postsByLang.get(normalizedLang)?.byContentKey.get(normalizedContentKey);
       return loaded ? this.clonePost(loaded) : null;
     } catch {
-      this.error = 'Unable to load article language version.';
+      this.error = 'article.language.load.error';
       return null;
     }
   }
@@ -1214,7 +1217,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected filterLabel(): string {
-    return this.filterOptions.find(option => option.id === this.ideaFilter)?.label ?? 'All';
+    return this.filterOptions.find(option => option.id === this.ideaFilter)?.label ?? this.i18n.translate('all');
   }
 
   protected filterIcon(): string {
@@ -1238,7 +1241,7 @@ export class AdminIdeaEditorPopupComponent {
               icon: this.filterIcon(),
               palette: this.filterPalette(this.ideaFilter),
               counter: this.filterCount(),
-              ariaLabel: 'Filter articles',
+              ariaLabel: 'filter.articles',
               items: this.filterOptions.map(option => ({
                 id: `idea-filter:${option.id}`,
                 kind: 'radio',
@@ -1331,18 +1334,18 @@ export class AdminIdeaEditorPopupComponent {
 
   protected postStatusLabel(post: Pick<IdeaPostDto, 'published' | 'featured' | 'trashed'>): string {
     if (post.trashed) {
-      return 'Trashed';
+      return this.i18n.translate('trashed');
     }
     if (!post.published) {
-      return 'Draft';
+      return this.i18n.translate('draft');
     }
-    return 'Published';
+    return this.i18n.translate('published');
   }
 
   protected postDateLabel(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null): string {
     const parsed = Date.parse(post?.submittedAtIso || post?.updatedAtIso || post?.createdAtIso || '');
     if (!Number.isFinite(parsed)) {
-      return 'No date';
+      return this.i18n.translate('no.date');
     }
     return new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
@@ -1408,7 +1411,7 @@ export class AdminIdeaEditorPopupComponent {
               label: this.contentLanguageMenuLabel(normalizedCurrentLanguage),
               palette: 'blue',
               disabled,
-              ariaLabel: 'Content language',
+              ariaLabel: 'admin.help.language.title',
               items: this.contentLanguages().map(language => {
                 const normalizedLanguage = this.normalizeContentLang(language.lang);
                 return {
@@ -1595,7 +1598,7 @@ export class AdminIdeaEditorPopupComponent {
   private ideaCardDayGroupLabel(card: IdeaInfoCard): string {
     const parsed = Date.parse(card.eagerDetail?.sortAtIso ?? '');
     if (!Number.isFinite(parsed)) {
-      return 'No date';
+      return this.i18n.translate('no.date');
     }
     return new Intl.DateTimeFormat(undefined, {
       weekday: 'short',

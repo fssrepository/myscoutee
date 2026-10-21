@@ -3,7 +3,7 @@ import { AppUtils } from '../base/app-utils';
 
 export const MYSCOUTEE_IMAGE_URLS: UiImageUrls = {
   variantUrl: (url, variant) => AppUtils.mediaImageVariantUrl(url, variant),
-  cardFallbackUrl: 'assets/logo/cards_no_edges.png',
+  cardFallbackUrl: 'assets/logo/cards_no_edges.webp',
   resolveSourceUrl: url => {
     const prefix = 'help-seeded-image:';
     if (!url.startsWith(prefix)) return url;

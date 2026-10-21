@@ -36,7 +36,7 @@
                 <strong>Replying to {{ replyTarget.sender }}</strong>
                 <small>{{ replyTarget.text }}</small>
               </span>
-              <button type="button" (click)="clearReplyTarget()" aria-label="Cancel reply">
+              <button type="button" (click)="clearReplyTarget()" [attr.aria-label]="'chat.reply.cancel.aria' | i18n">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -45,9 +45,9 @@
             <div class="chat-reply-draft chat-edit-draft">
               <span>
                 <mat-icon>edit</mat-icon>
-                Editing message
+                {{ 'chat.message.editing' | i18n }}
               </span>
-              <button type="button" (click)="cancelEditing()" aria-label="Cancel edit">
+              <button type="button" (click)="cancelEditing()" [attr.aria-label]="'chat.message.edit.cancel.aria' | i18n">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -76,7 +76,7 @@
                   <button
                     type="button"
                     class="chat-voice-cancel-btn"
-                    aria-label="Cancel voice clip"
+                    [attr.aria-label]="'chat.voice.cancel.aria' | i18n"
                     (click)="discardVoiceRecording($event)"
                     [disabled]="voiceRecordingState === 'saving'"
                   >
@@ -90,7 +90,7 @@
                         type="button"
                         class="chat-voice-record-btn"
                         [class.is-recording]="voiceRecordingState === 'recording'"
-                        [attr.aria-label]="voiceRecordingState === 'recording' ? 'Stop recording' : 'Start recording'"
+                        [attr.aria-label]="voiceRecordingState === 'recording' ? ('chat.voice.record.stop' | i18n) : ('chat.voice.record.start' | i18n)"
                         (click)="voiceRecordingState === 'recording' ? stopVoiceRecording($event) : startVoiceRecording($event)"
                         [disabled]="voiceRecordingState === 'saving'"
                       >
@@ -105,7 +105,7 @@
                   <button
                     type="button"
                     class="chat-voice-send-btn"
-                    aria-label="Send voice clip"
+                    [attr.aria-label]="'chat.voice.send.aria' | i18n"
                     (click)="sendVoiceClip($event)"
                     [disabled]="!canSendVoiceClip() || voiceRecordingState === 'saving'"
                   >
@@ -118,7 +118,7 @@
               } @else {
                 @if (composerEmojiSuggestions(); as emojiSuggestions) {
                   @if (emojiSuggestions.length > 0) {
-                    <div class="chat-ascii-emoji-panel" role="listbox" aria-label="Emoji suggestions">
+                    <div class="chat-ascii-emoji-panel" role="listbox" [attr.aria-label]="'chat.emoji.suggestions.aria' | i18n">
                       @for (suggestion of emojiSuggestions; track suggestion.token) {
                         <button
                           type="button"
@@ -138,14 +138,14 @@
                 <textarea
                   #messageTextarea
                   rows="1"
-                  placeholder="Write message"
+                  [attr.placeholder]="'chat.message.compose.placeholder' | i18n"
                   [(ngModel)]="draftMessage"
                   (ngModelChange)="onDraftMessageChange($event)"
                   (input)="resizeComposerTextarea()"
                   (keydown)="onComposerKeydown($event)"
                   [disabled]="chatInitialLoadPending"
                 ></textarea>
-                <button type="button" class="chat-send-btn" data-guide-field="chat-send" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
+                <button type="button" class="chat-send-btn" data-guide-field="chat-send" [attr.aria-label]="'chat.message.send.aria' | i18n" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
                   <mat-icon>send</mat-icon>
                 </button>
               }
@@ -164,7 +164,7 @@
       <div class="chat-poll-composer-header">
         <input
           type="text"
-          placeholder="Ask a question"
+          [attr.placeholder]="'chat.poll.question.placeholder' | i18n"
           [(ngModel)]="pollQuestionDraft"
           [disabled]="chatInitialLoadPending"
         />
@@ -187,10 +187,10 @@
       <div class="chat-poll-composer-actions">
         <button type="button" class="chat-poll-add-option-btn" (click)="addPollOption($event)" [disabled]="pollOptionDrafts.length >= 6">
           <mat-icon>add_circle</mat-icon>
-          Add option...
+          {{ 'chat.poll.option.add' | i18n }}
         </button>
         <button type="button" class="chat-poll-create-btn" (click)="sendPoll($event)" [disabled]="!canCreatePoll()">
-          Create Poll
+          {{ 'chat.poll.create' | i18n }}
         </button>
       </div>
     </div>
@@ -221,11 +221,11 @@
         class="chat-message-reply-context"
         (click)="jumpToReplySource(message, $event)"
         (contextmenu)="$event.preventDefault(); $event.stopPropagation()"
-        aria-label="Open replied message"
+        [attr.aria-label]="'chat.reply.open.aria' | i18n"
         >
         <span class="chat-message-reply-label">
           <mat-icon>reply</mat-icon>
-          {{ message.mine ? 'You replied' : message.sender + ' replied' }} to {{ message.replyTo.sender }}
+          {{ message.mine ? ('chat.reply.own.label' | i18n) : message.sender + ' replied' }} to {{ message.replyTo.sender }}
         </span>
         @if (replyPreviewParts(message.replyTo); as replyPreview) {
           <span class="chat-message-reply-quote" [class.chat-message-reply-quote--structured]="replyPreview.meta">
@@ -279,7 +279,7 @@
                       <mat-icon>mic</mat-icon>
                     </span>
                     <span class="chat-voice-attachment-copy">
-                      <strong>{{ attachment.title || 'Voice clip' }}</strong>
+                      <strong>{{ attachment.title || ('chat.voice.label' | i18n) }}</strong>
                       @if (attachment.subtitle) {
                         <small>{{ attachment.subtitle }}</small>
                       }
@@ -289,7 +289,7 @@
                         <audio controls controlsList="nodownload noplaybackrate" preload="metadata" [src]="voiceAttachmentAudioSrc(attachment)"></audio>
                       </span>
                     } @else {
-                      <small class="chat-voice-attachment-missing">Audio unavailable</small>
+                      <small class="chat-voice-attachment-missing">{{ 'chat.voice.unavailable' | i18n }}</small>
                     }
                   </div>
                 } @else if (attachment.type === 'poll') {
@@ -324,7 +324,7 @@
                         class="chat-poll-vote-btn"
                         (click)="openPollVoteDialog(message, attachment, $event)"
                       >
-                        {{ pollOwnVoteOptionId(attachment) ? 'Change vote' : 'Vote' }}
+                        {{ pollOwnVoteOptionId(attachment) ? ('chat.poll.vote.change' | i18n) : ('chat.poll.vote.action' | i18n) }}
                       </button>
                     </div>
                   }
@@ -375,12 +375,12 @@
             </p>
           }
           @if (message.editedAtIso) {
-            <span class="chat-edited-label">Edited</span>
+            <span class="chat-edited-label">{{ 'chat.message.edited' | i18n }}</span>
           }
         }
       </div>
       @if (!message.deletedAtIso && message.pinnedAtIso) {
-        <span class="chat-pin-badge" aria-label="Pinned message">
+        <span class="chat-pin-badge" [attr.aria-label]="'chat.pin.message.aria' | i18n">
           <mat-icon>push_pin</mat-icon>
         </span>
       }
@@ -393,14 +393,14 @@
       }
       @if (message.id && selectedMessageId === message.id && !message.deletedAtIso) {
         <div class="chat-message-tools" [class.chat-message-tools-down]="selectedMessageToolsDown" (click)="$event.stopPropagation()">
-          <button type="button" (click)="setReplyTarget(message, $event)" aria-label="Reply">
+          <button type="button" (click)="setReplyTarget(message, $event)" [attr.aria-label]="'chat.reply.action' | i18n">
             <mat-icon>reply</mat-icon>
           </button>
           <button
             type="button"
             [class.chat-tool-btn-open]="quickReactionMessageId && quickReactionMessageId === message.id"
             (click)="toggleQuickReactions(message, $event)"
-            aria-label="React"
+            [attr.aria-label]="'chat.reaction.action' | i18n"
             >
             <mat-icon>{{ quickReactionMessageId && quickReactionMessageId === message.id ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
@@ -429,7 +429,7 @@
               class="chat-emoji-menu"
               menuId="chat-mobile-emoji-picker"
               kind="select"
-              title="Search emoji"
+              [attr.title]="'chat.emoji.search' | i18n"
               [trigger]="emojiPickerMenuTrigger()"
               [model]="emojiPickerMenuModel()"
               [filterable]="true"
@@ -440,7 +440,7 @@
             <app-menu
               class="chat-emoji-menu"
               kind="select"
-              title="Search emoji"
+              [attr.title]="'chat.emoji.search' | i18n"
               [trigger]="emojiPickerMenuTrigger()"
               [model]="emojiPickerMenuModel()"
               [filterable]="true"
@@ -569,7 +569,7 @@
               <span class="chat-line">{{ message.text }}</span>
             }
           </span>
-          <span class="chat-pin-badge chat-pinned-dialog-pin" aria-label="Pinned message">
+          <span class="chat-pin-badge chat-pinned-dialog-pin" [attr.aria-label]="'chat.pin.message.aria' | i18n">
             <mat-icon>push_pin</mat-icon>
           </span>
           @if ((message.reactions ?? []).length > 0) {
@@ -594,7 +594,7 @@
           }
         </button>
       } @empty {
-        <p>No pinned messages yet.</p>
+        <p>{{ 'chat.pin.empty.description' | i18n }}</p>
       }
     </div>
   </app-popup>

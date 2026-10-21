@@ -3,8 +3,8 @@
     <div class="admin-help-session-error__panel">
       <p>{{ error }}</p>
       <div class="admin-help-session-error__actions">
-        <button type="button" (click)="retry()">Try again</button>
-        <button type="button" (click)="goAdmin()">Admin</button>
+        <button type="button" (click)="retry()">{{ 'try.again' | i18n }}</button>
+        <button type="button" (click)="goAdmin()">{{ 'admin.role.label' | i18n }}</button>
       </div>
     </div>
   </section>

@@ -1,10 +1,11 @@
+import { TestBed } from '@angular/core/testing';
 import { AssetPopupStore } from './asset-popup.store';
 
 import type * as AssetContracts from '../../../../core/contracts/assets/asset.interface';
 
 describe('AssetPopupStore ticket validation state', () => {
   it('only keeps attendee details for a valid server response without changing the organizer ticket list', () => {
-    const store = new AssetPopupStore();
+    const store = TestBed.runInInjectionContext(() => new AssetPopupStore());
     store.updateTicketList([ticketRow()], 1);
     store.openTicketScanner();
     store.applyTicketScannerValidating();
@@ -17,7 +18,7 @@ describe('AssetPopupStore ticket validation state', () => {
   });
 
   it('clears attendee details for invalid and transport-error states', () => {
-    const store = new AssetPopupStore();
+    const store = TestBed.runInInjectionContext(() => new AssetPopupStore());
     store.openTicketScanner();
     store.applyTicketScannerValid(scanPayload());
 
@@ -33,7 +34,7 @@ describe('AssetPopupStore ticket validation state', () => {
   });
 
   it('pauses only an active scanner and keeps camera restart explicit', () => {
-    const store = new AssetPopupStore();
+    const store = TestBed.runInInjectionContext(() => new AssetPopupStore());
     store.openTicketScanner();
 
     store.pauseTicketScanner();
@@ -46,7 +47,7 @@ describe('AssetPopupStore ticket validation state', () => {
   });
 
   it('keeps an open ticket popup in sync with the polled ticket row', () => {
-    const store = new AssetPopupStore();
+    const store = TestBed.runInInjectionContext(() => new AssetPopupStore());
     const original = ticketRow();
     const refreshed = {
       ...original,

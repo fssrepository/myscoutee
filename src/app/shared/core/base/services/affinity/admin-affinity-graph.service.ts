@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import {
@@ -12,12 +14,8 @@ import {
 } from '../../../contracts/administration/admin.interface';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import { I18nService } from '../localization/i18n.service';
-import { LocalAdminAffinityGraphService } from '../../../local/source/services/affinity/admin-affinity-graph.service';
-import {
-  HttpAdminAffinityGraphService,
-  type AdminAffinityGraphRangeParams,
-  type AdminAffinityGraphTileParams
-} from '../../../http/services/affinity/admin-affinity-graph.service';
+
+import { type AdminAffinityGraphRangeParams, type AdminAffinityGraphTileParams } from '../../../http/services/affinity/admin-affinity-graph.service';
 
 export type { AdminAffinityGraphRangeParams, AdminAffinityGraphTileParams };
 
@@ -39,8 +37,9 @@ const AFFINITY_GRAPH_LABEL_KEYS = {
   providedIn: 'root'
 })
 export class AdminAffinityGraphService extends BaseRouteModeService {
-  private readonly localService = inject(LocalAdminAffinityGraphService);
-  private readonly httpService = inject(HttpAdminAffinityGraphService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_AFFINITY_GRAPH);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_AFFINITY_GRAPH);
   private readonly i18n = inject(I18nService);
 
   async loadInitialGraph(adminUserId?: string | null, signal?: AbortSignal): Promise<AdminAffinityGraphDto> {

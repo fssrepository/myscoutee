@@ -4,7 +4,7 @@
       @if (loading()) {
         <div class="rated-feedback-state">
           <app-indicator kind="load-ring" state="loading"></app-indicator>
-          <span>Loading your saved feedback</span>
+          <span>{{ 'feedback.saved.loading' | i18n }}</span>
         </div>
       } @else if (loadError()) {
         <div class="rated-feedback-state rated-feedback-state--error">
@@ -49,17 +49,17 @@
                   @for (trait of traitLabels(card); track trait) {
                     <span class="rated-feedback-trait">
                       <mat-icon>psychology</mat-icon>
-                      {{ trait }}
+                      {{ trait | i18n }}
                     </span>
                   } @empty {
-                    <span class="rated-feedback-trait rated-feedback-trait--empty">No traits selected</span>
+                    <span class="rated-feedback-trait rated-feedback-trait--empty">{{ 'feedback.traits.empty' | i18n }}</span>
                   }
                 </div>
               </div>
 
               @if (card.kind === 'event' && card.eventComment) {
                 <div class="rated-feedback-text rated-feedback-text--opinion">
-                  <span>Your opinion about the event</span>
+                  <span>{{ 'feedback.event.opinion.title' | i18n }}</span>
                   <p>{{ card.eventComment }}</p>
                 </div>
               }
@@ -69,7 +69,7 @@
 
         @if (detail()?.organizerNote) {
           <aside class="rated-feedback-text rated-feedback-text--organizer-note">
-            <span>Note to organizer</span>
+            <span>{{ 'feedback.organizer.note.label' | i18n }}</span>
             <p>{{ detail()?.organizerNote }}</p>
           </aside>
         }

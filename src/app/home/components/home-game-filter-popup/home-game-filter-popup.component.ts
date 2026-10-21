@@ -176,8 +176,8 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
   protected gameFilterPopupModel(): PopupModel<GameFilterMenuContext> {
     return {
       title: 'game.filters',
-      ariaLabel: 'Game filters',
-      closeAriaLabel: 'Close filter popup',
+      ariaLabel: 'home.filters.aria',
+      closeAriaLabel: 'close.filter.popup',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -212,7 +212,7 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
       kind: 'action',
       palette: 'green',
       disabled: this.saving || this.preparing(),
-      ariaLabel: this.saving ? 'Saving filters' : 'Apply filters',
+      ariaLabel: this.saving ? 'saving.filters' : 'apply.filters',
       progress: this.saving
         ? {
             state: 'loading',
@@ -289,7 +289,7 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
         .map(([value, meta]) => ({ id: value, value, ...meta, iconKind: 'text', surface: 'tinted' })) }];
     } else if (kind === 'traitLabels') {
       groups = [{ id: 'traits', items: APP_STATIC_DATA.personalityTraitCatalog.map(trait => ({
-        id: trait.id, value: trait.label, label: trait.label, icon: trait.icon, surface: 'tinted',
+        id: trait.id, value: trait.label, label: trait.labelKey, icon: trait.icon, surface: 'tinted',
         palette: resolveSideMenuPresentation('trait', trait.label).menuPalette
       })) }];
     }

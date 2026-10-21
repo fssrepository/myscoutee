@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   Component,
   OnDestroy,
@@ -46,6 +47,8 @@ type ReportUserActionId = 'report-user-cancel' | 'report-user-submit';
   styleUrl: './report-user-popup.component.scss'
 })
 export class ProfileReportUserPopupComponent implements OnDestroy {
+  private readonly i18n = inject(I18nService);
+
   private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -146,8 +149,8 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
         bind: 'handle',
         kind: 'text',
         layout: 'wide',
-        label: 'User',
-        placeholder: 'Selected member',
+        label: 'user',
+        placeholder: 'selected.member',
         required: true,
         minLength: this.reportUserHandleMinLength,
         readOnly: this.isContextualReport(),
@@ -160,7 +163,7 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
         bind: 'contextSummary',
         kind: 'textarea',
         layout: 'wide',
-        label: 'Event context',
+        label: 'event.context',
         rows: 3,
         readOnly: true,
         disabled
@@ -172,19 +175,19 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
         bind: 'reason',
         kind: 'menu',
         layout: 'wide',
-        label: 'Reason',
+        label: 'reason',
         disabled,
         config: {
           kind: 'select',
           layout: 'list',
-          title: 'Reason',
+          title: 'reason',
           trigger: {
             label: this.reportUserForm.reason,
             icon: this.reportUserReasonIcon(this.reportUserForm.reason),
             palette: this.reportUserReasonPalette(this.reportUserForm.reason),
             layout: 'field',
             disabled,
-            ariaLabel: 'Select report reason'
+            ariaLabel: 'report.reason.select.aria'
           },
           items: this.reportUserReasons.map((reason, index) => ({
             id: `report-user-reason-${index}`,
@@ -205,8 +208,8 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
         bind: 'details',
         kind: 'textarea',
         layout: 'wide',
-        label: 'Details',
-        placeholder: 'Add short details about what happened and why you are reporting this member.',
+        label: 'details',
+        placeholder: 'report.details.placeholder',
         rows: 4,
         required: true,
         minLength: this.reportUserDetailsMinLength,
@@ -214,7 +217,7 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
       }
     );
     return {
-      title: 'Report User',
+      title: 'report.user',
       layout: 'grouped',
       tone: 'orange',
       header: false,
@@ -224,7 +227,7 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
       save: null,
       steps: [{
         id: 'report-user',
-        title: 'Report User',
+        title: 'report.user',
         chrome: 'none',
         controls
       }]
@@ -235,18 +238,18 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
     return [
       {
         id: 'report-user-cancel',
-        label: 'Cancel',
+        label: 'cancel',
         layout: 'action',
         palette: 'slate',
-        ariaLabel: 'Cancel report'
+        ariaLabel: 'report.cancel.action'
       },
       {
         id: 'report-user-submit',
-        label: 'Submit report',
+        label: 'submit.report',
         layout: 'action',
         palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
         disabled: !this.canSubmitReportUser(),
-        ariaLabel: 'Submit report',
+        ariaLabel: 'submit.report',
         progress: this.showSubmitRing()
           ? {
               state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
@@ -301,13 +304,13 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
   private reportContextLabel(ownerType: string | null | undefined): string {
     switch (ownerType) {
       case 'asset':
-        return 'Asset';
+        return this.i18n.translate('asset');
       case 'subEvent':
         return 'Sub-event';
       case 'group':
-        return 'Group';
+        return this.i18n.translate('group');
       default:
-        return 'Event';
+        return this.i18n.translate('event');
     }
   }
 

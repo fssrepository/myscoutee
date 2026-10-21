@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import { LandingGuideSurfaceDirective } from '../../../../entry/components/entry-landing/landing-guide-surface.directive';
 import {
   ChangeDetectorRef,
@@ -76,6 +77,8 @@ type DemoSelectorPopupMenuContext = DemoSelectorHeaderMenuContext | DemoSelector
   styleUrl: './demo-bootstrap-selector.component.scss'
 })
 export class DemoBootstrapSelectorComponent {
+  private readonly i18n = inject(I18nService);
+
   private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
   private readonly usersService = inject(UsersService);
   private readonly injector = inject(Injector);
@@ -90,7 +93,7 @@ export class DemoBootstrapSelectorComponent {
   @Input() open = false;
   @Input() loading = false;
   @Input() loadingProgress = 0;
-  @Input() loadingLabel = 'Preparing demo data';
+  @Input() loadingLabel = 'demo.bootstrap.loading';
   @Input() loadingStage: BootstrapProcessStage = 'selector';
   protected loadingUserList = false;
   @Input() errorMessage = '';
@@ -165,8 +168,8 @@ export class DemoBootstrapSelectorComponent {
     return {
       title: this.title,
       subtitle: this.subtitle,
-      ariaLabel: 'Demo user selector',
-      closeAriaLabel: 'Close demo user popup',
+      ariaLabel: 'demo.selector.aria',
+      closeAriaLabel: 'demo.selector.close',
       size: 'wide',
       height: 'auto',
       headerLayout: 'document',
@@ -261,7 +264,7 @@ export class DemoBootstrapSelectorComponent {
       compactOnMobile: true,
       palette: 'red',
       disabled: () => this.loading || this.submitting,
-      ariaLabel: 'Open new demo profile',
+      ariaLabel: 'demo.profile.create.aria',
       context: { action: 'new-profile' }
     }];
   }
@@ -271,7 +274,7 @@ export class DemoBootstrapSelectorComponent {
       label: this.selectorRoleLabel(this.selectedMode),
       icon: this.selectorRoleIcon(this.selectedMode),
       trailingIcon: 'expand_more',
-      ariaLabel: 'Filter demo users',
+      ariaLabel: 'demo.selector.filter.aria',
       palette: this.selectorRolePalette(this.selectedMode),
       layout: 'pill',
       disabled: () => this.submitting
@@ -292,7 +295,7 @@ export class DemoBootstrapSelectorComponent {
       surface: 'tinted',
       active: () => this.selectedMode === mode,
       disabled: () => this.submitting,
-      ariaLabel: `Show ${this.selectorRoleLabel(mode)} demo users`,
+      ariaLabel: this.i18n.translateParams('demo.selector.role.show.aria', { role: this.selectorRoleLabel(mode) }),
       context: { mode }
     }));
   }
@@ -349,7 +352,7 @@ export class DemoBootstrapSelectorComponent {
       this.loading = true;
       this.loadingUserList = false;
       this.loadingProgress = 0;
-      this.loadingLabel = 'Preparing demo data';
+      this.loadingLabel = 'demo.bootstrap.loading';
       this.loadingStage = 'selector';
       this.errorMessage = '';
       this.submitting = false;
@@ -387,7 +390,7 @@ export class DemoBootstrapSelectorComponent {
           this.commit(() => {
             this.loadingUserList = true;
             this.loadingProgress = 0;
-            this.loadingLabel = `Loading ${this.selectorRoleLabel(mode).toLowerCase()} demo users`;
+            this.loadingLabel = this.i18n.translateParams('demo.users.loading', { role: this.selectorRoleLabel(mode).toLowerCase() });
             this.loadingStage = 'users';
           });
           await seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request));
@@ -407,7 +410,7 @@ export class DemoBootstrapSelectorComponent {
         this.commit(() => {
           this.loadingUserList = true;
           this.loadingProgress = 0;
-          this.loadingLabel = `Loading ${this.selectorRoleLabel(mode).toLowerCase()} demo users`;
+          this.loadingLabel = this.i18n.translateParams('demo.users.loading', { role: this.selectorRoleLabel(mode).toLowerCase() });
           this.loadingStage = 'users';
         });
         users = await this.usersService.loadAvailableDemoUsers(mode);
@@ -429,9 +432,9 @@ export class DemoBootstrapSelectorComponent {
             this.loading = false;
             this.loadingUserList = false;
             this.loadingProgress = 0;
-            this.loadingLabel = 'Retry demo selector';
+            this.loadingLabel = 'demo.selector.retry';
             this.loadingStage = 'selector';
-            this.errorMessage = 'Unable to open selected demo user.';
+            this.errorMessage = 'demo.session.open.error';
           });
           return;
         }
@@ -449,9 +452,9 @@ export class DemoBootstrapSelectorComponent {
         this.loading = false;
         this.loadingUserList = false;
         this.loadingProgress = 0;
-        this.loadingLabel = 'Retry demo selector';
+        this.loadingLabel = 'demo.selector.retry';
         this.loadingStage = 'selector';
-        this.errorMessage = 'Unable to load demo users right now.';
+        this.errorMessage = 'demo.selector.load.error';
       });
     }
   }
@@ -480,7 +483,7 @@ export class DemoBootstrapSelectorComponent {
       this.loading = true;
       this.loadingUserList = false;
       this.loadingProgress = 0;
-      this.loadingLabel = 'Preparing demo session';
+      this.loadingLabel = 'demo.session.preparing';
       this.loadingStage = 'session';
       this.errorMessage = '';
     });
@@ -508,7 +511,7 @@ export class DemoBootstrapSelectorComponent {
       this.loading = true;
       this.loadingUserList = true;
       this.loadingProgress = 0;
-      this.loadingLabel = `Loading ${this.selectorRoleLabel(normalizedMode).toLowerCase()} demo users`;
+      this.loadingLabel = this.i18n.translateParams('demo.users.loading', { role: this.selectorRoleLabel(normalizedMode).toLowerCase() });
       this.loadingStage = 'users';
       this.errorMessage = '';
     });
@@ -575,7 +578,7 @@ export class DemoBootstrapSelectorComponent {
       }
       this.commit(() => {
         this.loadingProgress = 100;
-        this.loadingLabel = 'Demo session ready';
+        this.loadingLabel = 'demo.session.ready.title';
         this.loadingStage = 'sessionReady';
       });
       await this.waitForLoaderCompletionBeat();
@@ -619,11 +622,11 @@ export class DemoBootstrapSelectorComponent {
       this.resetContextSelectionFailure(
         typeof result === 'string'
           ? result.trim()
-          : 'Unable to open selected demo user.'
+          : 'demo.session.open.error'
       );
     } catch {
       if (this.isCurrentContextRequest(requestToken)) {
-        this.resetContextSelectionFailure('Unable to open selected demo user.');
+        this.resetContextSelectionFailure('demo.session.open.error');
       }
     }
   }
@@ -658,7 +661,7 @@ export class DemoBootstrapSelectorComponent {
   }
 
   private selectorRoleLabel(mode: DemoBootstrapSelectorMode): string {
-    return mode === 'admin' ? 'Admin' : mode === 'operator' ? 'Operator' : 'Member';
+    return mode === 'admin' ? this.i18n.translate('admin.role.label') : mode === 'operator' ? this.i18n.translate('operator') : this.i18n.translate('member');
   }
 
   private selectorRoleIcon(mode: DemoBootstrapSelectorMode): string {
@@ -680,7 +683,7 @@ export class DemoBootstrapSelectorComponent {
       this.submitting = false;
       this.selectedUserId = '';
       this.loadingProgress = 0;
-      this.loadingLabel = 'Preparing demo data';
+      this.loadingLabel = 'demo.bootstrap.loading';
       this.loadingStage = 'selector';
       this.errorMessage = message;
     });
@@ -702,7 +705,7 @@ export class DemoBootstrapSelectorComponent {
     this.loading = false;
     this.loadingUserList = false;
     this.loadingProgress = 0;
-    this.loadingLabel = 'Preparing demo data';
+    this.loadingLabel = 'demo.bootstrap.loading';
     this.loadingStage = 'selector';
     this.errorMessage = '';
     this.submitting = false;

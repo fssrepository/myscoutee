@@ -242,8 +242,8 @@ export class AssetPopupComponent {
       ))
     },
     defaultView: 'list',
-    emptyLabel: 'No ticketed events',
-    emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
+    emptyLabel: 'asset.tickets.empty.title',
+    emptyDescription: 'asset.tickets.empty.description',
     emptyStickyLabel: 'No tickets',
     headerProgress: {
       enabled: true,
@@ -327,13 +327,13 @@ export class AssetPopupComponent {
     if (this.isBasketMode()) {
       const context = this.resourcePopupStore.popupContextRef();
       if (!context) {
-        return 'Event';
+        return this.i18n.translate('event');
       }
       const subEventName = this.subEventDisplayName(context.subEvent);
       if (context.parentTitle && subEventName) {
         return `${context.parentTitle} - ${subEventName}`;
       }
-      return context.parentTitle || subEventName || 'Event';
+      return context.parentTitle || subEventName || this.i18n.translate('event');
     }
     return this.assetStore.ticketPopup() ? this.assetPopupStore.ticketHeaderSummary() : '';
   }
@@ -343,7 +343,7 @@ export class AssetPopupComponent {
       title: this.assetPopupTitle(),
       subtitle: this.assetPopupSubtitle(),
       ariaLabel: this.assetPopupTitle(),
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -426,8 +426,8 @@ export class AssetPopupComponent {
         id: 'ticket-scan',
         align: 'end',
         icon: 'qr_code_scanner',
-        label: 'Scan Ticket',
-        ariaLabel: 'Scan ticket',
+        label: 'asset.ticket.scan.title',
+        ariaLabel: 'scan.ticket.aria',
         palette: 'sky',
         compactOnMobile: true
       });
@@ -441,8 +441,8 @@ export class AssetPopupComponent {
         closeOnSelect: false,
         items: [{
           id: 'asset-pending-only', kind: 'toggle', layout: 'pill',
-          icon: 'pending_actions', label: 'Pending only',
-          ariaLabel: this.assetPendingOnly ? 'Show all assets' : 'Show assets with pending requests only',
+          icon: 'pending_actions', label: 'pending.only',
+          ariaLabel: this.assetPendingOnly ? 'asset.filter.all.aria' : 'asset.filter.pending.aria',
           palette: 'rose', checked: this.assetPendingOnly,
           showToggleIndicator: true, closeOnSelect: false,
           counter: pendingCount > 0 ? pendingCount : null, counterTone: 'alert'
@@ -452,7 +452,7 @@ export class AssetPopupComponent {
         id: 'asset-add',
         align: 'end',
         icon: 'add',
-        ariaLabel: 'Add asset',
+        ariaLabel: 'add.asset',
         palette: 'green'
       });
     }
@@ -528,7 +528,7 @@ export class AssetPopupComponent {
         palette: this.assetFilterPalette(type),
         kind: 'branch',
         counter: count,
-        ariaLabel: 'Open selected assets',
+        ariaLabel: 'open.selected.assets',
         items: this.assetAssignBasketMenuItems()
       });
     }
@@ -538,7 +538,7 @@ export class AssetPopupComponent {
       kind: 'action',
       palette: this.basketSaveErrorMessage() ? 'danger' : 'success',
       disabled: () => !this.canConfirmBasketSelection(),
-      ariaLabel: 'Save selected assets',
+      ariaLabel: 'save.selected.assets',
       progress: {
         state: () => this.isBasketSavePending()
           ? 'loading'
@@ -686,13 +686,13 @@ export class AssetPopupComponent {
     }
     if (event.actionId === 'takeOver') {
       this.dialogStore.open({
-        title: 'Take over asset?',
+        title: 'take.over.asset.question',
         message: card.title,
-        cancelLabel: 'Cancel',
-        confirmLabel: 'Take Over',
-        busyConfirmLabel: 'Taking over...',
+        cancelLabel: 'cancel',
+        confirmLabel: 'take.over',
+        busyConfirmLabel: 'taking.over',
         confirmTone: 'accent',
-        failureMessage: 'Unable to take over asset.',
+        failureMessage: 'asset.owner.takeover.error',
         onConfirm: () => this.takeOverAssetCardById(card.id)
       });
       return;
@@ -1004,7 +1004,7 @@ export class AssetPopupComponent {
       icon: () => this.assetPopupStore.ticketDateOrderIcon(),
       palette: 'blue',
       layout: 'pill',
-      ariaLabel: 'Open ticket date ordering'
+      ariaLabel: 'open.ticket.date.ordering'
     };
   }
 
@@ -1013,7 +1013,7 @@ export class AssetPopupComponent {
     return [
       {
         id: 'ticket-order-upcoming',
-        label: 'Upcoming',
+        label: 'upcoming',
         icon: 'schedule',
         kind: 'radio',
         active: selectedOrder === 'upcoming',
@@ -1023,7 +1023,7 @@ export class AssetPopupComponent {
       },
       {
         id: 'ticket-order-past',
-        label: 'Past',
+        label: 'past',
         icon: 'history',
         kind: 'radio',
         active: selectedOrder === 'past',
@@ -1042,7 +1042,7 @@ export class AssetPopupComponent {
       icon: AssetDefaultsBuilder.assetTypeIcon(filter),
       palette: this.assetFilterPalette(filter),
       counter: count > 0 ? count : null,
-      ariaLabel: 'Open asset filter'
+      ariaLabel: 'open.asset.filter'
     };
   }
 

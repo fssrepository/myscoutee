@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import {
   Injectable,
@@ -9,12 +11,7 @@ import type {
   ActivityInviteOwnerContext,
   ActivityEventRecord
 } from '../../../contracts/common/activity.interface';
-import {
-  LocalActivityInviteCandidatesService
-} from '../../../local/source/services/events/activity-invite-candidates.service';
-import {
-  HttpActivityInviteCandidatesService
-} from '../../../http/services/events/activity-invite-candidates.service';
+
 import {
   ActivityMembersService
 } from './activity-members.service';
@@ -39,8 +36,9 @@ const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
   providedIn: 'root'
 })
 export class ActivityInviteCandidatesService extends BaseRouteModeService implements IActivityInviteCandidatesService {
-  private readonly localActivityInviteCandidatesService = inject(LocalActivityInviteCandidatesService);
-  private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localActivityInviteCandidatesService = this.transportAdapters.reference(LOCAL_ADAPTER.ACTIVITY_INVITE_CANDIDATES);
+  private readonly httpActivityInviteCandidatesService = this.transportAdapters.reference(HTTP_ADAPTER.ACTIVITY_INVITE_CANDIDATES);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly userProfileStore = inject(UserProfileStore);

@@ -53,16 +53,19 @@ import type {
 } from '../contracts/accounts/profile.interface';
 
 export type RateFilterEntry =
-  | { kind: 'group'; label: string }
+  | { kind: 'group'; label: string; labelKey: string }
   | { kind: 'item'; key: RateFilterKey; label: string };
 
 interface PersonalityTraitCatalogEntry {
   id: string;
   label: string;
+  labelKey: string;
   aliases: string[];
   icon: string;
   coreVibe: string;
+  coreVibeKey: string;
   highlights: string[];
+  highlightKeys: string[];
   toneClass: string;
 }
 
@@ -275,73 +278,97 @@ const PERSONALITY_TRAIT_CATALOG: PersonalityTraitCatalogEntry[] = [
   {
     id: 'social-charmer',
     label: 'Social Charmer',
+    labelKey: 'social.charmer',
     aliases: ['The Social Charmer'],
     icon: 'group',
     coreVibe: 'Warm, magnetic, easy to talk to',
+    coreVibeKey: 'profile.trait.social-charmer.vibe',
     highlights: ['Friendly', 'Outgoing', 'Funny'],
+    highlightKeys: ['friendly', 'outgoing', 'profile.trait.highlight.funny'],
     toneClass: 'trait-tone-social'
   },
   {
     id: 'deep-thinker',
     label: 'Deep Thinker',
+    labelKey: 'deep.thinker',
     aliases: ['The Deep Thinker'],
     icon: 'psychology',
     coreVibe: 'Reflective, intellectual, meaningful',
+    coreVibeKey: 'profile.trait.deep-thinker.vibe',
     highlights: ['Thoughtful', 'Curious', 'Insightful'],
+    highlightKeys: ['profile.trait.highlight.thoughtful', 'profile.trait.highlight.curious', 'profile.trait.highlight.insightful'],
     toneClass: 'trait-tone-deep'
   },
   {
     id: 'adventurer',
     label: 'Adventurer',
+    labelKey: 'adventurer',
     aliases: ['The Adventurer'],
     icon: 'explore',
     coreVibe: 'Energetic, bold, spontaneous',
+    coreVibeKey: 'profile.trait.adventurer.vibe',
     highlights: ['Spontaneous', 'Brave', 'Active'],
+    highlightKeys: ['spontaneous', 'brave', 'active'],
     toneClass: 'trait-tone-adventure'
   },
   {
     id: 'reliable-one',
     label: 'Reliable One',
+    labelKey: 'reliable.one',
     aliases: ['The Reliable One', 'Megbizhato', 'Megbízható'],
     icon: 'verified_user',
     coreVibe: 'Stable, trustworthy, grounded',
+    coreVibeKey: 'profile.trait.reliable-one.vibe',
     highlights: ['Loyal', 'Honest', 'Dependable'],
+    highlightKeys: ['profile.trait.highlight.loyal', 'honest', 'profile.trait.highlight.dependable'],
     toneClass: 'trait-tone-reliable'
   },
   {
     id: 'creative-soul',
     label: 'Creative Soul',
+    labelKey: 'creative.soul',
     aliases: ['The Creative Soul', 'Kreativ', 'Kreatív'],
     icon: 'palette',
     coreVibe: 'Expressive, imaginative, artistic',
+    coreVibeKey: 'profile.trait.creative-soul.vibe',
     highlights: ['Artistic', 'Unique', 'Visionary'],
+    highlightKeys: ['profile.trait.highlight.artistic', 'profile.trait.highlight.unique', 'profile.trait.highlight.visionary'],
     toneClass: 'trait-tone-creative'
   },
   {
     id: 'empath',
     label: 'Empath',
+    labelKey: 'empath',
     aliases: ['The Empath', 'Empatikus'],
     icon: 'favorite',
     coreVibe: 'Kind, emotionally safe, nurturing',
+    coreVibeKey: 'profile.trait.empath.vibe',
     highlights: ['Caring', 'Supportive', 'Patient'],
+    highlightKeys: ['profile.trait.highlight.caring', 'profile.trait.highlight.supportive', 'patient'],
     toneClass: 'trait-tone-empath'
   },
   {
     id: 'ambitious-go-getter',
     label: 'Ambitious Go-Getter',
+    labelKey: 'ambitious.go.getter',
     aliases: ['The Ambitious Go-Getter'],
     icon: 'trending_up',
     coreVibe: 'Driven, goal-oriented, high standards',
+    coreVibeKey: 'profile.trait.ambitious-go-getter.vibe',
     highlights: ['Motivated', 'Focused', 'Strategic thinker'],
+    highlightKeys: ['profile.trait.highlight.motivated', 'profile.trait.highlight.focused', 'profile.trait.highlight.strategic'],
     toneClass: 'trait-tone-ambitious'
   },
   {
     id: 'playful-spirit',
     label: 'Playful Spirit',
+    labelKey: 'playful.spirit',
     aliases: ['The Playful Spirit'],
     icon: 'celebration',
     coreVibe: 'Lighthearted, fun, youthful',
+    coreVibeKey: 'profile.trait.playful-spirit.vibe',
     highlights: ['Silly', 'Optimistic', 'Witty'],
+    highlightKeys: ['profile.trait.highlight.silly', 'profile.trait.highlight.optimistic', 'profile.trait.highlight.witty'],
     toneClass: 'trait-tone-playful'
   }
 ];
@@ -526,10 +553,12 @@ const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
 
 const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
   title: string;
+  titleKey: string;
   rows: Array<{ labelKey: string; privacy: DetailPrivacy }>;
 }> = [
   {
     title: 'Basics',
+    titleKey: 'basics',
     rows: [
       { labelKey: 'profile.name', privacy: 'Public' },
       { labelKey: 'profile.city', privacy: 'Public' },
@@ -545,6 +574,7 @@ const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
   },
   {
     title: 'Lifestyle',
+    titleKey: 'lifestyle',
     rows: [
       { labelKey: 'profile.details.interest', privacy: 'Friends' },
       { labelKey: 'profile.details.drinking', privacy: 'Friends' },
@@ -555,6 +585,7 @@ const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
   },
   {
     title: 'Relationships',
+    titleKey: 'relationships',
     rows: [
       { labelKey: 'profile.details.familyPlans', privacy: 'Private' },
       { labelKey: 'profile.details.children', privacy: 'Private' },
@@ -566,6 +597,7 @@ const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
   },
   {
     title: 'Beliefs',
+    titleKey: 'beliefs',
     rows: [
       { labelKey: 'profile.details.religion', privacy: 'Private' },
       { labelKey: 'profile.details.values', privacy: 'Friends' }
@@ -591,6 +623,114 @@ const PROFILE_DETAIL_VALUE_OPTIONS: Record<string, string[]> = {
     'Sustainability, empathy, community',
     'Creativity, freedom, authenticity'
   ]
+};
+// Display keys for canonical profile choices. Stored values, matching and sorting use the original choices.
+const PROFILE_OPTION_LABEL_KEYS: Readonly<Record<string, string>> = {
+  "Slim": "slim",
+  "Lean": "lean",
+  "Athletic": "athletic",
+  "Fit": "fit",
+  "Curvy": "curvy",
+  "Average": "average",
+  "Muscular": "muscular",
+  "English": "english",
+  "Spanish": "spanish",
+  "French": "french",
+  "German": "german",
+  "Italian": "italian",
+  "Portuguese": "portuguese",
+  "Hungarian": "hungarian",
+  "Korean": "korean",
+  "Never": "never",
+  "Socially": "socially",
+  "Occasionally": "occasionally",
+  "Weekends only": "weekends.only",
+  "Trying to quit": "trying.to.quit",
+  "Daily": "daily",
+  "Dog-friendly": "dog.friendly",
+  "Cat-friendly": "cat.friendly",
+  "All pets welcome": "all.pets.welcome",
+  "Wants children": "wants.children",
+  "Open to children": "open.to.children",
+  "Not sure yet": "profile.children.preference.undecided",
+  "Does not want children": "profile.children.preference.none",
+  "No": "no",
+  "Yes": "yes",
+  "Prefer not to say": "profile.preference.unspecified",
+  "Long-term partnership": "long.term.partnership",
+  "Slow-burn connection": "slow.burn.connection",
+  "Open relationship": "open.relationship",
+  "Exploring": "profile.relationship.exploring",
+  "Direct + warm": "direct.warm",
+  "Calm + reflective": "calm.reflective",
+  "Playful + light": "playful.light",
+  "Honest + concise": "honest.concise",
+  "Straight": "straight",
+  "Bisexual": "bisexual",
+  "Gay": "gay",
+  "Lesbian": "lesbian",
+  "Pansexual": "pansexual",
+  "Asexual": "asexual",
+  "Woman": "gender.woman",
+  "Man": "gender.man",
+  "Non-binary": "non.binary",
+  "Spiritual but not religious": "profile.religion.spiritual.label",
+  "Christian": "christian",
+  "Muslim": "muslim",
+  "Jewish": "jewish",
+  "Buddhist": "buddhist",
+  "Hindu": "hindu",
+  "Atheist": "atheist",
+  "Relationship & Family": "relationship.family",
+  "Family": "family",
+  "Marriage-oriented": "marriage.oriented",
+  "Casual dating": "casual.dating",
+  "Open / Exploring": "open.exploring",
+  "Family-first": "family.first",
+  "Independent lifestyle": "independent.lifestyle",
+  "Life Focus & Ambition": "life.focus.ambition",
+  "Ambition": "ambition",
+  "Career-focused": "career.focused",
+  "Entrepreneurial": "entrepreneurial",
+  "Stability-focused": "stability.focused",
+  "Balanced work-life": "balanced.work.life",
+  "Freedom-oriented": "freedom.oriented",
+  "Goal-driven": "goal.driven",
+  "Lifestyle Orientation": "lifestyle.orientation",
+  "Lifestyle": "lifestyle",
+  "Health & wellness focused": "health.wellness.focused",
+  "Fitness-driven": "fitness.driven",
+  "Mindfulness-oriented": "mindfulness.oriented",
+  "Social / party lifestyle": "social.party.lifestyle",
+  "Calm / home-centered": "calm.home.centered",
+  "Adventure-driven": "adventure.driven",
+  "Balanced lifestyle": "balanced.lifestyle",
+  "Beliefs & Worldview": "beliefs.worldview",
+  "Beliefs": "beliefs",
+  "Faith-oriented": "faith.oriented",
+  "Secular": "secular",
+  "Traditional values": "traditional.values",
+  "Progressive values": "progressive.values",
+  "Community-driven": "community.driven",
+  "Social impact oriented": "social.impact.oriented",
+  "Environmentally conscious": "environmentally.conscious",
+  "Politically engaged": "politically.engaged",
+  "Apolitical": "apolitical",
+  "Social & Lifestyle": "social.lifestyle",
+  "Social": "social",
+  "Arts & Entertainment": "arts.entertainment",
+  "Arts": "arts",
+  "Food & Experiences": "food.experiences",
+  "Food": "food",
+  "Active & Adventure": "active.adventure",
+  "Active": "active",
+  "Mind & Wellness": "mind.wellness",
+  "Mind": "mind",
+  "Values & Identity": "values.identity",
+  "Identity": "identity",
+  "Public": "public",
+  "Friends": "friends",
+  "Private": "private"
 };
 const BELIEFS_VALUES_OPTION_GROUPS: ValuesOptionGroup[] = [
   {
@@ -777,16 +917,16 @@ const ASSET_CATEGORY_OPTIONS_BY_TYPE: Record<AssetType, AssetCategory[]> = {
   [ASSET_TYPE_SUPPLIES]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_SUPPLIES]]
 };
 const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
-  { key: 'rates', label: 'Rates', icon: 'star' },
-  { key: 'chats', label: 'Chats', icon: 'chat' },
-  { key: 'invitations', label: 'Invitations', icon: 'mail' },
-  { key: 'events', label: 'Events', icon: 'event' },
-  { key: 'hosting', label: 'Hosting', icon: 'stadium' }
+  { key: 'rates', label: 'rates', icon: 'star' },
+  { key: 'chats', label: 'chats', icon: 'chat' },
+  { key: 'invitations', label: 'invitations', icon: 'mail' },
+  { key: 'events', label: 'events', icon: 'event' },
+  { key: 'hosting', label: 'hosting', icon: 'stadium' }
 ];
 const ACTIVITIES_SECONDARY_FILTERS: Array<{ key: ActivitiesSecondaryFilter; label: string; icon: string }> = [
-  { key: 'recent', label: 'Upcoming', icon: 'schedule' },
-  { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
-  { key: 'past', label: 'Past', icon: 'history' }
+  { key: 'recent', label: 'upcoming', icon: 'schedule' },
+  { key: 'relevant', label: 'relevant', icon: 'auto_awesome' },
+  { key: 'past', label: 'past', icon: 'history' }
 ];
 const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter; label: string; icon: string }> = [
   { key: 'all', label: 'all', icon: 'forum' },
@@ -801,35 +941,35 @@ const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter;
   { key: 'appSupport', label: 'app.support', icon: 'admin_panel_settings' }
 ];
 const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
-  { key: 'individual-given', label: 'Given' },
-  { key: 'individual-received', label: 'Received' },
-  { key: 'individual-mutual', label: 'Mutual' },
-  { key: 'individual-met', label: 'Met' },
-  { key: 'pair-given', label: 'Given' },
-  { key: 'pair-received', label: 'Received' }
+  { key: 'individual-given', label: 'given' },
+  { key: 'individual-received', label: 'received' },
+  { key: 'individual-mutual', label: 'mutual' },
+  { key: 'individual-met', label: 'met' },
+  { key: 'pair-given', label: 'given' },
+  { key: 'pair-received', label: 'received' }
 ];
 const RATE_FILTER_ENTRIES: RateFilterEntry[] = [
-  { kind: 'group', label: 'Preferences' },
+  { kind: 'group', label: 'Preferences', labelKey: 'activity.rates.group.preferences' },
   { kind: 'item', key: 'individual-given', label: 'Given' },
   { kind: 'item', key: 'individual-received', label: 'Received' },
   { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
   { kind: 'item', key: 'individual-met', label: 'Met' },
-  { kind: 'group', label: 'Suggestions' },
+  { kind: 'group', label: 'Suggestions', labelKey: 'activity.rates.group.suggestions' },
   { kind: 'item', key: 'pair-given', label: 'Given' },
   { kind: 'item', key: 'pair-received', label: 'Received' }
 ];
 const ACTIVITIES_VIEW_OPTIONS: Array<{ key: ActivitiesView; label: string; icon: string }> = [
-  { key: 'month', label: 'Month', icon: 'calendar_month' },
-  { key: 'week', label: 'Week', icon: 'date_range' },
-  { key: 'day', label: 'Day', icon: 'today' },
-  { key: 'distance', label: 'Distance', icon: 'social_distance' }
+  { key: 'month', label: 'month', icon: 'calendar_month' },
+  { key: 'week', label: 'week', icon: 'date_range' },
+  { key: 'day', label: 'day', icon: 'today' },
+  { key: 'distance', label: 'distance', icon: 'social_distance' }
 ];
 const EVENT_EXPLORE_ORDER_OPTIONS: Array<{ key: EventExploreOrder; label: string; icon: string }> = [
-  { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
-  { key: 'past-events', label: 'Korábbi', icon: 'history' },
-  { key: 'nearby', label: 'Nearby', icon: 'near_me' },
-  { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
-  { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
+  { key: 'upcoming', label: 'upcoming', icon: 'event_upcoming' },
+  { key: 'past-events', label: 'event.explore.order.past', icon: 'history' },
+  { key: 'nearby', label: 'nearby', icon: 'near_me' },
+  { key: 'most-relevant', label: 'most.relevant', icon: 'auto_awesome' },
+  { key: 'top-rated', label: 'top.rated', icon: 'emoji_events' }
 ];
 const HOME_GAME_FILTER_INTEREST_GROUPS: Array<{ title: string; icon: string; toneClass: string; options: string[] }> = [
     {
@@ -1164,9 +1304,9 @@ const FEEDBACK_ATTENDEE_REJOIN_OPTIONS: FeedbackOption[] = [
 ];
 const FEEDBACK_LIST_FILTER_META: Record<FeedbackListFilter, { label: string; icon: string }> = {
   'own-events': { label: 'feedback.own', icon: 'stadium' },
-  pending: { label: 'Pending', icon: 'schedule' },
-  feedbacked: { label: 'Feedbacked', icon: 'task_alt' },
-  removed: { label: 'Removed', icon: 'delete_outline' }
+  pending: { label: 'pending', icon: 'schedule' },
+  feedbacked: { label: 'feedbacked', icon: 'task_alt' },
+  removed: { label: 'feedback.evaluation.removed', icon: 'delete_outline' }
 };
 const FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: FeedbackListFilter; label: string; icon: string }> =
   FEEDBACK_LIST_FILTERS.map(key => ({ key, ...FEEDBACK_LIST_FILTER_META[key] }));
@@ -3009,6 +3149,7 @@ export const APP_STATIC_DATA = {
   documentViewerHeaderPalettes: DOCUMENT_VIEWER_HEADER_PALETTES,
   explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
+  profileOptionLabelKeys: PROFILE_OPTION_LABEL_KEYS,
   childrenValueLabels: { no: 'profile.children.none', yes: 'profile.children.has' } as Readonly<Record<string, string>>,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
@@ -3036,6 +3177,10 @@ export const APP_STATIC_DATA = {
   activityMemberDefaults: ACTIVITY_MEMBER_DEFAULTS,
   reportUserReasons: REPORT_USER_REASONS,
   feedbackCategories: FEEDBACK_CATEGORIES,
+  feedbackCategoryLabelKeys: {
+    'Bug report': 'bug.report', 'Feature request': 'feature.request', 'UX improvement': 'ux.improvement',
+    'Performance': 'performance', 'General': 'general'
+  } as Readonly<Record<string, string>>,
   feedbackEventOverallOptions: FEEDBACK_EVENT_OVERALL_OPTIONS,
   feedbackHostImproveOptions: FEEDBACK_HOST_IMPROVE_OPTIONS,
   feedbackAttendeeCollabOptions: FEEDBACK_ATTENDEE_COLLAB_OPTIONS,

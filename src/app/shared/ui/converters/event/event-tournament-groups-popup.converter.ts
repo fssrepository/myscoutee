@@ -74,10 +74,10 @@ export class EventTournamentGroupsPopupConverter
     const openIds = new Set(input.openGroupIds.map(id => id.trim()).filter(Boolean));
     return {
       mode,
-      title: state?.title?.trim() || (mode === 'Mingle' ? 'Tables' : 'Groups'),
+      title: state?.title?.trim() || (mode === 'Mingle' ? 'mingle.tables' : 'groups.title'),
       subtitle: selectedStage
         ? this.stageSubtitle(selectedStage, mode)
-        : state?.subtitle?.trim() || (mode === 'Mingle' ? 'Mingle tables' : 'Tournament groups'),
+        : state?.subtitle?.trim() || (mode === 'Mingle' ? 'Mingle tables' : 'event.tournament.groups.title'),
       selectedStage,
       canManage: state?.canManage === true,
       stageTrigger: this.stageTrigger(selectedStage, mode),
@@ -98,8 +98,8 @@ export class EventTournamentGroupsPopupConverter
           ? mode === 'Mingle' ? 'No tables in this round yet' : 'No groups yet'
           : mode === 'Mingle' ? 'No Mingle round' : 'No tournament stage',
         emptyDescription: selectedStage
-          ? mode === 'Mingle' ? 'Tables appear when this round starts.' : 'Add a group from the header action.'
-          : mode === 'Mingle' ? 'Select a round to view its tables.' : 'Select a tournament stage to manage groups.'
+          ? mode === 'Mingle' ? 'event.mingle.tables.pending.description' : 'event.tournament.groups.empty.description'
+          : mode === 'Mingle' ? 'event.mingle.round.select.description' : 'event.tournament.stage.select.description'
       }
     };
   }
@@ -137,14 +137,14 @@ export class EventTournamentGroupsPopupConverter
   private static stageTrigger(stage: EventTournamentStageDTO | null, mode: EventMode): AppMenuTrigger {
     const pending = this.stagePendingTotal(stage, mode);
     return {
-      label: stage?.title ?? (mode === 'Mingle' ? 'Round' : 'Stage'),
+      label: stage?.title ?? (mode === 'Mingle' ? 'event.editor.mingle.round' : 'Stage'),
       icon: mode === 'Mingle' ? 'table_restaurant' : 'emoji_events',
       palette: mode === 'Mingle' ? 'pink' : stage ? this.stagePalette(stage.stageNumber) : 'blue',
       layout: 'pill',
       counter: pending > 0
         ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
         : null,
-      ariaLabel: mode === 'Mingle' ? 'Select round' : 'Select stage'
+      ariaLabel: mode === 'Mingle' ? 'event.mingle.round.select.aria' : 'event.editor.subevents.stage.select'
     };
   }
 
@@ -240,7 +240,7 @@ export class EventTournamentGroupsPopupConverter
       if (mode !== 'Mingle' && `${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'SR') {
         actions.push({
           id: 'add-entry',
-          label: stage.leaderboardType === 'Fifa' ? 'Add Match' : 'Add Score',
+          label: stage.leaderboardType === 'Fifa' ? 'event.tournament.match.add.action' : 'event.tournament.score.add.action',
           icon: stage.leaderboardType === 'Fifa' ? 'add_circle' : 'add',
           palette: 'blue',
           context: { ...contextBase, action: 'add-entry' }
@@ -294,7 +294,7 @@ export class EventTournamentGroupsPopupConverter
           },
           ...(mode === 'Mingle' ? [] : [{
             id: 'assets',
-            label: 'Assets',
+            label: 'assets',
             items: AppConstants.ASSET_TYPES.map(type => this.resourceMenuItem(type, group, contextBase))
           }])
         ]

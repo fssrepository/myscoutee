@@ -31,7 +31,7 @@
               <h3>{{ displayTitle(vm.user) }}</h3>
               <p>
                 <mat-icon>location_on</mat-icon>
-                <span>{{ vm.user.city || 'City not set yet' }}</span>
+                <span>{{ vm.user.city || ('profile.city.empty.description' | i18n) }}</span>
               </p>
               @if (vm.user.headline || vm.user.statusText) {
                 <small>{{ vm.user.headline || vm.user.statusText }}</small>
@@ -42,8 +42,8 @@
         @if (!vm.hasAvailableData) {
           <div class="profile-impressions-empty-state">
             <mat-icon>insights</mat-icon>
-            <strong>No available data yet</strong>
-            <span>Impressions appear after real host or attendee activity.</span>
+            <strong>{{ 'profile.impressions.empty.title' | i18n }}</strong>
+            <span>{{ 'profile.impressions.empty.description' | i18n }}</span>
           </div>
         } @else {
         <div class="social-proof-grid">
@@ -56,26 +56,26 @@
               <mat-icon [class]="vm.hostTierPresentation.colorClass">{{ vm.hostTierPresentation.icon }}</mat-icon>
               <span class="social-proof-identity-label">
                 <span class="social-proof-identity-main">{{ vm.user.hostTier.replace(' Host', '') }}</span>
-                <span class="social-proof-identity-sub">Host</span>
+                <span class="social-proof-identity-sub">{{ 'host' | i18n }}</span>
               </span>
             </div>
             <div class="popup-impressions-badge popup-impressions-badge-host" [class.popup-impressions-badge-updated]="vm.pulseFlags.hostTop">
               <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
-                <span class="popup-impressions-badge-label">Rate</span>
+                <span class="popup-impressions-badge-label">{{ 'profile.impressions.rate.label' | i18n }}</span>
                 <span class="popup-impressions-badge-value">{{ vm.hostAverageRating }}</span>
               </span>
               <span class="popup-impressions-badge-segment popup-impressions-rate-people">
-                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-label">{{ 'profile.impressions.people.events.label' | i18n }}</span>
                 <span class="popup-impressions-badge-value">{{ vm.hostPeopleMet + ' / ' + vm.hostTotalEvents }}</span>
               </span>
               <span class="popup-impressions-badge-segment popup-impressions-rate-return">
-                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-label">{{ 'profile.impressions.attendance.label' | i18n }}</span>
                 <span class="popup-impressions-badge-value">{{ vm.hostRepeatSummary + ' / ' + vm.hostAttendanceNoShowSummary }}</span>
               </span>
             </div>
             <div class="social-proof-section-block">
               <div class="social-proof-section-head section-vibe">
-                <span class="section-tag">Vibe</span>
+                <span class="section-tag">{{ 'profile.impressions.vibe.label' | i18n }}</span>
                 <span class="section-line"></span>
               </div>
               <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
@@ -86,7 +86,7 @@
             </div>
             <div class="social-proof-section-block">
               <div class="social-proof-section-head section-personality">
-                <span class="section-tag">Personality</span>
+                <span class="section-tag">{{ 'profile.impressions.personality' | i18n }}</span>
                 <span class="section-line"></span>
               </div>
               @if (vm.hostTraitCards.length > 0) {
@@ -115,8 +115,8 @@
                         <div class="personality-trait-card-title">
                           <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
                           <div>
-                            <strong>{{ trait.label }}</strong>
-                            <p>{{ trait.coreVibe }}</p>
+                            <strong>{{ trait.labelKey | i18n }}</strong>
+                            <p>{{ trait.coreVibe | i18n }}</p>
                           </div>
                         </div>
                         <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
@@ -132,7 +132,7 @@
                       </div>
                       <div class="personality-trait-card-highlights">
                         @for (item of trait.highlights; track item) {
-                          <span class="social-proof-chip chip-personality">{{ item }}</span>
+                          <span class="social-proof-chip chip-personality">{{ item | i18n }}</span>
                         }
                       </div>
                     </div>
@@ -148,7 +148,7 @@
             </div>
             <div class="social-proof-section-block">
               <div class="social-proof-section-head section-category">
-                <span class="section-tag">Category</span>
+                <span class="section-tag">{{ 'category' | i18n }}</span>
                 <span class="section-line"></span>
               </div>
               <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
@@ -167,22 +167,22 @@
               <mat-icon [class]="vm.traitPresentation.colorClass">{{ vm.traitPresentation.icon }}</mat-icon>
               <span class="social-proof-identity-label">
                 <span class="social-proof-identity-main">{{ vm.memberImpressionTitle.replace(' Attendee', '') }}</span>
-                <span class="social-proof-identity-sub">Attendee</span>
+                <span class="social-proof-identity-sub">{{ 'attendee' | i18n }}</span>
               </span>
             </div>
             <div class="popup-impressions-badge popup-impressions-badge-member" [class.popup-impressions-badge-updated]="vm.pulseFlags.memberTop">
               <span class="popup-impressions-badge-segment popup-impressions-rate-people">
-                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-label">{{ 'profile.impressions.people.events.label' | i18n }}</span>
                 <span class="popup-impressions-badge-value">{{ vm.memberPeopleMet + ' / ' + vm.memberTotalEvents }}</span>
               </span>
               <span class="popup-impressions-badge-segment popup-impressions-rate-return">
-                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-label">{{ 'profile.impressions.attendance.label' | i18n }}</span>
                 <span class="popup-impressions-badge-value">{{ vm.memberReturneesSummary + ' / ' + vm.memberNoShowCount }}</span>
               </span>
             </div>
             <div class="social-proof-section-block">
               <div class="social-proof-section-head section-vibe">
-                <span class="section-tag">Vibe</span>
+                <span class="section-tag">{{ 'profile.impressions.vibe.label' | i18n }}</span>
                 <span class="section-line"></span>
               </div>
               <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
@@ -193,7 +193,7 @@
             </div>
             <div class="social-proof-section-block">
               <div class="social-proof-section-head section-personality">
-                <span class="section-tag">Personality</span>
+                <span class="section-tag">{{ 'profile.impressions.personality' | i18n }}</span>
                 <span class="section-line"></span>
               </div>
               @if (vm.memberTraitCards.length > 0) {
@@ -222,8 +222,8 @@
                         <div class="personality-trait-card-title">
                           <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
                           <div>
-                            <strong>{{ trait.label }}</strong>
-                            <p>{{ trait.coreVibe }}</p>
+                            <strong>{{ trait.labelKey | i18n }}</strong>
+                            <p>{{ trait.coreVibe | i18n }}</p>
                           </div>
                         </div>
                         <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
@@ -239,7 +239,7 @@
                       </div>
                       <div class="personality-trait-card-highlights">
                         @for (item of trait.highlights; track item) {
-                          <span class="social-proof-chip chip-personality">{{ item }}</span>
+                          <span class="social-proof-chip chip-personality">{{ item | i18n }}</span>
                         }
                       </div>
                     </div>
@@ -255,7 +255,7 @@
             </div>
             <div class="social-proof-section-block">
               <div class="social-proof-section-head section-category">
-                <span class="section-tag">Category</span>
+                <span class="section-tag">{{ 'category' | i18n }}</span>
                 <span class="section-line"></span>
               </div>
               <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">

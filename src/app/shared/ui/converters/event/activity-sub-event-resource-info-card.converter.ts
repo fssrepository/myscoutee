@@ -73,8 +73,8 @@ export class ActivitySubEventResourceInfoCardConverter {
         interactive: this.canOpenBadgeDetails(card),
         pendingCount: card.pending,
         ariaLabel: this.canOpenAssetMembers(card)
-          ? 'Open member requests'
-          : 'Open resource details'
+          ? 'event.resource.requests.open.aria'
+          : 'event.resource.details.open.aria'
       },
       menuActions: this.resourceMenuActions(card, options),
       clickable: false
@@ -105,7 +105,7 @@ export class ActivitySubEventResourceInfoCardConverter {
       tone: 'warm',
       icon: 'location_on',
       interactive: true,
-      ariaLabel: card.type === AppConstants.ASSET_TYPE_TRANSPORT ? 'Open route map' : 'Open accommodation map'
+      ariaLabel: card.type === AppConstants.ASSET_TYPE_TRANSPORT ? 'event.resource.route.open.aria' : 'event.resource.accommodation.open.aria'
     };
   }
 

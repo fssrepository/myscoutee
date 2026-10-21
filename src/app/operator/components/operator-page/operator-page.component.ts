@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
 import {
   ExplanationGuideService,
   type ListQuery,
@@ -75,6 +77,7 @@ type OperatorActionId = Exclude<
   styleUrl: './operator-page.component.scss'
 })
 export class OperatorPageComponent implements OnInit {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   protected readonly deploymentBranding =
     inject(DeploymentConfigurationService).branding;
   protected readonly registry = inject(OperatorRegistryStore);
@@ -396,7 +399,7 @@ export class OperatorPageComponent implements OnInit {
     if (this.registrationPopupComponentRef()) {
       return;
     }
-    const module = await import('../operator-registry-popup/operator-registry-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.OPERATOR_REGISTRY_POPUP);
     this.registrationPopupComponentRef.set(module.OperatorRegistryPopupComponent);
   }
 
@@ -404,7 +407,7 @@ export class OperatorPageComponent implements OnInit {
     if (this.actionPopupComponentRef()) {
       return;
     }
-    const module = await import('../operator-action-popup/operator-action-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.OPERATOR_ACTION_POPUP);
     this.actionPopupComponentRef.set(module.OperatorActionPopupComponent);
   }
 

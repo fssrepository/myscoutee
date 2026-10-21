@@ -33,7 +33,7 @@ export class ExternalInvitePopupComponent {
   protected model(): PopupModel {
     return { errorMessage: this.error() ? 'invite.external.failed' : null, title: 'invite.external.title', size: 'small', height: 'auto', backdropTone: 'dim',
       onClose: () => this.store.externalInvite.set(null),
-      headerActions: this.error() ? [{ id: 'retry', icon: 'refresh', label: 'Retry', palette: 'blue' }] : [],
+      headerActions: this.error() ? [{ id: 'retry', icon: 'refresh', label: 'admin.params.group.retry', palette: 'blue' }] : [],
       onAction: () => { void this.load(); } };
   }
   private async load(): Promise<void> {

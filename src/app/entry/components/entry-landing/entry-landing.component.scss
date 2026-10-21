@@ -1138,8 +1138,8 @@
   gap: 0.4rem;
 }
 
-.entry-footer-links h3,
-.entry-footer-contact h3 {
+.entry-footer-links h2,
+.entry-footer-contact h2 {
   margin: 0;
   color: var(--deployment-footer-text);
   font-size: 1.04rem;
@@ -1600,8 +1600,8 @@
     line-height: 28px;
   }
 
-  .entry-footer-links h3,
-  .entry-footer-contact h3 {
+  .entry-footer-links h2,
+  .entry-footer-contact h2 {
     font-size: 1.04rem;
     margin-bottom: 0;
   }

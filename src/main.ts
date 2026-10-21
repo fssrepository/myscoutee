@@ -1,7 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { Injector, inject, provideAppInitializer } from '@angular/core';
 import { markLandingDebug } from './app/shared/core/common/landing-debug';
-import { prepareDemoFailover, demoFailoverSeedWarmupNeeded, demoFailoverLocalUser, startDemoFailover } from './app/shared/core/common/demo-failover';
+import { prepareDemoFailover, prewarmDemoFailover, demoFailoverLocalUser, startDemoFailover } from './app/shared/core/common/demo-failover';
 
 type MutableConsole = Console & Record<string, (...args: unknown[]) => void>;
 
@@ -95,7 +95,10 @@ bindBootstrapResumeRecovery();
 
 prepareDemoFailover()
   .then(async () => {
-    const [{ App }, { appConfig }] = await Promise.all([import('./app/app'), import('./app/app.config')]);
+    const [{ App }, appConfig] = await Promise.all([
+      import('./app/app'),
+      import('./app/app.config').then(module => module.loadAppConfig())
+    ]);
     const localUserId = demoFailoverLocalUser();
     if (localUserId) {
       appConfig.providers.push(provideAppInitializer(() => {
@@ -110,9 +113,7 @@ prepareDemoFailover()
     const app = await bootstrapApplication(App, appConfig);
     // Only demo sessions can use these seeds. Real sessions must not download
     // and evaluate the demo builders while authentication is still starting.
-    if (demoFailoverSeedWarmupNeeded()) {
-      void import('./app/shared/core/local/seed/services/platform/demo-bootstrap.service').catch(() => undefined);
-    }
+    prewarmDemoFailover();
     return app;
   })
   .then(() => { markBootstrapped(); startDemoFailover(); })

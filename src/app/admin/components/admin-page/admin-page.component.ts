@@ -1,3 +1,6 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
+import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
 import { ExplanationGuideService, DeploymentBrandComponent } from '@fssrepository/myscoutee-components';
 import { DestroyRef } from '@angular/core';
 import { UserProfileStore } from "../../../shared/ui/context/stores/profile/user-profile.store";
@@ -56,13 +59,14 @@ import {
     CommonModule,
     DeploymentBrandComponent,
     MatIconModule,
-    MatRippleModule,
+    MatRippleModule, I18nPipe
 
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   protected readonly deploymentBranding =
     inject(DeploymentConfigurationService).branding;
   protected readonly workspace = inject(AdminWorkspaceStore);
@@ -339,7 +343,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
   private async ensureModerationPopupLoaded(): Promise<void> {
     if (this.moderationPopupComponentRef()) return;
-    const module = await import('../content-moderation-popup/content-moderation-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.CONTENT_MODERATION_POPUP);
     this.moderationPopupComponentRef.set(module.ContentModerationPopupComponent);
   }
 
@@ -347,7 +351,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.reportsPopupComponentRef()) {
       return;
     }
-    const module = await import('../reports-popup/admin-reports-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_REPORTS_POPUP);
     this.reportsPopupComponentRef.set(module.AdminReportsPopupComponent);
   }
 
@@ -355,7 +359,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.feedbackPopupComponentRef()) {
       return;
     }
-    const module = await import('../feedback-popup/admin-feedback-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_FEEDBACK_POPUP);
     this.feedbackPopupComponentRef.set(module.AdminFeedbackPopupComponent);
   }
 
@@ -363,7 +367,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.helpEditorPopupComponentRef()) {
       return;
     }
-    const module = await import('../help-editor-popup/admin-help-editor-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_HELP_EDITOR_POPUP);
     this.helpEditorPopupComponentRef.set(module.AdminHelpEditorPopupComponent);
   }
 
@@ -371,7 +375,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.ideaEditorPopupComponentRef()) {
       return;
     }
-    const module = await import('../idea-editor-popup/admin-idea-editor-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_IDEA_EDITOR_POPUP);
     this.ideaEditorPopupComponentRef.set(module.AdminIdeaEditorPopupComponent);
   }
 
@@ -379,7 +383,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.notificationsPopupComponentRef()) {
       return;
     }
-    const module = await import('../notifications-popup/admin-notifications-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_NOTIFICATIONS_POPUP);
     this.notificationsPopupComponentRef.set(module.AdminNotificationsPopupComponent);
   }
 
@@ -387,7 +391,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.paramsPopupComponentRef()) {
       return;
     }
-    const module = await import('../params-popup/admin-params-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_PARAMS_POPUP);
     this.paramsPopupComponentRef.set(module.AdminParamsPopupComponent);
   }
 
@@ -395,7 +399,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.statsPopupComponentRef()) {
       return;
     }
-    const module = await import('../stats-popup/admin-stats-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_STATS_POPUP);
     this.statsPopupComponentRef.set(module.AdminStatsPopupComponent);
   }
 
@@ -403,7 +407,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.affinityGraphPopupComponentRef()) {
       return;
     }
-    const module = await import('../affinity-graph-popup/admin-affinity-graph-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_AFFINITY_GRAPH_POPUP);
     this.affinityGraphPopupComponentRef.set(module.AdminAffinityGraphPopupComponent);
   }
 
@@ -411,7 +415,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.paymentSimulatorPopupComponentRef()) {
       return;
     }
-    const module = await import('../payment-simulator-popup/admin-payment-simulator-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_PAYMENT_SIMULATOR_POPUP);
     this.paymentSimulatorPopupComponentRef.set(module.AdminPaymentSimulatorPopupComponent);
   }
 
@@ -419,7 +423,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (this.monitoringPopupComponentRef()) {
       return;
     }
-    const module = await import('../monitoring-popup/admin-monitoring-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ADMIN_MONITORING_POPUP);
     this.monitoringPopupComponentRef.set(module.AdminMonitoringPopupComponent);
   }
 

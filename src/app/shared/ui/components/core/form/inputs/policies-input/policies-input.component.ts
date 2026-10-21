@@ -1,3 +1,4 @@
+import { I18nService } from '../../../../../../core/base/services/localization/i18n.service';
 import {
   AppMenuComponent,
   I18nPipe,
@@ -110,6 +111,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
   protected editingPolicyDraftIndex: number | null = null;
   protected showPoliciesPopup = false;
 
+  private readonly i18n = inject(I18nService);
   private readonly formFlowPopupStore = inject(FormFlowPopupStore);
   private readonly ownerId = this.nextOwnerId();
   protected readonly policyEditorPopupOutletInputs = computed(() => {
@@ -370,8 +372,8 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
       locked: this.locked(),
       requiredApprovalLabel: this.resolveConfigValue(this.config.requiredApprovalLabel, 'event.editor.policy.required'),
       optionalPolicyLabel: this.resolveConfigValue(this.config.optionalPolicyLabel, 'event.editor.policy.optional'),
-      requiredPreview: this.resolveConfigValue(this.config.requiredPreview, 'event.editor.policy.required.description'),
-      optionalPreview: this.resolveConfigValue(this.config.optionalPreview, 'event.editor.policy.optional.description')
+      requiredPreview: this.i18n.translate(this.resolveConfigValue(this.config.requiredPreview, 'event.editor.policy.required.description')),
+      optionalPreview: this.i18n.translate(this.resolveConfigValue(this.config.optionalPreview, 'event.editor.policy.optional.description'))
     });
   }
 
@@ -480,8 +482,8 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
       return description;
     }
     return policy.required !== false
-      ? this.resolveConfigValue(this.config.requiredPreview, 'event.editor.policy.required.description')
-      : this.resolveConfigValue(this.config.optionalPreview, 'event.editor.policy.optional.description');
+      ? this.i18n.translate(this.resolveConfigValue(this.config.requiredPreview, 'event.editor.policy.required.description'))
+      : this.i18n.translate(this.resolveConfigValue(this.config.optionalPreview, 'event.editor.policy.optional.description'));
   }
 
   protected policyRequired(policy: PolicyInputModel): boolean {

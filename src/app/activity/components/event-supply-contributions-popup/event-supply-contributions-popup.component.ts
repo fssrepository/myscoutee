@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   clampNumber,
   UiDateUtils,
@@ -101,6 +102,8 @@ interface SupplyContributionRemovalRequest {
   styleUrls: ['./event-supply-contributions-popup.component.scss']
 })
 export class EventSupplyContributionsPopupComponent implements DoCheck {
+  private readonly i18n = inject(I18nService);
+
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
   private readonly userProfileStore = inject(UserProfileStore);
@@ -161,8 +164,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
-    emptyLabel: 'No quantity added yet',
-    emptyDescription: 'Use the + button in the header to add your quantity row.',
+    emptyLabel: 'event.supplies.empty.title',
+    emptyDescription: 'event.supplies.empty.description',
     listLayout: 'card-grid',
     desktopColumns: 1,
     snapMode: 'none',
@@ -248,13 +251,13 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected popupSubtitle(): string {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
-      return 'Event';
+      return this.i18n.translate('event');
     }
     const subEventName = this.subEventDisplayName(context.subEvent);
     if (context.parentTitle && subEventName) {
       return `${context.parentTitle} - ${subEventName}`;
     }
-    return context.parentTitle || subEventName || 'Event';
+    return context.parentTitle || subEventName || this.i18n.translate('event');
   }
 
   protected supplyContributionsPopupModel(): PopupModel {
@@ -266,7 +269,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       translateTitle: false,
       translateSubtitle: false,
       ariaLabel: title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -275,7 +278,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       headerActions: viewOnly ? [] : [{
         id: 'add-supply-quantity',
         icon: 'add',
-        ariaLabel: 'Add supply quantity row',
+        ariaLabel: 'event.supplies.add.aria',
         palette: 'blue'
       }],
       onClose: () => this.closeSupplyContributionsPopup(),
@@ -299,11 +302,11 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
 
   protected bringItemsPopupModel(dialog: SupplyBringDialogState): PopupModel {
     return {
-      title: 'Bring Items',
+      title: 'event.supplies.editor.title',
       subtitle: dialog.title,
       translateSubtitle: false,
-      ariaLabel: 'Bring Items',
-      closeAriaLabel: 'Close bring items',
+      ariaLabel: 'event.supplies.editor.title',
+      closeAriaLabel: 'event.supplies.editor.close.aria',
       size: 'small',
       height: 'auto',
       headerTone: 'accent',
@@ -334,7 +337,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       kind: 'action',
       palette: 'green',
       disabled: !canSave || dialog.busy,
-      ariaLabel: 'Save supply quantity',
+      ariaLabel: 'event.supplies.save.action',
       progress: dialog.busy
         ? {
             state: 'loading',
@@ -365,7 +368,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       bind: 'quantity',
       kind: 'number',
       layout: 'wide',
-      label: 'Items',
+      label: 'pricing.asset.items',
       description: `Range: ${dialog.min} - ${dialog.max}`,
       required: true,
       min: dialog.min,
@@ -379,7 +382,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         id: 'save-error',
         kind: 'static',
         layout: 'wide',
-        label: 'Unable to save quantity',
+        label: 'event.supplies.save.error',
         summary: {
           hidden: true,
           value: () => errorMessage
@@ -387,7 +390,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       });
     }
     return {
-      title: 'Bring Items',
+      title: 'event.supplies.editor.title',
       layout: 'grouped',
       tone: errorMessage ? 'orange' : 'blue',
       header: false,
@@ -609,11 +612,11 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     this.dialogStore.open({
       title: 'confirmation.delete.supply',
       message: `Delete "${pending.label}" from supplies?`,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
       confirmTone: 'danger',
-      failureMessage: 'Unable to delete quantity row.',
+      failureMessage: 'event.supplies.delete.error',
       onConfirm: () => this.removeSupplyContribution(pending)
     });
   }

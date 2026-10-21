@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { Injectable, Type, computed, effect, inject, signal } from '@angular/core';
 
 import {ActivityInvitePopupStore} from '../activity/activity-invite-popup.store';
@@ -15,6 +17,7 @@ export interface PaymentMethodPickerRequest {
 
 @Injectable({ providedIn: 'root' })
 export class PaymentMethodsPopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly memberPicker=inject(ActivityInvitePopupStore);
   readonly counterparty=signal<ActivityMemberDTO|null>(null);
   private readonly profiles = inject(UserProfileStore);
@@ -113,7 +116,7 @@ export class PaymentMethodsPopupStore {
 
   async ensureLoaded(): Promise<void> {
     if (this.componentRef()) return;
-    const module = await import('../../../components/payment-methods-popup/payment-methods-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.PAYMENT_METHODS_POPUP);
     this.componentRef.set(module.PaymentMethodsPopupComponent);
   }
 }

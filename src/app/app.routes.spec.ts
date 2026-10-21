@@ -7,6 +7,7 @@ import { routes } from './app.routes';
 import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
 import { type AppSession, SessionService } from './shared/core/base/services/accounts/session.service';
 import { UsersService } from './shared/core/base/services/accounts/users.service';
+import { I18nService } from './shared/core/base/services/localization/i18n.service';
 
 @Component({ template: 'Page' })
 class TestPage {}
@@ -32,9 +33,11 @@ describe('startup authentication routing', () => {
   const ensureSession = vi.fn();
   const peekCachedUserById = vi.fn();
   const loadUserById = vi.fn();
+  const ensureLanguageLoaded = vi.fn();
 
   beforeEach(() => {
     storedSession = firebaseSession;
+    ensureLanguageLoaded.mockReset().mockResolvedValue(undefined);
     ensureSession.mockReset().mockImplementation(async () => storedSession);
     peekCachedUserById.mockReset().mockReturnValue(null);
     loadUserById.mockReset().mockResolvedValue({
@@ -42,6 +45,7 @@ describe('startup authentication routing', () => {
     });
     TestBed.configureTestingModule({ providers: [
       provideRouter(guardRoutes(routes)),
+      { provide: I18nService, useValue: { ensureLanguageLoaded } },
       { provide: SessionService, useValue: {
         currentSession: () => storedSession, ensureSession
       } },
@@ -53,11 +57,19 @@ describe('startup authentication routing', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  it('keeps the English text reference out of a public landing visit', async () => {
+    storedSession = null;
+    await RouterTestingHarness.create('/entry');
+    expect(TestBed.inject(Router).url).toBe('/entry');
+    expect(ensureLanguageLoaded).not.toHaveBeenCalled();
+  });
+
   it('authenticates once across the root-to-game redirect and still loads the server user', async () => {
     await RouterTestingHarness.create('/');
     expect(TestBed.inject(Router).url).toBe('/game');
     expect(ensureSession).toHaveBeenCalledTimes(1);
     expect(loadUserById).toHaveBeenCalledExactlyOnceWith(undefined, 8000);
+    expect(ensureLanguageLoaded).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { ActivityInvitePopupStore } from '../activity/activity-invite-popup.store';
 import { CommunityGroupChangesStore } from './community-group-changes.store';
 import { GroupWorkspaceStore } from './group-workspace.store';
@@ -18,6 +20,7 @@ import { groupCounters } from '../../../../core/contracts/groups/community-group
 import { ActivityStore } from '../activity/activity.store';
 @Injectable({ providedIn: 'root' })
 export class CommunityGroupsStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly invites = inject(ActivityInvitePopupStore);
   private readonly dialogs = inject(DialogStore);
   private readonly i18n = inject(I18nService);
@@ -126,7 +129,7 @@ export class CommunityGroupsStore {
         const workspace = (await this.service.workspaces(userId)).find(item => item.groupId === group.id);
         const profile = this.profile.getUserProfile(userId);
         if (!workspace?.profileId || !profile) throw new Error('groups.forbidden');
-        const component = await import('../../../../../admin/components/content-moderation-popup/content-moderation-popup.component');
+        const component = await this.popupAdapters.load(POPUP_ADAPTER.CONTENT_MODERATION_POPUP);
         if (userId !== this.openUserId()) return;
         this.moderationComponent.set(component.ContentModerationPopupComponent);
         this.moderationContext.set({ groupId: group.id, name: group.name, actor: {
@@ -155,7 +158,7 @@ export class CommunityGroupsStore {
       : action === 'restore' && group.membershipStatus === 'blocked' ? 'restore-blocked' : action;
     this.dialogs.open({ title: `groups.confirm.${confirmation}.title`,
       message: this.i18n.translateParams(`groups.confirm.${confirmation}`, { name: group.name }),
-      cancelLabel: 'Cancel', confirmLabel: String(item.label), confirmPalette: item.palette,
+      cancelLabel: 'cancel', confirmLabel: String(item.label), confirmPalette: item.palette,
       failureMessage: 'groups.error',
       input: action === 'report' ? { label: 'groups.report.details', maxLength: 2000 } : null,
       onConfirm: details => action === 'report' ? this.service.report(this.openUserId() ?? '', group.id, details) : this.commitAction(action, group) });

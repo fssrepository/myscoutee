@@ -54,7 +54,7 @@
                 @if (feedbackDetailLoading()) {
                   <article class="editor-list-card support-card feedback-loading-card">
                     <app-indicator kind="load-ring" state="loading"></app-indicator>
-                    <span>Loading feedback</span>
+                    <span>{{ 'feedback.loading' | i18n }}</span>
                   </article>
                 } @else if (hasFeedbackCards()) {
                   <article class="editor-list-card support-card feedback-shell feedback-flow-shell">
@@ -136,7 +136,7 @@
                                 <div class="feedback-organizer-carousel-card-title">
                                   <span class="feedback-organizer-carousel-card-icon"><mat-icon>{{ section.icon }}</mat-icon></span>
                                   <div>
-                                    <strong>{{ section.topLabel }}</strong>
+                                    <strong>{{ section.topLabel | i18n }}</strong>
                                     <p>{{ section.subtitle }}</p>
                                   </div>
                                 </div>
@@ -147,18 +147,18 @@
                               <div class="feedback-organizer-carousel-card-meta">
                                 <span>
                                   {{ section.topCount }} of {{ section.responseCount }}
-                                  {{ section.responseCount === 1 ? 'response' : 'responses' }}
+                                  {{ section.responseCount === 1 ? ('feedback.response.count.singular' | i18n) : ('feedback.response.count.plural' | i18n) }}
                                 </span>
                                 <span>
                                   {{ section.optionCount }}
-                                  {{ section.optionCount === 1 ? 'option' : 'options' }}
+                                  {{ section.optionCount === 1 ? ('feedback.option.count.singular' | i18n) : ('feedback.option.count.plural' | i18n) }}
                                 </span>
                               </div>
                               <div class="feedback-organizer-carousel-card-highlights">
                                 @for (stat of section.items; track stat.key) {
                                   <span class="feedback-organizer-carousel-chip">
                                     <mat-icon>{{ stat.icon }}</mat-icon>
-                                    <span>{{ stat.label }}</span>
+                                    <span>{{ stat.label | i18n }}</span>
                                     <strong>{{ stat.count }}</strong>
                                   </span>
                                 }
@@ -191,29 +191,29 @@
                                 </div>
                                 <div class="feedback-organizer-message-meta">
                                   <h5>{{ message.viewerName }}</h5>
-                                  <p>{{ message.timeLabel || 'Recent feedback' }}</p>
+                                  <p>{{ message.timeLabel || ('feedback.received.recent' | i18n) }}</p>
                                 </div>
                               </div>
                               <div class="feedback-organizer-message-chips">
                                 @if (message.overallLabel) {
-                                  <span class="feedback-organizer-message-chip">{{ message.overallLabel }}</span>
+                                  <span class="feedback-organizer-message-chip">{{ message.overallLabel | i18n }}</span>
                                 }
                                 @if (message.improveLabel) {
-                                  <span class="feedback-organizer-message-chip">{{ message.improveLabel }}</span>
+                                  <span class="feedback-organizer-message-chip">{{ message.improveLabel | i18n }}</span>
                                 }
                                 @for (traitLabel of message.traitLabels; track traitLabel) {
-                                  <span class="feedback-organizer-message-chip feedback-organizer-message-chip-trait">{{ traitLabel }}</span>
+                                  <span class="feedback-organizer-message-chip feedback-organizer-message-chip-trait">{{ traitLabel | i18n }}</span>
                                 }
                               </div>
                               @if (message.eventComment) {
                                 <div class="feedback-organizer-message-opinion">
-                                  <strong>Event opinion</strong>
+                                  <strong>{{ 'feedback.event.opinion.label' | i18n }}</strong>
                                   <p>{{ message.eventComment }}</p>
                                 </div>
                               }
                               @if (message.organizerNote) {
                                 <div class="feedback-organizer-message-note">
-                                  <strong>Note to organizer</strong>
+                                  <strong>{{ 'feedback.organizer.note.label' | i18n }}</strong>
                                   <p>{{ message.organizerNote }}</p>
                                 </div>
                               }
@@ -222,14 +222,14 @@
                         </div>
                       }
                     } @else {
-                      <p class="feedback-organizer-empty-copy">No feedback has been submitted for this event yet.</p>
+                      <p class="feedback-organizer-empty-copy">{{ 'feedback.organizer.empty.description' | i18n }}</p>
                     }
                   </section>
                   }
                 </article>
               } @else {
                 <article class="editor-list-card support-card feedback-empty-card">
-                  <p>Choose an own event to review its feedback.</p>
+                  <p>{{ 'feedback.organizer.selection.description' | i18n }}</p>
                 </article>
               }
             </div>
@@ -238,25 +238,25 @@
             <div class="support-popup">
               @if (!feedbackNoteSubmitted()) {
                 <article class="editor-list-card support-card">
-                  <h4>Organizer Feedback</h4>
+                  <h4>{{ 'organizer.feedback' | i18n }}</h4>
                   <p>Add textual feedback for the event organizer of {{ feedbackCurrentEventTitle() }}.</p>
                   @if (feedbackNoteSubmitMessage()) {
                     <div class="support-submit-error">{{ feedbackNoteSubmitMessage() }}</div>
                   }
                   <form class="support-form" (ngSubmit)="submitFeedbackNote()">
                     <label>
-                      <span>Feedback</span>
+                      <span>{{ 'feedback' | i18n }}</span>
                       <textarea
                         rows="4"
                         name="feedbackNoteText"
                         [ngModel]="feedbackNoteForm().text"
                         (ngModelChange)="feedbackNoteForm.set({ eventId: feedbackNoteForm().eventId, text: $event })"
-                        placeholder="What should be improved for this event next time?"
+                        [attr.placeholder]="'feedback.event.comment.placeholder' | i18n"
                       ></textarea>
                     </label>
                     <div class="popup-actions support-actions">
-                      <button type="button" class="link-btn neutral-btn" (click)="closeStackedPopup()">Cancel</button>
-                      <button type="submit" class="link-btn primary-btn" [disabled]="!canSubmitFeedbackNote()">Submit feedback</button>
+                      <button type="button" class="link-btn neutral-btn" (click)="closeStackedPopup()">{{ 'cancel' | i18n }}</button>
+                      <button type="submit" class="link-btn primary-btn" [disabled]="!canSubmitFeedbackNote()">{{ 'submit.feedback' | i18n }}</button>
                     </div>
                   </form>
                 </article>
@@ -264,7 +264,7 @@
                 <article class="editor-list-card support-card feedback-empty-card">
                   <div class="support-submit-success">{{ feedbackNoteSubmitMessage() }}</div>
                   <div class="popup-actions support-actions">
-                    <button type="button" class="link-btn primary-btn" (click)="closeStackedPopup()">Done</button>
+                    <button type="button" class="link-btn primary-btn" (click)="closeStackedPopup()">{{ 'done' | i18n }}</button>
                   </div>
                 </article>
               }

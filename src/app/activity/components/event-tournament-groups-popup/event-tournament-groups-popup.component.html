@@ -33,7 +33,7 @@
           @if (selectedGroupFromItem(item); as group) {
             <section class="event-tournament-group-content">
               @if (isMingleMode()) {
-                <div class="event-mingle-member-grid" role="list" aria-label="Table members" data-guide-field="mingle-table-seats">
+                <div class="event-mingle-member-grid" role="list" [attr.aria-label]="'event.tournament.table.members.aria' | i18n" data-guide-field="mingle-table-seats">
                   @for (seat of mingleSeats(group); track seat.id) {
                     <article
                       class="event-mingle-member"
@@ -60,7 +60,7 @@
                   }
                 </div>
               } @else {
-              <nav class="event-tournament-group-tabs" aria-label="Group view" data-guide-field="tournament-group-tabs">
+              <nav class="event-tournament-group-tabs" [attr.aria-label]="'event.tournament.group.view.aria' | i18n" data-guide-field="tournament-group-tabs">
                 <button
                   type="button"
                   data-guide-field="tournament-tab-standings"
@@ -68,7 +68,7 @@
                   (click)="selectTab(group.id, 'standings', $event)"
                 >
                   <mat-icon>leaderboard</mat-icon>
-                  <span>Standings</span>
+                  <span>{{ 'event.tournament.standings.tab' | i18n }}</span>
                 </button>
                 <button
                   type="button"
@@ -77,7 +77,7 @@
                   (click)="selectTab(group.id, 'history', $event)"
                 >
                   <mat-icon>history</mat-icon>
-                  <span>History</span>
+                  <span>{{ 'history' | i18n }}</span>
                 </button>
               </nav>
 
@@ -88,9 +88,9 @@
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th>Member</th>
-                          <th>Score</th>
-                          <th>Updates</th>
+                          <th>{{ 'member' | i18n }}</th>
+                          <th>{{ 'event.tournament.score.label' | i18n }}</th>
+                          <th>{{ 'updates' | i18n }}</th>
                           <th aria-hidden="true"></th>
                         </tr>
                       </thead>
@@ -124,11 +124,11 @@
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th>Member</th>
-                          <th>Pts</th>
+                          <th>{{ 'member' | i18n }}</th>
+                          <th>{{ 'event.tournament.points.abbreviation' | i18n }}</th>
                           <th>W-D-L</th>
-                          <th>GF:GA</th>
-                          <th>GD</th>
+                          <th>{{ 'event.tournament.goals.abbreviation' | i18n }}</th>
+                          <th>{{ 'event.tournament.goalDifference.abbreviation' | i18n }}</th>
                           <th aria-hidden="true"></th>
                         </tr>
                       </thead>
@@ -170,16 +170,16 @@
                         <table class="event-tournament-table event-tournament-table-history event-tournament-table-score-history">
                           <thead>
                             <tr>
-                              <th>Score</th>
-                              <th>Note</th>
-                              <th>Date</th>
+                              <th>{{ 'event.tournament.score.label' | i18n }}</th>
+                              <th>{{ 'note' | i18n }}</th>
+                              <th>{{ 'date' | i18n }}</th>
                             </tr>
                           </thead>
                           <tbody>
                             @for (entry of scoreHistory(group); track trackById($index, entry)) {
                               <tr data-guide-field="tournament-history-row">
                                 <td>{{ scoreValueLabel(entry.value) }}</td>
-                                <td>{{ entry.note || 'No note' }}</td>
+                                <td>{{ entry.note || ('event.tournament.note.empty' | i18n) }}</td>
                                 <td>{{ entry.createdAtMs | date:'MM/dd HH:mm' }}</td>
                               </tr>
                             }
@@ -187,7 +187,7 @@
                         </table>
                       </div>
                     } @else {
-                      <p class="event-tournament-history-empty">No score updates yet.</p>
+                      <p class="event-tournament-history-empty">{{ 'event.tournament.score.empty.description' | i18n }}</p>
                     }
                   } @else {
                     @if (fifaHistory(group).length > 0) {
@@ -195,9 +195,9 @@
                         <table class="event-tournament-table event-tournament-table-history event-tournament-table-fifa-history">
                           <thead>
                             <tr>
-                              <th>Match</th>
-                              <th>Result</th>
-                              <th>Date</th>
+                              <th>{{ 'event.tournament.match.label' | i18n }}</th>
+                              <th>{{ 'event.tournament.result.label' | i18n }}</th>
+                              <th>{{ 'date' | i18n }}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -212,7 +212,7 @@
                         </table>
                       </div>
                     } @else {
-                      <p class="event-tournament-history-empty">No matches yet.</p>
+                      <p class="event-tournament-history-empty">{{ 'event.tournament.match.empty.description' | i18n }}</p>
                     }
                   }
                 </section>

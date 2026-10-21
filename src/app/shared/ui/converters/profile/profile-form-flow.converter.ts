@@ -355,7 +355,7 @@ export class ProfileFormFlowConverter {
       layout: options.layout ?? 'carousel',
       header: options.showHeader === false ? false : true,
       allowMenuOverflow: options.allowMenuOverflow === true,
-      loadingLabel: 'Loading profile setup',
+      loadingLabel: 'profile.setup.loading',
       save: options.showSave === false ? null : {
         label: 'save.profile',
         ariaLabel: 'save.profile',
@@ -497,9 +497,9 @@ export class ProfileFormFlowConverter {
         {
           id: 'headline',
           kind: 'text',
-          label: 'Headline',
+          label: 'headline',
           bind: 'profile.headline',
-          placeholder: 'Admin workspace'
+          placeholder: 'admin.workspace'
         },
         about
       ];
@@ -697,7 +697,7 @@ export class ProfileFormFlowConverter {
         },
         items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
           id: `${this.idToken(key)}-privacy-${this.idToken(option)}`,
-          label: option,
+          label: APP_STATIC_DATA.profileOptionLabelKeys[option] ?? option,
           icon: this.privacyIcon(option),
           kind: 'radio',
           active: option === current,
@@ -736,7 +736,7 @@ export class ProfileFormFlowConverter {
         },
         items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
           id: `experience-${type}-privacy-${this.idToken(option)}`,
-          label: option,
+          label: APP_STATIC_DATA.profileOptionLabelKeys[option] ?? option,
           icon: this.privacyIcon(option),
           kind: 'radio',
           active: option === current,
@@ -883,6 +883,10 @@ export class ProfileFormFlowConverter {
       model: buildTabbedMenuModel<string, ProfileFormFlowMenuContext>({
         idPrefix: this.idToken(title),
         groups,
+        itemLabel: option => APP_STATIC_DATA.profileOptionLabelKeys[option] ?? option,
+        removeAriaLabel: option => `Remove ${option}`,
+        groupLabel: group => APP_STATIC_DATA.profileOptionLabelKeys[group.shortTitle || group.title] ?? group.shortTitle ?? group.title,
+        groupAriaLabel: group => APP_STATIC_DATA.profileOptionLabelKeys[group.title] ?? group.title,
         maxSelected,
         summary: {
           emptyLabel,
@@ -970,7 +974,8 @@ export class ProfileFormFlowConverter {
     return {
       id: `${this.idToken(field)}-${this.idToken(value)}`,
       label: field === 'profile.details.children'
-        ? APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()] ?? value : value,
+        ? APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()] ?? value
+        : APP_STATIC_DATA.profileOptionLabelKeys[value] ?? value,
       icon,
       kind: 'radio',
       value,
@@ -988,7 +993,7 @@ export class ProfileFormFlowConverter {
   ): AppMenuItem<string, ProfileFormFlowMenuContext> {
     return {
       id: `${this.idToken(field)}-${this.idToken(value)}`,
-      label: value,
+      label: APP_STATIC_DATA.profileOptionLabelKeys[value] ?? value,
       icon,
       kind: 'checkbox',
       value,

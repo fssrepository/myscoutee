@@ -103,7 +103,7 @@ describe('External event invitation workspace', () => {
     expect(component.dialogStore.dialog()).toBe(failed);
     expect(failed.busy).toBe(false);
     expect(failed.errorMessage).toBe('event.partner.invite.notFound');
-    expect(failed.cancelLabel).toBe('Cancel');
+    expect(failed.cancelLabel).toBe('cancel');
     expect(component.dialogStore.open).toHaveBeenCalledOnce();
     component.dialogStore.cancel();
     await vi.waitFor(() => expect(component.openingPartnerInvite).toBe(''));

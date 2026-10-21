@@ -6,10 +6,10 @@
           <section class="asset-explore-borrow-review-card">
             <div class="asset-explore-borrow-review-card__head">
               <div>
-                <h4>Join Summary</h4>
+                <h4>{{ 'asset.join.summary.title' | i18n }}</h4>
                 <span>{{ dialog.timeframe }}</span>
               </div>
-              <strong>{{ dialog.shareAmount > 0 ? formatMoney(dialog.shareAmount, dialog.currency) : 'Included' }}</strong>
+              <strong>{{ dialog.shareAmount > 0 ? formatMoney(dialog.shareAmount, dialog.currency) : ('included' | i18n) }}</strong>
             </div>
             <div class="asset-explore-borrow-review-card__list">
               @for (item of dialog.lineItems; track item.id) {
@@ -18,7 +18,7 @@
                     <strong>{{ item.label }}</strong>
                     <span>{{ dialog.pathLabel }} · {{ dialog.memberSummary }}</span>
                   </div>
-                  <strong>{{ item.amount > 0 ? formatMoney(item.amount, item.currency) : 'Included' }}</strong>
+                  <strong>{{ item.amount > 0 ? formatMoney(item.amount, item.currency) : ('included' | i18n) }}</strong>
                 </article>
               }
             </div>
@@ -27,22 +27,22 @@
           <section class="asset-explore-borrow-review-card asset-explore-borrow-review-card--payment">
             <div class="asset-explore-borrow-review-card__head">
               <div>
-                <h4>Shared Price</h4>
+                <h4>{{ 'asset.join.price.shared.label' | i18n }}</h4>
                 <span>{{ dialog.shareHint }}</span>
               </div>
-              <strong>{{ dialog.shareAmount > 0 ? formatMoney(dialog.shareAmount, dialog.currency) : 'Included' }}</strong>
+              <strong>{{ dialog.shareAmount > 0 ? formatMoney(dialog.shareAmount, dialog.currency) : ('included' | i18n) }}</strong>
             </div>
             <div class="asset-explore-borrow-payment-summary">
               <article>
-                <span>Asset total</span>
-                <strong>{{ dialog.totalAmount > 0 ? formatMoney(dialog.totalAmount, dialog.currency) : 'Included' }}</strong>
+                <span>{{ 'asset.join.price.total.label' | i18n }}</span>
+                <strong>{{ dialog.totalAmount > 0 ? formatMoney(dialog.totalAmount, dialog.currency) : ('included' | i18n) }}</strong>
               </article>
               <article>
                 <span>{{ dialog.shareLabel }}</span>
-                <strong>{{ dialog.shareAmount > 0 ? formatMoney(dialog.shareAmount, dialog.currency) : 'Included' }}</strong>
+                <strong>{{ dialog.shareAmount > 0 ? formatMoney(dialog.shareAmount, dialog.currency) : ('included' | i18n) }}</strong>
               </article>
               <article>
-                <span>Members after join</span>
+                <span>{{ 'asset.join.members.result.label' | i18n }}</span>
                 <strong>{{ dialog.shareMemberCount }}</strong>
               </article>
             </div>
@@ -52,8 +52,8 @@
             <section class="asset-explore-borrow-review-card">
               <div class="asset-explore-borrow-review-card__head">
                 <div>
-                  <h4>Policies</h4>
-                  <span>Review and approve before joining</span>
+                  <h4>{{ 'asset.borrow.policies' | i18n }}</h4>
+                  <span>{{ 'asset.join.policy.review.description' | i18n }}</span>
                 </div>
               </div>
               <div class="asset-explore-borrow-policy-list">
@@ -73,7 +73,7 @@
                       }
                     </div>
                     @if (policy.required !== false) {
-                      <em>Required</em>
+                      <em>{{ 'required' | i18n }}</em>
                     }
                   </label>
                 }

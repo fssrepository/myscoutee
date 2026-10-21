@@ -1,4 +1,6 @@
-import { Injectable, Type, signal } from '@angular/core';
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { Injectable, Type, signal, inject } from '@angular/core';
 
 import type {
   AssetAvailabilityFilter,
@@ -45,6 +47,7 @@ export type AssetAvailabilityPopupOpenRequest = {
   providedIn: 'root'
 })
 export class AssetAvailabilityPopupStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly availabilityPopupRef = signal<AssetAvailabilityPopupRequest | null>(null);
   private readonly dayListPopupRef = signal<AssetAvailabilityPopupRequest | null>(null);
   private readonly availabilityHeaderRef = signal<AssetAvailabilityHeaderState | null>(null);
@@ -134,7 +137,7 @@ export class AssetAvailabilityPopupStore {
     if (this.assetAvailabilityPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../../asset/components/asset-availability-popup/asset-availability-popup.component');
+    const module = await this.popupAdapters.load(POPUP_ADAPTER.ASSET_AVAILABILITY_POPUP);
     this.assetAvailabilityPopupComponentRef.set(module.AssetAvailabilityPopupComponent);
   }
 

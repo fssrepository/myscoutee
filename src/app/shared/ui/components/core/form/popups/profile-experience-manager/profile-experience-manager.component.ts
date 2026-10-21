@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   UiDateUtils,
   AppCalendarDateAdapter,
@@ -97,7 +98,7 @@ export interface ProfileExperienceEntriesChange {
     FormFlowComponent,
     PopupComponent,
     SmartListComponent,
-    SingleRowComponent
+    SingleRowComponent, I18nPipe
   ],
   providers: [
     {
@@ -162,7 +163,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     snapMode: 'none',
     desktopColumns: 1,
     containerClass: 'experience-card-list',
-    emptyLabel: 'No entries in this filter',
+    emptyLabel: 'profile.experience.filter.empty.title',
     emptyDescription: () => this.emptyHint,
     trackBy: (_index, row) => row.id
   };
@@ -337,12 +338,12 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
         id: 'experience-actions',
         icon: 'add',
         closeIcon: 'close',
-        ariaLabel: 'Open experience actions',
+        ariaLabel: 'profile.experience.actions.aria',
         palette: 'blue',
         items: [
           {
             id: 'experience-action-create',
-            label: 'Create',
+            label: 'create',
             icon: 'add_circle',
             palette: 'teal',
             surface: 'tinted',
@@ -350,7 +351,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
           },
           {
             id: 'experience-action-upload',
-            label: 'Upload',
+            label: 'upload',
             icon: 'upload_file',
             palette: 'orange',
             surface: 'tinted',
@@ -368,7 +369,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
       icon: this.experienceFilterIcon(this.experienceFilter),
       palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
       layout: 'field',
-      ariaLabel: 'Open experience filter'
+      ariaLabel: 'profile.experience.filter.aria'
     };
   }
 
@@ -391,7 +392,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
       icon: this.experienceTypeIcon(this.experienceForm.type),
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
       layout: 'field',
-      ariaLabel: 'Open experience type selector'
+      ariaLabel: 'profile.experience.type.aria'
     };
   }
 
@@ -411,9 +412,9 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
 
   protected experienceFormPopupModel(): PopupModel {
     return {
-      title: this.editingExperienceId ? 'Edit Experience' : 'Add Experience',
-      ariaLabel: this.editingExperienceId ? 'Edit experience' : 'Add experience',
-      closeAriaLabel: 'Close experience form',
+      title: this.editingExperienceId ? 'profile.experience.editor.edit.title' : 'profile.experience.editor.add.title',
+      ariaLabel: this.editingExperienceId ? 'profile.experience.editor.edit.aria' : 'profile.experience.editor.add.aria',
+      closeAriaLabel: 'profile.experience.editor.close.aria',
       size: 'wide',
       headerTone: 'accent',
       backdropTone: 'dim',
@@ -422,7 +423,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
         {
           id: 'experience-form-save',
           icon: 'done',
-          ariaLabel: 'Save experience',
+          ariaLabel: 'profile.experience.save.aria',
           palette: 'green',
           disabled: !this.canSaveExperienceEntry
         }
@@ -438,10 +439,10 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
 
   protected experienceImportPopupModel(): PopupModel {
     return {
-      title: 'Import Experience',
+      title: 'profile.experience.import.title',
       subtitle: this.experienceImportDialog.fileName,
-      ariaLabel: 'Import Experience',
-      closeAriaLabel: 'Close import dialog',
+      ariaLabel: 'profile.experience.import.title',
+      closeAriaLabel: 'profile.experience.import.close.aria',
       size: 'default',
       headerTone: 'accent',
       backdropTone: 'dim',
@@ -456,7 +457,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
 
   protected experienceFormFlowModel(): FormFlowModel {
     return {
-      title: 'Experience',
+      title: 'experience',
       layout: 'grouped',
       tone: this.experienceFormFlowTone(),
       header: false,
@@ -466,19 +467,19 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
       steps: [
         {
           id: 'experience-details',
-          title: 'Experience',
+          title: 'experience',
           icon: this.experienceTypeIcon(this.experienceForm.type),
           controls: [
             {
               id: 'type',
               bind: 'type',
               kind: 'menu',
-              label: 'Type',
+              label: 'profile.experience.type.label',
               layout: 'half',
               required: true,
               config: {
                 kind: 'select',
-                title: 'Experience Type',
+                title: 'profile.experience.type.label',
                 trigger: this.experienceTypeMenuTrigger(),
                 items: this.experienceTypeMenuItems(),
                 closeOnSelect: true
@@ -488,14 +489,14 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
               id: 'city',
               bind: 'city',
               kind: 'text',
-              label: 'City',
+              label: 'city',
               layout: 'half'
             },
             {
               id: 'title',
               bind: 'title',
               kind: 'text',
-              label: 'Title',
+              label: 'title',
               layout: 'half',
               required: true
             },
@@ -503,7 +504,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
               id: 'org',
               bind: 'org',
               kind: 'text',
-              label: 'Organization',
+              label: 'organization',
               layout: 'half',
               required: true
             },
@@ -540,7 +541,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
                   valueFormat: 'iso-date',
                   field: {
                     label: 'To',
-                    placeholder: 'Present'
+                    placeholder: 'present'
                   }
                 }
               }
@@ -549,7 +550,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
               id: 'description',
               bind: 'description',
               kind: 'textarea',
-              label: 'Description',
+              label: 'description',
               rows: 4,
               layout: 'wide'
             }
@@ -709,13 +710,13 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     this.pendingExperienceDeleteId = entryId;
     this.syncOverlayState();
     this.dialogStore.open({
-      title: 'Delete experience?',
-      message: 'This entry will be removed from your profile.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      title: 'confirmation.delete.experience',
+      message: 'profile.experience.delete.confirmation.description',
+      cancelLabel: 'cancel',
+      confirmLabel: 'delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
       confirmTone: 'danger',
-      failureMessage: 'Unable to delete this experience.',
+      failureMessage: 'profile.experience.delete.error',
       onCancel: () => this.cancelExperienceDelete(),
       onConfirm: () => this.confirmExperienceDelete()
     });
@@ -773,7 +774,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
       progress: {
         stage: 'reading',
         percent: 0,
-        label: 'Preparing import preview'
+        label: 'profile.experience.import.preparing'
       }
     };
     this.syncOverlayState();
@@ -808,7 +809,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
         progress: {
           stage: 'ready',
           percent: 100,
-          label: draft.statistics.detectedCount > 0 ? 'Import preview ready' : 'No experience items recognized'
+          label: draft.statistics.detectedCount > 0 ? 'profile.experience.import.ready.label' : 'profile.experience.import.empty.label'
         },
         statistics: draft.statistics,
         warnings: [...draft.warnings],
@@ -829,7 +830,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
         progress: {
           stage: 'ready',
           percent: 100,
-          label: 'Import preview unavailable'
+          label: 'profile.experience.import.unavailable'
         }
       };
       this.syncOverlayState();

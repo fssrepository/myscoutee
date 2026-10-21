@@ -21,7 +21,9 @@ const buildId = sanitizeBuildId(explicitBuildId || `${gitSha || 'local'}-${times
 assertFile(indexPath, 'production index.html');
 assertFile(serviceWorkerPath, 'production service worker');
 
-consolidateStartupBundles(outputDir).then(manifest => {
+consolidateStartupBundles(outputDir, {
+  localAdaptersInStartup: process.env.FRONTEND_BUILD_PROFILE === 'standalone'
+}).then(manifest => {
   stampIndexHtml();
   stampServiceWorker(manifest);
   writeVersionFile();
@@ -38,6 +40,19 @@ function stampIndexHtml() {
     html = html.replace(/(<meta\s+name=["']theme-color["'][^>]*>)/i, `$1\n  ${metaTag}`);
   } else {
     html = html.replace(/(<head[^>]*>)/i, `$1\n  ${metaTag}`);
+  }
+  // Every entry mode uses the filled icon font. Discover its hashed URL from
+  // the emitted stylesheet, so GitHub base paths and browser font reuse agree.
+  html = html.replace(/<link\b[^>]*data-myscoutee-icon-font[^>]*>/g, '');
+  for (const match of html.matchAll(/<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/g)) {
+    const stylesheet = match[1];
+    const css = fs.readFileSync(path.join(outputDir, stylesheet), 'utf8');
+    const iconFont = css.match(/url\(["']?([^"'()]*material-icons-[a-z0-9]+\.woff2)["']?\)/i)?.[1];
+    if (!iconFont) continue;
+    const href = path.posix.join(path.posix.dirname(stylesheet), iconFont);
+    assertFile(path.join(outputDir, href), 'filled icon font');
+    html = html.replace(match[0], `<link rel="preload" as="font" type="font/woff2" href="${href}" crossorigin data-myscoutee-icon-font>${match[0]}`);
+    break;
   }
   fs.writeFileSync(indexPath, html, 'utf8');
 }

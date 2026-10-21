@@ -1,7 +1,7 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalAssetTicketsService } from '../../../local/source/services/assets/asset-tickets.service';
-import { HttpAssetTicketsService } from '../../../http/services/assets/asset-tickets.service';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 import type * as AssetContracts from '../../../contracts/assets/asset.interface';
@@ -9,11 +9,11 @@ import type * as AssetContracts from '../../../contracts/assets/asset.interface'
   providedIn: 'root'
 })
 export class AssetTicketsService extends BaseRouteModeService {
-  private readonly localAssetTicketsService = inject(LocalAssetTicketsService);
-  private readonly httpAssetTicketsService = inject(HttpAssetTicketsService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localAssetTicketsService = this.transportAdapters.reference(LOCAL_ADAPTER.ASSET_TICKETS);
+  private readonly httpAssetTicketsService = this.transportAdapters.reference(HTTP_ADAPTER.ASSET_TICKETS);
 
-
-  private get assetTicketsService(): LocalAssetTicketsService | HttpAssetTicketsService {
+  private get assetTicketsService(): AdapterInstance<typeof LOCAL_ADAPTER.ASSET_TICKETS> | AdapterInstance<typeof HTTP_ADAPTER.ASSET_TICKETS> {
     return this.resolveRouteService('/assets/tickets', this.localAssetTicketsService, this.httpAssetTicketsService);
   }
 

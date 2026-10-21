@@ -1,3 +1,4 @@
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import type * as AppTypes from './feedback.model';
 import { FeedbackDetailDto } from '../../../core/contracts/feedback/feedback.interface';
 import {
@@ -31,18 +32,18 @@ export class FeedbackFormFlowConverter {
     const normalizedDetail = new FeedbackDetailDto(detail);
     const cards = FeedbackDetailConverter.convert(normalizedDetail);
     return {
-      title: 'Feedback',
+      title: 'feedback',
       subtitle: options.eventTitle?.trim() || normalizedDetail.title,
       layout: 'carousel',
-      loadingLabel: 'Loading feedback',
+      loadingLabel: 'feedback.loading',
       save: {
-        label: 'Submit feedback',
-        ariaLabel: 'Submit feedback',
+        label: 'submit.feedback',
+        ariaLabel: 'submit.feedback',
         icon: 'send'
       },
       summary: {
-        title: 'Overview',
-        subtitle: 'Review your answers before submitting.',
+        title: 'form.summary.title',
+        subtitle: 'feedback.evaluation.overview.description',
         icon: 'fact_check',
         includeEmpty: true
       },
@@ -84,7 +85,7 @@ export class FeedbackFormFlowConverter {
             kind: 'menu',
             layout: 'wide' as const,
             label: card.traitQuestion,
-            description: 'Pick up to 3',
+            description: 'feedback.traits.limit.description',
             bind: ['cards', cardIndex, 'selectedTraitIds'],
             required: true,
             config: this.inlineTabsMenuConfig(this.traitOptionModel(card))
@@ -94,9 +95,9 @@ export class FeedbackFormFlowConverter {
             guideFieldId: 'feedback-comment',
             kind: 'textarea' as const,
             layout: 'wide' as const,
-            label: 'Your opinion about the event',
-            description: 'Optional · up to 160 characters',
-            placeholder: 'What would you tell someone about this event?',
+            label: 'feedback.event.opinion.title',
+            description: 'feedback.event.opinion.limit.description',
+            placeholder: 'feedback.event.opinion.placeholder',
             bind: ['cards', cardIndex, 'eventComment'] as const,
             rows: 3,
             maxLength: 160
@@ -142,7 +143,7 @@ export class FeedbackFormFlowConverter {
     const items = card.traitOptions.map((trait): AppMenuItem<string, FeedbackOptionMenuContext> => {
       return {
         id: `${card.id}-trait-${trait.id}`,
-        label: trait.label,
+        label: APP_STATIC_DATA.personalityTraitCatalog.find(item => item.id === trait.id)?.labelKey ?? trait.label,
         icon: trait.icon,
         kind: 'checkbox',
         value: trait.id,

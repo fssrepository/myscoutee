@@ -112,7 +112,7 @@ export class EventSubeventRuntimeInfoCardConverter
       mediaEnd: isTournament ? stageStatus : isMingle ? this.mingleStatusBadge(item, options) : isMainEvent ? {
         variant: 'badge',
         tone: 'public',
-        label: 'Event',
+        label: 'event',
         icon: 'event',
         interactive: false
       } : {
@@ -163,7 +163,7 @@ export class EventSubeventRuntimeInfoCardConverter
   } {
     if (item.optional) {
       return {
-        label: 'Optional',
+        label: 'optional',
         icon: 'toggle_on',
         overlayTone: 'public',
         leadingTone: 'public',
@@ -171,7 +171,7 @@ export class EventSubeventRuntimeInfoCardConverter
       };
     }
     return {
-      label: 'Mandatory',
+      label: 'mandatory',
       icon: 'block',
       overlayTone: 'blocked',
       leadingTone: 'invitation',

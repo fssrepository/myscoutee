@@ -144,7 +144,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     return (['new', 'all'] as const).map(value => ({
       id: `notification-bucket:${value}`,
       kind: 'radio',
-      label: value === 'new' ? 'New' : 'All',
+      label: value === 'new' ? 'new' : 'all',
       icon: value === 'new' ? 'fiber_new' : 'notifications',
       palette: value === 'new' ? 'rose' : 'violet',
       surface: 'tinted',
@@ -156,8 +156,8 @@ export class NotificationCenterPopupComponent implements OnDestroy {
         : null,
       counterTone: value === 'new' ? 'alert' : 'default',
       ariaLabel: value === 'new'
-        ? `${unreadCount} new notifications`
-        : 'All notifications',
+        ? this.i18n.translateParams(unreadCount === 1 ? 'notifications.badge.single' : 'notifications.unread.count', { count: unreadCount })
+        : 'notifications.filter.all.label',
       context: { action: 'set-bucket', bucket: value }
     }));
   });
@@ -171,8 +171,8 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     defaultSort: 'createdAt',
     defaultDirection: 'desc',
     defaultFilters: { bucket: 'new' },
-    emptyLabel: 'No notifications',
-    emptyDescription: 'New messages and updates will appear here.',
+    emptyLabel: 'notifications.empty.title',
+    emptyDescription: 'notifications.empty.description',
     showStickyHeader: true,
     listLayout: 'card-grid',
     desktopColumns: 1,
@@ -237,10 +237,10 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     const muted = this.store.muted();
     const unreadCount = this.store.unreadCount();
     return {
-      title: 'Notifications',
-      subtitle: unreadCount === 1 ? '1 new notification' : `${unreadCount} new notifications`,
-      ariaLabel: 'Notifications',
-      closeAriaLabel: 'Close notifications',
+      title: 'notifications',
+      subtitle: unreadCount === 1 ? 'notifications.badge.single' : this.i18n.translateParams(unreadCount === 1 ? 'notifications.badge.single' : 'notifications.unread.count', { count: unreadCount }),
+      ariaLabel: 'notifications',
+      closeAriaLabel: 'notifications.close.aria',
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',
@@ -283,7 +283,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
               active: muted,
               checked: muted,
               closeOnSelect: false,
-              ariaLabel: muted ? 'Unmute notification alerts' : 'Mute notification alerts',
+              ariaLabel: muted ? 'notifications.alerts.unmute.aria' : 'notifications.alerts.mute.aria',
               context: { action: 'toggle-muted' }
             }
           ]
@@ -444,7 +444,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
           ? error.message
           : 'Unable to open this notification.',
         {
-          title: 'Notification target unavailable',
+          title: 'notifications.target.unavailable.title',
           confirmTone: 'danger'
         }
       );
@@ -499,7 +499,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
     const bucket = this.store.bucket();
     const unreadCount = this.store.unreadCount();
     return {
-      label: bucket === 'new' ? 'New' : 'All',
+      label: bucket === 'new' ? 'new' : 'all',
       icon: bucket === 'new' ? 'fiber_new' : 'notifications',
       palette: bucket === 'new' ? 'rose' : 'violet',
       layout: 'pill',
@@ -507,19 +507,19 @@ export class NotificationCenterPopupComponent implements OnDestroy {
         ? { value: unreadCount, max: 99 }
         : null,
       ariaLabel: bucket === 'new'
-        ? `${unreadCount} new notifications`
-        : 'All notifications'
+        ? this.i18n.translateParams(unreadCount === 1 ? 'notifications.badge.single' : 'notifications.unread.count', { count: unreadCount })
+        : 'notifications.filter.all.label'
     };
   }
 
   private confirmMutedChange(muted: boolean): void {
     if (!this.store.activeUserId() || this.store.permissionActionPending()) return;
     this.dialogStore.open({
-      title: muted ? 'Mute notification alerts?' : 'Unmute notification alerts?',
+      title: muted ? 'confirmation.mute.notification.alerts' : 'confirmation.unmute.notification.alerts',
       message: muted
-        ? 'New notifications will still be counted and saved, but the floating alert button will stay hidden until you unmute it.'
-        : 'The floating alert button can appear again when a new notification arrives.',
-      confirmLabel: muted ? 'Mute alerts' : 'Unmute alerts',
+        ? 'notifications.alerts.mute.description'
+        : 'notifications.alerts.unmute.description',
+      confirmLabel: muted ? 'notifications.alerts.mute.action' : 'notifications.alerts.unmute.action',
       busyConfirmLabel: muted ? 'Muting...' : 'Unmuting...',
       confirmTone: muted ? 'warning' : 'accent',
       confirmPalette: muted ? 'warning' : 'violet',
@@ -549,7 +549,7 @@ export class NotificationCenterPopupComponent implements OnDestroy {
           ? error.message
           : 'Unable to mark this notification as read.',
         {
-          title: 'Notification update failed',
+          title: 'notifications.update.error.title',
           confirmTone: 'danger'
         }
       );

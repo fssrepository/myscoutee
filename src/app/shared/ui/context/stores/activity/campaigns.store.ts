@@ -1,3 +1,5 @@
+import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { ActivityStore } from './activity.store';
 import { ChatsService } from '../../../../core/base/services/chat/chats.service';
 import { ActivitiesPopupStore, eventChatHeaderStateFromChat, eventChatPopupRequestFromChat } from './activities-popup.store';
@@ -12,6 +14,7 @@ interface CampaignSession { userId: string; scope: 'own' | 'all'; selectedId?: s
 interface CampaignHistorySession { userId: string; targetUserId: string; label?: string | null; }
 @Injectable({ providedIn: 'root' })
 export class CampaignsStore {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly activity = inject(ActivityStore);
   private readonly service = inject(CampaignsService);
   private readonly chats = inject(ChatsService);
@@ -54,7 +57,7 @@ export class CampaignsStore {
     });
   }
   private async load(): Promise<void> {
-    if (!this.component()) this.component.set((await import('../../../components/campaigns-popup/campaigns-popup.component')).CampaignsPopupComponent);
+    if (!this.component()) this.component.set((await this.popupAdapters.load(POPUP_ADAPTER.CAMPAIGNS_POPUP)).CampaignsPopupComponent);
   }
   async open(select?: CampaignSession['select'], selectedId?: string | null, scope: 'own' | 'all' = 'all'): Promise<void> {
     if (!this.workspace.isWork()) return;

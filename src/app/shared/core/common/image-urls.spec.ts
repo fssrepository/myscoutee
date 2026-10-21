@@ -6,6 +6,26 @@ class TestImageDirective { @Input() appLazyBgImage: string | null = null; }
 import { TestBed } from '@angular/core/testing';
 
 import { I18nService, MediaService } from '..';
+import { MYSCOUTEE_IMAGE_URLS } from './image-urls';
+
+describe('image URL resolution', () => {
+  it('preserves custom images, already optimized URLs and seeded help illustrations', () => {
+    for (const url of [
+      'assets/logo/cards_no_edges.png',
+      'assets/articles/business-idea.png',
+      '/api/media/public?key=images%2Fsystem%2Frandom-room-default.png',
+      'https://cdn.example.test/assets/logo/cards_no_edges.png',
+      'assets/logo/custom.png',
+      'assets/logo/cards_no_edges.png.backup',
+      'assets/logo/cards_no_edges.webp',
+      '/api/media/public?key=cards_no_edges.png'
+    ]) {
+      expect(MYSCOUTEE_IMAGE_URLS.resolveSourceUrl(url)).toBe(url);
+    }
+    expect(MYSCOUTEE_IMAGE_URLS.resolveSourceUrl('help-seeded-image:en/member/overview'))
+      .toBe('assets/help-center/explanations/en/member/overview.svg');
+  });
+});
 
 describe('ImageCarouselComponent media variants', () => {
   beforeEach(() => {

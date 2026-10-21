@@ -261,8 +261,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
-    emptyLabel: 'No members yet.',
-    emptyDescription: 'Check back later or invite people in.',
+    emptyLabel: 'members.empty.title',
+    emptyDescription: 'members.empty.description',
     listLayout: 'card-grid',
     desktopColumns: 4,
     mobileColumns: 2,
@@ -392,7 +392,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       subtitle: this.subtitle,
       translateSubtitle: this.followedOrganizers,
       ariaLabel: this.title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -406,8 +406,8 @@ export class EventMembersPopupComponent implements OnDestroy {
           id: 'invite',
           align: 'end' as const,
           icon: 'person_add',
-          label: 'Invite',
-          ariaLabel: 'Invite friends',
+          label: 'invite',
+          ariaLabel: 'contacts.invite.aria',
           palette: 'blue' as const,
           compactOnMobile: false
         }] : []),
@@ -419,8 +419,8 @@ export class EventMembersPopupComponent implements OnDestroy {
           closeOnSelect: false,
           items: [{
             id: 'pending-only', kind: 'toggle' as const, layout: 'pill' as const,
-            icon: 'pending_actions', label: 'Pending only',
-            ariaLabel: this.pendingOnly ? 'Show all members' : 'Show pending members only',
+            icon: 'pending_actions', label: 'pending.only',
+            ariaLabel: this.pendingOnly ? 'show.all.members' : 'show.pending.members.only',
             palette: 'rose' as const, checked: this.pendingOnly,
             showToggleIndicator: true, closeOnSelect: false,
             counter: this.pendingCount > 0 ? this.pendingCount : null, counterTone: 'alert' as const
@@ -530,7 +530,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.suppressedOwnerSyncId = null;
     this.requestedCanManageMembers = false;
     this.viewOnlyMode = false;
-    this.subtitle = 'Event';
+    this.subtitle = this.i18n.translate('event');
     this.resetSummaryState();
     this.selectedMembersVisible = [];
     this.membersListReady = false;
@@ -633,7 +633,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canLeaveScopedAssetBorrower(entry)) {
       items.push({
         id: `member-action-leave-scoped-asset-${entry.id}`,
-        label: 'Leave',
+        label: 'leave.resource',
         icon: 'logout',
         palette: 'danger',
         context: { menu: 'member-action', member: entry, action: 'leaveScopedAsset' }
@@ -651,7 +651,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canToggleOrganizerParticipation(entry)) {
       items.push({
         id: `member-action-organizer-participation-${entry.id}`,
-        label: entry.organizerOnly === true ? 'Count as participant' : 'Organizer only',
+        label: entry.organizerOnly === true ? 'members.participation.include.action' : 'groups.organizer.only',
         icon: entry.organizerOnly === true ? 'person' : 'person_off',
         palette: entry.organizerOnly === true ? 'success' : 'warning',
         context: { menu: 'member-action', member: entry, action: 'toggleOrganizerParticipation' }
@@ -666,7 +666,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canPromoteAdmin(entry)) {
       items.push({
         id: `member-action-promote-admin-${entry.id}`,
-        label: this.ownerRef?.ownerType === 'asset' ? 'Make Manager' : 'Promote to admin',
+        label: this.ownerRef?.ownerType === 'asset' ? 'members.manager.promote.action' : 'members.admin.promote.action',
         icon: 'admin_panel_settings',
         palette: 'blue',
         context: { menu: 'member-action', member: entry, action: 'promoteAdmin' }
@@ -675,7 +675,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canRevokeAssetManager(entry)) {
       items.push({
         id: `member-action-revoke-manager-${entry.id}`,
-        label: this.ownerRef?.ownerType === 'community' ? 'groups.admin.revoke' : 'Revoke Manager',
+        label: this.ownerRef?.ownerType === 'community' ? 'groups.admin.revoke' : 'members.manager.revoke.action',
         icon: 'person_remove',
         palette: 'warning',
         context: { menu: 'member-action', member: entry, action: 'revokeManager' }
@@ -684,7 +684,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canLeaveAssetOwner(entry)) {
       items.push({
         id: `member-action-leave-asset-${entry.id}`,
-        label: 'Leave asset',
+        label: 'asset.leave.action',
         icon: 'logout',
         palette: 'danger',
         context: { menu: 'member-action', member: entry, action: 'leaveAsset' }
@@ -693,7 +693,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canTakeOverAsset(entry)) {
       items.push({
         id: `member-action-take-over-asset-${entry.id}`,
-        label: 'Take Over',
+        label: 'take.over',
         icon: 'verified_user',
         palette: 'warning',
         context: { menu: 'member-action', member: entry, action: 'takeOverAsset' }
@@ -712,7 +712,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canLeaveEvent(entry)) {
       items.push({
         id: `member-action-leave-${entry.id}`,
-        label: 'Leave event',
+        label: 'event.leave.action',
         icon: 'logout',
         palette: 'danger',
         context: { menu: 'member-action', member: entry, action: 'leave' }
@@ -721,7 +721,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     if (this.canApproveMember(entry)) {
       items.push({
         id: `member-action-approve-${entry.id}`,
-        label: 'Approve',
+        label: 'contact.chat.approve',
         icon: 'check_circle',
         palette: 'success',
         context: { menu: 'member-action', member: entry, action: 'approve' }
@@ -774,7 +774,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     switch (context.action) {
       case 'unfollow':
         this.dialogStore.open({ title: 'event.following.unfollow.question', message: context.member.name,
-          confirmLabel: 'event.following.unfollow', cancelLabel: 'Cancel', confirmPalette: 'cyan',
+          confirmLabel: 'event.following.unfollow', cancelLabel: 'cancel', confirmPalette: 'cyan',
           failureMessage: 'event.following.failed', onConfirm: async () => {
             await this.followingStore.change(context.member.userId, false);
             const previous = this.membersCacheByOwnerId.get(this.membersCacheKey(this.ownerId)) ?? [];
@@ -841,14 +841,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
     this.dialogStore.open({
-      title: 'Approve request?',
+      title: 'confirmation.approve.request',
       message: `Approve ${entry.name} for this ${this.ownerScopeLabel()}?`,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Approve',
+      cancelLabel: 'cancel',
+      confirmLabel: 'contact.chat.approve',
       busyConfirmLabel: 'Approving...',
       confirmTone: 'accent',
       confirmPalette: this.memberActionPalette(entry, 'approve'),
-      failureMessage: 'Unable to approve request.',
+      failureMessage: 'members.request.approve.error',
       onConfirm: () => this.confirmApproveMember(entry)
     });
   }
@@ -863,7 +863,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.dialogStore.open({
       title: this.memberRemovalTitle(entry),
       message: this.memberRemovalMessage(entry),
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: this.memberRemovalConfirmLabel(entry),
       busyConfirmLabel: this.memberRemovalBusyLabel(entry),
       confirmTone: 'danger',
@@ -887,18 +887,18 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
     this.dialogStore.open({
-      title: 'Leave event?',
+      title: 'confirmation.leave.event',
       message: leavingAsAdmin
         ? `You will leave this event and lose access to its admin tools.${ownershipTransferMessage}`
-        : 'You will leave this event.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Leave event',
+        : 'event.leave.confirmation.description',
+      cancelLabel: 'cancel',
+      confirmLabel: 'event.leave.action',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
       confirmPalette: this.memberActionPalette(entry, 'leave'),
       failureMessage: leavingAsAdmin
-        ? 'Unable to leave event. Another accepted admin must remain.'
-        : 'Unable to leave event.',
+        ? 'event.leave.admin.required.error'
+        : 'event.leave.error',
       onConfirm: () => this.confirmLeaveEvent(entry, successor)
     });
   }
@@ -911,14 +911,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
     this.dialogStore.open({
-      title: 'Disqualify member?',
+      title: 'confirmation.disqualify.member',
       message: `Disqualify ${entry.name} from this ${this.ownerScopeLabel()}?`,
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: 'Disqualify',
       busyConfirmLabel: 'Disqualifying...',
       confirmTone: 'danger',
       confirmPalette: this.memberActionPalette(entry, 'disqualify'),
-      failureMessage: 'Unable to disqualify member.',
+      failureMessage: 'members.disqualify.error',
       onConfirm: () => this.confirmMemberAction(entry, 'disqualify')
     });
   }
@@ -931,14 +931,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
     this.dialogStore.open({
-      title: 'Reinstate member?',
+      title: 'confirmation.reinstate.member',
       message: `Reinstate ${entry.name} to this ${this.ownerScopeLabel()}?`,
-      cancelLabel: 'Cancel',
+      cancelLabel: 'cancel',
       confirmLabel: 'Reinstate',
       busyConfirmLabel: 'Reinstating...',
       confirmTone: 'accent',
       confirmPalette: this.memberActionPalette(entry, 'reinstate'),
-      failureMessage: 'Unable to reinstate member.',
+      failureMessage: 'members.reinstate.error',
       onConfirm: () => this.confirmMemberAction(entry, 'reinstate')
     });
   }
@@ -951,16 +951,16 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     const assetManagerPromotion = this.ownerRef?.ownerType === 'asset';
     this.dialogStore.open({
-      title: assetManagerPromotion ? 'Make member an Asset Manager?' : 'Promote member to admin?',
+      title: assetManagerPromotion ? 'members.manager.promote.confirmation.title' : 'confirmation.promote.member.to.admin',
       message: assetManagerPromotion
         ? `${entry.name} will be able to manage this Asset and appoint other Asset Managers.`
         : this.ownerRef?.ownerType === 'community' ? this.i18n.translateParams('groups.admin.promote.message', { name: entry.name }) : `${entry.name} will be able to manage this event and invite or approve members.`,
-      cancelLabel: 'Cancel',
-      confirmLabel: assetManagerPromotion ? 'Make Manager' : 'Promote',
-      busyConfirmLabel: 'Promoting...',
+      cancelLabel: 'cancel',
+      confirmLabel: assetManagerPromotion ? 'members.manager.promote.action' : 'Promote',
+      busyConfirmLabel: 'asset.requests.promoting',
       confirmTone: 'accent',
       confirmPalette: this.memberActionPalette(entry, 'promoteAdmin'),
-      failureMessage: 'Unable to promote member.',
+      failureMessage: 'members.promote.error',
       onConfirm: () => assetManagerPromotion
         ? this.confirmAssetManagerPromotion(entry)
         : this.confirmMemberAction(entry, 'promote-admin')
@@ -978,8 +978,8 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.dialogStore.open({
       title: `Step down as ${managerRole}?`,
       message: `You will remain a member, but will no longer be able to manage this ${scope}.`,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Step down',
+      cancelLabel: 'cancel',
+      confirmLabel: 'members.admin.resign.action',
       busyConfirmLabel: 'Stepping down...',
       confirmTone: 'warning',
       confirmPalette: this.memberActionPalette(entry, 'stepDownAdmin'),
@@ -1001,14 +1001,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.dialogStore.open({
       title: setAsParticipant ? 'confirmation.count.as.participant' : 'confirmation.organizer.only',
       message: setAsParticipant
-        ? 'You will count toward the available participant places in this scope.'
-        : 'You will keep your organizer role but will not count toward the available participant places in this scope.',
-      cancelLabel: 'Cancel',
-      confirmLabel: setAsParticipant ? 'Count as participant' : 'Organizer only',
-      busyConfirmLabel: 'Saving...',
+        ? 'members.participation.include.description'
+        : 'members.participation.exclude.description',
+      cancelLabel: 'cancel',
+      confirmLabel: setAsParticipant ? 'members.participation.include.action' : 'groups.organizer.only',
+      busyConfirmLabel: 'saving',
       confirmTone: setAsParticipant ? 'accent' : 'warning',
       confirmPalette: this.memberActionPalette(entry, 'toggleOrganizerParticipation'),
-      failureMessage: 'Unable to update participant status.',
+      failureMessage: 'members.participation.update.error',
       onConfirm: () => this.confirmMemberAction(
         entry,
         setAsParticipant ? 'set-participant' : 'set-organizer-only'
@@ -1023,14 +1023,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
     this.membersSmartList?.closeMenu();
     this.dialogStore.open({
-      title: this.ownerRef?.ownerType === 'community' ? 'groups.admin.revoke.title' : 'Revoke Asset Manager?',
+      title: this.ownerRef?.ownerType === 'community' ? 'groups.admin.revoke.title' : 'confirmation.revoke.asset.manager',
       message: this.ownerRef?.ownerType === 'community' ? this.i18n.translateParams('groups.admin.revoke.message', { name: entry.name }) : `${entry.name} will remain an Asset Member but will no longer be able to manage this Asset.`,
-      cancelLabel: 'Cancel',
-      confirmLabel: this.ownerRef?.ownerType === 'community' ? 'groups.admin.revoke' : 'Revoke Manager',
+      cancelLabel: 'cancel',
+      confirmLabel: this.ownerRef?.ownerType === 'community' ? 'groups.admin.revoke' : 'members.manager.revoke.action',
       busyConfirmLabel: 'Revoking...',
       confirmTone: 'warning',
       confirmPalette: this.memberActionPalette(entry, 'revokeManager'),
-      failureMessage: 'Unable to revoke Asset Manager.',
+      failureMessage: 'members.manager.revoke.error',
       onConfirm: () => this.ownerRef?.ownerType === 'community' ? this.confirmMemberAction(entry, 'revoke-admin') : this.confirmAssetManagerRevocation(entry)
     });
   }
@@ -1043,14 +1043,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
     this.dialogStore.open({
-      title: 'Leave asset?',
-      message: 'You will leave this Asset. It will remain under review until an accepted Asset Manager takes over responsibility.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Leave asset',
+      title: 'confirmation.leave.asset',
+      message: 'asset.owner.leave.confirmation.description',
+      cancelLabel: 'cancel',
+      confirmLabel: 'asset.leave.action',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
       confirmPalette: this.memberActionPalette(entry, 'leaveAsset'),
-      failureMessage: 'Unable to leave this Asset.',
+      failureMessage: 'asset.owner.leave.error',
       onConfirm: () => this.confirmLeaveAssetOwner()
     });
   }
@@ -1063,14 +1063,14 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
     this.dialogStore.open({
-      title: 'Leave asset?',
-      message: 'You will leave this borrowed Asset.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Leave',
+      title: 'confirmation.leave.asset',
+      message: 'asset.borrowed.leave.confirmation.description',
+      cancelLabel: 'cancel',
+      confirmLabel: 'leave.resource',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
       confirmPalette: this.memberActionPalette(entry, 'leaveScopedAsset'),
-      failureMessage: 'Unable to leave this Asset.',
+      failureMessage: 'asset.owner.leave.error',
       onConfirm: () => this.confirmLeaveScopedAsset(entry)
     });
   }
@@ -1089,14 +1089,14 @@ export class EventMembersPopupComponent implements OnDestroy {
       return;
     }
     this.dialogStore.open({
-      title: 'Take over asset?',
-      message: 'You will become responsible for this Asset and it will return to its previous active status.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Take Over',
-      busyConfirmLabel: 'Taking over...',
+      title: 'take.over.asset.question',
+      message: 'asset.manager.takeover.confirmation.description',
+      cancelLabel: 'cancel',
+      confirmLabel: 'take.over',
+      busyConfirmLabel: 'taking.over',
       confirmTone: 'warning',
       confirmPalette: this.memberActionPalette(entry, 'takeOverAsset'),
-      failureMessage: 'Unable to take over this Asset.',
+      failureMessage: 'asset.manager.takeover.error',
       onConfirm: () => this.confirmTakeOverAsset()
     });
   }
@@ -1201,6 +1201,7 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   protected memberImageCard(entry: ActivityContracts.ActivityMemberDTO): ImageCardData {
     return ActivityMemberImageCardConverter.convert(entry, {
+      translate: key => this.i18n.translate(key),
       ownerType: this.ownerRef?.ownerType ?? 'event',
       menuOpen: this.isActionMenuOpen(entry),
       voterLabel: this.i18n.translate('groups.voting.member'),
@@ -1218,7 +1219,7 @@ export class EventMembersPopupComponent implements OnDestroy {
       id: 'view-profile',
       guideFieldId: 'member-profile',
       icon: 'visibility',
-      ariaLabel: 'View profile',
+      ariaLabel: 'view.profile',
       position: 'bottom-right',
       tone: 'info'
     }];
@@ -1511,24 +1512,24 @@ export class EventMembersPopupComponent implements OnDestroy {
 
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
     if (this.isSelfManagedAssetJoinRequestCancellation(entry)) {
-      return 'Cancel join request?';
+      return this.i18n.translate('confirmation.cancel.join.request');
     }
     if (this.isSelfManagedLeave(entry)) {
       return `Leave ${this.ownerScopeLabel()}?`;
     }
     if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
-      return 'Reject invitation?';
+      return this.i18n.translate('confirmation.reject.invitation');
     }
     if (this.isJoinRequest(entry)) {
-      return 'Reject request?';
+      return this.i18n.translate('confirmation.reject.request');
     }
     if (entry.status === 'accepted' && entry.role === 'Admin') {
-      return 'Remove admin?';
+      return this.i18n.translate('confirmation.remove.admin');
     }
     if (entry.status === 'accepted' || entry.requestKind === 'payment') {
-      return 'Remove member?';
+      return this.i18n.translate('confirmation.remove.member');
     }
-    return 'Delete invitation?';
+    return this.i18n.translate('confirmation.delete.invitation');
   }
 
   private memberRemovalMessage(entry: ActivityContracts.ActivityMemberDTO): string {
@@ -1558,18 +1559,18 @@ export class EventMembersPopupComponent implements OnDestroy {
       return 'Cancel request';
     }
     if (this.isSelfManagedLeave(entry)) {
-      return 'Leave';
+      return this.i18n.translate('leave.resource');
     }
     if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
-      return 'Reject';
+      return this.i18n.translate('reject');
     }
     if (this.isJoinRequest(entry)) {
-      return 'Reject';
+      return this.i18n.translate('reject');
     }
     if (entry.status === 'accepted' && entry.role === 'Admin') {
       return 'Remove admin';
     }
-    return entry.status === 'accepted' ? 'Remove' : 'Delete';
+    return entry.status === 'accepted' ? this.i18n.translate('remove') : this.i18n.translate('delete');
   }
 
   private memberRemovalBusyLabel(entry: ActivityContracts.ActivityMemberDTO): string {
@@ -1580,15 +1581,15 @@ export class EventMembersPopupComponent implements OnDestroy {
       return 'Leaving...';
     }
     if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
-      return 'Rejecting...';
+      return this.i18n.translate('request.reject.busy');
     }
     if (this.isJoinRequest(entry)) {
-      return 'Rejecting...';
+      return this.i18n.translate('request.reject.busy');
     }
     if (entry.status === 'accepted' && entry.role === 'Admin') {
       return 'Removing admin...';
     }
-    return entry.status === 'accepted' ? 'Removing...' : 'Deleting...';
+    return entry.status === 'accepted' ? this.i18n.translate('removing') : this.i18n.translate('delete.busy');
   }
 
   private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberDTO): string {
@@ -1764,8 +1765,8 @@ export class EventMembersPopupComponent implements OnDestroy {
         }
       : null;
     this.ownerRecord = null;
-    this.title = 'Members';
-    this.subtitle = options?.subtitle?.trim() || 'Event';
+    this.title = 'members';
+    this.subtitle = options?.subtitle?.trim() || this.i18n.translate('event');
     this.pendingOnly = false;
     this.membersSmartList?.closeMenu();
     this.selectedMembersVisible = [];
@@ -1888,7 +1889,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     }
   ): void {
     this.ownerRecord = record;
-    this.subtitle = record.title.trim() || options?.subtitle?.trim() || 'Event';
+    this.subtitle = record.title.trim() || options?.subtitle?.trim() || this.i18n.translate('event');
     this.syncCanManageMembers();
     if (this.acceptedCount <= 0 && this.pendingCount <= 0 && this.capacityTotal <= 0) {
       this.applySummary(record.acceptedMembers, 0, record.capacityTotal);
@@ -2299,7 +2300,7 @@ export class EventMembersPopupComponent implements OnDestroy {
     this.membersSmartList?.closeMenu();
     const key = grant ? 'groups.voting.grant' : 'groups.voting.revoke';
     this.dialogStore.open({ title: `${key}.title`, message: this.i18n.translateParams(`${key}.message`, { name: entry.name }),
-      cancelLabel: 'Cancel', confirmLabel: key, confirmPalette: this.memberActionPalette(entry, grant ? 'grantVote' : 'revokeVote'),
+      cancelLabel: 'cancel', confirmLabel: key, confirmPalette: this.memberActionPalette(entry, grant ? 'grantVote' : 'revokeVote'),
       failureMessage: 'groups.voting.failed', onConfirm: () => this.confirmMemberAction(entry, grant ? 'grant-vote' : 'revoke-vote') });
   }
 

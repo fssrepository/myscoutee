@@ -1,9 +1,10 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import type { ContactChatAccessAction, ContactChatAccessSnapshot } from '../../../contracts/accounts/contact.interface';
 import { Injectable, inject } from '@angular/core';
 
 import type { ProfileViewData } from '../../../contracts/accounts/profile.interface';
-import { LocalContactsService } from '../../../local/source/services/accounts/contacts.service';
-import { HttpContactsService } from '../../../http/services/accounts/contacts.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import type * as ContactContracts from '../../../contracts/accounts/contact.interface';
 
@@ -11,10 +12,11 @@ import type * as ContactContracts from '../../../contracts/accounts/contact.inte
   providedIn: 'root'
 })
 export class ContactsService extends BaseRouteModeService {
-  private readonly localContactsService = inject(LocalContactsService);
-  private readonly httpContactsService = inject(HttpContactsService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localContactsService = this.transportAdapters.reference(LOCAL_ADAPTER.CONTACTS);
+  private readonly httpContactsService = this.transportAdapters.reference(HTTP_ADAPTER.CONTACTS);
 
-  private get contactsService(): LocalContactsService | HttpContactsService {
+  private get contactsService(): AdapterInstance<typeof LOCAL_ADAPTER.CONTACTS> | AdapterInstance<typeof HTTP_ADAPTER.CONTACTS> {
     return this.resolveRouteService(
       '/navigator/contacts',
       this.localContactsService,

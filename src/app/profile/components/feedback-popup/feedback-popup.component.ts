@@ -103,7 +103,7 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
   protected feedbackFlowModel(): FormFlowModel {
     const disabled = this.isSubmitBusy();
     return {
-      title: 'Send Feedback',
+      title: 'feedback.send.action',
       layout: 'grouped',
       tone: 'blue',
       header: false,
@@ -113,7 +113,7 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
       save: null,
       steps: [{
         id: 'feedback',
-        title: 'Feedback',
+        title: 'feedback',
         chrome: 'none',
         controls: [
           {
@@ -121,23 +121,23 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
             bind: 'category',
             kind: 'menu',
             layout: 'wide',
-            label: 'Category',
+            label: 'category',
             disabled,
             config: {
               kind: 'select',
               layout: 'list',
-              title: 'Category',
+              title: 'category',
               trigger: {
-                label: this.feedbackForm.category,
+                label: APP_STATIC_DATA.feedbackCategoryLabelKeys[this.feedbackForm.category] ?? this.feedbackForm.category,
                 icon: 'category',
                 palette: this.feedbackCategoryPalette(this.feedbackForm.category),
                 layout: 'field',
                 disabled,
-                ariaLabel: 'Select feedback category'
+                ariaLabel: 'feedback.category.select.aria'
               },
               items: this.feedbackCategories.map((category, index) => ({
                 id: `feedback-category-${index}`,
-                label: category,
+                label: APP_STATIC_DATA.feedbackCategoryLabelKeys[category] ?? category,
                 icon: this.feedbackCategoryIcon(category),
                 kind: 'radio',
                 value: category,
@@ -154,8 +154,8 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
             bind: 'subject',
             kind: 'text',
             layout: 'wide',
-            label: 'Subject',
-            placeholder: 'Short summary',
+            label: 'subject',
+            placeholder: 'short.summary',
             disabled
           },
           {
@@ -163,8 +163,8 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
             bind: 'details',
             kind: 'textarea',
             layout: 'wide',
-            label: 'Details',
-            placeholder: 'Describe your feedback. Include steps if this is a bug.',
+            label: 'details',
+            placeholder: 'profile.feedback.message.placeholder',
             rows: 4,
             required: true,
             minLength: this.feedbackDetailsMinLength,
@@ -179,18 +179,18 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
     return [
       {
         id: 'feedback-cancel',
-        label: 'Cancel',
+        label: 'cancel',
         layout: 'action',
         palette: 'slate',
-        ariaLabel: 'Cancel feedback'
+        ariaLabel: 'feedback.cancel.action'
       },
       {
         id: 'feedback-submit',
-        label: 'Send feedback',
+        label: 'send.feedback',
         layout: 'action',
         palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
         disabled: !this.canSubmitFeedback(),
-        ariaLabel: 'Send feedback',
+        ariaLabel: 'send.feedback',
         progress: this.showSubmitRing()
           ? {
               state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',

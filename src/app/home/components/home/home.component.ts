@@ -1,3 +1,4 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { CommunityServicesHomeComponent } from '../community-services-home/community-services-home.component';
 import { CommunityAnnouncementsComponent } from '../../../shared/ui/components/community-announcements/community-announcements.component';
 import { WorkHomeComponent } from '../work-home/work-home.component';
@@ -186,6 +187,8 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnDestroy {
+  private readonly i18n = inject(I18nService);
+
   protected readonly workspace = inject(GroupWorkspaceContextService);
   protected readonly deploymentBranding =
     inject(DeploymentConfigurationService).branding;
@@ -204,10 +207,10 @@ export class HomeComponent implements OnDestroy {
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterInterestGroups;
   private readonly gameFilterValuesGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterValuesGroups;
   protected readonly homeModeOptions: ReadonlyArray<HomeModeOption> = [
-    { key: 'single', label: 'Preferences', icon: 'person' },
-    { key: 'friends-in-common', label: 'Friends in Common', icon: 'diversity_3' },
-    { key: 'separated-friends', label: 'Inside Network', icon: 'group_add' },
-    { key: 'outside-network', label: 'Outside Network', icon: 'groups' }
+    { key: 'single', label: 'preferences', icon: 'person' },
+    { key: 'friends-in-common', label: 'friends.in.common', icon: 'diversity_3' },
+    { key: 'separated-friends', label: 'inside.network', icon: 'group_add' },
+    { key: 'outside-network', label: 'outside.network', icon: 'groups' }
   ];
   private users: UserDto[] = [];
   protected selectedRating = 0;
@@ -490,16 +493,16 @@ export class HomeComponent implements OnDestroy {
 
   protected get gameVisibilityPausedTitle(): string {
     if (this.resolvedActiveProfileStatus() === 'inactive') {
-      return 'your.profile.is.inactive';
+      return 'profile.inactive.title';
     }
     return 'game.discovery.is.paused';
   }
 
   protected get gameVisibilityPausedDescription(): string {
     if (this.resolvedActiveProfileStatus() === 'inactive') {
-      return 'set.your.profile.back.to.public.if.you.want.to.rate.profiles.and.appear.in.game.suggestions';
+      return 'profile.visibility.public.restore.description';
     }
-    return 'change.your.profile.visibility.to.public.if.you.want.to.rate.profiles.and.appear.in.game.suggestions';
+    return 'profile.visibility.public.required.description';
   }
 
   private get avatarLoadedUser(): UserDto | null {
@@ -651,7 +654,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get noCandidateTitle(): string {
-    if (!this.usersService.localModeEnabled && (!this.runtimeStore.isOnline() || backendUnavailable())) return 'No network';
+    if (!this.usersService.localModeEnabled && (!this.runtimeStore.isOnline() || backendUnavailable())) return this.i18n.translate('network.offline');
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Loading more cards';
     }
@@ -666,7 +669,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get noCandidateDescription(): string {
     if (!this.usersService.localModeEnabled && (!this.runtimeStore.isOnline() || backendUnavailable())) {
-      return 'Saved tickets remain available. Profiles need a connection.';
+      return this.i18n.translate('home.offline.description');
     }
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Preloading the next stack in the background.';
@@ -687,7 +690,7 @@ export class HomeComponent implements OnDestroy {
   protected get gameRatingBarConfig(): AppMenuRateConfig {
     return {
       scale: this.ratingScale,
-      actionLabel: 'Go',
+      actionLabel: 'go',
       guideFields: { slider: 'rating-input', action: 'pagination-next' },
       presentation: 'fullscreen',
       blinkOnSelect: false,
@@ -701,7 +704,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected selectedHomeModeLabel(): string {
-    return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.label ?? 'Preferences';
+    return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.label ?? this.i18n.translate('preferences');
   }
 
   protected selectedHomeModeIcon(): string {
@@ -718,7 +721,7 @@ export class HomeComponent implements OnDestroy {
         layout: 'pill',
         palette: this.homeModePalette(this.selectedHomeMode),
         disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || this.isBlockedUser,
-        ariaLabel: 'Select game mode',
+        ariaLabel: 'home.mode.select.aria',
         items: this.homeModeOptions.map(option => ({
           id: `home-mode:${option.key}`,
           label: option.label,
@@ -738,7 +741,7 @@ export class HomeComponent implements OnDestroy {
         palette: 'filter',
         disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || this.isBlockedUser,
         counter: this.filterBadgeCount > 0 ? { value: this.filterBadgeCount, max: 99 } : null,
-        ariaLabel: 'Open profile filters',
+        ariaLabel: 'open.profile.filters',
         context: { action: 'filter' }
       },
       {
@@ -748,7 +751,7 @@ export class HomeComponent implements OnDestroy {
         palette: 'gold',
         disabled: !this.homeHeaderControlsReady || !this.memberActionsAvailable || !this.canOpenHistory || this.isBlockedUser,
         counter: this.historyBadgeCount > 0 ? { value: this.historyBadgeCount, max: 99 } : null,
-        ariaLabel: 'Open game history',
+        ariaLabel: 'open.game.history',
         context: { action: 'history' }
       }
     ];
@@ -2048,12 +2051,12 @@ export class HomeComponent implements OnDestroy {
       return side === 'left' ? 'Person A' : 'Person B';
     }
     if (socialCard.socialContext === 'friends-in-common') {
-      return side === 'left' ? 'Person' : 'Common friend';
+      return side === 'left' ? this.i18n.translate('person') : this.i18n.translate('common.friend');
     }
     if (!socialCard.socialContext) {
       return side === 'left' ? 'Person A' : 'Person B';
     }
-    return side === 'left' ? 'Friend A' : 'Friend B';
+    return side === 'left' ? this.i18n.translate('home.pair.left.empty') : this.i18n.translate('home.pair.right.empty');
   }
 
   private homeCandidatePrimaryLine(candidate: UserDto, socialCard?: UserGameSocialCard): string {

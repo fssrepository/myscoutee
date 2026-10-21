@@ -1,3 +1,5 @@
+import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   CommonModule
 } from '@angular/common';
@@ -162,13 +164,15 @@ interface FifaRow {
     IndicatorComponent,
     PopupComponent,
     SmartListComponent,
-    EventSubeventGroupFormPopupComponent
+    EventSubeventGroupFormPopupComponent, I18nPipe
   ],
   templateUrl: './event-tournament-groups-popup.component.html',
   styleUrl: './event-tournament-groups-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventTournamentGroupsPopupComponent implements OnDestroy {
+  private readonly i18n = inject(I18nService);
+
   private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
@@ -408,7 +412,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
       title: vm.title,
       subtitle: vm.subtitle,
       ariaLabel: vm.title,
-      closeAriaLabel: this.isMingleMode() ? 'mingle.tables.close.aria' : 'Close tournament groups',
+      closeAriaLabel: this.isMingleMode() ? 'mingle.tables.close.aria' : 'event.tournament.groups.close.aria',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -473,7 +477,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
     return [
       {
         id: 'add-group',
-        label: 'Add Group',
+        label: 'event.tournament.group.add.action',
         icon: 'group_add',
         palette: 'green',
         surface: 'tinted',
@@ -752,7 +756,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
   }
 
   protected entryGroupLabel(): string {
-    return this.groupById(this.viewModel().selectedStage, this.entryForm.groupId)?.name ?? 'Group';
+    return this.groupById(this.viewModel().selectedStage, this.entryForm.groupId)?.name ?? this.i18n.translate('group');
   }
 
   protected entryFormSubtitle(): string {
@@ -765,7 +769,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
       title,
       subtitle: this.entryFormSubtitle(),
       ariaLabel: title,
-      closeAriaLabel: 'Close leaderboard editor',
+      closeAriaLabel: 'event.tournament.entry.close.aria',
       closeOnBackdrop: true,
       size: 'default',
       height: 'auto',
@@ -790,7 +794,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
       icon: 'person',
       palette: this.entryMemberPalette(menu),
       layout: 'field',
-      ariaLabel: 'Select member'
+      ariaLabel: 'payment.cash.select.member'
     };
   }
 
@@ -825,7 +829,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
                   bind: 'homeScore',
                   kind: 'number',
                   layout: 'half',
-                  label: 'Score A',
+                  label: 'event.tournament.score.a.label',
                   min: 0,
                   step: 1,
                   placeholder: '0',
@@ -836,7 +840,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
                   bind: 'awayScore',
                   kind: 'number',
                   layout: 'half',
-                  label: 'Score B',
+                  label: 'event.tournament.score.b.label',
                   min: 0,
                   step: 1,
                   placeholder: '0',
@@ -851,7 +855,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
                   bind: 'scoreValue',
                   kind: 'number',
                   layout: 'half',
-                  label: 'Score',
+                  label: 'event.tournament.score.label',
                   step: 1,
                   placeholder: '+3',
                   required: true
@@ -870,7 +874,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
       kind: 'action',
       palette: this.isMutating || this.canSubmitEntry() ? 'success' : 'danger',
       disabled: !this.canSubmitEntry(),
-      ariaLabel: 'Save leaderboard entry',
+      ariaLabel: 'event.tournament.entry.save.action',
       progress: this.isMutating
         ? {
             state: 'loading',
@@ -934,8 +938,8 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
       bind: 'note',
       kind: 'text',
       layout: 'wide',
-      label: 'Note',
-      placeholder: 'Reason / context'
+      label: 'note',
+      placeholder: 'event.tournament.entry.reason.placeholder'
     };
   }
 
@@ -1040,7 +1044,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
     }));
     return {
       eventId,
-      title: request.title?.trim() || 'Groups',
+      title: request.title?.trim() || 'groups.title',
       subtitle: '',
       canManage: request.canManage === true,
       stages
@@ -1402,11 +1406,11 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
     this.dialogStore.open({
       title: 'confirmation.delete.tournament.group',
       message: `Delete ${group.name}?`,
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Delete',
-      busyConfirmLabel: 'Deleting...',
+      cancelLabel: 'cancel',
+      confirmLabel: 'delete',
+      busyConfirmLabel: 'payment.cards.delete.busy',
       confirmTone: 'danger',
-      failureMessage: 'Group delete failed.',
+      failureMessage: 'event.tournament.group.delete.error',
       onConfirm: async () => {
         this.isMutating = true;
         try {
@@ -1508,7 +1512,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
           || parentTitle
           || stageTitle
           || groupLabel
-          || 'Event',
+          || 'event',
         subtitle: ActivityResourceBuilder.assetRequestTimeframeLabel(
           `${stage.startAt ?? ''}`.trim(),
           `${stage.endAt ?? ''}`.trim()

@@ -159,7 +159,7 @@ export class EventSubeventRuntimeMenuConverter {
 
     items.push({
       id: 'groups',
-      label: 'Groups',
+      label: 'groups.title',
       icon: 'groups',
       palette: 'green',
       surface: 'tinted',
@@ -352,15 +352,15 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
-        label: 'Start Stage',
+        label: 'event.stage.start.action',
         icon: 'play_circle',
         palette: 'success',
         nextStatus: 'A',
         reason: 'tournament-started',
         title: 'confirmation.start.stage',
         description: `Start ${stageLabel}? This locks admission and assigns first-stage rooms.`,
-        confirmLabel: 'Start',
-        busyLabel: 'Starting...',
+        confirmLabel: 'start',
+        busyLabel: 'event.stage.start.busy',
         destructive: false
       }));
     }
@@ -368,14 +368,14 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'close-stage',
-        label: 'Close Stage',
+        label: 'event.stage.close.action',
         icon: 'rate_review',
         palette: 'blue',
         nextStatus: 'SR',
         reason: 'stage-closed',
         title: 'confirmation.close.stage',
         description: `Close ${stageLabel} and move it under score review?`,
-        confirmLabel: 'Close Stage',
+        confirmLabel: 'event.stage.close.action',
         busyLabel: 'Closing...',
         destructive: false
       }));
@@ -384,7 +384,7 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'finalize-stage',
-        label: 'Finalize Stage',
+        label: 'event.stage.finalize.action',
         icon: 'verified',
         palette: 'success',
         nextStatus: 'F',
@@ -400,15 +400,15 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'reopen-scores',
-        label: 'Reopen Scores',
+        label: 'event.stage.scores.reopen.action',
         icon: 'edit_note',
         palette: 'amber',
         nextStatus: 'SR',
         reason: 'scores-reopened',
         title: 'confirmation.reopen.scores',
         description: `Reopen scores for ${stageLabel}?`,
-        confirmLabel: 'Reopen',
-        busyLabel: 'Reopening...',
+        confirmLabel: 'event.stage.reopen.action',
+        busyLabel: 'event.stage.reopen.busy',
         destructive: false
       }));
     }
@@ -416,14 +416,14 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'suspend-tournament',
-        label: 'Suspend Stage',
+        label: 'event.stage.suspend.action',
         icon: 'pause_circle',
         palette: 'warning',
         nextStatus: 'S',
         reason: 'manual-suspension',
         title: 'confirmation.suspend.stage',
         description: `Suspend ${stageLabel}?`,
-        confirmLabel: 'Suspend',
+        confirmLabel: 'event.stage.suspend.confirm',
         busyLabel: 'Suspending...',
         destructive: true
       }));
@@ -435,15 +435,15 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'resume-tournament',
-        label: 'Resume Stage',
+        label: 'event.stage.resume.action',
         icon: 'play_circle',
         palette: 'blue',
         nextStatus: resumeNextStatus,
         reason: 'manual-resume',
         title: 'confirmation.resume.stage',
         description: `Resume ${stageLabel}?`,
-        confirmLabel: 'Resume',
-        busyLabel: 'Resuming...',
+        confirmLabel: 'event.stage.resume.confirm',
+        busyLabel: 'event.stage.resume.busy',
         destructive: false
       }));
     }

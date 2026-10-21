@@ -48,7 +48,7 @@ export class FeedbackOrganizerInfoCardConverter {
         ? {
           variant: 'badge',
           tone: FeedbackFilterMenuConverter.filterPalette('own-events'),
-          label: 'View Feedbacks',
+          label: 'view.feedbacks',
           pendingCount: item.responseCount,
           interactive: true,
           ariaLabel: `Open feedback details for ${item.title}`
@@ -87,7 +87,7 @@ export class FeedbackInfoCardConverter {
       leadingIcon: { icon: 'home_repair_service', palette: 'orange' },
       surfaceTone: 'subevent-light', accentHue: 42,
       mediaEnd: { variant: 'badge', tone: FeedbackFilterMenuConverter.filterPalette(received ? 'own-events' : feedback.status),
-        label: received ? 'View Feedbacks' : pending ? 'Start Feedback' : feedback.status === 'removed' ? 'Removed' : 'Feedbacked',
+        label: received ? 'view.feedbacks' : pending ? 'start.feedback' : feedback.status === 'removed' ? 'feedback.evaluation.removed' : 'feedbacked',
         interactive: received || pending },
       menuActions: received ? ['viewSubmittedFeedback'] : pending ? ['startFeedback', 'removeFeedback']
         : feedback.status === 'removed' ? ['restoreFeedback'] : ['viewSubmittedFeedback'],
@@ -131,7 +131,7 @@ export class FeedbackInfoCardConverter {
         interactive: startAvailable,
         ariaLabel: startAvailable
           ? 'Start feedback'
-          : 'Event feedback unavailable'
+          : 'feedback.event.unavailable.aria'
       },
       menuActions: this.feedbackMenuActions(item, this.hasOrganizerNote(item.eventId, options.state)),
       clickable: false
@@ -174,15 +174,15 @@ export class FeedbackInfoCardConverter {
 
   private static feedbackStartBadgeLabel(item: FeedbackDto): string {
     if (item.isOwnEvent) {
-      return 'View Feedbacks';
+      return 'view.feedbacks';
     }
     if (item.isRemoved) {
-      return 'Removed';
+      return 'feedback.evaluation.removed';
     }
     if (item.isFeedbacked) {
-      return 'Feedbacked';
+      return 'feedbacked';
     }
-    return 'Start Feedback';
+    return 'start.feedback';
   }
 
   private static feedbackMenuActions(

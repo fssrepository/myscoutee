@@ -82,7 +82,7 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
 
     expect(card.mediaTitle).toBe('Event');
     expect(card.mediaIcon).toBe('event');
-    expect(card.mediaEnd).toMatchObject({ label: 'Event', icon: 'event' });
+    expect(card.mediaEnd).toMatchObject({ label: 'event', icon: 'event' });
     expect(card.metaRows).toContain('Capacity 2 / 9');
   });
 

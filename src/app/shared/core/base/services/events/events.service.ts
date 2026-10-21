@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { UiDateUtils, type ListQuery, type PageResult } from '@fssrepository/myscoutee-components';
 import {
   Injectable,
@@ -25,12 +27,7 @@ import type { ActivitiesFeedFilters } from '../../../contracts';
 import type { UserEventCountersDto } from '../../../contracts/accounts/user.interface';
 import type { EventCheckoutAssetSelection, EventCheckoutBasket, EventCheckoutBasketItem, EventCheckoutLineItem, EventCheckoutPaymentAudit, EventCheckoutPricingSummaryRow, EventCheckoutPromoCodeValidationRequest, EventCheckoutPromoCodeValidationResult, EventCheckoutRequest, EventCheckoutResultState, EventCheckoutState, EventCheckoutStateChangeRequest, EventCheckoutSession, EventCheckoutSlotsQuery, EventCheckoutSlotsResult, EventParticipationActionResultDTO, EventWatchActionResultDTO } from '../../../contracts/common/activity.interface';
 import type { FeedbackQueryDto, FeedbackDetailDto, FeedbackReceivedEventDto, FeedbackNoteRequestDto, FeedbackPageQueryDto, FeedbackPageResultDto, FeedbackStatDto, FeedbackStatQueryDto, FeedbackStateDto } from '../../../contracts/feedback/feedback.interface';
-import {
-  LocalEventsService
-} from '../../../local';
-import {
-  HttpEventsService
-} from '../../../http';
+
 import type {
   ActivityEventDetailDTO,
   ActivityEventDTO,
@@ -58,9 +55,10 @@ import { UserProfileStore } from '../../../../ui/context/stores/profile/user-pro
   providedIn: 'root'
 })
 export class EventsService extends BaseRouteModeService implements IEventsService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
-  private readonly localEventsService = inject(LocalEventsService);
-  private readonly httpEventsService = inject(HttpEventsService);
+  private readonly localEventsService = this.transportAdapters.reference(LOCAL_ADAPTER.EVENTS);
+  private readonly httpEventsService = this.transportAdapters.reference(HTTP_ADAPTER.EVENTS);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly routeDelay = inject(RouteDelayService);
@@ -77,7 +75,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       : this.httpEventsService.exportCalendar(signal);
   }
 
-  private get eventsService(): LocalEventsService | HttpEventsService {
+  private get eventsService(): AdapterInstance<typeof LOCAL_ADAPTER.EVENTS> | AdapterInstance<typeof HTTP_ADAPTER.EVENTS> {
     return this.resolveRouteService('/activities/events', this.localEventsService, this.httpEventsService);
   }
 

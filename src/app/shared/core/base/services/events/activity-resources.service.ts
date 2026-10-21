@@ -1,14 +1,10 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import {
   Injectable,
   inject
 } from '@angular/core';
 
-import {
-  LocalActivityResourcesService
-} from '../../../local/source/services/events/activity-resources.service';
-import {
-  HttpActivityResourcesService
-} from '../../../http/services/events/activity-resources.service';
 import {
   BaseRouteModeService
 } from '../platform/base-route-mode.service';
@@ -26,13 +22,14 @@ const ACTIVITY_SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resource
   providedIn: 'root'
 })
 export class ActivityResourcesService extends BaseRouteModeService {
-  private readonly localActivityResourcesService = inject(LocalActivityResourcesService);
-  private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localActivityResourcesService = this.transportAdapters.reference(LOCAL_ADAPTER.ACTIVITY_RESOURCES);
+  private readonly httpActivityResourcesService = this.transportAdapters.reference(HTTP_ADAPTER.ACTIVITY_RESOURCES);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly routeDelay = inject(RouteDelayService);
 
-  private get activityResourcesService(): LocalActivityResourcesService | HttpActivityResourcesService {
+  private get activityResourcesService(): AdapterInstance<typeof LOCAL_ADAPTER.ACTIVITY_RESOURCES> | AdapterInstance<typeof HTTP_ADAPTER.ACTIVITY_RESOURCES> {
     return this.resolveRouteService(
       ACTIVITY_SUB_EVENT_RESOURCES_ROUTE,
       this.localActivityResourcesService,

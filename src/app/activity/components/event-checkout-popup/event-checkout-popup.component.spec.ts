@@ -59,3 +59,22 @@ describe('Review Booking context loading', () => {
     expect(component.eventsService.loadCheckoutBasketByEvent).not.toHaveBeenCalled();
   });
 });
+
+
+describe('Checkout confirmation uses stable action keys', () => {
+  it.each([
+    ['join.resource', 'event.checkout.join.confirm.title'],
+    ['update', 'event.checkout.update.confirm.title']
+  ])('keeps the %s confirmation independent of its translated caption', (label, title) => {
+    const { component } = checkout();
+    const open = vi.fn();
+    Object.assign(component, {
+      canContinue: () => true, checkoutPaymentReviewStarted: () => false,
+      isUnchangedPendingCheckout: () => false, continueLabel: () => label,
+      checkoutConfirmWarningMessage: () => '', busyLabel: () => 'working',
+      checkoutConfirmPalette: () => 'blue', confirmationDialogStore: { open }, paymentStep: false
+    });
+    component.requestCheckoutConfirm();
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ title, confirmLabel: label }));
+  });
+});

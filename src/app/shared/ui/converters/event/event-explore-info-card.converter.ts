@@ -77,7 +77,7 @@ export class EventExploreInfoCardConverter {
         tone: membersPreviewVisible ? (full ? 'full' : 'default') : 'inactive',
         interactive: membersPreviewVisible,
         disabled: !membersPreviewVisible,
-        ariaLabel: membersPreviewVisible ? 'Open event members' : 'Members hidden for this event',
+        ariaLabel: membersPreviewVisible ? 'event.members.open.aria' : 'event.members.hidden.aria',
         label: this.membersLabel(record),
         pendingCount: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
         leadingAccessory: {

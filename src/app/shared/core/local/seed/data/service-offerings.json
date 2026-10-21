@@ -6,7 +6,7 @@
     "description": "Shared meter replacement and household plumbing, coordinated through a single case.",
     "category": "plumbing",
     "imageUrls": [
-      "/assets/articles/community-meter.png"
+      "/assets/articles/community-meter.webp"
     ],
     "maxDistanceKm": null,
     "languages": [],
@@ -32,7 +32,7 @@
     "description": "Fault investigation, lighting repairs and planned community maintenance.",
     "category": "electrical",
     "imageUrls": [
-      "/assets/articles/community-fault.png"
+      "/assets/articles/community-fault.webp"
     ],
     "maxDistanceKm": null,
     "languages": [],

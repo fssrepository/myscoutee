@@ -3,8 +3,10 @@ import { HttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
+import { ExplanationGuideService, provideUiTranslations } from '@fssrepository/myscoutee-components';
 
 import { environment } from '../../../../../../environments/environment';
+import { version as catalogVersion } from '../../../../../../assets/i18n/en.json';
 import { I18nBundleRepository } from '../../repositories/localization/i18n-bundle.repository';
 import { I18nService } from './i18n.service';
 import { type AppSession, SessionService } from '../accounts/session.service';
@@ -109,6 +111,137 @@ describe('I18nService', () => {
     expect(localAssetRequestCount()).toBe(0);
   });
 
+  it('keeps the guide in the browser language while initialization waits for its catalog', async () => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['hu-HU', 'en-US']);
+    const response = new Subject<unknown>();
+    get.mockImplementation((url, options) => {
+      expect(url).toBe(`${environment.apiBaseUrl ?? '/api'}/i18n/bundle`);
+      expect(options.params.get('lang')).toBe('hu');
+      return response;
+    });
+    TestBed.configureTestingModule({ providers: [provideUiTranslations(I18nService)] });
+    const service = TestBed.inject(I18nService);
+    const loadGuide = vi.fn().mockResolvedValue({ activeRevision: null, revisions: [], guideFields: [], availableLanguages: [], auditTrail: [] });
+    const guide = TestBed.runInInjectionContext(() => new ExplanationGuideService({
+      isExplainableContext: () => true, loadState: loadGuide
+    }));
+    expect(service.currentLanguage()).toBe('hu');
+    const ready = service.initialize();
+    const initialized = vi.fn();
+    void ready.then(initialized);
+    guide.registerContext('landing.home');
+    guide.openCurrent();
+    await vi.waitFor(() => expect(apiRequestCount()).toBe(1));
+    expect(initialized).not.toHaveBeenCalled();
+    TestBed.tick();
+    expect(loadGuide).toHaveBeenCalledExactlyOnceWith('landing.home', 'hu');
+    response.next({ lang: 'hu', version: 'remote.hu.2', data: { greeting: 'Szia', 'network.offline': 'Nincs hálózat' } });
+    response.complete();
+    await ready;
+    TestBed.tick();
+    expect(service.translate('greeting')).toBe('Szia');
+    expect(service.translate('network.offline')).toBe('Nincs hálózat');
+    expect(service.currentLanguage()).toBe('hu');
+    expect(document.documentElement.lang).toBe('hu');
+    expect(loadGuide).toHaveBeenCalledTimes(1);
+    expect(apiRequestCount()).toBe(1);
+    expect(localAssetRequestCount()).toBe(0);
+  });
+
+  it('keeps English when it precedes Hungarian in the browser preferences', async () => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['en-US', 'hu-HU']);
+    const service = TestBed.inject(I18nService);
+    await service.initialize();
+    expect(service.currentLanguage()).toBe('en');
+    expect(get.mock.calls.filter(([url]) => url === `${environment.apiBaseUrl ?? '/api'}/i18n/bundle`)
+      .map(([, options]) => options.params.get('lang'))).toEqual(['en']);
+    expect(localAssetRequestCount()).toBe(0);
+  });
+
+  it.each(['hu', 'en'] as const)('starts from the cached %s catalog while server revalidation is pending', async lang => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue([lang]);
+    const cached = { lang, version: catalogVersion, data: { greeting: lang === 'hu' ? 'Szia' : 'Hello' }, storedAt: 1 };
+    bundleRepository.firstStoredBundle.mockResolvedValue(cached);
+    bundleRepository.readStoredBundle.mockImplementation(async (_scope, requested) => requested === lang ? cached : null);
+    const response = new Subject<unknown>();
+    get.mockReturnValue(response);
+    const service = TestBed.inject(I18nService);
+    const initialized = vi.fn();
+    void service.initialize().then(initialized);
+    try {
+      await vi.waitFor(() => expect(apiRequestCount()).toBe(1));
+      expect(service.translate('greeting')).toBe(cached.data.greeting);
+      await vi.waitFor(() => expect(initialized).toHaveBeenCalledOnce(), { timeout: 100 });
+      const refreshing = service.revalidate();
+      expect(apiRequestCount()).toBe(1);
+      response.next({ lang, version: cached.version, data: null });
+      response.complete();
+      await refreshing;
+      expect(service.translate('greeting')).toBe(cached.data.greeting);
+      expect(localAssetRequestCount()).toBe(0);
+    } finally {
+      response.complete();
+    }
+  });
+
+  it('does not show a cached secondary language before the preferred catalog arrives', async () => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['hu-HU', 'en-US']);
+    const english = { lang: 'en', version: catalogVersion, data: { greeting: 'Hello' }, storedAt: 1 };
+    bundleRepository.firstStoredBundle.mockResolvedValue(english);
+    bundleRepository.readStoredBundle.mockImplementation(async (_scope, lang) => lang === 'en' ? english : null);
+    const response = new Subject<unknown>();
+    get.mockReturnValue(response);
+    const service = TestBed.inject(I18nService);
+    const initialized = vi.fn();
+    const ready = service.initialize().then(initialized);
+    await vi.waitFor(() => expect(apiRequestCount()).toBe(1));
+    expect(get.mock.calls[0][1].params.get('lang')).toBe('hu');
+    expect(service.currentLanguage()).toBe('hu');
+    expect(service.translate('greeting')).toBe('greeting');
+    expect(initialized).not.toHaveBeenCalled();
+    response.next({ lang: 'hu', version: catalogVersion, data: { greeting: 'Szia' } });
+    response.complete();
+    await ready;
+    expect(service.translate('greeting')).toBe('Szia');
+    expect(service.currentLanguage()).toBe('hu');
+    expect(apiRequestCount()).toBe(1);
+    expect(localAssetRequestCount()).toBe(0);
+  });
+
+  it('uses the cached secondary language when the preferred catalog cannot be fetched', async () => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['hu-HU', 'en-US']);
+    const english = { lang: 'en', version: catalogVersion, data: { greeting: 'Hello' }, storedAt: 1 };
+    bundleRepository.firstStoredBundle.mockResolvedValue(english);
+    bundleRepository.readStoredBundle.mockImplementation(async (_scope, lang) => lang === 'en' ? english : null);
+    get.mockReturnValue(throwError(() => new Error('offline')));
+    const service = TestBed.inject(I18nService);
+    await service.initialize();
+    expect(service.currentLanguage()).toBe('en');
+    expect(service.translate('greeting')).toBe('Hello');
+    expect(apiRequestCount()).toBe(1);
+    expect(localAssetRequestCount()).toBe(0);
+  });
+
+  it.each(['2026.10.21.1', '2026.10.20.2'])('waits for updated keys when the cached full version is %s', async version => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['hu']);
+    const cached = { lang: 'hu', version, data: { greeting: 'Szia' }, storedAt: 1 };
+    bundleRepository.firstStoredBundle.mockResolvedValue(cached);
+    bundleRepository.readStoredBundle.mockResolvedValue(cached);
+    const response = new Subject<unknown>();
+    get.mockReturnValue(response);
+    const service = TestBed.inject(I18nService);
+    const initialized = vi.fn();
+    const ready = service.initialize().then(initialized);
+    await vi.waitFor(() => expect(apiRequestCount()).toBe(1));
+    expect(initialized).not.toHaveBeenCalled();
+    response.next({ lang: 'hu', version: catalogVersion, data: { greeting: 'Szia', 'network.offline': 'Nincs hálózat' } });
+    response.complete();
+    await ready;
+    expect(service.translate('network.offline')).toBe('Nincs hálózat');
+    expect(apiRequestCount()).toBe(1);
+    expect(localAssetRequestCount()).toBe(0);
+  });
+
   it('translates composite labels from the English source bundle', async () => {
     get.mockImplementation((url: string) => {
       const bundle = {
@@ -139,6 +272,55 @@ describe('I18nService', () => {
       expect(service.translate('activity.rates.group.preferences · Given'))
         .toBe('Preferences · Given');
     });
+  });
+
+  it.each(['real', 'demo'] as const)('reuses the %s EN/HU cache when complete catalog versions match', async scope => {
+    if (scope === 'demo') session.set({ kind: 'demo', userId: 'demo-user' });
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['hu-HU', 'en-US']);
+    const cached = {
+      en: { lang: 'en', version: '2026.10.21.4', data: { greeting: `${scope} Hello` }, storedAt: 1 },
+      hu: { lang: 'hu', version: '2026.10.21.4', data: { greeting: `${scope} Szia` }, storedAt: 1 }
+    };
+    bundleRepository.firstStoredBundle.mockResolvedValue(cached.hu);
+    bundleRepository.readStoredBundle.mockImplementation(async (requestedScope, lang: keyof typeof cached) => {
+      expect(requestedScope).toBe(scope);
+      return cached[lang] ?? null;
+    });
+    get.mockImplementation((url, options) => {
+      expect(url).toBe(`${environment.apiBaseUrl ?? '/api'}/i18n/bundle`);
+      expect(options.params.get('version')).toBe('2026.10.21.4');
+      return of({ lang: options.params.get('lang'), version: '2026.10.21.4', data: null });
+    });
+    const service = TestBed.inject(I18nService);
+    service.initialize();
+    await service.revalidate();
+    expect(service.currentLanguage()).toBe('hu');
+    expect(service.translate('greeting')).toBe(`${scope} Szia`);
+    expect(apiRequestCount()).toBe(1);
+    await service.ensureLanguageLoaded('en');
+    expect(service.translateForLanguage('greeting', 'en')).toBe(`${scope} Hello`);
+    expect(apiRequestCount()).toBe(2);
+    expect(localAssetRequestCount()).toBe(0);
+    expect(bundleRepository.writeStoredBundle).not.toHaveBeenCalled();
+  });
+
+  it('replaces cached entries and removes deleted keys when the complete version advances', async () => {
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['en-US']);
+    const cached = { lang: 'en', version: '2026.10.21.4', data: { greeting: 'Before', deleted: 'Old' }, storedAt: 1 };
+    bundleRepository.readStoredBundle.mockResolvedValue(cached);
+    get.mockImplementation((url, options) => {
+      expect(url).toBe(`${environment.apiBaseUrl ?? '/api'}/i18n/bundle`);
+      expect(options.params.get('version')).toBe('2026.10.21.4');
+      return of({ lang: 'en', version: '2026.10.21.5', data: { greeting: 'After' } });
+    });
+    const service = TestBed.inject(I18nService);
+    service.initialize();
+    await service.revalidate();
+    expect(service.translate('greeting')).toBe('After');
+    expect(service.translate('deleted')).toBe('deleted');
+    expect(bundleRepository.writeStoredBundle).toHaveBeenCalledWith('real', expect.objectContaining({
+      version: '2026.10.21.5', data: { greeting: 'After' }
+    }));
   });
 
   it('translates composite labels from the backend Hungarian bundle', async () => {
@@ -356,6 +538,21 @@ describe('I18nService', () => {
     });
     expect(apiRequestCount()).toBe(0);
     expect(localAssetRequestCount()).toBe(1);
+  });
+
+  it.each(['hu', 'de', 'es'])('loads only the browser language %s for the standalone landing', async lang => {
+    environment.activitiesDataSource = 'local';
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue([lang, 'en-US']);
+    get.mockImplementation(url => {
+      expect(url).toBe(`assets/i18n/${lang}.json`);
+      return of({ lang, version: 'static.1', messages: { greeting: `${lang} greeting` } });
+    });
+    const service = TestBed.inject(I18nService);
+    await service.initialize();
+    expect(service.currentLanguage()).toBe(lang);
+    expect(service.translate('greeting')).toBe(`${lang} greeting`);
+    expect(localAssetRequestCount()).toBe(1);
+    expect(apiRequestCount()).toBe(0);
   });
 
   it('reloads from the isolated demo bundle when the HTTP session changes', async () => {

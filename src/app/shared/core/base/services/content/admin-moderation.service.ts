@@ -1,7 +1,7 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
-import { HttpAdminModerationService } from '../../../http/services/content/admin-moderation.service';
-import { LocalAdminModerationService } from '../../../local/source/services/content/admin-moderation.service';
 import type { AdminDashboardDto, AdminUserDto } from '../../../contracts/administration/admin.interface';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
@@ -23,10 +23,11 @@ export interface AdminModerationActionResult {
   providedIn: 'root'
 })
 export class AdminModerationService extends BaseRouteModeService {
-  private readonly localService = inject(LocalAdminModerationService);
-  private readonly httpService = inject(HttpAdminModerationService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_MODERATION);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_MODERATION);
 
-  private get moderationService(): LocalAdminModerationService | HttpAdminModerationService {
+  private get moderationService(): AdapterInstance<typeof LOCAL_ADAPTER.ADMIN_MODERATION> | AdapterInstance<typeof HTTP_ADAPTER.ADMIN_MODERATION> {
     return this.resolveRouteService('/admin/reports', this.localService, this.httpService);
   }
 

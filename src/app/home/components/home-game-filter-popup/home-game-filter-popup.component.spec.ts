@@ -59,6 +59,17 @@ describe('profile filter catalogs with an empty result set', () => {
       if (!['interests', 'values', 'languages'].includes(kind)) expect(component.searchable(kind)).toBe(false);
     }
   });
+  it('keeps stored choices and menu identities separate from translated labels', () => {
+    const component = popup();
+    const options = component.model('values').groups!.flatMap(group => group.items ?? []);
+    expect(options.find(item => item.value === 'Long-term partnership')).toMatchObject({
+      label: 'long.term.partnership', value: 'Long-term partnership'
+    });
+    const traits = component.model('traitLabels').groups!.flatMap(group => group.items ?? []);
+    expect(traits.find(item => item.value === 'Social Charmer')).toMatchObject({
+      label: 'social.charmer', value: 'Social Charmer'
+    });
+  });
   it('toggles and removes old lowercase values without duplicate selection and retains custom saved values', () => {
     const component = popup();
     component.draft().children = ['yes', 'custom'];

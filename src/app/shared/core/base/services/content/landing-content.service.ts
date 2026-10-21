@@ -1,9 +1,9 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { HelpCenterService } from '../help/help-center.service';
 import { baseGroupId, type GroupType } from '../../../contracts/groups/group-type';
 import { Injectable, inject, signal } from '@angular/core';
 
-import { LocalLandingContentService } from '../../../local/source/services/content/landing-content.service';
-import { HttpLandingContentService } from '../../../http/services/content/landing-content.service';
 import type { HelpCenterStateDto, LandingContentStateDto } from '../../../contracts';
 import type { InfoCardData } from '@fssrepository/myscoutee-components';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
@@ -20,9 +20,10 @@ export interface LandingContentDisplayState {
   providedIn: 'root'
 })
 export class LandingContentService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private static readonly LANDING_CONTENT_ROUTE = '/landing/content';
-  private readonly localLandingContentService = inject(LocalLandingContentService);
-  private readonly httpLandingContentService = inject(HttpLandingContentService);
+  private readonly localLandingContentService = this.transportAdapters.reference(LOCAL_ADAPTER.LANDING_CONTENT);
+  private readonly httpLandingContentService = this.transportAdapters.reference(HTTP_ADAPTER.LANDING_CONTENT);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly helpCenter = inject(HelpCenterService);
@@ -71,7 +72,7 @@ export class LandingContentService extends BaseRouteModeService {
     return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
   }
 
-  private landingService(): LocalLandingContentService | HttpLandingContentService {
+  private landingService(): AdapterInstance<typeof LOCAL_ADAPTER.LANDING_CONTENT> | AdapterInstance<typeof HTTP_ADAPTER.LANDING_CONTENT> {
     return this.resolveRouteService(
       LandingContentService.LANDING_CONTENT_ROUTE,
       this.localLandingContentService,

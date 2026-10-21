@@ -269,7 +269,7 @@ export class AdminReportsPopupComponent {
     const selectedUser = this.admin.selectedReportedUser();
     return {
       title: selectedUser ? 'history' : 'reported.users',
-      subtitle: selectedUser?.name ?? 'only.users.with.moderation.reports.are.visible.here',
+      subtitle: selectedUser?.name ?? 'admin.reports.members.description',
       ariaLabel: 'reported.users',
       closeAriaLabel: 'close',
       size: 'wide',
@@ -589,8 +589,8 @@ export class AdminReportsPopupComponent {
       ].join(' '),
       statusChip: {
         icon: blocked ? 'person_off' : 'person',
-        title: blocked ? 'Blocked user' : 'Reported user',
-        ariaLabel: blocked ? 'Blocked user' : 'Reported user',
+        title: blocked ? 'Blocked user' : 'admin.report.user.title',
+        ariaLabel: blocked ? 'Blocked user' : 'admin.report.user.title',
         palette: blocked ? 'danger' : 'green'
       },
       menuBadgeCount: this.visibleSupportChatUnread(user),
@@ -610,7 +610,7 @@ export class AdminReportsPopupComponent {
       layout: 'icon',
       palette: 'default',
       counter: unread,
-      ariaLabel: source === 'blocked-user' ? 'Blocked user actions' : 'Member moderation actions'
+      ariaLabel: source === 'blocked-user' ? 'moderation.user.blocked.actions.aria' : 'member.moderation.actions'
     };
   }
 
@@ -866,13 +866,13 @@ export class AdminReportsPopupComponent {
       return report.chatTitle || 'Reported chat';
     }
     if (report.sourceType === 'asset' || report.assetId) {
-      return [report.assetType, report.sourceText].filter(Boolean).join(' · ') || 'Reported asset';
+      return [report.assetType, report.sourceText].filter(Boolean).join(' · ') || this.i18n.translate('reported.asset');
     }
-    return report.eventTitle || 'Reported event';
+    return report.eventTitle || this.i18n.translate('reported.event');
   }
 
   protected reportBadgeLabel(report: AdminReportDto): string {
-    return this.i18n.translate(`${report.reason ?? ''}`.trim() || 'Report');
+    return this.i18n.translate(`${report.reason ?? ''}`.trim() || 'report.label');
   }
 
   protected reportReasonToneClass(report: AdminReportDto): string {
@@ -980,17 +980,17 @@ export class AdminReportsPopupComponent {
       case 'community':
         return this.i18n.translate('groups.title');
       case 'chat':
-        return 'Chat';
+        return this.i18n.translate('chat');
       case 'asset':
-        return 'Asset';
+        return this.i18n.translate('asset');
       case 'subEvent':
         return 'Sub-event';
       case 'group':
-        return 'Group';
+        return this.i18n.translate('group');
       case 'event':
-        return 'Event';
+        return this.i18n.translate('event');
       default:
-        return report.chatId ? 'Chat' : report.assetId ? 'Asset' : 'Event';
+        return report.chatId ? this.i18n.translate('chat') : report.assetId ? this.i18n.translate('asset') : this.i18n.translate('event');
     }
   }
 
@@ -1007,12 +1007,12 @@ export class AdminReportsPopupComponent {
   protected sourceCardTitle(report: AdminReportDto): string {
     if (report.sourceType === 'community') return this.reportSourceLabel(report);
     if (report.sourceType === 'chat' || report.chatId) {
-      return report.chatTitle || 'Reported chat message';
+      return report.chatTitle || this.i18n.translate('reported.chat.message');
     }
     if (report.sourceType === 'asset' || report.assetId) {
-      return report.assetType ? `${report.assetType} resource` : 'Reported asset';
+      return report.assetType ? `${report.assetType} resource` : this.i18n.translate('reported.asset');
     }
-    return report.eventTitle || 'Reported event';
+    return report.eventTitle || this.i18n.translate('reported.event');
   }
 
   protected sourceCardSubtitle(report: AdminReportDto): string {
@@ -1145,7 +1145,7 @@ export class AdminReportsPopupComponent {
     const chatId = `${resolvedUser.supportChatId ?? ''}`.trim();
     if (!resolvedUser.hasSupportChat || !chatId) {
       this.dialogStore.openInfo('The support chat is not available yet.', {
-        title: 'Unable to open chat'
+        title: 'moderation.user.chat.error.title'
       });
       return;
     }
@@ -1154,13 +1154,13 @@ export class AdminReportsPopupComponent {
       chat = await this.chatsService.queryChatById(chatId);
     } catch {
       this.dialogStore.openInfo('The support chat could not be loaded. Please try again.', {
-        title: 'Unable to open chat'
+        title: 'moderation.user.chat.error.title'
       });
       return;
     }
     if (!chat) {
       this.dialogStore.openInfo('The support chat could not be found.', {
-        title: 'Unable to open chat'
+        title: 'moderation.user.chat.error.title'
       });
       return;
     }

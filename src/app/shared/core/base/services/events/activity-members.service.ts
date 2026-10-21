@@ -1,19 +1,15 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { CommunityCasesService } from '../community/community-cases.service';
 import { CommunityCaseConverter } from '../../../../ui/converters/community/community-case.converter';
 import { CommunityGroupChangesStore } from '../../../../ui/context/stores/community/community-group-changes.store';
 import { GroupWorkspaceContextService } from '../groups/group-workspace-context.service';
-import { LocalCommunityGroupsService } from '../../../local/source/services/groups/community-groups.service';
+
 import {
   Injectable,
   inject
 } from '@angular/core';
 
-import {
-  LocalActivityMembersService
-} from '../../../local/source/services/events/activity-members.service';
-import {
-  HttpActivityMembersService
-} from '../../../http/services/events/activity-members.service';
 import {
   BaseRouteModeService
 } from '../platform/base-route-mode.service';
@@ -35,20 +31,21 @@ import { ActivityStore } from '../../../../ui/context/stores/activity/activity.s
   providedIn: 'root'
 })
 export class ActivityMembersService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private readonly cases = inject(CommunityCasesService);
   private readonly groupChanges = inject(CommunityGroupChangesStore);
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
-  private readonly localGroups = inject(LocalCommunityGroupsService);
+  private readonly localGroups = this.transportAdapters.reference(LOCAL_ADAPTER.COMMUNITY_GROUPS);
   private readonly workspace = inject(GroupWorkspaceContextService);
   private localCommunity(owner: ActivityMemberOwnerRef): boolean { return owner.ownerType === 'community' && this.isLocalRouteEnabled('/groups'); }
   private groupActor(): string { return this.workspace.accountId(this.userProfileStore.getActiveUserId()).trim(); }
-  private readonly localActivityMembersService = inject(LocalActivityMembersService);
-  private readonly httpActivityMembersService = inject(HttpActivityMembersService);
+  private readonly localActivityMembersService = this.transportAdapters.reference(LOCAL_ADAPTER.ACTIVITY_MEMBERS);
+  private readonly httpActivityMembersService = this.transportAdapters.reference(HTTP_ADAPTER.ACTIVITY_MEMBERS);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly routeDelay = inject(RouteDelayService);
-  private get activityMembersService(): LocalActivityMembersService | HttpActivityMembersService {
+  private get activityMembersService(): AdapterInstance<typeof LOCAL_ADAPTER.ACTIVITY_MEMBERS> | AdapterInstance<typeof HTTP_ADAPTER.ACTIVITY_MEMBERS> {
     return this.resolveRouteService(ActivityMembersService.MEMBERS_ROUTE, this.localActivityMembersService, this.httpActivityMembersService);
   }
 

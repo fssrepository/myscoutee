@@ -78,7 +78,7 @@ export class ActivityChatSingleRowConverter {
       distanceMetersExact,
       badgeCount: unread,
       sortScore: unread * 10 + memberCount,
-      title: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
+      title: systemSender ? options.translate?.('chat.system.sender.label') ?? 'MyScoutee System' : lastSender?.name ?? dto.title,
       subtitle: groupChannelLabel || dto.title,
       detail: groupParentLabel || lastMessage,
       metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
@@ -90,7 +90,7 @@ export class ActivityChatSingleRowConverter {
       avatarToneClass: systemSender && !systemAvatarUrl
         ? 'notification-system-avatar'
         : lastSender ? `user-color-${lastSender.gender}` : null,
-      avatarAriaLabel: systemSender ? 'MyScoutee System' : lastSender?.name ?? dto.title,
+      avatarAriaLabel: systemSender ? options.translate?.('chat.system.sender.label') ?? 'MyScoutee System' : lastSender?.name ?? dto.title,
       icon: systemSender && !systemAvatarUrl ? 'auto_awesome' : null,
       memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),

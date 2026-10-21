@@ -27,6 +27,7 @@ function popup() {
   const pending = deferred<typeof saved>();
   const component = Object.create(EventExplorePopupComponent.prototype);
   Object.assign(component, {
+    i18n: { translate: (key: string) => key },
     isOpen: false, activeUserId: 'user', exploreOpenRevision: 0, preferencesRequest: null,
     eventExploreFilters: signal({ ...defaults }), preferencesReady: signal(false),
     eventExploreOrder: 'upcoming', eventExploreView: 'day', eventExploreSortKeys: new Map(),

@@ -130,7 +130,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     return {
       title,
       ariaLabel: title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: isTicketCode ? 'full' : 'auto',
       headerTone: 'accent',

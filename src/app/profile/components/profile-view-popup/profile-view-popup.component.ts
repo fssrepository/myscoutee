@@ -13,13 +13,18 @@ import {
   ExplanationGuideService
 } from '@fssrepository/myscoutee-components';
 
-import { ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
+import { ContactsService, I18nService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
 import { ProfileStore, type ProfileViewTarget } from '../../../shared/ui/context/stores/profile/profile.store';
 
 interface ProfileViewRow {
   label: string;
+  labelKey: string;
   value: string;
   icon?: string;
+}
+
+interface ProfileViewDetailGroup extends ProfileDetailFormGroup {
+  titleKey: string;
 }
 
 @Component({
@@ -40,6 +45,7 @@ interface ProfileViewRow {
 export class ProfileViewPopupComponent implements OnDestroy {
   private readonly profileStore = inject(ProfileStore);
   private readonly contactsService = inject(ContactsService);
+  private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private unregisterExplanationContext: (() => void) | null = null;
   private explanationContextActive = false;
@@ -143,7 +149,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
       title: this.headerTitle(user),
       subtitle: this.headerSubtitle(user),
       ariaLabel: this.headerTitle(user),
-      closeAriaLabel: 'Close profile',
+      closeAriaLabel: 'close.profile',
       translateTitle: false,
       translateSubtitle: false,
       size: 'wide',
@@ -163,22 +169,22 @@ export class ProfileViewPopupComponent implements OnDestroy {
   }
 
   protected displayTitle(user: UserDto): string {
-    const name = `${user.name ?? ''}`.trim() || this.target()?.label || 'Profile';
+    const name = `${user.name ?? ''}`.trim() || this.target()?.label || this.i18nService.translate('profile');
     return user.age > 0 ? `${name}, ${user.age}` : name;
   }
 
   protected headerTitle(user: UserDto | null): string {
     if (!user) {
-      return 'Profile';
+      return this.i18nService.translate('profile');
     }
     return this.displayTitle(user);
   }
 
   protected headerSubtitle(user: UserDto | null): string {
     if (!user) {
-      return 'Loading profile';
+      return this.i18nService.translate('loading.profile');
     }
-    return `${user.city ?? ''}`.trim() || 'City not set yet';
+    return `${user.city ?? ''}`.trim() || this.i18nService.translate('profile.city.empty.description');
   }
 
   protected initials(user: UserDto | null): string {
@@ -199,12 +205,16 @@ export class ProfileViewPopupComponent implements OnDestroy {
     this.activePhotoIndex.set(Math.max(0, Math.min(index, photos.length - 1)));
   }
 
+  protected photoAriaLabel(index: number): string {
+    return this.i18nService.translateParams('profile.photo.show.aria', { index: index + 1 });
+  }
+
   protected trackPhoto(index: number, photo: string): string {
     return `${index}:${photo}`;
   }
 
   protected trackRow(_index: number, row: ProfileViewRow | ProfileDetailFormRow): string {
-    return `${'labelKey' in row ? row.labelKey : row.label}:${'value' in row ? row.value : ''}`;
+    return `${'label' in row ? row.label : row.labelKey}:${row.value}`;
   }
 
   protected trackGroup(_index: number, group: ProfileDetailFormGroup): string {
@@ -223,15 +233,20 @@ export class ProfileViewPopupComponent implements OnDestroy {
     if (!this.isBadgeListKey(labelKey)) {
       return [];
     }
-    return this.splitListValue(value);
+    return this.splitListValue(value).map(item => {
+      const key = APP_STATIC_DATA.profileOptionLabelKeys[item];
+      return key ? this.i18nService.translate(key) : item;
+    });
   }
 
   protected displayDetailValue(row: ProfileDetailFormRow): string {
     const value = `${row.value ?? ''}`.trim();
     if (row.labelKey === 'profile.details.children') {
-      return APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()] ?? (value || 'Not set');
+      const labelKey = APP_STATIC_DATA.childrenValueLabels[value.toLowerCase()];
+      return labelKey ? this.i18nService.translate(labelKey) : value || this.i18nService.translate('not.set');
     }
-    return value || 'Not set';
+    const labelKey = APP_STATIC_DATA.profileOptionLabelKeys[value];
+    return labelKey ? this.i18nService.translate(labelKey) : value || this.i18nService.translate('not.set');
   }
 
   protected detailGroupClass(title: string): string {
@@ -245,7 +260,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
     if (from && to) {
       return `${from} - ${to}`;
     }
-    return from || to || 'Dates not set';
+    return from || to || this.i18nService.translate('profile.experience.dates.empty');
   }
 
   protected experienceTypeIcon(type: ExperienceEntry['type']): string {
@@ -291,18 +306,18 @@ export class ProfileViewPopupComponent implements OnDestroy {
       return [];
     }
     return [
-      { label: 'Name', value: this.valueOrNotSet(user.name), icon: 'badge' },
-      { label: 'Birthday', value: this.formatDate(user.birthday), icon: 'cake' },
-      { label: 'City', value: this.valueOrNotSet(user.city), icon: 'location_on' },
-      { label: 'Height', value: this.heightLabel(user.height), icon: 'height' },
-      { label: 'Physique', value: this.valueOrNotSet(user.physique), icon: 'accessibility_new' },
-      { label: 'profile.gender', value: user.gender === 'woman' ? 'Woman' : 'Man', icon: 'person' },
-      { label: 'Languages', value: this.listLabel(user.languages), icon: 'translate' },
-      { label: 'profile.profession', value: this.valueOrNotSet(this.profileDetailGroupsForUser(user)
+      { label: 'Name', labelKey: 'profile.name', value: this.valueOrNotSet(user.name), icon: 'badge' },
+      { label: 'Birthday', labelKey: 'profile.birthday', value: this.formatDate(user.birthday) || this.i18nService.translate('not.set'), icon: 'cake' },
+      { label: 'City', labelKey: 'profile.city', value: this.valueOrNotSet(user.city), icon: 'location_on' },
+      { label: 'Height', labelKey: 'profile.height', value: this.heightLabel(user.height), icon: 'height' },
+      { label: 'Physique', labelKey: 'profile.physique', value: this.profileOptionLabel(user.physique), icon: 'accessibility_new' },
+      { label: 'profile.gender', labelKey: 'profile.gender', value: this.i18nService.translate(user.gender === 'woman' ? 'gender.woman' : 'gender.man'), icon: 'person' },
+      { label: 'Languages', labelKey: 'profile.languages', value: this.listLabel(user.languages), icon: 'translate' },
+      { label: 'profile.profession', labelKey: 'profile.profession', value: this.valueOrNotSet(this.profileDetailGroupsForUser(user)
         .flatMap(group => group.rows).find(row => row.labelKey === 'profile.profession')?.value), icon: 'work' },
-      { label: 'profile.experience.workplace', value: this.experienceSummary('Workspace'), icon: 'business' },
-      { label: 'profile.experience.school', value: this.experienceSummary('School'), icon: 'school' },
-      { label: 'Horoscope', value: this.valueOrNotSet(user.horoscope), icon: 'auto_awesome' }
+      { label: 'profile.experience.workplace', labelKey: 'profile.experience.workplace', value: this.experienceSummary('Workspace'), icon: 'business' },
+      { label: 'profile.experience.school', labelKey: 'profile.experience.school', value: this.experienceSummary('School'), icon: 'school' },
+      { label: 'Horoscope', labelKey: 'profile.horoscope', value: this.profileOptionLabel(user.horoscope), icon: 'auto_awesome' }
     ].filter(row => !this.hiddenFields().has(row.label));
   }
 
@@ -319,13 +334,13 @@ export class ProfileViewPopupComponent implements OnDestroy {
       return [];
     }
     return [
-      { label: 'Headline', value: this.valueOrNotSet(user.headline), icon: 'short_text' },
-      { label: 'About', value: this.valueOrNotSet(user.about), icon: 'notes' },
-      { label: 'Status', value: this.valueOrNotSet(user.statusText), icon: 'campaign' }
+      { label: 'Headline', labelKey: 'headline', value: this.valueOrNotSet(user.headline), icon: 'short_text' },
+      { label: 'About', labelKey: 'about', value: this.valueOrNotSet(user.about), icon: 'notes' },
+      { label: 'Status', labelKey: 'profile.status.label', value: this.valueOrNotSet(user.statusText), icon: 'campaign' }
     ];
   }
 
-  private buildDetailGroups(user: UserDto | null): ProfileDetailFormGroup[] {
+  private buildDetailGroups(user: UserDto | null): ProfileViewDetailGroup[] {
     if (!user) {
       return [];
     }
@@ -354,7 +369,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
       .filter(group => group.rows.length > 0);
   }
 
-  private profileDetailGroupsForUser(user: UserDto): ProfileDetailFormGroup[] {
+  private profileDetailGroupsForUser(user: UserDto): ProfileViewDetailGroup[] {
     const persisted = this.hydratePersistedProfileDetails(user);
     if (persisted.length > 0) {
       return persisted;
@@ -364,6 +379,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
     }
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
+      titleKey: group.titleKey,
       rows: group.rows.map(row => ({
         labelKey: row.labelKey,
         value: this.profileDetailSeedValue(user, row.labelKey, ''),
@@ -373,7 +389,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
     }));
   }
 
-  private hydratePersistedProfileDetails(user: UserDto): ProfileDetailFormGroup[] {
+  private hydratePersistedProfileDetails(user: UserDto): ProfileViewDetailGroup[] {
     if (!Array.isArray(user.profileDetails) || user.profileDetails.length === 0) {
       return [];
     }
@@ -394,6 +410,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
     }
     return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
+      titleKey: group.titleKey,
       rows: group.rows.map(row => {
         const persisted = rowByKey.get(AppUtils.normalizeText(row.labelKey));
         return {
@@ -429,7 +446,7 @@ export class ProfileViewPopupComponent implements OnDestroy {
       case 'profile.city':
         return user.city;
       case 'profile.birthday':
-        return this.formatDate(user.birthday) === 'Not set' ? fallback : this.formatDate(user.birthday);
+        return this.formatDate(user.birthday) || fallback;
       case 'profile.height':
         return user.height;
       case 'profile.physique':
@@ -519,28 +536,33 @@ export class ProfileViewPopupComponent implements OnDestroy {
       .filter(Boolean);
   }
 
+  private profileOptionLabel(value: string): string {
+    const key = APP_STATIC_DATA.profileOptionLabelKeys[value];
+    return key ? this.i18nService.translate(key) : this.valueOrNotSet(value);
+  }
+
   private listLabel(values: readonly string[] | null | undefined): string {
     const normalizedValues = (Array.isArray(values) ? values : []).map(value => `${value ?? ''}`.trim()).filter(Boolean);
-    return normalizedValues.length > 0 ? normalizedValues.join(', ') : 'Not set';
+    return normalizedValues.length > 0 ? normalizedValues.map(value => this.profileOptionLabel(value)).join(', ') : this.i18nService.translate('not.set');
   }
 
   private heightLabel(value: string): string {
     const normalized = `${value ?? ''}`.trim();
     if (!normalized) {
-      return 'Not set';
+      return this.i18nService.translate('not.set');
     }
     return /\bcm\b/i.test(normalized) ? normalized : `${normalized} cm`;
   }
 
   private valueOrNotSet(value: string | null | undefined): string {
     const normalized = `${value ?? ''}`.trim();
-    return normalized || 'Not set';
+    return normalized || this.i18nService.translate('not.set');
   }
 
   private formatDate(value: string | null | undefined): string {
     const normalized = `${value ?? ''}`.trim();
     if (!normalized) {
-      return 'Not set';
+      return '';
     }
     const parsed = new Date(normalized);
     if (Number.isNaN(parsed.getTime())) {

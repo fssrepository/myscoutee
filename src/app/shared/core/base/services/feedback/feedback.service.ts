@@ -1,18 +1,19 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import type { FeedbackQueryDto, FeedbackDetailDto, FeedbackReceivedEventDto, FeedbackNoteRequestDto, FeedbackPageQueryDto, FeedbackPageResultDto, FeedbackStatDto, FeedbackStatQueryDto, FeedbackStateDto } from '../../../contracts/feedback/feedback.interface';
 import { Injectable,inject } from '@angular/core';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
-import { LocalFeedbackService } from '../../../local/source/services/feedback/feedback.service';
-import { HttpFeedbackService } from '../../../http/services/feedback/feedback.service';
+
 import type { IFeedbackService,FeedbackBucket,FeedbackCommand } from '../../../contracts/feedback/feedback.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 @Injectable({providedIn:'root'})
 export class FeedbackService extends BaseRouteModeService implements IFeedbackService {
-  private readonly local=inject(LocalFeedbackService);
-  private readonly http=inject(HttpFeedbackService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly local=this.transportAdapters.reference(LOCAL_ADAPTER.FEEDBACK);
+  private readonly http=this.transportAdapters.reference(HTTP_ADAPTER.FEEDBACK);
   private get adapter():IFeedbackService{return this.resolveRouteService('/feedback',this.local,this.http);}
   action(id:string,command:FeedbackCommand){return this.adapter.action(id,command);}
   stats(userId:string,provider:string,signal?:AbortSignal){return this.adapter.stats(userId,provider,signal);}
-
 
 queryStates(userId: string): Promise<FeedbackStateDto[]> {
     return this.adapter.queryStates(userId);

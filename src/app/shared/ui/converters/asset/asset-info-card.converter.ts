@@ -85,7 +85,7 @@ export class AssetInfoCardConverter {
             selectedIcon: 'check',
             interactive: true,
             disabled: options.selectDisabled === true,
-            ariaLabel: selected ? 'Remove asset from basket' : 'Add asset to basket'
+            ariaLabel: selected ? 'asset.basket.remove.aria' : 'asset.basket.add.aria'
           }
         : this.ownedAssetMediaEnd(card),
       menuActions: selectMode ? [] : this.ownedAssetMenuActions(card),
@@ -143,7 +143,7 @@ export class AssetInfoCardConverter {
         label: options.availabilityLabel,
         interactive: canBorrow,
         disabled: !canBorrow,
-        ariaLabel: canBorrow ? 'Borrow asset' : 'Asset unavailable for this time'
+        ariaLabel: canBorrow ? 'asset.borrow.action' : 'asset.borrow.unavailable.aria'
       },
       menuActions: this.assetExploreMenuActions(
         canBorrow,
@@ -249,7 +249,7 @@ export class AssetInfoCardConverter {
       tone: 'warm',
       icon: 'location_on',
       interactive: true,
-      ariaLabel: 'Open property map'
+      ariaLabel: 'open.property.map'
     };
   }
 

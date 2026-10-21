@@ -196,7 +196,7 @@ export class ActivityEventInfoCardConverter {
         tone: 'selected',
         icon: 'auto_awesome',
         label: '',
-        ariaLabel: 'System generated room',
+        ariaLabel: 'event.room.system.aria',
         interactive: false
       };
     }

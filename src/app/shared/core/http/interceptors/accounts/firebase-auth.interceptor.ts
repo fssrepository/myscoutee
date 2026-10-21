@@ -3,8 +3,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { from, switchMap } from 'rxjs';
 import { SessionService } from '../../../base/services/accounts/session.service';
-import { DEMO_SESSION_HEADER, DEMO_SESSION_VALUE } from './session-mode.interceptor';
-import { FirebaseSessionRegistryService } from '../../services/accounts/firebase-session-registry.service';
+import { APP_SESSION_ID_HEADER, DEMO_SESSION_HEADER, DEMO_SESSION_VALUE } from './session-mode.interceptor';
 import { isFirebaseLoginEnabled } from '../../../common/firebase-login-mode';
 
 export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
@@ -33,7 +32,7 @@ export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
         req.clone({
           setHeaders: {
             Authorization: `Bearer ${token}`,
-            [FirebaseSessionRegistryService.SESSION_ID_HEADER]: session.sessionId
+            [APP_SESSION_ID_HEADER]: session.sessionId
           }
         })
       );

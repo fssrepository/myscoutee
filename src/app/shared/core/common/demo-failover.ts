@@ -175,6 +175,15 @@ export function demoFailoverSeedWarmupNeeded(): boolean {
   return enabled && !local && eligibleSession() !== null;
 }
 
+export function prewarmDemoFailover(): void {
+  if (!demoFailoverSeedWarmupNeeded()) return;
+  // Cache code for the existing local replacement without seeding its database.
+  void Promise.all([
+    import('../local/seed/services/platform/demo-bootstrap.service'),
+    import('../base/adapter-loaders').then(module => module.preloadAdapterMode('local'))
+  ]).catch(() => undefined);
+}
+
 export function demoFailoverLocalUser(): string | null {
   return enabled && local && eligibleSession() ? readSession(LOCAL_SESSION)?.userId ?? null : null;
 }

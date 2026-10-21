@@ -137,6 +137,8 @@ import {
   type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import { shouldApplyActivitiesEventBucketLoad } from './activities-event-bucket-state-policy';
+import { POPUP_WARMUP } from '../../../shared/ui/context/popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
 
 import { ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, RatesService, UsersService } from '../../../shared/core';
 import {
@@ -205,6 +207,7 @@ type ActivitiesPopupMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
   private static readonly ACTIVITY_LIST_POLL_INTERVAL_MS = 30000;
 
   // ── injected ──────────────────────────────────────────────────────────────
@@ -444,10 +447,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     },
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'counter' : 'default',
     views: [
-      { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
-      { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },
-      { key: 'week', label: 'Week', mode: 'week', pageSize: 240 },
-      { key: 'month', label: 'Month', mode: 'month', pageSize: 240 }
+      { key: 'day', label: 'day', mode: 'list', pageSize: 10 },
+      { key: 'distance', label: 'distance', mode: 'list', pageSize: 10 },
+      { key: 'week', label: 'week', mode: 'week', pageSize: 240 },
+      { key: 'month', label: 'month', mode: 'month', pageSize: 240 }
     ],
     cacheable: true,
     sortable: {
@@ -471,7 +474,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         resolveKey: row => this.isEventStyleActivity(row) ? ActivityEventInfoCardConverter.calendarColorKey(row) : null}
     },
     emptyLabel: () => this.activitiesEmptyLabel,
-    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '0 km' : 'No items'),
+    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '0 km' : 'no.items'),
     showGroupMarker: ({ groupIndex }) => groupIndex > 0 || this.activitiesPrimaryFilter !== 'chats',
     menuItems: context => this.activitySmartListMenuItems(context)
   };
@@ -611,7 +614,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesSmartList?.closeMenu();
     this.dialogStore.open({
       title: `${label}.question`, message: this.activityEventDTOFromVisibleSource(row)?.creatorName,
-      confirmLabel: label, cancelLabel: 'Cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
+      confirmLabel: label, cancelLabel: 'cancel', confirmPalette: 'cyan', failureMessage: 'event.following.failed',
       onConfirm: async () => {
         await this.followingStore.change(organizerId, followed);
         this.cdr.markForCheck();
@@ -1273,11 +1276,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesPopupModel(): PopupModel<ActivitiesPopupMenuContext> {
     return {
-      title: 'Activities',
+      title: 'activities',
       subtitle: this.activitiesHeaderLineTwo() || this.activitiesHeaderLineOne(),
       secondarySubtitle: this.activitiesHeaderLineTwo() ? this.activitiesHeaderLineOne() : '',
-      ariaLabel: 'Activities',
-      closeAriaLabel: 'Close activities',
+      ariaLabel: 'activities',
+      closeAriaLabel: 'activity.popup.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -1424,7 +1427,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         align: 'end',
         icon: 'explore',
         label: 'events.explore',
-        ariaLabel: 'Open event explore',
+        ariaLabel: 'event.explore.open.aria',
         palette: 'violet',
         compactOnMobile: true
       });
@@ -1436,7 +1439,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         guideActivateOnStep: true,
         align: 'end',
         icon: this.isRatesFullscreenModeActive() ? 'fullscreen_exit' : 'fullscreen',
-        ariaLabel: this.isRatesFullscreenModeActive() ? 'Exit rates fullscreen mode' : 'Open rates fullscreen mode',
+        ariaLabel: this.isRatesFullscreenModeActive() ? 'activity.rates.fullscreen.exit.aria' : 'activity.rates.fullscreen.open.aria',
         palette: this.isRatesFullscreenModeActive() ? 'blue' : 'gold',
         active: this.isRatesFullscreenModeActive()
       });
@@ -1459,13 +1462,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return this.activitiesChatsHeaderLabel();
     }
     if (this.activitiesPrimaryFilter === 'rates') {
-      const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+      const group = this.i18nService.translate(this.rateGroupLabelKeyForKey(this.activitiesRateFilter));
       const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
       return `${group} · ${label}`;
     }
     if (this.isEventActivitiesPrimaryFilter()) {
       if (this.isCalendarLayoutView()) {
-        return `Events · ${this.activitiesEventScopeLabel()}`;
+        return `${this.i18nService.translate('events')} · ${this.activitiesEventScopeLabel()}`;
       }
       return this.activitiesEventScopeLabel();
     }
@@ -1594,7 +1597,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         const groupPalette = this.activitiesRateGroupPalette(groupLabel);
         currentNode = {
           id: `rate-group:${groupLabel}`,
-          label: this.rateGroupOptionLabelKey(groupLabel),
+          label: option.labelKey,
           icon: this.rateSocialBadgeGroupIconForGroup(groupLabel),
           palette: groupPalette,
           items: []
@@ -1688,7 +1691,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return {
       icon: 'add',
       closeIcon: 'close',
-      ariaLabel: 'Open event actions',
+      ariaLabel: 'event.actions.open.aria',
       hideLabel: true,
       layout: 'icon',
       palette: 'green'
@@ -1707,7 +1710,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       },
       {
         id: 'quick-action:create',
-        label: 'Create Event',
+        label: 'event.editor.create',
         icon: 'add_circle',
         palette: 'green',
         surface: 'tinted',
@@ -1738,22 +1741,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activitiesPrimaryFilters(): Array<{ key: ContractTypes.ActivitiesPrimaryFilter; label: string; icon: string }> {
     return [
-      { key: 'rates', label: 'Rates', icon: 'star' },
-      { key: 'chats', label: 'Chats', icon: 'chat' },
-      { key: 'events', label: 'Events', icon: 'event' }
+      { key: 'rates', label: 'rates', icon: 'star' },
+      { key: 'chats', label: 'chats', icon: 'chat' },
+      { key: 'events', label: 'events', icon: 'event' }
     ];
   }
 
   private activitiesEventScopeFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesEventScope; label: string; icon: string }> {
     return [
-      { key: 'all', label: 'All', icon: 'widgets' },
-      { key: 'active-events', label: 'Active Events', icon: 'event' },
-      { key: 'pending', label: 'Pending', icon: 'pending_actions' },
-      { key: 'invitations', label: 'Invitations', icon: 'mail' },
-      { key: 'my-events', label: 'My Events', icon: 'stadium' },
-      { key: 'drafts', label: 'Drafts', icon: 'drafts' },
-      { key: 'watchlist', label: 'Watchlist', icon: 'visibility' },
-      { key: 'trash', label: 'Trash', icon: 'delete' }
+      { key: 'all', label: 'all', icon: 'widgets' },
+      { key: 'active-events', label: 'active.events', icon: 'event' },
+      { key: 'pending', label: 'pending', icon: 'pending_actions' },
+      { key: 'invitations', label: 'invitations', icon: 'mail' },
+      { key: 'my-events', label: 'my.events', icon: 'stadium' },
+      { key: 'drafts', label: 'drafts', icon: 'drafts' },
+      { key: 'watchlist', label: 'activity.events.watchlist.label', icon: 'visibility' },
+      { key: 'trash', label: 'trash', icon: 'delete' }
     ];
   }
 
@@ -1766,7 +1769,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesPrimaryFilterLabel(): string {
-    return this.activitiesPrimaryFilters().find(option => option.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
+    return this.i18nService.translate(this.activitiesPrimaryFilters().find(option => option.key === this.activitiesPrimaryFilter)?.label ?? 'chats');
   }
 
   private activitiesPrimaryFilterIcon(): string {
@@ -1786,7 +1789,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesChatContextFilterLabel(): string {
-    return APP_STATIC_DATA.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.label ?? 'All';
+    return this.i18nService.translate(APP_STATIC_DATA.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.label ?? 'all');
   }
 
   private activitiesChatContextFilterIcon(): string {
@@ -1807,9 +1810,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activitiesSecondaryFilterOptionLabel(filter: ContractTypes.ActivitiesSecondaryFilter): string {
     if (filter === 'recent') {
-      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
+      return this.activitiesPrimaryFilter === 'rates' ? this.i18nService.translate('recent') : this.i18nService.translate('upcoming');
     }
-    return APP_STATIC_DATA.activitiesSecondaryFilters.find(option => option.key === filter)?.label ?? 'Relevant';
+    return this.i18nService.translate(APP_STATIC_DATA.activitiesSecondaryFilters.find(option => option.key === filter)?.label ?? 'relevant');
   }
 
   private activitiesSecondaryFilterIcon(): string {
@@ -1819,25 +1822,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private activitiesRateFilterLabel(): string {
     const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
     if (!label) {
-      return `${this.rateGroupLabelKeyForKey('individual-given')} · Given`;
+      return `${this.i18nService.translate(this.rateGroupLabelKeyForKey('individual-given'))} · ${this.i18nService.translate('given')}`;
     }
-    const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+    const group = this.i18nService.translate(this.rateGroupLabelKeyForKey(this.activitiesRateFilter));
     return `${group} · ${label}`;
   }
 
   private rateFilterOptionLabel(key: ContractTypes.RateFilterKey): string {
     return this.rateFilterLabelForKey(key);
-  }
-
-  private rateGroupOptionLabelKey(label: string): string {
-    const normalized = label.trim().toLowerCase();
-    if (normalized === 'preferences') {
-      return 'activity.rates.group.preferences';
-    }
-    if (normalized === 'suggestions') {
-      return 'activity.rates.group.suggestions';
-    }
-    return label;
   }
 
   private activitiesRateFilterIcon(key: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
@@ -1857,7 +1849,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
-    return APP_STATIC_DATA.rateFilters.find(option => option.key === key)?.label ?? 'Given';
+    return this.i18nService.translate(APP_STATIC_DATA.rateFilters.find(option => option.key === key)?.label ?? 'given');
   }
 
   private rateGroupLabelKeyForKey(key: ContractTypes.RateFilterKey): string {
@@ -1867,7 +1859,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityViewLabel(): string {
-    return APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'View';
+    return this.i18nService.translate(APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'view');
   }
 
   private availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
@@ -2849,22 +2841,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesEventScopeLabel(): string {
     switch (this.activitiesEventScope) {
       case 'all':
-        return 'All';
+        return this.i18nService.translate('all');
       case 'pending':
-        return 'Pending';
+        return this.i18nService.translate('pending');
       case 'invitations':
-        return 'Invitations';
+        return this.i18nService.translate('invitations');
       case 'my-events':
-        return 'My Events';
+        return this.i18nService.translate('my.events');
       case 'drafts':
-        return 'Drafts';
+        return this.i18nService.translate('drafts');
       case 'watchlist':
-        return 'Watchlist';
+        return this.i18nService.translate('activity.events.watchlist.label');
       case 'trash':
-        return 'Trash';
+        return this.i18nService.translate('trash');
       case 'active-events':
       default:
-        return 'Active Events';
+        return this.i18nService.translate('active.events');
     }
   }
 
@@ -3239,17 +3231,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected get activitiesEmptyLabel(): string {
     if (this.activitiesPrimaryFilter === 'rates') {
-      return 'No rate interactions for this filter yet.';
+      return this.i18nService.translate('activity.rates.empty.description');
     }
     if (this.activitiesEventScope === 'drafts') {
-      return 'No drafts in My Events yet.';
+      return this.i18nService.translate('activity.events.drafts.empty.description');
     }
     if (this.isEventActivitiesPrimaryFilter()) {
       if (this.activitiesEventScope === 'trash') {
-        return 'Trash is empty.';
+        return this.i18nService.translate('list.trash.empty.description');
       }
       if (this.activitiesEventScope === 'all') {
-        return 'No event activity items in this filter.';
+        return this.i18nService.translate('activity.events.empty.description');
       }
       return `No ${this.activitiesEventScopeLabel().toLowerCase()} items in this filter.`;
     }
@@ -3939,6 +3931,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     context?: SmartListLoadContext
   ): Promise<PageResult<ActivityListItem>> {
     const requestedPrimaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    if (query.page === 0 && !query.cursor) {
+      const phase = requestedPrimaryFilter === 'rates' ? POPUP_WARMUP.activityRates
+        : requestedPrimaryFilter === 'events' || requestedPrimaryFilter === 'hosting' || requestedPrimaryFilter === 'invitations'
+          ? POPUP_WARMUP.activityEvents : POPUP_WARMUP.activityChats;
+      this.popupAdapters.prepare(phase, context?.signal);
+    }
     if (requestedPrimaryFilter === 'rates') {
       const page = await this.activitiesService.loadActivityRates(query, {
         signal: context?.signal

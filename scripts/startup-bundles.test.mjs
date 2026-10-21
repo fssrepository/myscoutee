@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { consolidateStartupBundles } from './startup-bundles.js';
 
-function fixture() {
+function fixture({ localAdapters = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'myscoutee-startup-bundles-'));
   const files = {
     'chunk-BOOT0001.js': 'export const token = {}; export const state = {ready:false};',
@@ -29,6 +29,13 @@ function fixture() {
     'chunk-HOME0001.js': 'src/app/home/components/home/home.component.ts',
     'chunk-MENU0001.js': 'src/app/shared/ui/components/side-menu/side-menu.component.ts'
   };
+  if (localAdapters) {
+    files['chunk-LOCAL001.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__localAdaptersLoaded=true; export const localAdapter={service};`;
+    files['chunk-HTTP0001.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__httpAdaptersLoaded=true; export const httpAdapter={service};`;
+    files['chunk-ENTRY001.js'] += ` export const openLocalAdapters=()=>import('./chunk-LOCAL001.js'); export const openHttpAdapters=()=>import('./chunk-HTTP0001.js');`;
+    entries['chunk-LOCAL001.js'] = 'src/app/shared/core/base/local-adapters.ts';
+    entries['chunk-HTTP0001.js'] = 'src/app/shared/core/base/http-adapters.ts';
+  }
   for (const [name, source] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), source);
   fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify({ outputs: Object.fromEntries(
     Object.keys(files).map(name => [name, entries[name] ? {entryPoint:entries[name]} : {}])
@@ -37,15 +44,42 @@ function fixture() {
   return dir;
 }
 
+test('keeps only the build profile adapter side in the existing startup pair and preserves shared identities', async () => {
+  for (const standalone of [false, true]) {
+    const dir = fixture({ localAdapters: true });
+    try {
+      const manifest = await consolidateStartupBundles(dir, { localAdaptersInStartup: standalone });
+      assert.equal(manifest.startup.length, 2);
+      await import(pathToFileURL(path.join(dir, manifest.main)));
+      const { app, entry } = await globalThis.__startupBundleProof;
+      assert.equal(globalThis.__localAdaptersLoaded, standalone ? true : undefined);
+      assert.equal(globalThis.__httpAdaptersLoaded, standalone ? undefined : true);
+      const selected = standalone ? await entry.openLocalAdapters() : await entry.openHttpAdapters();
+      assert.equal((standalone ? selected.localAdapter : selected.httpAdapter).service, app.App.service);
+      const counterpart = standalone ? await entry.openHttpAdapters() : await entry.openLocalAdapters();
+      assert.equal((standalone ? counterpart.httpAdapter : counterpart.localAdapter).service, app.App.service);
+      assert.equal(globalThis.__localAdaptersLoaded, true);
+      assert.equal(globalThis.__httpAdaptersLoaded, true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+      delete globalThis.__localAdaptersLoaded;
+      delete globalThis.__httpAdaptersLoaded;
+      delete globalThis.__startupBundleProof;
+    }
+  }
+});
+
 test('groups startup while preserving environment ordering, shared identities and genuinely lazy features', async () => {
   const dir = fixture();
   try {
     const manifest = await consolidateStartupBundles(dir);
     assert.equal(manifest.startup.length, 2);
-    assert.equal(manifest.files.length, 6);
+    assert.equal(manifest.files.length, 5);
     const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
     assert.ok(html.includes(manifest.main));
-    assert.ok(!html.includes('modulepreload'));
+    const preloads = [...html.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map(match => match[1]);
+    assert.deepEqual(preloads, manifest.startup.filter(name => name !== manifest.main));
+    assert.ok(!html.includes('chunk-BOOT0001.js'));
     assert.ok(!fs.existsSync(path.join(dir, 'main-ORIGINAL.js')));
     assert.ok(!fs.existsSync(path.join(dir, 'stats.json')));
     await import(pathToFileURL(path.join(dir, manifest.main)));
@@ -88,11 +122,100 @@ test('opening the navigator keeps the home screen lazy and shares its existing s
   }
 });
 
+test('absorbs export-only wrappers into their existing loading phase without pulling optional code forward', async () => {
+  const dir = fixture();
+  try {
+    const entryPath = path.join(dir, 'chunk-ENTRY001.js');
+    fs.appendFileSync(entryPath, `export const openAlias=()=>import('./chunk-ALIAS001.js'); export const openMixed=()=>import('./chunk-MIXED001.js');`);
+    fs.writeFileSync(path.join(dir, 'chunk-ALIAS001.js'), `export { service } from './chunk-SHARED01.js';`);
+    fs.writeFileSync(path.join(dir, 'chunk-MIXED001.js'), `export { service } from './chunk-FEATURE1.js';`);
+    const statsPath = path.join(dir, 'stats.json');
+    const metadata = JSON.parse(fs.readFileSync(statsPath));
+    metadata.outputs['chunk-ALIAS001.js'] = {entryPoint:'src/app/alias.ts'};
+    metadata.outputs['chunk-MIXED001.js'] = {entryPoint:'src/app/mixed.ts'};
+    fs.writeFileSync(statsPath, JSON.stringify(metadata));
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.startup.length, 2);
+    assert.ok(manifest.loads['src/app/alias.ts'].every(file => manifest.startup.includes(file)));
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const {app, entry} = await globalThis.__startupBundleProof;
+    assert.equal((await entry.openAlias()).service, app.App.service);
+    assert.equal(globalThis.__optionalFeatureLoaded, undefined);
+    assert.equal((await entry.openMixed()).service, app.App.service);
+    assert.equal(globalThis.__optionalFeatureLoaded, true);
+  } finally {
+    fs.rmSync(dir, {recursive:true,force:true});
+    delete globalThis.__startupBundleProof;
+    delete globalThis.__optionalFeatureLoaded;
+  }
+});
+
+test('groups an Asset module while retaining a shared signal store and the Activity-to-Asset boundary', async () => {
+  const dir = fixture();
+  try {
+    const additions = {
+      'chunk-SIGNAL01.js': `export const sharedSignal={value:0};`,
+      'chunk-ACTIVITY.js': `import {sharedSignal} from './chunk-SIGNAL01.js';globalThis.__activityLoaded=true;export const state=sharedSignal;export const openAssets=()=>import('./chunk-ASSETS01.js');`,
+      'chunk-ASSETS01.js': `import {sharedSignal} from './chunk-SIGNAL01.js';import {helper} from './chunk-ASSETDEP.js';import {first} from './chunk-FORM0001.js';import {second} from './chunk-FORM0002.js';globalThis.__assetLoaded=true;export const state=sharedSignal;export {helper,first,second};`,
+      'chunk-ASSETDEP.js': `export const helper={};`,
+      'chunk-FORM0001.js': `globalThis.__formLoaded=true;export const first={};`,
+      'chunk-FORM0002.js': `export const second={};`,
+      'chunk-ASSETAVL.js': `import {sharedSignal} from './chunk-SIGNAL01.js';globalThis.__availabilityLoaded=true;export const state=sharedSignal;`
+    };
+    for (const [name, code] of Object.entries(additions)) fs.writeFileSync(path.join(dir, name), code);
+    fs.appendFileSync(path.join(dir, 'chunk-ENTRY001.js'), `export const openActivity=()=>import('./chunk-ACTIVITY.js');export const openAssetMenu=()=>import('./chunk-ASSETS01.js');export const openAvailability=()=>import('./chunk-ASSETAVL.js');`);
+    const statsPath = path.join(dir, 'stats.json');
+    const metadata = JSON.parse(fs.readFileSync(statsPath));
+    for (const name of Object.keys(additions)) metadata.outputs[name]={};
+    for (const name of ['chunk-FORM0001.js','chunk-FORM0002.js']) metadata.outputs[name].inputs={
+      [`src/app/shared/ui/components/core/form/inputs/${name}.ts`]: {bytesInOutput:100}
+    };
+    const activity='src/app/activity/components/activities-popup/activities-popup.component.ts';
+    const asset='src/app/asset/components/asset-popup/asset-popup.component.ts';
+    const availability='src/app/asset/components/asset-availability-popup/asset-availability-popup.component.ts';
+    metadata.outputs['chunk-ACTIVITY.js'].entryPoint=activity;
+    metadata.outputs['chunk-ASSETS01.js'].entryPoint=asset;
+    metadata.outputs['chunk-ASSETAVL.js'].entryPoint=availability;
+    fs.writeFileSync(statsPath, JSON.stringify(metadata));
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.startup.length, 2);
+    assert.equal(manifest.loads[asset][0], manifest.loads[availability][0]);
+    assert.ok(!manifest.loads[activity].includes(manifest.loads[asset][0]));
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const {entry}=await globalThis.__startupBundleProof;
+    assert.equal(globalThis.__formLoaded, undefined);
+    await entry.openMenu();
+    assert.equal(globalThis.__formLoaded, true);
+    const list=await entry.openActivity();
+    assert.equal(globalThis.__assetLoaded, undefined);
+    list.state.value=3;
+    const module=await list.openAssets();
+    assert.equal(module, await entry.openAssetMenu());
+    assert.equal(module.state, list.state);
+    assert.equal(module.state.value,3);
+    assert.equal(globalThis.__assetLoaded,true);
+    assert.equal(globalThis.__availabilityLoaded,true);
+    assert.equal(globalThis.__formLoaded,true);
+    const formChunks=manifest.files.map(file=>fs.readFileSync(path.join(dir,file.name),'utf8'));
+    assert.equal(formChunks.filter(code=>code.includes('__formLoaded')).length,1);
+    assert.equal((await entry.openAvailability()).state,list.state);
+  } finally {
+    fs.rmSync(dir,{recursive:true,force:true});
+    delete globalThis.__startupBundleProof;
+    delete globalThis.__activityLoaded;
+    delete globalThis.__assetLoaded;
+    delete globalThis.__availabilityLoaded;
+    delete globalThis.__formLoaded;
+  }
+});
+
 test('a second stamp verifies and reuses the same consolidated artifacts', async () => {
   const dir = fixture();
   try {
     const manifest = await consolidateStartupBundles(dir);
+    const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
     assert.deepEqual(await consolidateStartupBundles(dir), manifest);
+    assert.equal(fs.readFileSync(path.join(dir, 'index.html'), 'utf8'), html);
     fs.appendFileSync(path.join(dir, manifest.main), '\n// changed');
     await assert.rejects(consolidateStartupBundles(dir), /changed after consolidation/);
   } finally { fs.rmSync(dir, {recursive:true,force:true}); }
@@ -120,7 +243,8 @@ test('the stamped worker installs the startup shell without fetching unused feat
     fs.mkdirSync(path.join(dir, 'media'));
     fs.writeFileSync(path.join(dir, 'media/roboto-latin.woff2'), 'LATIN');
     fs.writeFileSync(path.join(dir, 'media/roboto-greek.woff2'), 'GREEK');
-    fs.writeFileSync(path.join(dir, 'styles-STYLE001.css'), '@font-face{font-family:Roboto;src:url(media/roboto-latin.woff2)}');
+    fs.writeFileSync(path.join(dir, 'media/material-icons-FILLED001.woff2'), 'FILLED');
+    fs.writeFileSync(path.join(dir, 'styles-STYLE001.css'), '@font-face{font-family:Roboto;src:url(media/roboto-latin.woff2)}@font-face{font-family:Material Icons;src:url("./media/material-icons-FILLED001.woff2")}');
     fs.appendFileSync(path.join(dir, 'index.html'), '<script src="assets/diagnostics/landing.js" async></script><link rel="stylesheet" href="styles-STYLE001.css">');
     const stamp = () => execFileSync(process.execPath, [new URL('./stamp-prod-build.js', import.meta.url).pathname], {
       env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, MYSCOUTEE_UI_BUILD_ID:'startup-precache-test'},
@@ -128,6 +252,10 @@ test('the stamped worker installs the startup shell without fetching unused feat
     });
     stamp();
     stamp(); // Re-stamping must not bring the blanket precache back.
+    const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+    assert.equal((html.match(/data-myscoutee-icon-font/g) ?? []).length, 1);
+    assert.ok(html.includes('href="media/material-icons-FILLED001.woff2" crossorigin'));
+    assert.ok(html.indexOf('data-myscoutee-icon-font') < html.indexOf('rel="stylesheet"'));
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'startup-bundles.json')));
     const handlers = new Map();
     let fetched;
@@ -151,6 +279,7 @@ test('the stamped worker installs the startup shell without fetching unused feat
       ...manifest.startup, 'assets/diagnostics/landing.js', 'styles-STYLE001.css'
     ].map(name => `https://qa.example/myscoutee/${name}`).sort());
     assert.ok(!fetched.some(url => url.includes('/media/')));
+    assert.ok(!fetched.some(url => url.includes('/assets/i18n/')), 'Language assets are cached on use, never downloaded by worker installation');
     assert.equal(requests.find(request => request.url.endsWith('/' + manifest.main)).cache, 'default');
     assert.equal(requests.find(request => request.url.endsWith('/index.html')).cache, 'reload');
     for (const file of manifest.files.filter(file => !manifest.startup.includes(file.name))) {
@@ -158,4 +287,29 @@ test('the stamped worker installs the startup shell without fetching unused feat
       assert.ok(fs.existsSync(path.join(dir, file.name)), 'Lazy features remain available on demand');
     }
   } finally { fs.rmSync(dir, {recursive:true,force:true}); }
+});
+
+
+test('absorbs an empty optional entry without adding a network chunk', async () => {
+  const baseline = fixture();
+  const dir = fixture();
+  try {
+    const expected = await consolidateStartupBundles(baseline);
+    fs.writeFileSync(path.join(dir, 'chunk-EMPTY001.js'), 'export {};');
+    fs.appendFileSync(path.join(dir, 'chunk-ENTRY001.js'), `export const openEmpty=()=>import('./chunk-EMPTY001.js');`);
+    const statsPath = path.join(dir, 'stats.json');
+    const stats = JSON.parse(fs.readFileSync(statsPath));
+    stats.outputs['chunk-EMPTY001.js'] = { entryPoint: 'src/app/optional-empty.ts' };
+    fs.writeFileSync(statsPath, JSON.stringify(stats));
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.files.length, expected.files.length);
+    assert.ok(manifest.files.every(file => fs.readFileSync(path.join(dir, file.name), 'utf8').trim()));
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const { entry } = await globalThis.__startupBundleProof;
+    assert.deepEqual(Object.keys(await entry.openEmpty()), []);
+  } finally {
+    fs.rmSync(baseline, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+    delete globalThis.__startupBundleProof;
+  }
 });

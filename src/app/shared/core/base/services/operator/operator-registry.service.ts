@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
@@ -39,8 +41,7 @@ import type {
   OperatorRegistryStatusDto
 } from '../../../contracts/operator/operator.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
-import { HttpOperatorRegistryService } from '../../../http/services/operator/operator-registry.service';
-import { LocalOperatorRegistryService } from '../../../local/source/services/operator/operator-registry.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
@@ -67,8 +68,9 @@ export type OperatorRegistryReplacementResult =
   providedIn: 'root'
 })
 export class OperatorRegistryService extends BaseRouteModeService {
-  private readonly httpService = inject(HttpOperatorRegistryService);
-  private readonly localService = inject(LocalOperatorRegistryService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.OPERATOR_REGISTRY);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.OPERATOR_REGISTRY);
 
   loadStatus(): Promise<OperatorRegistryStatusDto> {
     return this.registryService.loadStatus();
@@ -253,7 +255,7 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.setCommunityAvailability(availability);
   }
 
-  private get registryService(): LocalOperatorRegistryService | HttpOperatorRegistryService {
+  private get registryService(): AdapterInstance<typeof LOCAL_ADAPTER.OPERATOR_REGISTRY> | AdapterInstance<typeof HTTP_ADAPTER.OPERATOR_REGISTRY> {
     const mode = resolveOperatorRegistryRouteMode(environment.operatorRegistryDataSource);
     if (mode === 'local') {
       return this.resolveRouteService(

@@ -108,10 +108,10 @@ export class EventCheckoutDialogStore {
         : config.pendingReason === 'approval'
           ? 'approval'
           : null,
-      title: config.title?.trim() || (config.mode === 'invitation' ? 'Accept Invitation' : 'Join Event'),
+      title: config.title?.trim() || (config.mode === 'invitation' ? 'accept.invitation' : 'join.event'),
       subtitle: config.subtitle?.trim() || config.record.title,
-      confirmLabel: config.confirmLabel?.trim() || 'Confirm',
-      busyConfirmLabel: config.busyConfirmLabel?.trim() || 'Working...',
+      confirmLabel: config.confirmLabel?.trim() || 'confirm',
+      busyConfirmLabel: config.busyConfirmLabel?.trim() || 'working',
       allowBackdropClose: config.allowBackdropClose !== false,
       allowEscapeClose: config.allowEscapeClose !== false,
       readOnlySummary: config.readOnlySummary === true,

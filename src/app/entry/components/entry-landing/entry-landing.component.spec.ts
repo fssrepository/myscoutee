@@ -16,6 +16,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 
 import { EntryLandingComponent } from './entry-landing.component';
+import huBundle from '../../../../assets/i18n/hu.json';
 
 describe('EntryLandingComponent article lists', () => {
   const loadPublishedIdeaCardsPage = vi.fn();
@@ -98,6 +99,34 @@ describe('EntryLandingComponent article lists', () => {
     TestBed.resetTestingModule();
   });
 
+  it('renders landing actions and policy links using only the Hungarian catalog', () => {
+    const messages = huBundle.messages as Record<string, string>;
+    const requested: string[] = [];
+    TestBed.overrideProvider(I18nService, { useValue: {
+      currentLanguage: () => 'hu', revision: () => 0,
+      translate: (key: string, fallback?: string) => {
+        requested.push(key);
+        return messages[key] ?? fallback ?? key;
+      },
+      translateParams: (key: string, values: Readonly<Record<string, string | number>>, fallback?: string) =>
+        interpolate(messages[key] ?? fallback ?? key, values)
+    } });
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.componentInstance.authMode = 'firebase';
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain(messages['landing.explore.action']);
+    expect(text).toContain(messages['privacy.data']);
+    expect(text).toContain(messages['terms']);
+    expect(text).not.toContain('Start exploring');
+    expect(text).not.toContain('Data privacy');
+    fixture.componentRef.setInput('networkUnavailable', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(messages['network.offline']);
+    expect(requested).not.toContain('No network');
+    expect(requested).not.toContain('Start exploring');
+  });
+
   it('keeps non-featured articles out of the horizontal list', () => {
     const component = TestBed.createComponent(EntryLandingComponent).componentInstance;
     component.ideaCards = [
@@ -152,6 +181,14 @@ describe('EntryLandingComponent article lists', () => {
     view(component).openIdeasPopup();
     expect(view(component).ideasPopupOpen).toBe(true);
     expect(view(component).ideasPopupModel().subtitle).toBe('4 articles');
+  });
+
+  it('places footer sections directly below the page heading', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('h1')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelectorAll('footer h2')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('footer h3')).toBeNull();
   });
 
   it('keeps Start exploring active while only login eligibility is unavailable', () => {

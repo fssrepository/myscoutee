@@ -1,4 +1,6 @@
-import { LocalIntegrationService } from '../../../local/source/services/integrations/integration.service';
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
+
 import { GroupWorkspaceContextService } from '../groups/group-workspace-context.service';
 import { AppLocationService } from './app-location.service';
 import { SessionService } from './session.service';
@@ -14,8 +16,7 @@ import {
   type ActivityCounters,
   type LoadStatus
 } from '../../../../ui/context';
-import { LocalUsersService } from '../../../local/source/services/accounts/users.service';
-import { HttpUsersService } from '../../../http/services/accounts/users.service';
+
 import type { BootstrapProcessState } from '../platform/bootstrap.service';
 import type {
   ProfileExtDto,
@@ -58,12 +59,13 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly session = inject(SessionService);
   private readonly location = inject(AppLocationService);
   private readonly affiliateReferral = inject(AffiliateReferralService);
-  private readonly localUsersService = inject(LocalUsersService);
-  private readonly httpUsersService = inject(HttpUsersService);
+  private readonly localUsersService = this.transportAdapters.reference(LOCAL_ADAPTER.USERS);
+  private readonly httpUsersService = this.transportAdapters.reference(HTTP_ADAPTER.USERS);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
@@ -138,11 +140,11 @@ export class UsersService extends BaseRouteModeService {
     }));
   }
 
-  private get userService(): LocalUsersService | HttpUsersService {
+  private get userService(): AdapterInstance<typeof LOCAL_ADAPTER.USERS> | AdapterInstance<typeof HTTP_ADAPTER.USERS> {
     return this.resolveRouteService('/auth/me', this.localUsersService, this.httpUsersService);
   }
 
-  private get userSelectorService(): LocalUsersService | HttpUsersService {
+  private get userSelectorService(): AdapterInstance<typeof LOCAL_ADAPTER.USERS> | AdapterInstance<typeof HTTP_ADAPTER.USERS> {
     return this.resolveRouteService('/auth/demo-users', this.localUsersService, this.httpUsersService);
   }
 
@@ -319,7 +321,7 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  private readonly localInvites = inject(LocalIntegrationService);
+  private readonly localInvites = this.transportAdapters.reference(LOCAL_ADAPTER.INTEGRATION);
 
   async claimPartnerInvite(userId: string, token: string): Promise<{ eventId?: string | null; groupId?: string | null; workspaceGroupId?: string | null; invitationAvailable: boolean }> {
     if (this.localModeEnabled) {
@@ -327,7 +329,8 @@ export class UsersService extends BaseRouteModeService {
       if (local) return local;
     }
     // API invitations remain server-owned even when the browser uses local demo data.
-    return this.httpUsersService.claimPartnerInvite(userId, token);
+    const httpUsersService = await this.transportAdapters.get(HTTP_ADAPTER.USERS);
+    return httpUsersService.claimPartnerInvite(userId, token);
   }
 
   async loadPageFilterPreferences(userId: string, pageKey: 'event-explore'): Promise<EventExploreFilterPreferences> {

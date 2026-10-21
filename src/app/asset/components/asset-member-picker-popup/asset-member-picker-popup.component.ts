@@ -98,8 +98,8 @@ export class AssetMemberPickerPopupComponent {
   private readonly profileStore = inject(ProfileStore);
 
   protected isOpen = false;
-  protected title = 'Invite members';
-  protected headerTitle = 'Invite members';
+  protected title = 'invite.members';
+  protected headerTitle = 'invite.members';
   protected ownerId = '';
   protected ownerType: AppConstants.ActivityMemberOwnerType = 'event';
   private parentOwner: ActivityContracts.ActivityMemberOwnerRef | null = null;
@@ -169,10 +169,10 @@ export class AssetMemberPickerPopupComponent {
   protected invitePopupModel(): PopupModel<AssetMemberPickerMenuContext> {
     return {
       title: this.headerTitle,
-      subtitle: this.title !== 'Invite members' ? this.title : null,
+      subtitle: this.title !== 'invite.members' ? this.title : null,
       translateSubtitle: false,
       ariaLabel: this.headerTitle,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -231,8 +231,8 @@ export class AssetMemberPickerPopupComponent {
             ownerType: context.parentOwner.ownerType
           }
         : null;
-      this.title = context.title?.trim() || 'Invite members';
-      this.headerTitle = context.headerTitle?.trim() || 'Invite members';
+      this.title = context.title?.trim() || 'invite.members';
+      this.headerTitle = context.headerTitle?.trim() || 'invite.members';
       this.inviteSort = 'recent';
       this.initialSelectedMembers = Array.isArray(context.initialSelection) ? context.initialSelection.map(m=>({...m})) : null;
       this.selectedUserIds = [...new Set((context.initialSelection ?? []).map(member => member.userId.trim()).filter(Boolean))];
@@ -294,12 +294,12 @@ export class AssetMemberPickerPopupComponent {
 
   protected inviteSortMenuTrigger(): AppMenuTrigger {
     return {
-      label: this.inviteSort === 'recent' ? 'Recent' : 'Relevant',
+      label: this.inviteSort === 'recent' ? 'recent' : 'relevant',
       icon: this.inviteSort === 'recent' ? 'schedule' : 'auto_awesome',
       palette: this.inviteSort === 'recent' ? 'blue' : 'violet',
       disabled: () => this.isConfirmPending,
       layout: 'pill',
-      ariaLabel: 'Open invite sort'
+      ariaLabel: 'open.invite.sort'
     };
   }
 
@@ -307,7 +307,7 @@ export class AssetMemberPickerPopupComponent {
     return [
       {
         id: 'invite-sort-recent',
-        label: 'Recent',
+        label: 'recent',
         icon: 'schedule',
         kind: 'radio',
         active: this.inviteSort === 'recent',
@@ -317,7 +317,7 @@ export class AssetMemberPickerPopupComponent {
       },
       {
         id: 'invite-sort-relevant',
-        label: 'Relevant',
+        label: 'relevant',
         icon: 'auto_awesome',
         kind: 'radio',
         active: this.inviteSort === 'relevant',
@@ -346,7 +346,7 @@ export class AssetMemberPickerPopupComponent {
         palette: 'blue',
         kind: 'branch',
         counter: count,
-        ariaLabel: 'Open selected members',
+        ariaLabel: 'open.selected.members',
         items: this.selectedInviteBasketMenuItems()
       });
     }
@@ -356,7 +356,7 @@ export class AssetMemberPickerPopupComponent {
       layout: 'action',
       palette: hasError || !this.hasSelectionChanges() ? 'danger' : 'success',
       disabled: !this.canConfirmSelection(),
-      ariaLabel: 'Invite selected members',
+      ariaLabel: 'invite.selected.members',
       progress: this.isConfirmPending || hasError
         ? {
             state: this.isConfirmPending ? 'loading' : 'error',
@@ -534,7 +534,7 @@ export class AssetMemberPickerPopupComponent {
         id: 'toggle',
         icon: 'add',
         selectedIcon: 'check',
-        ariaLabel: selected ? 'Unselect friend' : 'Select friend',
+        ariaLabel: selected ? 'asset.invite.member.unselect.aria' : 'asset.invite.member.select.aria',
         position: 'top-right',
         tone: selected ? 'success' : 'default',
         selected,
@@ -544,7 +544,7 @@ export class AssetMemberPickerPopupComponent {
       {
         id: 'view',
         icon: 'visibility',
-        ariaLabel: 'View profile',
+        ariaLabel: 'view.profile',
         position: 'bottom-right',
         tone: 'info',
         disabled: this.isConfirmPending
@@ -582,8 +582,8 @@ export class AssetMemberPickerPopupComponent {
 
   private resetState(): void {
     this.isOpen = false;
-    this.title = 'Invite members';
-    this.headerTitle = 'Invite members';
+    this.title = 'invite.members';
+    this.headerTitle = 'invite.members';
     this.ownerId = '';
     this.ownerType = 'event';
     this.purpose=undefined;

@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -11,8 +13,7 @@ import type {
   AdminMonitoringStateDto,
   AdminMonitoringTone
 } from '../../../contracts/administration/admin.interface';
-import { HttpAdminMonitoringService } from '../../../http/services/administration/admin-monitoring.service';
-import { LocalAdminMonitoringService } from '../../../local/source/services/administration/admin-monitoring.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import { RouteDelayService } from '../platform/route-delay.service';
 
@@ -22,11 +23,12 @@ const ADMIN_MONITORING_ROUTE = '/admin/monitoring';
   providedIn: 'root'
 })
 export class AdminMonitoringService extends BaseRouteModeService {
-  private readonly localService = inject(LocalAdminMonitoringService);
-  private readonly httpService = inject(HttpAdminMonitoringService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_MONITORING);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_MONITORING);
   private readonly routeDelay = inject(RouteDelayService);
 
-  private get monitoringService(): LocalAdminMonitoringService | HttpAdminMonitoringService {
+  private get monitoringService(): AdapterInstance<typeof LOCAL_ADAPTER.ADMIN_MONITORING> | AdapterInstance<typeof HTTP_ADAPTER.ADMIN_MONITORING> {
     return this.resolveRouteService(ADMIN_MONITORING_ROUTE, this.localService, this.httpService);
   }
 
@@ -35,10 +37,10 @@ export class AdminMonitoringService extends BaseRouteModeService {
   }
 
   async loadMonitoringState(adminUserId?: string | null, filter?: string | null): Promise<AdminMonitoringStateDto> {
-    const source = this.monitoringService instanceof LocalAdminMonitoringService ? 'demo' : 'http';
-    const state = this.monitoringService instanceof LocalAdminMonitoringService
-      ? await this.monitoringService.loadMonitoringState(filter, adminUserId)
-      : await this.monitoringService.loadMonitoringState(adminUserId, filter);
+    const source = this.monitoringService === this.localService ? 'demo' : 'http';
+    const state = this.monitoringService === this.localService
+      ? await this.localService.loadMonitoringState(filter, adminUserId)
+      : await this.httpService.loadMonitoringState(adminUserId, filter);
     return this.normalizeMonitoringState(state, source);
   }
 

@@ -1,1 +1,0 @@
-import{a as o,b as e}from"./chunk-YF5SMAQB.js";var n={productName:"MyScoutee",homeLabel:"Your preferences come first",logoUrl:"assets/logo/heart.webp",logoCharacterIndex:0,revision:0},t=[],r={configured:!1,dataControllerName:"",privacyContactEmail:""},a=e(o({},n),{paymentProviderId:null,firebaseMessagingConfigured:!1,socialLinks:t,privacyContact:r});export{n as a,t as b,r as c};

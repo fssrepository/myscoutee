@@ -1,3 +1,5 @@
+import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { FeedbackService } from '../../../core/base/services/feedback/feedback.service';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
@@ -26,7 +28,7 @@ import {
     CommonModule,
     MatIconModule,
     IndicatorComponent,
-    PopupComponent
+    PopupComponent, I18nPipe
   ],
   templateUrl: './feedback-rated-detail-popup.component.html',
   styleUrl: './feedback-rated-detail-popup.component.scss'
@@ -75,10 +77,10 @@ export class FeedbackRatedDetailPopupComponent {
 
   protected popupModel(session: FeedbackRatedDetailPopupSession): PopupModel {
     return {
-      title: 'My Feedback',
+      title: 'feedback.own.title',
       subtitle: session.eventTitle,
       ariaLabel: `My feedback for ${session.eventTitle}`,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -116,7 +118,8 @@ export class FeedbackRatedDetailPopupComponent {
   }
 
   protected traitLabels(card: FeedbackCard): string[] {
-    const labelsById = new Map(card.traitOptions.map(option => [option.id, option.label]));
+    const labelsById = new Map(card.traitOptions.map(option => [option.id,
+      APP_STATIC_DATA.personalityTraitCatalog.find(trait => trait.id === option.id)?.labelKey ?? option.label]));
     return card.selectedTraitIds
       .map(traitId => labelsById.get(traitId) ?? traitId)
       .filter(Boolean);

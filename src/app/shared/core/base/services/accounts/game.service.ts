@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import {
   Injectable,
@@ -15,15 +17,11 @@ import type {
   UserGameDataService,
   UserGameMode
 } from '../../../contracts/common/activity.interface';
-import {
-  LocalGameService
-} from '../../../local';
+
 import {
   LocalRatesRepository
 } from '../../../local/source/repositories/affinity/rates.repository';
-import {
-  HttpGameService
-} from '../../../http';
+
 import type { UserDto } from '../../../contracts/accounts/user.interface';
 import {
   BaseRouteModeService
@@ -49,11 +47,12 @@ interface UserGameCardsStackState {
   providedIn: 'root'
 })
 export class GameService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
-  private readonly localGameService = inject(LocalGameService);
+  private readonly localGameService = this.transportAdapters.reference(LOCAL_ADAPTER.GAME);
   private readonly localRatesRepository = inject(LocalRatesRepository);
-  private readonly httpGameService = inject(HttpGameService);
+  private readonly httpGameService = this.transportAdapters.reference(HTTP_ADAPTER.GAME);
   private readonly rateOutboxService = inject(RateOutboxService);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};

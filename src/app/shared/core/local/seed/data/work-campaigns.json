@@ -8,7 +8,7 @@
     "category": "technology",
     "status": "published",
     "imageUrls": [
-      "assets/articles/business-idea.png"
+      "assets/articles/business-idea.webp"
     ]
   },
   {
@@ -20,7 +20,7 @@
     "category": "technology",
     "status": "published",
     "imageUrls": [
-      "assets/articles/work-opportunity.png"
+      "assets/articles/work-opportunity.webp"
     ]
   },
   {
@@ -32,7 +32,7 @@
     "category": "education",
     "status": "draft",
     "imageUrls": [
-      "assets/articles/professional-network.png"
+      "assets/articles/professional-network.webp"
     ]
   },
   {
@@ -44,7 +44,7 @@
     "category": "creative",
     "status": "published",
     "imageUrls": [
-      "assets/articles/business-idea.png"
+      "assets/articles/business-idea.webp"
     ]
   },
   {
@@ -56,7 +56,7 @@
     "category": "services",
     "status": "published",
     "imageUrls": [
-      "assets/articles/work-opportunity.png"
+      "assets/articles/work-opportunity.webp"
     ]
   },
   {
@@ -68,7 +68,7 @@
     "category": "education",
     "status": "published",
     "imageUrls": [
-      "assets/articles/professional-network.png"
+      "assets/articles/professional-network.webp"
     ]
   },
   {
@@ -80,7 +80,7 @@
     "category": "creative",
     "status": "published",
     "imageUrls": [
-      "assets/articles/team-building.png"
+      "assets/articles/team-building.webp"
     ]
   },
   {
@@ -92,7 +92,7 @@
     "category": "community",
     "status": "published",
     "imageUrls": [
-      "assets/articles/team-building.png"
+      "assets/articles/team-building.webp"
     ]
   },
   {
@@ -104,7 +104,7 @@
     "category": "other",
     "status": "trash",
     "imageUrls": [
-      "assets/articles/business-idea.png"
+      "assets/articles/business-idea.webp"
     ]
   }
 ]

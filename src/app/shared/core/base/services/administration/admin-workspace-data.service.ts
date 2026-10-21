@@ -1,8 +1,9 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 
 import { isFirebaseLoginEnabled } from '../../../common/firebase-login-mode';
-import { HttpAdminWorkspaceService } from '../../../http/services/administration/admin-workspace.service';
-import { LocalAdminWorkspaceService } from '../../../local/source/services/administration/admin-workspace.service';
+
 import type {
   AdminBootstrapProcessState,
   AdminDashboardDto,
@@ -30,8 +31,9 @@ export interface AdminWorkspaceMenuCounters {
   providedIn: 'root'
 })
 export class AdminWorkspaceDataService extends BaseRouteModeService {
-  private readonly httpService = inject(HttpAdminWorkspaceService);
-  private readonly localService = inject(LocalAdminWorkspaceService);
+  private readonly transportAdapters = inject(AdapterProxyService);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.ADMIN_WORKSPACE);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.ADMIN_WORKSPACE);
   private readonly shareTokens = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
 

@@ -25,7 +25,7 @@
                       <button
                         type="button"
                         (click)="selectPhoto(index, $event)"
-                        [attr.aria-label]="'Show profile photo ' + (index + 1)"
+                        [attr.aria-label]="photoAriaLabel(index)"
                       ></button>
                     }
                   </div>
@@ -34,7 +34,7 @@
                   <h3>{{ displayTitle(profile) }}</h3>
                   <p>
                     <mat-icon>location_on</mat-icon>
-                    <span>{{ profile.city || 'City not set yet' }}</span>
+                    <span>{{ profile.city || ('profile.city.empty.description' | i18n) }}</span>
                   </p>
                   @if (profile.headline || profile.statusText) {
                     <small>{{ profile.headline || profile.statusText }}</small>
@@ -48,13 +48,13 @@
 
             <section #profileDetails tabindex="-1" class="profile-view-section profile-view-section-basics" data-guide-field="profile-details">
               <header class="profile-view-section-header">
-                <h3>Basics</h3>
+                <h3>{{ 'basics' | i18n }}</h3>
               </header>
               <div class="profile-view-grid">
                 @for (row of basicsRows(); track trackRow($index, row)) {
                   <div class="profile-view-row">
                     <mat-icon>{{ row.icon }}</mat-icon>
-                    <span>{{ row.label | i18n }}</span>
+                    <span>{{ row.labelKey | i18n }}</span>
                     @if (badgeParts(row.label, row.value).length > 1) {
                       <div class="profile-view-chip-row profile-view-chip-row-field">
                         @for (item of badgeParts(row.label, row.value); track item) {
@@ -71,14 +71,14 @@
 
           <section class="profile-view-section profile-view-section-about" data-guide-field="profile-about">
             <header class="profile-view-section-header">
-              <h3>About</h3>
+              <h3>{{ 'about' | i18n }}</h3>
             </header>
             <div class="profile-view-list">
               @for (row of aboutRows(); track trackRow($index, row)) {
                 <div class="profile-view-text-row">
                   <span>
                     <mat-icon>{{ row.icon }}</mat-icon>
-                    {{ row.label }}
+                    {{ row.labelKey | i18n }}
                   </span>
                   <p>{{ row.value }}</p>
                 </div>
@@ -89,7 +89,7 @@
           @for (group of detailGroups(); track trackGroup($index, group)) {
             <section class="profile-view-section" data-guide-field="profile-detail-groups" [ngClass]="detailGroupClass(group.title)">
               <header class="profile-view-section-header">
-                <h3>{{ group.title }}</h3>
+                <h3>{{ group.titleKey | i18n }}</h3>
               </header>
               <div class="profile-view-list">
                 @for (row of group.rows; track trackRow($index, row)) {
@@ -105,7 +105,7 @@
                         }
                       </div>
                     } @else {
-                      <p data-i18n-ignore>{{ displayDetailValue(row) | i18n }}</p>
+                      <p data-i18n-ignore>{{ displayDetailValue(row) }}</p>
                     }
                   </div>
                 }
@@ -115,7 +115,7 @@
 
           <section class="profile-view-section profile-view-section-experience" data-guide-field="profile-experience">
             <header class="profile-view-section-header">
-              <h3>Experience</h3>
+              <h3>{{ 'experience' | i18n }}</h3>
             </header>
             @if (loadingExperiences()) {
               <div class="profile-view-inline-loading">
@@ -124,12 +124,12 @@
                   size="sm"
                   state="loading"
                 ></app-indicator>
-                <span>Loading experience</span>
+                <span>{{ 'profile.experience.loading' | i18n }}</span>
               </div>
             } @else if (isExperienceEmpty()) {
               <div class="profile-view-empty-inline">
                 <mat-icon>work_history</mat-icon>
-                <span>No experience added yet.</span>
+                <span>{{ 'profile.experience.empty.description' | i18n }}</span>
               </div>
             } @else {
               <div class="profile-view-experience-table">
@@ -139,8 +139,8 @@
                       <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
                       <span>{{ item.type }}</span>
                     </span>
-                    <strong>{{ item.title || 'Untitled experience' }}</strong>
-                    <span>{{ item.org || 'Organization not set' }} · {{ item.city || 'City not set' }}</span>
+                    <strong>{{ item.title || ('profile.experience.untitled' | i18n) }}</strong>
+                    <span>{{ item.org || ('profile.experience.organization.empty' | i18n) }} · {{ item.city || ('profile.city.empty' | i18n) }}</span>
                     <time>{{ formattedExperienceDates(item) }}</time>
                     @if (item.description) {
                       <span class="profile-view-experience-description">{{ item.description }}</span>
@@ -157,12 +157,12 @@
               kind="load-ring"
               state="loading"
             ></app-indicator>
-            <strong>Loading profile</strong>
+            <strong>{{ 'loading.profile' | i18n }}</strong>
           </div>
         } @else {
           <div class="profile-view-empty-state">
             <mat-icon>person_search</mat-icon>
-            <strong>Profile unavailable</strong>
+            <strong>{{ 'profile.unavailable' | i18n }}</strong>
             <span>{{ currentTarget.label || currentTarget.userId }}</span>
           </div>
         }

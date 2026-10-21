@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { ChatMessageMenuConverter } from '../../../shared/ui/converters/chat/chat-message-menu.converter';
 import {
   UiDateUtils,
@@ -228,7 +229,7 @@ interface ChatHeaderPollState {
     AppMenuComponent,
     AppMenuTriggerComponent,
     SmartListComponent,
-    ChatCallPopupComponent
+    ChatCallPopupComponent, I18nPipe
   ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
@@ -651,7 +652,7 @@ export class EventChatPopupComponent implements OnDestroy {
       headerTitleBadgeTone: this.chatHeaderContext?.titleBadge?.tone ?? 'neutral',
       subtitle: subtitle || undefined,
       ariaLabel: title,
-      closeAriaLabel: 'Close chat popup',
+      closeAriaLabel: 'chat.popup.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -674,9 +675,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected reactionDetailsPopupModel(): PopupModel {
     return {
-      title: 'Message reactions',
-      ariaLabel: 'Message reactions',
-      closeAriaLabel: 'Close reactions',
+      title: 'chat.reactions.title',
+      ariaLabel: 'chat.reactions.title',
+      closeAriaLabel: 'chat.reactions.close.aria',
       closeOnBackdrop: true,
       size: 'small',
       height: 'auto',
@@ -689,9 +690,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected createPollPopupModel(): PopupModel {
     return {
-      title: 'Create Poll',
-      ariaLabel: 'Create Poll',
-      closeAriaLabel: 'Cancel poll',
+      title: 'chat.poll.create',
+      ariaLabel: 'chat.poll.create',
+      closeAriaLabel: 'chat.poll.cancel.action',
       closeOnBackdrop: true,
       size: 'small',
       height: 'auto',
@@ -704,9 +705,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected pinnedMessagesPopupModel(): PopupModel {
     return {
-      title: 'Pinned messages',
-      ariaLabel: 'Pinned messages',
-      closeAriaLabel: 'Close pinned messages',
+      title: 'chat.pins.title',
+      ariaLabel: 'chat.pins.title',
+      closeAriaLabel: 'chat.pins.close.aria',
       closeOnBackdrop: true,
       size: 'small',
       height: 'auto',
@@ -719,9 +720,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected pollVotePopupModel(): PopupModel {
     return {
-      title: 'Vote',
-      ariaLabel: 'Vote',
-      closeAriaLabel: 'Close poll',
+      title: 'chat.poll.vote.action',
+      ariaLabel: 'chat.poll.vote.action',
+      closeAriaLabel: 'chat.poll.close.aria',
       closeOnBackdrop: true,
       size: 'small',
       height: 'auto',
@@ -803,7 +804,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private selectedChatPrimaryControl(): AppUiTypes.PopupHeaderControl {
     return this.selectedChatContextControl() ?? {
       id: 'fallback-event',
-      label: 'View Event',
+      label: 'view.event',
       visual: { kind: 'icon', icon: 'event' }
     };
   }
@@ -983,7 +984,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected chatHeaderTitle(chatSession: EventChatViewSession): string {
-    return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
+    return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || this.i18n.translate('chat');
   }
 
   protected chatHeaderMembersControl(): AppUiTypes.PopupHeaderControl | null {
@@ -1001,7 +1002,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected chatHeaderControlLabel(control: AppUiTypes.PopupHeaderControl): string {
-    return `${control.summary ?? control.label ?? ''}`.trim() || 'Members';
+    return `${control.summary ?? control.label ?? ''}`.trim() || this.i18n.translate('members');
   }
 
   protected chatHeaderThumbs(control: AppUiTypes.PopupHeaderControl): AppUiTypes.PopupHeaderThumb[] {
@@ -1035,7 +1036,7 @@ export class EventChatPopupComponent implements OnDestroy {
       counter: historyCount > 0 ? { value: historyCount, max: 99 } : null,
       counterTone: 'alert',
       disabled: historyCount === 0,
-      ariaLabel: 'Open user moderation history',
+      ariaLabel: 'moderation.user.history.open.aria',
       context: { menu: 'chat-header', action: 'history' }
     };
   }
@@ -1065,7 +1066,7 @@ export class EventChatPopupComponent implements OnDestroy {
       icon: 'push_pin',
       palette: this.pinnedMessages().length > 0 ? 'blue' : 'default',
       active: this.pinnedMessages().length > 0,
-      ariaLabel: 'Open pinned messages',
+      ariaLabel: 'chat.pins.open.aria',
       context: { menu: 'chat-header', action: 'pins' }
     };
   }
@@ -1275,27 +1276,27 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     return this.chatHeaderControlIcon(this.selectedChatContextControl() ?? {
       id: 'fallback-event',
-      label: 'View Event',
+      label: 'view.event',
       visual: { kind: 'icon', icon: 'event' }
     });
   }
 
   protected selectedChatHeaderActionLabel(): string {
     if (this.isServiceChat()) {
-      return 'Service';
+      return this.i18n.translate('service');
     }
-    return this.selectedChatContextControl()?.label ?? 'View Event';
+    return this.selectedChatContextControl()?.label ?? this.i18n.translate('view.event');
   }
 
   protected selectedChatHeaderActionBadgeCount(): number {
     return this.chatHeaderControlBadgeValue(this.selectedChatContextControl() ?? {
       id: 'fallback-event',
-      label: 'View Event'
+      label: 'view.event'
     });
   }
 
   protected selectedChatContextMenuTitle(): string {
-    return this.selectedChatContextControl()?.menu?.title ?? this.session()?.item.title ?? 'Chat';
+    return this.selectedChatContextControl()?.menu?.title ?? this.session()?.item.title ?? this.i18n.translate('chat');
   }
 
   protected selectedChatContextMenuTrigger(): AppMenuTrigger {
@@ -1304,7 +1305,7 @@ export class EventChatPopupComponent implements OnDestroy {
       icon: this.selectedChatHeaderActionIcon(),
       palette: this.selectedChatHeaderActionPalette(),
       counter: this.selectedChatHeaderActionBadgeCount(),
-      ariaLabel: 'Open chat context menu',
+      ariaLabel: 'chat.context.menu.aria',
       layout: 'pill'
     };
   }
@@ -1326,17 +1327,17 @@ export class EventChatPopupComponent implements OnDestroy {
       hideLabel: true,
       layout: 'icon',
       palette: 'blue',
-      ariaLabel: 'Open chat tools'
+      ariaLabel: 'chat.composer.tools.aria'
     };
   }
 
   protected readonly composerMenuItems = computed<readonly AppMenuItem<string, ChatMenuContext>[]>(() => [
       ...(this.session()?.item.channelType === 'case' ? [{id:'case-recommend',label:'case.action.recommend',icon:'person_add',palette:'violet' as const,surface:'tinted' as const,context:{menu:'composer' as const,action:'recommend' as const}}] : []),
-      { id: 'chat-composer-image', label: 'Upload image', icon: 'image', palette: 'sky', surface: 'tinted', context: { menu: 'composer', action: 'image' } },
-      { id: 'chat-composer-voice', label: 'Send a voice clip', icon: 'mic', palette: 'violet', surface: 'tinted', context: { menu: 'composer', action: 'voice' } },
-      { id: 'chat-composer-poll', label: 'Create a poll', icon: 'poll', palette: 'green', surface: 'tinted', context: { menu: 'composer', action: 'poll' } },
-      { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'blue', surface: 'tinted', context: { menu: 'composer', action: 'event' } },
-      { id: 'chat-composer-asset', label: 'Share asset', icon: 'inventory_2', palette: 'brown', surface: 'tinted', context: { menu: 'composer', action: 'asset' } }
+      { id: 'chat-composer-image', label: 'upload.image', icon: 'image', palette: 'sky', surface: 'tinted', context: { menu: 'composer', action: 'image' } },
+      { id: 'chat-composer-voice', label: 'chat.voice.send.aria', icon: 'mic', palette: 'violet', surface: 'tinted', context: { menu: 'composer', action: 'voice' } },
+      { id: 'chat-composer-poll', label: 'chat.poll.create.aria', icon: 'poll', palette: 'green', surface: 'tinted', context: { menu: 'composer', action: 'poll' } },
+      { id: 'chat-composer-event', label: 'chat.event.share.action', icon: 'event', palette: 'blue', surface: 'tinted', context: { menu: 'composer', action: 'event' } },
+      { id: 'chat-composer-asset', label: 'share.asset.label', icon: 'inventory_2', palette: 'brown', surface: 'tinted', context: { menu: 'composer', action: 'asset' } }
     ]);
 
   protected onInlineChatMenuSelect(event: AppMenuItemSelectEvent<string, ChatMenuContext>): void {
@@ -1412,7 +1413,7 @@ export class EventChatPopupComponent implements OnDestroy {
         ].find(candidate => candidate.userId === targetUserId) ?? null;
       } catch {
         this.dialogStore.openInfo('The moderation history could not be loaded. Please try again.', {
-          title: 'Unable to open history'
+          title: 'moderation.user.history.error.title'
         });
         return;
       }
@@ -1458,7 +1459,7 @@ export class EventChatPopupComponent implements OnDestroy {
       hideLabel: true,
       layout: 'icon',
       palette: message.mine ? 'blue' : 'default',
-      ariaLabel: 'More message actions'
+      ariaLabel: 'chat.message.actions.aria'
     };
   }
 
@@ -1753,9 +1754,9 @@ export class EventChatPopupComponent implements OnDestroy {
       return [groupLabel, subEventName]
         .filter((part, index, parts) => part && parts.indexOf(part) === index)
         .join(' · ')
-        || 'Members';
+        || this.i18n.translate('members');
     }
-    return `${state.subEvent?.name ?? state.eventTitle ?? session.item.title ?? ''}`.trim() || 'Members';
+    return `${state.subEvent?.name ?? state.eventTitle ?? session.item.title ?? ''}`.trim() || this.i18n.translate('members');
   }
 
   private selectedChatMembersSummary(state: SelectedChatNavigationState): {
@@ -2194,18 +2195,18 @@ export class EventChatPopupComponent implements OnDestroy {
     return [
       {
         id: 'poll-vote-cancel',
-        label: 'Cancel',
+        label: 'cancel',
         layout: 'action',
         palette: 'slate',
-        ariaLabel: 'Cancel vote'
+        ariaLabel: 'chat.poll.vote.cancel.action'
       },
       {
         id: 'poll-vote-submit',
-        label: 'Submit',
+        label: 'chat.poll.vote.submit.action',
         layout: 'action',
         palette: 'blue',
         disabled: !this.canSubmitPollVote(message, attachment),
-        ariaLabel: 'Submit vote'
+        ariaLabel: 'chat.poll.vote.submit.action'
       }
     ];
   }
@@ -2434,9 +2435,9 @@ export class EventChatPopupComponent implements OnDestroy {
       case 'service':
         return this.i18n.translate('service.view');
       case 'event':
-        return 'Event';
+        return this.i18n.translate('event');
       case 'asset':
-        return 'Asset';
+        return this.i18n.translate('asset');
       case 'link':
         return 'Link';
       case 'poll':
@@ -2561,7 +2562,7 @@ export class EventChatPopupComponent implements OnDestroy {
       id: 'emoji-picker',
       icon: 'add',
       closeIcon: 'close',
-      ariaLabel: 'Search emoji',
+      ariaLabel: 'chat.emoji.search',
       layout: 'icon',
       hideLabel: true,
       palette: 'blue'
@@ -3323,7 +3324,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const resolved = await this.shareTokensService.resolveToken(token, this.userProfileStore.activeUserId());
     if (!resolved) {
       this.dialogStore.openInfo('This share token is expired or no longer available.', {
-        title: 'Share link'
+        title: 'invite.external.title'
       });
       return null;
     }
@@ -5132,7 +5133,7 @@ export class EventChatPopupComponent implements OnDestroy {
         },
         {
           id: 'assets',
-          label: 'Assets',
+          label: 'stats.domain.assets',
           controls: assetControls
         }
       ]

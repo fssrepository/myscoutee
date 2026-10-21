@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   clampNumber,
   UiDateUtils,
@@ -186,9 +187,9 @@ type AssetExploreMenuContext =
     };
 
 const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
-  { key: 'availability', label: 'Available first', icon: 'inventory_2' },
-  { key: 'lowest-price', label: 'Lowest price', icon: 'payments' },
-  { key: 'fewest-policies', label: 'Fewest policies', icon: 'policy' }
+  { key: 'availability', label: 'available.first', icon: 'inventory_2' },
+  { key: 'lowest-price', label: 'lowest.price', icon: 'payments' },
+  { key: 'fewest-policies', label: 'fewest.policies', icon: 'policy' }
 ] as const;
 
 export interface AssetExplorePopupViewState {
@@ -227,7 +228,7 @@ interface AssetExploreBorrowDraftViewState {
     AppMenuOutletComponent,
     PopupComponent,
     InfoCardComponent,
-    SmartListComponent
+    SmartListComponent, I18nPipe
   ],
   templateUrl: './event-resource-asset-explore.component.html',
   styleUrl: './event-resource-asset-explore.component.scss',
@@ -302,8 +303,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     headerProgress: {
       enabled: true
     },
-    emptyLabel: 'No visible assets right now.',
-    emptyDescription: 'Try another date range or category.',
+    emptyLabel: 'asset.explore.empty.title',
+    emptyDescription: 'asset.explore.empty.description',
     showStickyHeader: true,
     groupBy: card => this.groupLabel(card),
     listLayout: 'card-grid',
@@ -482,7 +483,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       title: explore.title,
       subtitle: explore.subtitle,
       ariaLabel: explore.title,
-      closeAriaLabel: 'Close asset explore',
+      closeAriaLabel: 'asset.explore.close.aria',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -727,7 +728,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return {
       label: this.orderLabel(),
       icon: this.orderIcon(),
-      ariaLabel: 'Open asset explore order',
+      ariaLabel: 'open.asset.explore.order',
       palette: this.orderPalette(this.order),
       layout: 'pill'
     };
@@ -756,7 +757,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       icon: wholeType
         ? AssetDefaultsBuilder.assetTypeIcon(explore.type)
         : AssetDefaultsBuilder.assetCategoryIcon(explore.category),
-      ariaLabel: 'Open asset explore category',
+      ariaLabel: 'open.asset.explore.category',
       palette: wholeType
         ? this.assetTypeAggregatePalette(explore.type)
         : this.assetCategoryPalette(explore.category),
@@ -837,7 +838,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected orderLabel(order: AssetExploreOrder = this.order): string {
-    return this.orderOptions.find(option => option.key === order)?.label ?? 'Available first';
+    return this.orderOptions.find(option => option.key === order)?.label ?? this.i18n.translate('available.first');
   }
 
   protected orderIcon(order: AssetExploreOrder = this.order): string {
@@ -892,7 +893,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return {
       icon: 'shopping_basket',
       closeIcon: 'close',
-      ariaLabel: count === 1 ? 'Open borrow basket with 1 request' : `Open borrow basket with ${count} requests`,
+      ariaLabel: count === 1 ? 'asset.borrow.basket.single.aria' : `Open borrow basket with ${count} requests`,
       counter: count,
       hideLabel: true,
       layout: 'icon',
@@ -1056,12 +1057,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           end: bounds.endAtIso
         },
         start: {
-          placeholder: 'Start date',
+          placeholder: 'start.date',
           min: bounds.startAtIso,
           max: bounds.endAtIso
         },
         end: {
-          placeholder: 'End date',
+          placeholder: 'end.date',
           min: bounds.startAtIso,
           max: bounds.endAtIso
         }
@@ -1604,15 +1605,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const card = this.resolveCard(dialog.cardId);
     this.dialogStore.open({
-      title: 'Cancel borrow?',
-      message: card?.title ?? 'Borrow',
+      title: 'confirmation.cancel.borrow',
+      message: card?.title ?? 'borrow',
       warningMessage: 'The current borrow basket will be cancelled and removed.',
-      cancelLabel: 'Back',
-      confirmLabel: 'Cancel borrow',
+      cancelLabel: 'back',
+      confirmLabel: 'asset.borrow.cancel.action',
       busyConfirmLabel: 'Cancelling...',
       confirmTone: 'danger',
       confirmPalette: 'danger',
-      failureMessage: 'Unable to cancel this borrow.',
+      failureMessage: 'asset.borrow.cancel.error',
       onConfirm: async () => this.cancelBorrowLifecycle(dialog)
     });
   }
@@ -2633,13 +2634,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private popupSubtitle(): string {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
-      return 'Event';
+      return this.i18n.translate('event');
     }
     const subEventName = this.subEventDisplayName(context.subEvent);
     if (context.parentTitle && subEventName) {
       return `${context.parentTitle} - ${subEventName}`;
     }
-    return context.parentTitle || subEventName || 'Event';
+    return context.parentTitle || subEventName || this.i18n.translate('event');
   }
 
   private defaultRange(subEvent: ContractTypes.SubEventDTO): { startAtIso: string; endAtIso: string } {

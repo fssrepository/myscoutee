@@ -1,6 +1,6 @@
 {
   "name": "myscoutee",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "scripts": {
     "ng": "ng",
     "start": "npm run start:local",
@@ -17,7 +17,7 @@
     "build:local": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration local",
     "build:dev": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration dev",
     "build:e2e": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration e2e",
-    "build:github": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration github --base-href /myscoutee/ && FRONTEND_BUILD_OUTPUT_DIR=docs node scripts/stamp-prod-build.js",
+    "build:github": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration github --base-href /myscoutee/ && FRONTEND_BUILD_OUTPUT_DIR=docs FRONTEND_BUILD_PROFILE=standalone node scripts/stamp-prod-build.js",
     "build:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration local",
     "build:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration local 2>&1 | tee .agent/logs/ng-build-local.log'",
     "build:prod": "NG_BUILD_MAX_WORKERS=12 node scripts/with-components.mjs build --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",
@@ -55,7 +55,7 @@
     "@angular/platform-browser": "^21.2.23",
     "@angular/router": "^21.2.23",
     "@fontsource/roboto": "^5.2.10",
-    "@fssrepository/myscoutee-components": "1.4.1",
+    "@fssrepository/myscoutee-components": "1.4.5",
     "@wireapp/core-crypto": "10.5.4",
     "dompurify": "3.4.17",
     "firebase": "^13.0.0",

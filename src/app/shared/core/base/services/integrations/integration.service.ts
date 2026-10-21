@@ -1,3 +1,5 @@
+import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
+import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import type { McpSettingsDto, McpClientRequest, McpClientCreatedDto, McpAuthorizationRequest, McpAuthorizationContext } from '../../../contracts/integrations/integration.interface';
 import { ShareTokensService } from '../content/share-tokens.service';
 import { Injectable, inject } from '@angular/core';
@@ -7,17 +9,17 @@ import type {
   IntegrationSettingsUpdateDto,
   IntegrationTokenCreatedDto
 } from '../../../contracts/integrations/integration.interface';
-import { HttpIntegrationService } from '../../../http/services/integrations/integration.service';
-import { LocalIntegrationService } from '../../../local/source/services/integrations/integration.service';
+
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
 const INTEGRATIONS_ROUTE = '/integrations';
 
 @Injectable({ providedIn: 'root' })
 export class IntegrationService extends BaseRouteModeService {
+  private readonly transportAdapters = inject(AdapterProxyService);
   private readonly shareTokens = inject(ShareTokensService);
-  private readonly localService = inject(LocalIntegrationService);
-  private readonly httpService = inject(HttpIntegrationService);
+  private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.INTEGRATION);
+  private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.INTEGRATION);
 
   async externalInviteLink(request: import('../../../contracts/integrations/integration.interface').ExternalInviteLinkRequest): Promise<{url: string}> {
     if (request.ownerType === 'asset') {
@@ -75,7 +77,7 @@ export class IntegrationService extends BaseRouteModeService {
     }
   }
 
-  private service(admin: boolean): LocalIntegrationService | HttpIntegrationService {
+  private service(admin: boolean): AdapterInstance<typeof LOCAL_ADAPTER.INTEGRATION> | AdapterInstance<typeof HTTP_ADAPTER.INTEGRATION> {
     return this.resolveRouteService(
       admin ? '/admin/client-api' : INTEGRATIONS_ROUTE,
       this.localService,

@@ -53,7 +53,7 @@ export class WorkHomeComponent implements OnDestroy {
     emptyLabel: 'campaign.empty', emptyDescription: 'campaign.empty.description',
     pagination: { mode: 'rating-stars', ratingBarValue: card => card ? this.store.score(card.id) : 0,
       ratingBarConfig: card => card ? { guideFields:{slider:'rating-input',action:'rating-save'},criteriaDefinition: ratingCriteriaFor(card.ratingDomain), ratingSnapshot: this.store.snapshot(card.id), subjectKey: `${this.profile.activeUserId()}:${card.id}`, scale: [1,2,3,4,5,6,7,8,9,10],
-        label: 'campaign.interest', actionLabel: 'Go', presentation: 'fullscreen', blinkOnSelect: false } : null,
+        label: 'campaign.interest', actionLabel: 'go', presentation: 'fullscreen', blinkOnSelect: false } : null,
       onRatingSelect: (card, score, _query, snapshot) => { if (card?.eagerDetail) this.store.rate(card.eagerDetail, score, snapshot); } }
   };
   protected readonly loadPage: SmartListLoadPage<SingleCardData & {id:string;eagerDetail:Campaign}, CampaignFilters & { userId: string }> = (query, context) =>

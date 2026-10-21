@@ -1,3 +1,4 @@
+import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   CommonModule,
   DOCUMENT
@@ -29,7 +30,7 @@ import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runti
 @Component({
   selector: 'app-admin-affinity-graph-popup',
   standalone: true,
-  imports: [CommonModule, IndicatorComponent, PopupComponent],
+  imports: [CommonModule, IndicatorComponent, PopupComponent, I18nPipe],
   templateUrl: './admin-affinity-graph-popup.component.html',
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
@@ -92,8 +93,8 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
 
   protected affinityGraphPopupModel(): PopupModel {
     return {
-      ariaLabel: 'Affinity graph view',
-      closeAriaLabel: 'Close affinity graph',
+      ariaLabel: 'admin.affinity.graph.view',
+      closeAriaLabel: 'admin.affinity.graph.close.aria',
       showHeader: false,
       showClose: true,
       size: 'fullscreen',

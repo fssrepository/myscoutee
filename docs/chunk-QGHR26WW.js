@@ -1,1 +1,0 @@
-var a={production:!0,activitiesDataSource:"local",operatorRegistryDataSource:"local",bootstrapOffsetInDays:0,apiBaseUrl:"/api",serviceWorkerEnabled:!0,firebaseLoginEnabled:!1,firebaseMessagingEnabled:!0,paymentIntegrationEnabled:!1,paymentSimulatorConfigUrl:null};export{a};
