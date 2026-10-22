@@ -357,7 +357,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   protected async openEntryDemo(): Promise<void> {
-    if (this.entryNetworkUnavailable) {
+    if (this.entryNetworkUnavailable && environment.activitiesDataSource === 'http') {
       return;
     }
     if (!await this.ensureEntryConsent()) {
@@ -688,14 +688,14 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private async ensureEntryConsent(): Promise<boolean> {
-    if (this.entryNetworkUnavailable) {
+    if (this.entryNetworkUnavailable && environment.activitiesDataSource === 'http') {
       return false;
     }
     if (!automaticPrivacyConsentEnabled()) return true;
     if (this.entryPrivacyLoading || this.privacyPolicy.state() === null) {
       await this.loadEntryContent();
     }
-    if (this.entryNetworkUnavailable || this.entryPrivacyLoading) {
+    if ((this.entryNetworkUnavailable && environment.activitiesDataSource === 'http') || this.entryPrivacyLoading) {
       return false;
     }
     if (this.hasEntryConsent) {
