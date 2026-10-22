@@ -300,11 +300,11 @@ test('opens the public demo without workspace controls and keeps the date render
       entryPoint:'src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts'
     });
     add('chunk-DATE0001.js', 'globalThis.__dateControlLoaded=true; export const date={};', {
-      entryPoint:'components/dist/fesm2022/components-date.mjs',
-      inputs:{'components/dist/fesm2022/components-date.mjs':{bytesInOutput:40}}
+      entryPoint:'node_modules/@fssrepository/myscoutee-components/fesm2022/components-date.mjs',
+      inputs:{'node_modules/@fssrepository/myscoutee-components/fesm2022/components-date.mjs':{bytesInOutput:40}}
     });
     add('chunk-CONTROL1.js', "import {date} from './chunk-DATE0001.js'; globalThis.__formControlsLoaded=true; export {date};", {
-      inputs:{'components/dist/fesm2022/components-forms.mjs':{bytesInOutput:40}}
+      inputs:{'node_modules/@fssrepository/myscoutee-components/fesm2022/components-forms.mjs':{bytesInOutput:40}}
     });
     add('chunk-DATEAPI1.js', "export {date} from './chunk-DATE0001.js'; export {choice} from './chunk-CHOICE01.js';", {
       entryPoint:'src/app/date-facade.ts'
@@ -328,7 +328,7 @@ test('opens the public demo without workspace controls and keeps the date render
     assert.equal(globalThis.__menuLoaded,undefined);
     const menu=await entry.openMenu();
     assert.equal(menu.date,(await entry.openDate()).date);
-    assert.equal(manifest.loads['src/app/date-facade.ts'][0],manifest.loads['components/dist/fesm2022/components-date.mjs'][0]);
+    assert.equal(manifest.loads['src/app/date-facade.ts'][0],manifest.loads['node_modules/@fssrepository/myscoutee-components/fesm2022/components-date.mjs'][0]);
     assert.equal(globalThis.__formControlsLoaded,true);
     assert.equal(demo.choice,(await entry.openHome()).choice);
   } finally {

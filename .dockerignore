@@ -2,6 +2,7 @@
 
 !package.json
 !package-lock.json
+!.npmrc
 !angular.json
 !tsconfig.json
 !tsconfig.app.json
@@ -9,14 +10,5 @@
 !src/
 !src/**
 
-# The application builds the components workspace through with-components.mjs.
 !scripts/
 !scripts/**
-!components/
-!components/package.json
-!components/ng-package.json
-!components/tsconfig.lib.json
-!components/src/
-!components/src/**
-!components/styles/
-!components/styles/**
