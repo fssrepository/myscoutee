@@ -34,6 +34,13 @@ function stampIndexHtml() {
   const metaTag = `<meta name="myscoutee-build-id" content="${buildId}">`;
   const buildMetaPattern = /<meta\s+name=["']myscoutee-build-id["']\s+content=["'][^"']*["']\s*\/?>/i;
   let html = fs.readFileSync(indexPath, 'utf8');
+  // Angular HTML optimization may remove SSI conditionals around the recorder.
+  // Restore the switch in the existing post-build owner before shipping HTML.
+  if (process.env.FRONTEND_BUILD_PROFILE !== 'standalone'
+      && !html.includes('<!--# if expr="$myscoutee_landing_debug = 1" -->')) {
+    html = html.replace(/<script\b[^>]*\bid=["']myscoutee-landing-debug-recorder["'][^>]*>\s*<\/script>/gi,
+      '<!--# if expr="$myscoutee_landing_debug = 1" -->$&<!--# endif -->');
+  }
   if (process.env.FRONTEND_BUILD_PROFILE === 'standalone') {
     // The recorder requires the nginx-owned switch and endpoint.
     html = html.replace(/<script\b[^>]*\bid=["']myscoutee-landing-debug-recorder["'][^>]*>\s*<\/script>/gi, '');
