@@ -17,16 +17,16 @@
 ></app-entry-landing>
 
 @if (showEntryConsentPopup) {
-  <app-document-viewer
-    [appLandingGuideSurface]="entryPrivacyLoading || entryConsentViewOnly ? null : 'landing.consent'"
-    [config]="entryPrivacyDocumentConfig()"
-    (action)="onEntryPrivacyDocumentAction($event)"
-  ></app-document-viewer>
+  <ng-container #privacyDocumentHost></ng-container>
 }
+<ng-container #termsDocumentHost></ng-container>
 
-<app-document-viewer
-  [config]="entryTermsDocumentConfig()"
-></app-document-viewer>
+@if (!documentViewerComponent() && (showEntryConsentPopup || showEntryTermsPopup)) {
+  <app-popup [model]="{ title: showEntryConsentPopup ? 'privacy.document.title' : 'terms.document.title', size: 'wide', height: 'full', headerLayout: 'document', closeOnBackdrop: showEntryConsentPopup ? entryConsentViewOnly : true }"
+    (close)="showEntryConsentPopup ? closeEntryConsentPopup() : closeEntryTermsPopup()">
+    <app-indicator kind="load-ring" state="loading"></app-indicator>
+  </app-popup>
+}
 
 <ng-container #firebaseAuthPopupHost></ng-container>
 <ng-container #onboardingPopupHost></ng-container>

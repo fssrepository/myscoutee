@@ -130,3 +130,38 @@ it('keeps the lazy login popup mobile at 760px and updates its input after a des
   expect(popup.isMobileView).toBe(false);
   fixture.destroy();
 });
+
+it('shares the on-demand document constructor and ignores completion after route destruction', async () => {
+  const { fixture, owner } = popupOwner();
+  let finish!: (value: any) => void;
+  owner.documentViewerComponent = signal(null);
+  owner.documentViewerLoad = null;
+  owner.popupErrors = { handleError: vi.fn() };
+  owner.popupAdapters = { load: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
+  const first = owner.ensureDocumentViewerLoaded();
+  expect(owner.ensureDocumentViewerLoaded()).toBe(first);
+  owner.destroyRef.destroyed = true;
+  finish({ DocumentViewerComponent: class {} });
+  await first;
+  expect(owner.documentViewerComponent()).toBeNull();
+  expect(owner.popupAdapters.load).toHaveBeenCalledTimes(1);
+  fixture.destroy();
+});
+
+it('retries a failed document load when the user opens it again and caches the constructor', async () => {
+  const { fixture, owner } = popupOwner();
+  class DocumentViewer {}
+  const error = new Error('network');
+  owner.documentViewerComponent = signal(null);
+  owner.documentViewerLoad = null;
+  owner.popupErrors = { handleError: vi.fn() };
+  owner.popupAdapters = { load: vi.fn().mockRejectedValueOnce(error).mockResolvedValue({ DocumentViewerComponent: DocumentViewer }) };
+  await owner.ensureDocumentViewerLoaded();
+  expect(owner.popupErrors.handleError).toHaveBeenCalledExactlyOnceWith(error);
+  expect(owner.documentViewerComponent()).toBeNull();
+  await owner.ensureDocumentViewerLoaded();
+  expect(owner.documentViewerComponent()).toBe(DocumentViewer);
+  await owner.ensureDocumentViewerLoaded();
+  expect(owner.popupAdapters.load).toHaveBeenCalledTimes(2);
+  fixture.destroy();
+});

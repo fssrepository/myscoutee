@@ -4,6 +4,8 @@ import { backendUnavailable } from '../../../shared/core/common/backend-connecti
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
 import { preloadAdapterMode } from '../../../shared/core/base/adapter-loaders';
+import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
+import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
 import {
   ExplanationGuideService,
@@ -23,6 +25,9 @@ import {
   HostListener,
   ComponentRef,
   DestroyRef,
+  ErrorHandler,
+  Type,
+  untracked,
   DoCheck,
   NgZone,
   OnDestroy,
@@ -108,7 +113,7 @@ import {
 } from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 
 import {
-  DocumentViewerComponent,
+  type DocumentViewerComponent,
   type DocumentViewerAction,
   type DocumentViewerActionEvent,
   type DocumentViewerActionVisibility,
@@ -152,7 +157,6 @@ interface EntryDemoNewProfileRequestEvent {
     ExplanationLauncherComponent,
     LandingGuideSurfaceDirective,
     EntryLandingComponent,
-    DocumentViewerComponent,
     PopupComponent,
     IndicatorComponent
   ],
@@ -161,6 +165,12 @@ interface EntryDemoNewProfileRequestEvent {
 })
 export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly documentViewerComponent = signal<Type<DocumentViewerComponent> | null>(null);
+  private readonly privacyDocumentHost = viewChild('privacyDocumentHost', { read: ViewContainerRef });
+  private readonly termsDocumentHost = viewChild('termsDocumentHost', { read: ViewContainerRef });
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
+  private readonly popupErrors = inject(ErrorHandler);
+  private documentViewerLoad: Promise<void> | null = null;
   private readonly firebaseAuthPopupHost = viewChild.required('firebaseAuthPopupHost', { read: ViewContainerRef });
   private readonly onboardingPopupHost = viewChild.required('onboardingPopupHost', { read: ViewContainerRef });
   protected readonly firebaseAuthPopup = signal<ComponentRef<EntryFirebaseAuthPopupComponent> | null>(null);
@@ -262,6 +272,28 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   };
 
   constructor() {
+    effect(onCleanup => {
+      const host = this.privacyDocumentHost();
+      const component = this.documentViewerComponent();
+      if (!host) return;
+      if (!component) { void this.ensureDocumentViewerLoaded(); return; }
+      const ref = untracked(() => host.createComponent(component, { bindings: [
+        inputBinding('config', () => this.entryPrivacyDocumentConfig()),
+        outputBinding<DocumentViewerActionEvent>('action', event => this.onEntryPrivacyDocumentAction(event))
+      ], directives: [{ type: LandingGuideSurfaceDirective, bindings: [
+        inputBinding('appLandingGuideSurface', () => this.entryPrivacyLoading || this.entryConsentViewOnly ? null : 'landing.consent')
+      ] }] }));
+      onCleanup(() => ref.destroy());
+    });
+    effect(onCleanup => {
+      const host = this.termsDocumentHost();
+      const component = this.documentViewerComponent();
+      if (!host || !component) return;
+      const ref = untracked(() => host.createComponent(component, {
+        bindings: [inputBinding('config', () => this.entryTermsDocumentConfig())]
+      }));
+      onCleanup(() => ref.destroy());
+    });
     this.initializeEntryFlow();
     effect(() => {
       if (!this.appSetupStore.privacyRequested()) return;
@@ -431,6 +463,15 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       }).finally(() => { this.firebaseAuthPopupLoad = null; });
   }
 
+  private ensureDocumentViewerLoaded(): Promise<void> {
+    if (this.documentViewerComponent()) return Promise.resolve();
+    return this.documentViewerLoad ??= this.popupAdapters.load(POPUP_ADAPTER.DOCUMENT_VIEWER)
+      .then(module => {
+        if (!this.destroyRef.destroyed) this.documentViewerComponent.set(module.DocumentViewerComponent);
+      }).catch(error => this.popupErrors.handleError(error))
+      .finally(() => { this.documentViewerLoad = null; });
+  }
+
   private ensureOnboardingPopupLoaded(): Promise<void> {
     if (this.onboardingPopup()) return Promise.resolve();
     return this.onboardingPopupLoad ??= import('../profile-onboarding-popup/profile-onboarding-popup.component')
@@ -542,6 +583,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   protected openEntryTermsPopup(): void {
     markLandingDebug('terms.open');
+    void this.ensureDocumentViewerLoaded();
     this.showEntryTermsPopup = true;
     void this.termsPolicy.prepareOpen();
   }

@@ -24,9 +24,23 @@
     [items]="loadingAvatarItems()"></app-menu>
 }
 
-<app-setup-popup></app-setup-popup>
+@if (setupPopupComponent(); as component) {
+  <ng-container *ngComponentOutlet="component"></ng-container>
+} @else if (setup.isOpen()) {
+  <app-popup [model]="{ title: 'app.setup.title', size: 'small', height: 'auto', mobilePresentation: 'fullscreen' }"
+    (close)="setup.close()">
+    <app-indicator kind="load-ring" state="loading"></app-indicator>
+  </app-popup>
+}
 
-<app-payment-authorization-popup></app-payment-authorization-popup>
+@if (paymentPopupComponent(); as component) {
+  <ng-container *ngComponentOutlet="component"></ng-container>
+} @else if (paymentAuthorization.waitingSurface()) {
+  <app-popup [model]="{ title: 'payment.authorization.waiting.title', size: 'wide', height: 'full', closeOnBackdrop: false }"
+    (close)="paymentAuthorization.closeWaitingSurface()">
+    <app-indicator kind="load-ring" state="loading"></app-indicator>
+  </app-popup>
+}
 
 @if (routeWarmupVisible && !gameStartupVisible) {
   <section

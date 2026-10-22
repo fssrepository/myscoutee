@@ -45,9 +45,13 @@ function fixture({ localAdapters = false, httpEntryAdapters = false, publicHelp 
   if (publicHelp) {
     files['chunk-GUIDE001.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__guideLoaded=true; export const guide={service};`;
     files['chunk-DOC00001.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__documentLoaded=true; export const document={service};`;
-    files['chunk-ENTRY001.js'] += ` export const openGuide=()=>import('./chunk-GUIDE001.js'); export const openDocument=()=>import('./chunk-DOC00001.js');`;
+    files['chunk-AUTHUI01.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__loginLoaded=true; export const login={service};`;
+    files['chunk-DEMOUI01.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__demoSelectorLoaded=true; export const demo={service};`;
+    files['chunk-ENTRY001.js'] += ` export const openGuide=()=>import('./chunk-GUIDE001.js'); export const openDocument=()=>import('./chunk-DOC00001.js'); export const openLogin=()=>import('./chunk-AUTHUI01.js'); export const openDemo=()=>import('./chunk-DEMOUI01.js');`;
     entries['chunk-GUIDE001.js'] = 'src/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.ts';
     entries['chunk-DOC00001.js'] = 'src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts';
+    entries['chunk-AUTHUI01.js'] = 'src/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.ts';
+    entries['chunk-DEMOUI01.js'] = 'src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts';
   }
   for (const [name, source] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), source);
   fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify({ outputs: Object.fromEntries(
@@ -69,16 +73,25 @@ test('opening the public guide does not evaluate the explanation document or wor
     const guide = await entry.openGuide();
     assert.equal(guide.guide.service, app.App.service);
     assert.equal(globalThis.__guideLoaded, true);
+    assert.equal(globalThis.__loginLoaded, undefined);
+    assert.equal(globalThis.__demoSelectorLoaded, undefined);
     assert.equal(globalThis.__documentLoaded, undefined);
     assert.equal(globalThis.__httpAdaptersLoaded, undefined);
     assert.equal(globalThis.__localAdaptersLoaded, undefined);
     const document = await entry.openDocument();
     assert.equal(document.document.service, app.App.service);
     assert.equal(globalThis.__documentLoaded, true);
+    const login = await entry.openLogin();
+    assert.equal(login.login.service, app.App.service);
+    assert.equal(globalThis.__loginLoaded, true);
+    assert.equal(globalThis.__demoSelectorLoaded, true);
+    assert.equal((await entry.openDemo()).demo.service, app.App.service);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     delete globalThis.__guideLoaded;
     delete globalThis.__documentLoaded;
+    delete globalThis.__loginLoaded;
+    delete globalThis.__demoSelectorLoaded;
     delete globalThis.__startupBundleProof;
   }
 });

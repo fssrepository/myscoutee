@@ -117,9 +117,9 @@ describe('PopupAdapterProxyService', () => {
     expect(loader).toHaveBeenCalledOnce();
   });
 
-  it('loads public guide surfaces without starting workspace adapters', async () => {
+  it('loads public surfaces without starting workspace adapters', async () => {
     const proxy = TestBed.inject(PopupAdapterProxyService);
-    for (const key of [POPUP_ADAPTER.EXPLANATION_GUIDE, POPUP_ADAPTER.EXPLANATION_DOCUMENT]) {
+    for (const key of [POPUP_ADAPTER.EXPLANATION_GUIDE, POPUP_ADAPTER.EXPLANATION_DOCUMENT, POPUP_ADAPTER.APP_SETUP, POPUP_ADAPTER.PAYMENT_AUTHORIZATION, POPUP_ADAPTER.DOCUMENT_VIEWER]) {
       const module = {} as any;
       const loader = vi.spyOn(POPUP_ADAPTER_LOADERS, key).mockResolvedValue(module);
       const first = proxy.load(key);

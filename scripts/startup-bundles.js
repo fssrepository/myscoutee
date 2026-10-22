@@ -107,10 +107,9 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           // keep transport constructors independent of the controls they serve.
           for (const [phase, roots] of [
             ['entry-popups', [
-              findEntry('src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'),
-              findEntry('src/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.ts'),
-              findEntry('src/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.ts')
+              findEntry('src/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.ts')
             ].filter(Boolean)],
+            ['public-dialogs', popupModuleGroups.publicDialogs.map(findEntry).filter(Boolean)],
             ['workspace-adapters', localAdaptersInStartup ? [] : [findEntry(workspaceAdapters)].filter(Boolean)],
             ['member-controls', controls]
           ]) {
@@ -128,11 +127,12 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
             ['bootstrap', new Set(['bootstrap'])],
             ['landing', new Set(['bootstrap', 'landing'])],
             ['entry-popups', new Set(['bootstrap', 'landing', 'entry-popups'])],
-            ['workspace-adapters', new Set(['bootstrap', 'landing', 'entry-popups', 'workspace-adapters'])],
-            ['member-controls', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls'])],
-            ['member-shared', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared'])],
-            ['member-home', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-home'])],
-            ['member-menu', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-menu'])]
+            ['public-dialogs', new Set(['bootstrap', 'landing', 'entry-popups', 'public-dialogs'])],
+            ['workspace-adapters', new Set(['bootstrap', 'landing', 'public-dialogs', 'entry-popups', 'workspace-adapters'])],
+            ['member-controls', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls'])],
+            ['member-shared', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared'])],
+            ['member-home', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-home'])],
+            ['member-menu', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-menu'])]
           ];
           const visiting = new Set();
           const aliasOnly = info => info?.ast.body.every(node =>

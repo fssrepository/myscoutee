@@ -1,4 +1,11 @@
 {
+  "publicDialogs": [
+    "src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts",
+    "src/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.ts",
+    "src/app/shared/ui/components/app-setup-popup/app-setup-popup.component.ts",
+    "src/app/shared/ui/components/document-viewer/document-viewer.component.ts",
+    "src/app/shared/ui/components/payment-authorization-popup/payment-authorization-popup.component.ts"
+  ],
   "activityList": [
     "src/app/activity/components/activities-popup/activities-popup.component.ts"
   ],
