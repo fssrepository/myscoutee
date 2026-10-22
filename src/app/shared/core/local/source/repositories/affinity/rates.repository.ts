@@ -20,7 +20,7 @@ import { LocalMemoryDb } from '../../../../common/app.db';
 import { RateOutboxRepository } from '../../../../base/repositories/affinity/rate-outbox.repository';
 import { compareActivityRateItems } from '../../../../base/activity-rate-order';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../entity/common/activity.entity';
-import { LocalUserRatesMapper } from '../../mappers';
+import { LocalUserRatesMapper } from '../../mappers/affinity/rate.mapper';
 
 @Injectable({
   providedIn: 'root'

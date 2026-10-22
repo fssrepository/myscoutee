@@ -30,8 +30,9 @@ import {
   RateOutboxService
 } from '../affinity/rate-outbox.service';
 import { AppRuntimeStore } from '../../../../ui/context/stores/app/app-runtime.store';
+import { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from '../../../common/constants';
 
-export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
+export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from '../../../common/constants';
 
 interface UserGameCardsStackState {
   filterCount: number | null;

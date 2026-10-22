@@ -5,7 +5,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { AppUtils } from '../../../core/base/app-utils';
 import { DOCUMENT_VIEWER_HEADER_PALETTES } from '../../../core/common/help-center-options';
-import { HelpCenterService, I18nService } from '../../../core';
+import { HelpCenterService } from '../../../core/base/services/help/help-center.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
 import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import {

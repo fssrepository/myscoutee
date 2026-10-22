@@ -2,6 +2,8 @@
 export const AUTH_MODES = ['selector', 'firebase'] as const;
 export type AuthMode = typeof AUTH_MODES[number];
 
+export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
+
 // Activity
 export const ACTIVITY_MEMBER_STATUSES = ['pending', 'accepted', 'disqualified', 'removed', 'deleted', 'blocked'] as const;
 export type ActivityMemberStatus = typeof ACTIVITY_MEMBER_STATUSES[number];

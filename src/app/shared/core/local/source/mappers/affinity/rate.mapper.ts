@@ -3,7 +3,7 @@ import type {
   DtoRecordMapper,
   NullableRecordToDtoMapper
 } from '../common/mapper.types';
-import { BaseUserRatesMapper, type UserRateRecordDTO } from '../../../../base/mappers';
+import { BaseUserRatesMapper, type UserRateRecordDTO } from '../../../../base/mappers/affinity/rate.mapper';
 import type { ActivityRateDTO, UserGameFilterPreferencesDto } from '../../../../contracts/common/activity.interface';
 import type { UserFilterPreferencesRecord, UserRateRecord } from '../../entity/affinity/rate.entity';
 

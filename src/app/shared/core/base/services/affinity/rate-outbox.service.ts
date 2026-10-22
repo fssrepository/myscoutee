@@ -12,7 +12,7 @@ import {
   BaseUserRatesMapper,
   type UserRateGameCardPairRecordDTO,
   type UserRateGameCardRecordDTO
-} from '../../mappers';
+} from '../../mappers/affinity/rate.mapper';
 import { RateOutboxRepository } from '../../repositories/affinity/rate-outbox.repository';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
