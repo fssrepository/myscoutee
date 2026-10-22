@@ -52,7 +52,10 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
     return entry;
   }
   const main = entryFile('src/main.ts');
-  const adapterEntry = `src/app/shared/core/base/${localAdaptersInStartup ? 'local' : 'http'}-adapters.ts`;
+  const workspaceAdapters = 'src/app/shared/core/base/http-adapters.ts';
+  const publicAdapters = 'src/app/shared/core/base/http-entry-adapters.ts';
+  const adapterEntry = localAdaptersInStartup ? 'src/app/shared/core/base/local-adapters.ts'
+    : findEntry(publicAdapters) ? publicAdapters : workspaceAdapters;
   const hasAdapterEntry = Object.values(metadata.outputs).some(info =>
     info.entryPoint?.replaceAll('\\', '/').endsWith(adapterEntry));
   const landingEntries = [...LANDING_ENTRIES,
@@ -95,18 +98,47 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           for (const module of getModuleIds()) {
             if (bootstrap.has(module)) loadingGroups.set(module, 'bootstrap');
             else if (landing.has(module)) loadingGroups.set(module, 'landing');
-            else if (home.has(module) && menu.has(module)) loadingGroups.set(module, 'member-shared');
+          }
+          const controls = Object.entries(metadata.outputs).filter(([name, info]) => name.endsWith('.js')
+            && Object.keys(info.inputs ?? {}).some(source => /\/components-(?:forms|date)\.mjs$/.test(source)
+              || source.includes('/components-core-route-input-popup.component-')))
+            .map(([name]) => outputFile(name));
+          // Keep the first public demo independent of the workspace shell, and
+          // keep transport constructors independent of the controls they serve.
+          for (const [phase, roots] of [
+            ['workspace-adapters', localAdaptersInStartup ? [] : [findEntry(workspaceAdapters)].filter(Boolean)],
+            ['entry-popups', [
+              findEntry('src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'),
+              findEntry('src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts'),
+              findEntry('src/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.ts')
+            ].filter(Boolean)],
+            ['member-controls', controls]
+          ]) {
+            for (const module of closure(roots, getModuleInfo)) {
+              if (!loadingGroups.has(module)) loadingGroups.set(module, phase);
+            }
+          }
+          for (const module of getModuleIds()) {
+            if (loadingGroups.has(module)) continue;
+            if (home.has(module) && menu.has(module)) loadingGroups.set(module, 'member-shared');
             else if (home.has(module)) loadingGroups.set(module, 'member-home');
             else if (menu.has(module)) loadingGroups.set(module, 'member-shared');
           }
           const available = [
             ['bootstrap', new Set(['bootstrap'])],
             ['landing', new Set(['bootstrap', 'landing'])],
-            ['member-shared', new Set(['bootstrap', 'landing', 'member-shared'])],
-            ['member-home', new Set(['bootstrap', 'landing', 'member-shared', 'member-home'])],
-            ['member-menu', new Set(['bootstrap', 'landing', 'member-shared', 'member-menu'])]
+            ['workspace-adapters', new Set(['bootstrap', 'landing', 'workspace-adapters'])],
+            ['entry-popups', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups'])],
+            ['member-controls', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls'])],
+            ['member-shared', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared'])],
+            ['member-home', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-home'])],
+            ['member-menu', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-menu'])]
           ];
           const visiting = new Set();
+          const aliasOnly = info => info?.ast.body.every(node =>
+            node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration'
+            || node.type === 'ExportNamedDeclaration' && !node.declaration
+            || node.type === 'EmptyStatement');
           function groupAlias(module) {
             if (loadingGroups.has(module)) return loadingGroups.get(module);
             if (visiting.has(module)) return;
@@ -114,10 +146,7 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
             // Empty and export-only entries add no execution. Keep it with the phase
             // that already owns all its dependencies, rather than fetching a
             // separate wrapper on the first user action. Real lazy code stays lazy.
-            if (!info || !info.ast.body.every(node =>
-              node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration'
-              || node.type === 'ExportNamedDeclaration' && !node.declaration
-              || node.type === 'EmptyStatement')) return;
+            if (!aliasOnly(info)) return;
             visiting.add(module);
             const dependencies = info.importedIds.map(groupAlias);
             visiting.delete(module);
@@ -170,7 +199,10 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
             }
           }
           for (const [module, owners] of consumers) {
-            if (owners.size === 1) {
+            // An unresolved export-only entry needs no manual chunk. Let Rollup
+            // merge its namespace into the dependency instead of forcing an
+            // empty JSON/entry wrapper into a separate network request.
+            if (owners.size === 1 && !aliasOnly(getModuleInfo(module))) {
               const [phase] = owners;
               loadingGroups.set(module, `lazy-${path.basename(phase, '.js')}`);
             }

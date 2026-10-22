@@ -1,3 +1,7 @@
+import { LazyBgImageDirective } from '@fssrepository/myscoutee-components';
+import { I18nService } from './shared/core/base/services/localization/i18n.service';
+import { LandingContentService } from './shared/core/base/services/content/landing-content.service';
+import { SessionService } from './shared/core/base/services/accounts/session.service';
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../environments/environment';
@@ -7,13 +11,19 @@ import { ROUTE_CONFIG } from './shared/core/base/config';
 import { prepareDemoFailover } from './shared/core/common/demo-failover';
 import * as adapters from './shared/core/base/adapter-loaders';
 import { AdapterProxyService } from './shared/core/base/services/platform/adapter-proxy.service';
-import { appConfig, loadAppConfig } from './app.config';
+import { appConfig, initializeApplication, loadAppConfig } from './app.config';
 
 describe('Bootstrap adapter selection', () => {
   const originalEnvironment = { ...environment };
   const originalEntries = [...ROUTE_CONFIG.entries];
+  const originalUrl = location.href;
+  let base: HTMLBaseElement;
 
   beforeEach(() => {
+    history.replaceState(null, '', '/');
+    base = document.createElement('base');
+    base.href = '/';
+    document.head.prepend(base);
     vi.spyOn(adapters.ADAPTER_MODE_LOADERS, 'local');
     vi.spyOn(adapters.ADAPTER_MODE_LOADERS, 'http');
   });
@@ -23,6 +33,8 @@ describe('Bootstrap adapter selection', () => {
     ROUTE_CONFIG.entries = [...originalEntries];
     document.getElementById('myscoutee-runtime-status')?.remove();
     localStorage.clear();
+    history.replaceState(null, '', originalUrl);
+    base.remove();
     vi.restoreAllMocks();
     TestBed.resetTestingModule();
   });
@@ -31,7 +43,7 @@ describe('Bootstrap adapter selection', () => {
     Object.assign(environment, productionEnvironment);
     if (kind !== 'anonymous') localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({ kind, userId: 'actor' }));
     expect(await loadAppConfig()).toBe(appConfig);
-    expect(adapters.ADAPTER_MODE_LOADERS.http).toHaveBeenCalledExactlyOnceWith();
+    expect(adapters.ADAPTER_MODE_LOADERS.http).toHaveBeenCalledTimes(kind === 'anonymous' ? 0 : 1);
     expect(adapters.ADAPTER_MODE_LOADERS.local).not.toHaveBeenCalled();
   });
 
@@ -52,8 +64,15 @@ describe('Bootstrap adapter selection', () => {
     Object.assign(environment, productionEnvironment);
     ROUTE_CONFIG.entries = [...originalEntries, { routePrefix: '/auth/demo-users', mode: 'local' }];
     await loadAppConfig();
-    expect(adapters.ADAPTER_MODE_LOADERS.http).toHaveBeenCalledExactlyOnceWith();
+    expect(adapters.ADAPTER_MODE_LOADERS.http).not.toHaveBeenCalled();
     expect(adapters.ADAPTER_MODE_LOADERS.local).toHaveBeenCalledExactlyOnceWith();
+  });
+
+  it('prepares the full HTTP side for direct workspace navigation without a session', async () => {
+    Object.assign(environment, productionEnvironment);
+    history.replaceState(null, '', '/game');
+    await loadAppConfig();
+    expect(adapters.ADAPTER_MODE_LOADERS.http).toHaveBeenCalledExactlyOnceWith();
   });
 
   it('preserves an explicit HTTP route in a standalone profile', async () => {
@@ -77,5 +96,93 @@ describe('Bootstrap adapter selection', () => {
     await loadAppConfig();
     expect(adapters.ADAPTER_MODE_LOADERS.local).toHaveBeenCalledExactlyOnceWith();
     expect(adapters.ADAPTER_MODE_LOADERS.http).not.toHaveBeenCalled();
+  });
+});
+
+describe('application startup requests', () => {
+  let originalMode: 'local' | 'http';
+  let originalUrl: string;
+  let base: HTMLBaseElement;
+  let finishTranslations: () => void;
+  let finishContent: (state: { slides: { imageUrl: string }[] }) => void;
+  const initialize = vi.fn();
+  const loadOnce = vi.fn();
+  const currentSession = vi.fn();
+
+  beforeEach(() => {
+    originalMode = environment.activitiesDataSource;
+    originalUrl = location.href;
+    environment.activitiesDataSource = 'http';
+    history.replaceState(null, '', '/');
+    base = document.createElement('base');
+    base.href = '/';
+    document.head.prepend(base);
+    initialize.mockReset().mockReturnValue(new Promise<void>(resolve => finishTranslations = resolve));
+    loadOnce.mockReset().mockReturnValue(new Promise(resolve => finishContent = resolve));
+    currentSession.mockReset().mockReturnValue(null);
+    vi.spyOn(LazyBgImageDirective, 'preloadImageUrl').mockResolvedValue(true);
+    TestBed.configureTestingModule({ providers: [
+      { provide: I18nService, useValue: { initialize } },
+      { provide: LandingContentService, useValue: { loadOnce } },
+      { provide: SessionService, useValue: { currentSession } }
+    ] });
+  });
+
+  afterEach(() => {
+    environment.activitiesDataSource = originalMode;
+    history.replaceState(null, '', originalUrl);
+    base.remove();
+    vi.restoreAllMocks();
+    TestBed.resetTestingModule();
+  });
+
+  it('starts the shared landing request and actual first image before translations finish', async () => {
+    let ready = false;
+    const startup = TestBed.runInInjectionContext(initializeApplication).then(() => ready = true);
+    expect(loadOnce).toHaveBeenCalledTimes(1);
+    finishContent({ slides: [{ imageUrl: '/configured-first.webp' }, { imageUrl: '/later.webp' }] });
+    await vi.waitFor(() => expect(LazyBgImageDirective.preloadImageUrl)
+      .toHaveBeenCalledWith('/configured-first.webp', { fetchPriority: 'high' }));
+    expect(LazyBgImageDirective.preloadImageUrl).toHaveBeenCalledTimes(1);
+    expect(ready).toBe(false);
+    finishTranslations();
+    await startup;
+    expect(ready).toBe(true);
+  });
+
+  it('does not hold translated startup for the image to finish', async () => {
+    vi.mocked(LazyBgImageDirective.preloadImageUrl).mockReturnValue(new Promise(() => {}));
+    const startup = TestBed.runInInjectionContext(initializeApplication);
+    finishContent({ slides: [{ imageUrl: '/configured-first.webp' }] });
+    finishTranslations();
+    await startup;
+  });
+
+  it('leaves a failed landing request to the routed loading/error flow', async () => {
+    loadOnce.mockRejectedValueOnce(new Error('offline'));
+    const startup = TestBed.runInInjectionContext(initializeApplication);
+    finishTranslations();
+    await startup;
+    expect(LazyBgImageDirective.preloadImageUrl).not.toHaveBeenCalled();
+  });
+
+  it.each(['/game', '/admin', '/operator'])('does not fetch landing content for %s', path => {
+    history.replaceState(null, '', path);
+    TestBed.runInInjectionContext(initializeApplication);
+    expect(initialize).toHaveBeenCalledTimes(1);
+    expect(loadOnce).not.toHaveBeenCalled();
+  });
+
+  it('keeps standalone startup with its existing local loading flow', () => {
+    environment.activitiesDataSource = 'local';
+    TestBed.runInInjectionContext(initializeApplication);
+    expect(initialize).toHaveBeenCalledTimes(1);
+    expect(loadOnce).not.toHaveBeenCalled();
+  });
+
+  it('does not load landing content when the entry guard will redirect a retained session', () => {
+    currentSession.mockReturnValue({ kind: 'demo', userId: 'retained' });
+    TestBed.runInInjectionContext(initializeApplication);
+    expect(loadOnce).not.toHaveBeenCalled();
   });
 });

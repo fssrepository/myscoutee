@@ -1,5 +1,5 @@
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
-import { APP_STATIC_DATA } from '../../../common/app-static-data';
+import { ACTIVITY_MEMBER_MET_PLACES, ACTIVITY_MEMBER_DEFAULTS } from '../../../common/constants';
 import { AppUtils } from '../../app-utils';
 import type { UserDto } from '../../../contracts/accounts/user.interface';
 import type {
@@ -52,11 +52,11 @@ export class ActivityMembersBuilder {
     rowKey: string,
     activeUserId: string,
     defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean },
-    metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
+    metPlaces: string[] = ACTIVITY_MEMBER_MET_PLACES
   ): ActivityMemberDTO {
     const seed = AppUtils.hashText(`${rowKey}:${user.id}`);
     const metAt = UiDateUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
-    const place = metPlaces.length > 0 ? metPlaces[seed % metPlaces.length] : APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere;
+    const place = metPlaces.length > 0 ? metPlaces[seed % metPlaces.length] : ACTIVITY_MEMBER_DEFAULTS.forcedMetWhere;
     return {
       id: `${rowKey}:${user.id}`,
       userId: user.id,

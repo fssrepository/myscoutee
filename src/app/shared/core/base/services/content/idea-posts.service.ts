@@ -366,6 +366,8 @@ export class IdeaPostsService extends BaseRouteModeService {
     return normalized === 'assets/logo/heart.webp' || normalized === 'assets/logo/heart.png';
   }
 
+  private dateFormatter?: Intl.DateTimeFormat;
+
   private ideaDateLabel(
     post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null,
     fallback: string
@@ -374,11 +376,12 @@ export class IdeaPostsService extends BaseRouteModeService {
     if (!Number.isFinite(parsed)) {
       return this.i18n.translate(fallback);
     }
-    return new Intl.DateTimeFormat(undefined, {
+    this.dateFormatter ??= new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    }).format(new Date(parsed));
+    });
+    return this.dateFormatter.format(parsed);
   }
 
   private adminPostStatusLabel(post: Pick<IdeaPostDto, 'published' | 'trashed'>): string {

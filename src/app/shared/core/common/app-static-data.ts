@@ -1,7 +1,14 @@
+import { ASSET_TYPE_LABELS, ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE as ASSET_CATEGORY_OPTIONS_BY_TYPE, ACTIVITY_MEMBER_MET_PLACES, ACTIVITY_MEMBER_DEFAULTS } from './constants';
+import { DEFAULT_HELP_CENTER_DESCRIPTION_HU, DEFAULT_TERMS_CENTER_DESCRIPTION_HU, DEFAULT_EXPLANATION_HOME_DESCRIPTION_HU } from './help-center-options';
 import SUPPORTED_CONTENT_LANGUAGES from './content-languages.json';
 import {
+  CONTENT_LANGUAGES, HELP_CENTER_HEADER_COLORS, HELP_CENTER_HEADER_COLOR_OPTIONS,
+  DOCUMENT_VIEWER_HEADER_PALETTES, EXPLAINABLE_SURFACES, DEFAULT_HELP_CENTER_DESCRIPTION,
+  DEFAULT_PRIVACY_CENTER_DESCRIPTION, DEFAULT_TERMS_CENTER_DESCRIPTION,
+  DEFAULT_EXPLANATION_HOME_DESCRIPTION
+} from './help-center-options';
+import {
   HOROSCOPE_META_BY_SIGN,
-  type GuideHeaderColor as HelpCenterHeaderColor,
   type GuideRevision as HelpCenterRevisionDto,
   type GuideSection as HelpCenterSectionDto
 } from '@fssrepository/myscoutee-components';
@@ -17,13 +24,11 @@ import type {
   TournamentLeaderboardType
 } from '../contracts';
 
-import type { ExplainableSurface } from '../contracts';
 import type {
   FeedbackOption,
   FeedbackTraitOption
 } from '../../ui/converters/feedback/feedback.model';
 import {
-  ASSET_CATEGORY_OPTIONS_BY_TYPE as CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE,
   ASSET_FILTER_TYPES,
   ASSET_FILTER_TICKET,
   ASSET_TYPE_ACCOMMODATION,
@@ -397,153 +402,11 @@ const LANGUAGE_SUGGESTIONS = [
   'Korean',
   'Mandarin'
 ];
-const CONTENT_LANGUAGES = SUPPORTED_CONTENT_LANGUAGES;
-const HELP_CENTER_HEADER_COLORS: readonly HelpCenterHeaderColor[] = [
-  'amber',
-  'blue',
-  'green',
-  'rose',
-  'violet',
-  'slate'
-];
-const HELP_CENTER_HEADER_COLOR_OPTIONS: Array<{ id: HelpCenterHeaderColor; label: string }> = [
-  { id: 'amber', label: 'Amber' },
-  { id: 'blue', label: 'Blue' },
-  { id: 'green', label: 'Green' },
-  { id: 'rose', label: 'Rose' },
-  { id: 'violet', label: 'Violet' },
-  { id: 'slate', label: 'Slate' }
-];
-const DOCUMENT_VIEWER_HEADER_PALETTES = [
-  'amber',
-  'blue',
-  'green',
-  'rose',
-  'violet',
-  'slate',
-  'teal'
-] as const;
-const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
-  { key: 'admin.navigation', label: 'Administration menu', icon: 'menu', owner: 'navigator', order: 148, enabled: true, isSystem: true },
-  { key: 'operator.navigation', label: 'Operator menu', icon: 'menu', owner: 'navigator', order: 149, enabled: true, isSystem: true },
-  { key: 'operator.home', label: 'Operator workspace', icon: 'help_outline', owner: 'route', order: 150, enabled: true, isSystem: true },
-  { key: 'operator.updates', label: 'Updates', icon: 'help_outline', owner: 'popup', order: 151, enabled: true, isSystem: true },
-  { key: 'operator.registration', label: 'Registry connection', icon: 'help_outline', owner: 'popup', order: 152, enabled: true, isSystem: true },
-  { key: 'operator.claim', label: 'Operator claim', icon: 'help_outline', owner: 'popup', order: 153, enabled: true, isSystem: true },
-  { key: 'operator.configuration', label: 'Deployment configuration', icon: 'help_outline', owner: 'popup', order: 154, enabled: true, isSystem: true },
-  { key: 'operator.revenue', label: 'Revenue', icon: 'help_outline', owner: 'popup', order: 155, enabled: true, isSystem: true },
-  { key: 'operator.community', label: 'Operator community', icon: 'help_outline', owner: 'popup', order: 156, enabled: true, isSystem: true },
-  { key: 'operator.deployments', label: 'Operator deployments', icon: 'help_outline', owner: 'popup', order: 157, enabled: true, isSystem: true },
-  { key: 'admin.home', label: 'Administration', icon: 'help_outline', owner: 'route', order: 158, enabled: true, isSystem: true },
-  { key: 'admin.content-moderation', label: 'Content moderation', icon: 'help_outline', owner: 'popup', order: 159, enabled: true, isSystem: true },
-  { key: 'admin.moderation-settings', label: 'Moderation settings', icon: 'help_outline', owner: 'popup', order: 160, enabled: true, isSystem: true },
-  { key: 'admin.reports', label: 'Reports', icon: 'help_outline', owner: 'popup', order: 161, enabled: true, isSystem: true },
-  { key: 'admin.report-detail', label: 'Review report', icon: 'help_outline', owner: 'popup', order: 162, enabled: true, isSystem: true },
-  { key: 'admin.blocked-users', label: 'Blocked accounts', icon: 'help_outline', owner: 'popup', order: 163, enabled: true, isSystem: true },
-  { key: 'admin.feedback', label: 'Feedback', icon: 'help_outline', owner: 'popup', order: 164, enabled: true, isSystem: true },
-  { key: 'admin.feedback-detail', label: 'Review feedback', icon: 'help_outline', owner: 'popup', order: 165, enabled: true, isSystem: true },
-  { key: 'admin.chat-review', label: 'Chat review', icon: 'help_outline', owner: 'popup', order: 166, enabled: true, isSystem: true },
-  { key: 'admin.item-preview', label: 'Reported item', icon: 'help_outline', owner: 'popup', order: 167, enabled: true, isSystem: true },
-  { key: 'admin.help-editor', label: 'Content editor', icon: 'help_outline', owner: 'popup', order: 168, enabled: true, isSystem: true },
-  { key: 'admin.idea-editor', label: 'Articles', icon: 'help_outline', owner: 'popup', order: 169, enabled: true, isSystem: true },
-  { key: 'admin.article-view', label: 'Article preview', icon: 'help_outline', owner: 'popup', order: 170, enabled: true, isSystem: true },
-  { key: 'admin.article-edit', label: 'Edit article', icon: 'help_outline', owner: 'popup', order: 171, enabled: true, isSystem: true },
-  { key: 'admin.notifications', label: 'Jobs and notifications', icon: 'help_outline', owner: 'popup', order: 172, enabled: true, isSystem: true },
-  { key: 'admin.process-detail', label: 'Job details', icon: 'help_outline', owner: 'popup', order: 173, enabled: true, isSystem: true },
-  { key: 'admin.schedule-edit', label: 'Schedule', icon: 'help_outline', owner: 'popup', order: 174, enabled: true, isSystem: true },
-  { key: 'admin.job-parameter', label: 'Job parameter', icon: 'help_outline', owner: 'popup', order: 175, enabled: true, isSystem: true },
-  { key: 'admin.params', label: 'Application parameters', icon: 'help_outline', owner: 'popup', order: 176, enabled: true, isSystem: true },
-  { key: 'admin.parameter-edit', label: 'Edit parameter', icon: 'help_outline', owner: 'popup', order: 177, enabled: true, isSystem: true },
-  { key: 'admin.parameter-history', label: 'Parameter history', icon: 'help_outline', owner: 'popup', order: 178, enabled: true, isSystem: true },
-  { key: 'admin.stats', label: 'Statistics', icon: 'help_outline', owner: 'popup', order: 179, enabled: true, isSystem: true },
-  { key: 'admin.graph-help', label: 'Chart explanation', icon: 'help_outline', owner: 'popup', order: 180, enabled: true, isSystem: true },
-  { key: 'admin.affinity-graph', label: 'Affinity graph', icon: 'help_outline', owner: 'popup', order: 181, enabled: true, isSystem: true },
-  { key: 'admin.monitoring', label: 'Monitoring', icon: 'help_outline', owner: 'popup', order: 182, enabled: true, isSystem: true },
-  { key: 'admin.payment-simulator', label: 'Payment simulator', icon: 'help_outline', owner: 'popup', order: 183, enabled: true, isSystem: true },
-  { key: 'admin.payment-authorizations', label: 'Payment authorizations', icon: 'help_outline', owner: 'popup', order: 184, enabled: true, isSystem: true },
-  { key: 'landing.home', label: 'Getting started', icon: 'help_outline', owner: 'route', order: 1, enabled: true },
-  { key: 'landing.guide', label: 'Guide button introduction', icon: 'tips_and_updates', owner: 'route', order: 1.1, enabled: true },
-  { key: 'landing.consent', label: 'Privacy consent', icon: 'policy', owner: 'popup', order: 1.2, enabled: true },
-  { key: 'landing.setup', label: 'Device setup', icon: 'help_outline', owner: 'popup', order: 2, enabled: true },
-  { key: 'landing.demo', label: 'Choose a demo identity', icon: 'help_outline', owner: 'popup', order: 4, enabled: true },
-  { key: 'landing.auth', label: 'Sign in or register', icon: 'help_outline', owner: 'popup', order: 5, enabled: true },
-  { key: 'landing.registration', label: 'Complete your profile', icon: 'help_outline', owner: 'popup', order: 6, enabled: true },
 
-  { key: 'navigation.menu', label: 'Avatar menu', icon: 'menu', owner: 'popup', order: 9, enabled: true },
-  { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
-  { key: 'home.filters', label: 'Profile filters', icon: 'filter_alt', owner: 'popup', order: 11, enabled: true },
-  { key: 'notifications', label: 'Notifications', icon: 'notifications', owner: 'popup', order: 15, enabled: true },
-  { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
-  { key: 'chats', label: 'Chats', icon: 'forum', owner: 'popup', order: 25, enabled: true },
-  { key: 'chat.call', label: 'Chat call', icon: 'call', owner: 'popup', order: 25.1, enabled: true },
-  { key: 'chat.call.volume', label: 'Call volume and video reception', icon: 'volume_up', owner: 'popup', order: 25.2, enabled: true },
-  { key: 'payment.history', label: 'Payment history', icon: 'receipt_long', owner: 'popup', order: 27, enabled: true },
-  { key: 'payment.cash.receipt', label: 'Cash receipt', icon: 'payments', owner: 'popup', order: 27.5, enabled: true },
-  { key: 'profile.editor', label: 'Profile editor', icon: 'manage_accounts', owner: 'popup', order: 30, enabled: true },
-  { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
-  { key: 'profile.impressions', label: 'Profile impressions', icon: 'psychology', owner: 'popup', order: 42, enabled: true },
-  { key: 'profile.integrations', label: 'Integrations', icon: 'hub', owner: 'popup', order: 43, enabled: true },
-  { key: 'profile.mcp-authorization', label: 'Connect an AI client', icon: 'help_outline', owner: 'popup', order: 43.3, enabled: true },
-  { key: 'profile.mcp-advanced', label: 'Manual MCP clients', icon: 'help_outline', owner: 'popup', order: 43.4, enabled: true },
-  { key: 'profile.mcp-details', label: 'MCP connection details', icon: 'help_outline', owner: 'popup', order: 43.5, enabled: true },
-  { key: 'community.case.board', label: 'Case board', icon: 'help_outline', owner: 'popup', order: 62.1, enabled: true },
-  { key: 'community.case.board.task', label: 'Board task', icon: 'help_outline', owner: 'popup', order: 62.2, enabled: true },
-  { key: 'community.case.quotations', label: 'Case quotations', icon: 'help_outline', owner: 'popup', order: 62.6, enabled: true },
-  { key: 'community.case.quotation.editor', label: 'Quotation details', icon: 'help_outline', owner: 'popup', order: 62.7, enabled: true },
-  { key: 'feedback.evaluation', label: 'Feedback', icon: 'help_outline', owner: 'popup', order: 75.1, enabled: true },
-  { key: 'community.case.board.offers', label: 'Link quotations', icon: 'help_outline', owner: 'popup', order: 62.4, enabled: true },
-  { key: 'community.case.board.dependencies', label: 'Task dependencies', icon: 'help_outline', owner: 'popup', order: 62.5, enabled: true },
-  { key: 'policies.list', label: 'Terms', icon: 'policy', owner: 'popup', order: 68.1, enabled: true },
-  { key: 'policies.editor', label: 'Term details', icon: 'policy', owner: 'popup', order: 68.2, enabled: true },
-  { key: 'profile.integration-help', label: 'API / MCP help', icon: 'help_outline', owner: 'popup', order: 43.2, enabled: true },
-  { key: 'profile.integration-access', label: 'Integration permissions', icon: 'admin_panel_settings', owner: 'popup', order: 43.1, enabled: true },
-  { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
-  { key: 'community.services.home', label: 'Service priorities', icon: 'home_repair_service', owner: 'route', order: 71, enabled: true },
-  { key: 'community.services', label: 'Your services', icon: 'home_repair_service', owner: 'popup', order: 72, enabled: true },
-  { key: 'community.service.editor', label: 'Service details and availability', icon: 'home_repair_service', owner: 'popup', order: 73, enabled: true },
-  { key: 'community.service.calendar', label: 'Your appointment calendar', icon: 'home_repair_service', owner: 'popup', order: 74, enabled: true },
-  { key: 'community.case.appointments', label: 'Choose appointment slots', icon: 'home_repair_service', owner: 'popup', order: 75, enabled: true },
-  { key: 'community.home', label: 'Community noticeboard', icon: 'help_outline', owner: 'route', order: 66, enabled: true },
-  { key: 'community.voting', label: 'Announcements and results', icon: 'help_outline', owner: 'popup', order: 67, enabled: true },
-  { key: 'community.announcement.editor', label: 'Prepare the announcement', icon: 'help_outline', owner: 'popup', order: 68, enabled: true },
-  { key: 'work.home', label: 'Choose the opportunity type', icon: 'help_outline', owner: 'route', order: 70, enabled: true },
-  { key: 'community.cases', label: 'Cases', icon: 'home_repair_service', owner: 'popup', order: 60, enabled: true },
-  { key: 'community.tasks', label: 'Scheduled tasks', icon: 'home_repair_service', owner: 'popup', order: 61, enabled: true },
-  { key: 'community.case.editor', label: 'Case details', icon: 'home_repair_service', owner: 'popup', order: 62, enabled: true },
-  { key: 'community.task.editor', label: 'Schedule a task', icon: 'home_repair_service', owner: 'popup', order: 63, enabled: true },
-  { key: 'work.campaigns', label: 'Campaigns', icon: 'campaign', owner: 'popup', order: 64, enabled: true },
-  { key: 'members.select', label: 'Choose members', icon: 'groups', owner: 'popup', order: 64, enabled: true },
-  { key: 'work.campaign.select', label: 'Choose campaign', icon: 'campaign', owner: 'popup', order: 64, enabled: true },
-  { key: 'work.campaign.history', label: 'Campaign interaction history', icon: 'history', owner: 'popup', order: 65, enabled: true },
-  { key: 'work.campaign.editor', label: 'Campaign details', icon: 'campaign', owner: 'popup', order: 65, enabled: true },
-  { key: 'community.groups', label: 'Community groups', icon: 'groups', owner: 'popup', order: 46, enabled: true },
-  { key: 'community.group.editor', label: 'Group editor', icon: 'edit', owner: 'popup', order: 46.5, enabled: true },
-  { key: 'community.group.policy', label: 'Group privacy rules', icon: 'badge', owner: 'popup', order: 46.6, enabled: true },
-  { key: 'community.groups.explore', label: 'Explore groups', icon: 'explore', owner: 'popup', order: 47, enabled: true },
-  { key: 'community.feed', label: 'Photo feed', icon: 'photo_library', owner: 'popup', order: 48, enabled: true },
-  { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: true },
-  { key: 'assets.transport', label: 'Assets · Transport', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
-  { key: 'assets.accommodation', label: 'Assets · Accommodation', icon: 'apartment', owner: 'popup', order: 52, enabled: true },
-  { key: 'assets.supplies', label: 'Assets · Supplies', icon: 'inventory_2', owner: 'popup', order: 53, enabled: true },
-  { key: 'assets.tickets', label: 'Assets · Tickets', icon: 'qr_code_2', owner: 'popup', order: 54, enabled: true },
-  { key: 'assets.explore', label: 'Explore assets', icon: 'travel_explore', owner: 'popup', order: 54.4, enabled: true },
-  { key: 'assets.availability', label: 'Asset availability and requests', icon: 'event_available', owner: 'popup', order: 54.5, enabled: true },
-  { key: 'assets.checkout', label: 'Asset checkout', icon: 'shopping_bag', owner: 'popup', order: 55, enabled: true },
-  { key: 'events', label: 'Events', icon: 'event_note', owner: 'popup', order: 60, enabled: true },
-  { key: 'events.followed', label: 'Followed events', icon: 'rss_feed', owner: 'popup', order: 61, enabled: true },
-  { key: 'event.explore', label: 'Event discovery', icon: 'travel_explore', owner: 'popup', order: 62, enabled: true },
-  { key: 'event.chat', label: 'Event chat', icon: 'forum', owner: 'popup', order: 63, enabled: true },
-  { key: 'members', label: 'Group and asset members', icon: 'groups', owner: 'popup', order: 63.5, enabled: true },
-  { key: 'event.members', label: 'Event members', icon: 'groups', owner: 'popup', order: 64, enabled: true },
-  { key: 'event.checkout', label: 'Event checkout', icon: 'shopping_cart_checkout', owner: 'popup', order: 65, enabled: true },
-  { key: 'event.resources', label: 'Event resources', icon: 'inventory_2', owner: 'popup', order: 66, enabled: true },
-  { key: 'event.subevents', label: 'Event stages and groups', icon: 'account_tree', owner: 'popup', order: 67, enabled: true },
-  { key: 'event.tournament.groups', label: 'Tournament groups', icon: 'leaderboard', owner: 'popup', order: 68, enabled: true },
-  { key: 'event.editor', label: 'Event editor', icon: 'edit_calendar', owner: 'popup', order: 75, enabled: true },
-  { key: 'event.mingle.configuration', label: 'Mingle setup', icon: 'shuffle', owner: 'popup', order: 76, enabled: true },
-  { key: 'feedback', label: 'Event feedback', icon: 'rate_review', owner: 'popup', order: 80, enabled: true },
-  { key: 'feedback.detail', label: 'Event feedback details', icon: 'rate_review', owner: 'popup', order: 81, enabled: true }
-];
+
+
+
+
 const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'public', icon: 'public' },
   { value: 'friends only', icon: 'groups' },
@@ -905,17 +768,8 @@ const PROFILE_SAMPLE_EXPERIENCE_ENTRIES: ExperienceEntry[] = [
 
 const ASSET_TYPE_OPTIONS: AssetType[] = [...ASSET_TYPES];
 const ASSET_FILTER_OPTIONS: AssetFilterType[] = [...ASSET_FILTER_TYPES];
-const ASSET_TYPE_LABELS: Record<AssetFilterType, string> = {
-  [ASSET_TYPE_TRANSPORT]: ASSET_TYPE_TRANSPORT,
-  [ASSET_TYPE_ACCOMMODATION]: ASSET_TYPE_ACCOMMODATION,
-  [ASSET_TYPE_SUPPLIES]: ASSET_TYPE_SUPPLIES,
-  [ASSET_FILTER_TICKET]: ASSET_FILTER_TICKET
-};
-const ASSET_CATEGORY_OPTIONS_BY_TYPE: Record<AssetType, AssetCategory[]> = {
-  [ASSET_TYPE_TRANSPORT]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_TRANSPORT]],
-  [ASSET_TYPE_ACCOMMODATION]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_ACCOMMODATION]],
-  [ASSET_TYPE_SUPPLIES]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_SUPPLIES]]
-};
+
+
 const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
   { key: 'rates', label: 'rates', icon: 'star' },
   { key: 'chats', label: 'chats', icon: 'chat' },
@@ -1252,17 +1106,8 @@ const ACTIVITY_GROUP_LABELS = {
   dateUnavailable: 'Date unavailable',
   weekPrefix: 'Week'
 };
-const ACTIVITY_MEMBER_MET_PLACES = [
-  'City Center Meetup',
-  'Board Game Night',
-  'Coffee Social',
-  'Hiking Group',
-  'Music Event',
-  'Brunch Table'
-];
-const ACTIVITY_MEMBER_DEFAULTS = {
-  forcedMetWhere: 'Event Explore'
-};
+
+
 const REPORT_USER_REASONS = [
   'Harassment',
   'Spam',
@@ -1310,8 +1155,8 @@ const FEEDBACK_LIST_FILTER_META: Record<FeedbackListFilter, { label: string; ico
 };
 const FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: FeedbackListFilter; label: string; icon: string }> =
   FEEDBACK_LIST_FILTERS.map(key => ({ key, ...FEEDBACK_LIST_FILTER_META[key] }));
-const DEFAULT_HELP_CENTER_DESCRIPTION = "Profiles, communities, events, chats and tools: find the relevant topic and follow the steps.";
-const DEFAULT_PRIVACY_CENTER_DESCRIPTION = 'Before continuing, please review and accept how your data is used in MyScoutee.';
+
+
 const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
   {
     "id": "start",
@@ -1436,7 +1281,7 @@ const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
 
 const htmlList = (items: readonly string[]): string => `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
 
-const DEFAULT_TERMS_CENTER_DESCRIPTION = 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.';
+
 
 const TERMS_CENTER_SECTIONS: HelpCenterSectionDto[] = [
   {
@@ -1827,7 +1672,7 @@ const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   "version": 5,
   "title": "MyScoutee súgó",
   "summary": "Gyakorlati útmutató témánként",
-  "description": "Profilok, közösségek, események, beszélgetések és eszközök: válassz témát, és kövesd a lépéseket.",
+  "description": DEFAULT_HELP_CENTER_DESCRIPTION_HU,
   "headerColor": "amber",
   "active": true,
   "id": "help-default-hu-v5",
@@ -1893,7 +1738,7 @@ const DEFAULT_TERMS_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   languageLabel: 'Magyar',
   title: 'Felhasználási feltételek',
   summary: 'Használati feltételek',
-  description: 'Tekintsd át a MyScoutee funkcióira, fiókjaira, eseményeire, csevegéseire és közösségi eszközeire vonatkozó feltételeket.',
+  description: DEFAULT_TERMS_CENTER_DESCRIPTION_HU,
   sections: TERMS_CENTER_SECTIONS_HU
 };
 
@@ -2823,7 +2668,7 @@ const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevisionDto = {
   version: 1,
   title: 'Home cards',
   summary: 'Rate cards, switch groups, and revisit ratings.',
-  description: 'Learn how to rate a card and control which suggestions appear.',
+  description: DEFAULT_EXPLANATION_HOME_DESCRIPTION,
   headerColor: 'violet',
   sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS, 'en'),
   active: true,
@@ -2840,7 +2685,7 @@ const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevisionDto = {
   languageLabel: 'Magyar',
   title: 'Kezdőlap kártyái',
   summary: 'Értékelés, kártyacsoportok és előzmények.',
-  description: 'Itt megtudhatod, hogyan értékelj, és hogyan válaszd ki a megjelenő ajánlásokat.',
+  description: DEFAULT_EXPLANATION_HOME_DESCRIPTION_HU,
   sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS_HU, 'hu')
 };
 

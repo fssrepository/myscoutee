@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../base/app-utils';
-import { APP_STATIC_DATA } from '../../../common/app-static-data';
+import { CONTENT_LANGUAGES, HELP_CENTER_HEADER_COLORS, EXPLAINABLE_SURFACES, DEFAULT_HELP_CENTER_DESCRIPTION, DEFAULT_PRIVACY_CENTER_DESCRIPTION, DEFAULT_TERMS_CENTER_DESCRIPTION, DEFAULT_EXPLANATION_HOME_DESCRIPTION } from '../../../common/help-center-options';
 import type {
   GuideDocumentKind as HelpCenterDocumentKind,
   GuideRevision as HelpCenterRevisionDto,
@@ -305,7 +305,7 @@ export class HttpHelpCenterService {
     if (!normalized) {
       return null;
     }
-    return APP_STATIC_DATA.explainableSurfaces.some(surface => surface.enabled && surface.key === normalized)
+    return EXPLAINABLE_SURFACES.some(surface => surface.enabled && surface.key === normalized)
       ? normalized
       : null;
   }
@@ -330,13 +330,13 @@ export class HttpHelpCenterService {
   private defaultDescription(kind: HelpCenterDocumentKind): string {
     switch (kind) {
       case 'privacy':
-        return APP_STATIC_DATA.defaultPrivacyCenterDescription;
+        return DEFAULT_PRIVACY_CENTER_DESCRIPTION;
       case 'terms':
-        return APP_STATIC_DATA.defaultTermsCenterDescription;
+        return DEFAULT_TERMS_CENTER_DESCRIPTION;
       case 'explanation':
-        return APP_STATIC_DATA.defaultExplanationHomeRevision.description;
+        return DEFAULT_EXPLANATION_HOME_DESCRIPTION;
       default:
-        return APP_STATIC_DATA.defaultHelpCenterDescription;
+        return DEFAULT_HELP_CENTER_DESCRIPTION;
     }
   }
 
@@ -390,7 +390,7 @@ export class HttpHelpCenterService {
   private normalizeAvailableLanguages(value: readonly Partial<ContentLanguage>[] | null | undefined): ContentLanguage[] {
     const source = Array.isArray(value) && value.length > 0
       ? value
-      : APP_STATIC_DATA.contentLanguages;
+      : CONTENT_LANGUAGES;
     const seen = new Set<string>();
     return source
       .map(item => {
@@ -407,6 +407,6 @@ export class HttpHelpCenterService {
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevisionDto['headerColor'] {
-    return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
+    return AppUtils.enumValue(value, HELP_CENTER_HEADER_COLORS, 'amber');
   }
 }

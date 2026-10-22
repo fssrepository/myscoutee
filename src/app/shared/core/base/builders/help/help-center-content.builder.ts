@@ -1,5 +1,5 @@
 import SUPPORTED_CONTENT_LANGUAGES from '../../../common/content-languages.json';
-import { APP_STATIC_DATA } from '../../../common/app-static-data';
+import { DEFAULT_TERMS_CENTER_DESCRIPTION_HU, DEFAULT_EXPLANATION_HOME_DESCRIPTION_HU, DEFAULT_HELP_CENTER_DESCRIPTION_HU, DEFAULT_HELP_CENTER_DESCRIPTION, DEFAULT_PRIVACY_CENTER_DESCRIPTION, DEFAULT_TERMS_CENTER_DESCRIPTION } from '../../../common/help-center-options';
 import type { GuideDocumentKind as HelpCenterDocumentKind } from '@fssrepository/myscoutee-components';
 
 export class HelpCenterContentBuilder {
@@ -43,18 +43,18 @@ export class HelpCenterContentBuilder {
       return kind === 'privacy'
         ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
         : kind === 'terms'
-          ? APP_STATIC_DATA.defaultTermsCenterRevisionsByLang.hu.description
+          ? DEFAULT_TERMS_CENTER_DESCRIPTION_HU
         : kind === 'explanation'
-          ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang.hu.description
-          : APP_STATIC_DATA.defaultHelpCenterRevisionsByLang.hu.description;
+          ? DEFAULT_EXPLANATION_HOME_DESCRIPTION_HU
+          : DEFAULT_HELP_CENTER_DESCRIPTION_HU;
     }
     return kind === 'privacy'
-      ? APP_STATIC_DATA.defaultPrivacyCenterDescription
+      ? DEFAULT_PRIVACY_CENTER_DESCRIPTION
       : kind === 'terms'
-        ? APP_STATIC_DATA.defaultTermsCenterDescription
+        ? DEFAULT_TERMS_CENTER_DESCRIPTION
       : kind === 'explanation'
         ? ''
-        : APP_STATIC_DATA.defaultHelpCenterDescription;
+        : DEFAULT_HELP_CENTER_DESCRIPTION;
   }
 
   static documentLabel(kind: HelpCenterDocumentKind): string {

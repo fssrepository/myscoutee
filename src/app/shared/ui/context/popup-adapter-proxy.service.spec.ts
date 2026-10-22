@@ -3,8 +3,11 @@ import { POPUP_ADAPTER, POPUP_ADAPTER_LOADERS, POPUP_WARMUP } from './popup-adap
 import { PopupAdapterProxyService } from './popup-adapter-proxy.service';
 import { ActivitiesPopupStore } from './stores/activity/activities-popup.store';
 import { ProfileStore } from './stores/profile/profile.store';
+import { ADAPTER_MODE_LOADERS } from '../../core/base/adapter-loaders';
+import { environment } from '../../../../environments/environment';
 
 describe('PopupAdapterProxyService', () => {
+  const originalMode = environment.activitiesDataSource;
   const frames = new Map<number, FrameRequestCallback>();
   let frame = 0;
   function paint() {
@@ -14,6 +17,8 @@ describe('PopupAdapterProxyService', () => {
     }
   }
   beforeEach(() => {
+    environment.activitiesDataSource = 'local';
+    vi.spyOn(ADAPTER_MODE_LOADERS, 'local').mockResolvedValue({} as any);
     frames.clear();
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       frames.set(++frame, callback);
@@ -22,6 +27,7 @@ describe('PopupAdapterProxyService', () => {
     vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   });
   afterEach(() => {
+    environment.activitiesDataSource = originalMode;
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     TestBed.resetTestingModule();
@@ -32,6 +38,23 @@ describe('PopupAdapterProxyService', () => {
     TestBed.inject(ProfileStore);
     TestBed.inject(ActivitiesPopupStore);
     expect(loaders.every(loader => loader.mock.calls.length === 0)).toBe(true);
+    expect(ADAPTER_MODE_LOADERS.local).not.toHaveBeenCalled();
+  });
+
+  it('waits for workspace adapters and the popup together before returning the component', async () => {
+    let ready!: () => void;
+    vi.mocked(ADAPTER_MODE_LOADERS.local).mockReturnValue(new Promise(resolve => ready = () => resolve({} as any)));
+    const module = { ProfileViewPopupComponent: class {} };
+    vi.spyOn(POPUP_ADAPTER_LOADERS, POPUP_ADAPTER.PROFILE_VIEW_POPUP).mockResolvedValue(module as any);
+    let completed = false;
+    const pending = TestBed.inject(PopupAdapterProxyService).load(POPUP_ADAPTER.PROFILE_VIEW_POPUP)
+      .then(value => { completed = true; return value; });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(completed).toBe(false);
+    ready();
+    expect(await pending).toBe(module);
+    expect(ADAPTER_MODE_LOADERS.local).toHaveBeenCalledTimes(1);
   });
 
   it('shares a pending preparation with explicit opening and keeps it cached', async () => {

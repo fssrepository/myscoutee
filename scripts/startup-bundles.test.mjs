@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { consolidateStartupBundles } from './startup-bundles.js';
 
-function fixture({ localAdapters = false } = {}) {
+function fixture({ localAdapters = false, httpEntryAdapters = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'myscoutee-startup-bundles-'));
   const files = {
     'chunk-BOOT0001.js': 'export const token = {}; export const state = {ready:false};',
@@ -35,6 +35,12 @@ function fixture({ localAdapters = false } = {}) {
     files['chunk-ENTRY001.js'] += ` export const openLocalAdapters=()=>import('./chunk-LOCAL001.js'); export const openHttpAdapters=()=>import('./chunk-HTTP0001.js');`;
     entries['chunk-LOCAL001.js'] = 'src/app/shared/core/base/local-adapters.ts';
     entries['chunk-HTTP0001.js'] = 'src/app/shared/core/base/http-adapters.ts';
+  }
+  if (httpEntryAdapters) {
+    files['chunk-PUBLIC01.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__publicAdaptersLoaded=true; export const publicAdapter={service};`;
+    files['chunk-HTTP0001.js'] = `import {publicAdapter} from './chunk-PUBLIC01.js'; globalThis.__httpAdaptersLoaded=true; export {publicAdapter};`;
+    files['chunk-ENTRY001.js'] += ` export const openPublicAdapters=()=>import('./chunk-PUBLIC01.js');`;
+    entries['chunk-PUBLIC01.js'] = 'src/app/shared/core/base/http-entry-adapters.ts';
   }
   for (const [name, source] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), source);
   fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify({ outputs: Object.fromEntries(
@@ -69,6 +75,30 @@ test('keeps only the build profile adapter side in the existing startup pair and
   }
 });
 
+test('keeps public HTTP adapters in startup and workspace transport separate from the member UI', async () => {
+  const dir = fixture({localAdapters:true, httpEntryAdapters:true});
+  try {
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.startup.length, 2);
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const {app, entry} = await globalThis.__startupBundleProof;
+    assert.equal(globalThis.__publicAdaptersLoaded, true);
+    assert.equal(globalThis.__httpAdaptersLoaded, undefined);
+    assert.equal(globalThis.__localAdaptersLoaded, undefined);
+    const publicModule = await entry.openPublicAdapters();
+    const fullModule = await entry.openHttpAdapters();
+    assert.equal(globalThis.__httpAdaptersLoaded, true);
+    assert.equal(fullModule.publicAdapter, publicModule.publicAdapter);
+    assert.equal(fullModule.publicAdapter.service, app.App.service);
+    assert.notEqual(manifest.loads['src/app/shared/core/base/http-adapters.ts'][0],
+      manifest.loads['src/app/shared/ui/components/side-menu/side-menu.component.ts'][0]);
+    assert.equal(globalThis.__homeLoaded, undefined);
+  } finally {
+    fs.rmSync(dir, {recursive:true,force:true});
+    for (const key of ['__publicAdaptersLoaded','__httpAdaptersLoaded','__localAdaptersLoaded','__startupBundleProof','__menuLoaded','__homeLoaded']) delete globalThis[key];
+  }
+});
+
 test('groups startup while preserving environment ordering, shared identities and genuinely lazy features', async () => {
   const dir = fixture();
   try {
@@ -94,6 +124,83 @@ test('groups startup while preserving environment ordering, shared identities an
     fs.rmSync(dir, {recursive:true,force:true});
     delete globalThis.__startupBundleProof;
     delete globalThis.__optionalFeatureLoaded;
+  }
+});
+
+test('absorbs a lazy JSON-style default wrapper and preserves its namespace, identity and dependency effects', async () => {
+  const dir=fixture();
+  try {
+    fs.writeFileSync(path.join(dir,'chunk-JSON0001.js'),"import {service} from './chunk-FEATURE1.js'; import './chunk-SHARED01.js'; export {service as default};");
+    fs.appendFileSync(path.join(dir,'chunk-ENTRY001.js')," export const openJson=()=>import('./chunk-JSON0001.js');");
+    const metadata=JSON.parse(fs.readFileSync(path.join(dir,'stats.json')));
+    metadata.outputs['chunk-JSON0001.js']={entryPoint:'src/app/data/demo.json',inputs:{}};
+    fs.writeFileSync(path.join(dir,'stats.json'),JSON.stringify(metadata));
+    const manifest=await consolidateStartupBundles(dir);
+    await import(pathToFileURL(path.join(dir,manifest.main)));
+    const {app,entry}=await globalThis.__startupBundleProof;
+    assert.equal(globalThis.__optionalFeatureLoaded,undefined);
+    const data=await entry.openJson();
+    assert.equal(data.default,app.App.service);
+    assert.equal(globalThis.__optionalFeatureLoaded,true);
+    assert.equal((await entry.openFeature()).service,data.default);
+    assert.ok(manifest.files.every(file=>fs.readFileSync(path.join(dir,file.name),'utf8').trim()));
+    assert.equal(manifest.files.length,5);
+  } finally {
+    fs.rmSync(dir,{recursive:true,force:true});
+    delete globalThis.__optionalFeatureLoaded;
+    delete globalThis.__startupBundleProof;
+  }
+});
+
+test('opens the public demo without workspace controls and keeps the date renderer with its form controls', async () => {
+  const dir = fixture({localAdapters:true,httpEntryAdapters:true});
+  try {
+    const metadata = JSON.parse(fs.readFileSync(path.join(dir, 'stats.json')));
+    const add = (file, code, info) => {
+      fs.writeFileSync(path.join(dir, file), code);
+      metadata.outputs[file] = info;
+    };
+    add('chunk-CHOICE01.js', 'export const choice={};', {inputs:{'src/app/shared/core/common/user-profile-state.ts':{bytesInOutput:20}}});
+    add('chunk-DEMO0001.js', "import {choice} from './chunk-CHOICE01.js'; export {choice};", {
+      entryPoint:'src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'
+    });
+    add('chunk-GUIDE001.js', "import {choice} from './chunk-CHOICE01.js'; export {choice};", {
+      entryPoint:'src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts'
+    });
+    add('chunk-DATE0001.js', 'globalThis.__dateControlLoaded=true; export const date={};', {
+      entryPoint:'components/dist/fesm2022/components-date.mjs',
+      inputs:{'components/dist/fesm2022/components-date.mjs':{bytesInOutput:40}}
+    });
+    add('chunk-CONTROL1.js', "import {date} from './chunk-DATE0001.js'; globalThis.__formControlsLoaded=true; export {date};", {
+      inputs:{'components/dist/fesm2022/components-forms.mjs':{bytesInOutput:40}}
+    });
+    add('chunk-DATEAPI1.js', "export {date} from './chunk-DATE0001.js'; export {choice} from './chunk-CHOICE01.js';", {
+      entryPoint:'src/app/date-facade.ts'
+    });
+    fs.appendFileSync(path.join(dir,'chunk-ENTRY001.js'), " export const openDemo=()=>import('./chunk-DEMO0001.js'); export const openGuide=()=>import('./chunk-GUIDE001.js'); export const openDate=()=>import('./chunk-DATEAPI1.js');");
+    fs.appendFileSync(path.join(dir,'chunk-HOME0001.js'), " import {choice} from './chunk-CHOICE01.js'; export {choice};");
+    fs.appendFileSync(path.join(dir,'chunk-MENU0001.js'), " import {date} from './chunk-CONTROL1.js'; export {date};");
+    fs.writeFileSync(path.join(dir,'stats.json'),JSON.stringify(metadata));
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.loads['src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts'][0],
+      manifest.loads['src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'][0]);
+    await import(pathToFileURL(path.join(dir,manifest.main)));
+    const {entry}=await globalThis.__startupBundleProof;
+    const demo=await entry.openDemo();
+    assert.equal(demo.choice,(await entry.openGuide()).choice);
+    await entry.openHttpAdapters();
+    assert.equal(globalThis.__formControlsLoaded,undefined);
+    assert.equal(globalThis.__dateControlLoaded,undefined);
+    assert.equal(globalThis.__homeLoaded,undefined);
+    assert.equal(globalThis.__menuLoaded,undefined);
+    const menu=await entry.openMenu();
+    assert.equal(menu.date,(await entry.openDate()).date);
+    assert.equal(manifest.loads['src/app/date-facade.ts'][0],manifest.loads['components/dist/fesm2022/components-date.mjs'][0]);
+    assert.equal(globalThis.__formControlsLoaded,true);
+    assert.equal(demo.choice,(await entry.openHome()).choice);
+  } finally {
+    fs.rmSync(dir,{recursive:true,force:true});
+    for(const key of ['__publicAdaptersLoaded','__httpAdaptersLoaded','__localAdaptersLoaded','__startupBundleProof','__menuLoaded','__homeLoaded','__dateControlLoaded','__formControlsLoaded'])delete globalThis[key];
   }
 });
 

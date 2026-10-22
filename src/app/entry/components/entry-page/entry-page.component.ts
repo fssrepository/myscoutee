@@ -3,6 +3,7 @@ import { baseGroupId, groupType, type GroupType } from '../../../shared/core/con
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
+import { preloadAdapterMode } from '../../../shared/core/base/adapter-loaders';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
 import {
   ExplanationGuideService,
@@ -411,8 +412,10 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   private ensureFirebaseAuthPopupLoaded(): Promise<void> {
     if (this.firebaseAuthPopup()) return Promise.resolve();
-    return this.firebaseAuthPopupLoad ??= import('../entry-firebase-auth-popup/entry-firebase-auth-popup.component')
-      .then(module => {
+    return this.firebaseAuthPopupLoad ??= Promise.all([
+      import('../entry-firebase-auth-popup/entry-firebase-auth-popup.component'),
+      preloadAdapterMode(environment.activitiesDataSource)
+    ]).then(([module]) => {
         if (this.destroyRef.destroyed) return;
         this.firebaseAuthPopupInputs.set({ open: this.showFirebaseAuthPopup, mobile: this.isMobileView });
         this.firebaseAuthPopup.set(this.firebaseAuthPopupHost().createComponent(module.EntryFirebaseAuthPopupComponent, {
@@ -899,6 +902,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   protected async onFirebaseSessionContinueRequested(): Promise<void> {
     this.firebaseEntryTransitionBusy = true;
     try {
+      await preloadAdapterMode(environment.activitiesDataSource);
       const entryAccessApproved = this.firebaseEntryAccessApproved;
       const session = await this.sessionService.restoreFirebaseSession();
       if (!session) {
@@ -1008,6 +1012,8 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   ): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
     const sessionIdentity = this.sessionService.identity();
+    await preloadAdapterMode(environment.activitiesDataSource);
+    if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
     const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
     let user: UserDto | null = loadedUser ?? null;
     if (!loadedUser) {

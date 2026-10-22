@@ -467,16 +467,6 @@
   font-weight: 700;
 }
 
-.popup-close-glyph {
-  display: block;
-  line-height: 1;
-  font-size: 1.65rem;
-  font-weight: 400;
-  transform: translateY(-0.5px);
-  position: relative;
-  z-index: 1;
-}
-
 .firebase-auth-main-btn {
   position: relative;
   overflow: hidden;
@@ -522,6 +512,6 @@
     height: 100vh;
     max-width: 100vw;
     border-radius: 0;
-    padding: max(2.15rem, calc(env(safe-area-inset-top, 0px) + 1.35rem)) 0.9rem 1rem;
+    padding: max(0.52rem, env(safe-area-inset-top, 0px)) 0.9rem 1rem;
   }
 }

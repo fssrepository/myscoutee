@@ -1,4 +1,4 @@
-import { APP_STATIC_DATA } from '../../../common/app-static-data';
+import { ASSET_TYPE_LABELS, ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE } from '../../../common/constants';
 
 import * as AppConstants from '../../../common/constants';
 export class AssetDefaultsBuilder {
@@ -7,7 +7,7 @@ export class AssetDefaultsBuilder {
   private static readonly suppliesCategories: readonly string[] = AppConstants.SUPPLIES_ASSET_CATEGORIES;
 
   static assetTypeLabel(type: AppConstants.AssetFilterType): string {
-    return APP_STATIC_DATA.assetTypeLabels[type];
+    return ASSET_TYPE_LABELS[type];
   }
 
   static assetTypeIcon(type: AppConstants.AssetFilterType): string {
@@ -62,7 +62,7 @@ export class AssetDefaultsBuilder {
   }
 
   static assetCategoryOptions(type: AppConstants.AssetType): AppConstants.AssetCategory[] {
-    return [...(APP_STATIC_DATA.assetCategoryOptionsByType[type] ?? [])];
+    return [...(ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE[type] ?? [])];
   }
 
   static assetCategoryLabel(category: AppConstants.AssetCategory | null | undefined): string {

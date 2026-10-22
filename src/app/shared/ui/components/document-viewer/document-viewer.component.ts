@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute } from '@angular/router';
 
 import { AppUtils } from '../../../core/base/app-utils';
-import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+import { DOCUMENT_VIEWER_HEADER_PALETTES } from '../../../core/common/help-center-options';
 import { HelpCenterService, I18nService } from '../../../core';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
 import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
@@ -368,7 +368,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   private normalizeHeaderPalette(value: DocumentViewerHeaderPalette | null | undefined): DocumentViewerHeaderPalette {
-    return AppUtils.enumValue(value, APP_STATIC_DATA.documentViewerHeaderPalettes, 'amber');
+    return AppUtils.enumValue(value, DOCUMENT_VIEWER_HEADER_PALETTES, 'amber');
   }
 
   protected activeConfig(): DocumentViewerConfig | null {

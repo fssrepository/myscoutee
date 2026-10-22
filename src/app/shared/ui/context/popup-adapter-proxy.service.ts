@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import { scheduleAfterPaint } from '@fssrepository/myscoutee-components';
+import { preloadAdapterMode } from '../../core/base/adapter-loaders';
+import { environment } from '../../../../environments/environment';
 
 import { POPUP_ADAPTER_LOADERS, type PopupAdapterKey, type PopupAdapterModule } from './popup-adapter-loaders';
 
@@ -11,7 +13,8 @@ export class PopupAdapterProxyService {
     let pending = this.modules.get(key);
     if (!pending) {
       const load: () => Promise<unknown> = POPUP_ADAPTER_LOADERS[key];
-      pending = Promise.resolve().then(load);
+      pending = Promise.all([Promise.resolve().then(load), preloadAdapterMode(environment.activitiesDataSource)])
+        .then(([module]) => module);
       this.modules.set(key, pending);
       const attempt = pending;
       void pending.catch(() => {

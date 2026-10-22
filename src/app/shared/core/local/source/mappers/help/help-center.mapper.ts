@@ -13,7 +13,7 @@ import type {
   PrivacyConsentLocalRecord
 } from '../../entity/content/content.entity';
 import { AppUtils } from '../../../../base/app-utils';
-import { APP_STATIC_DATA } from '../../../../common/app-static-data';
+import { HELP_CENTER_HEADER_COLORS } from '../../../../common/help-center-options';
 
 export class LocalHelpCenterMapper {
   static toDto(record: HelpCenterRevisionRecord): HelpCenterRevisionDto;
@@ -193,7 +193,7 @@ export class LocalHelpCenterMapper {
   }
 
   private static toHeaderColor(value: string | null | undefined): HelpCenterHeaderColor | undefined {
-    return AppUtils.enumValueOrNull(value, APP_STATIC_DATA.helpCenterHeaderColors) ?? undefined;
+    return AppUtils.enumValueOrNull(value, HELP_CENTER_HEADER_COLORS) ?? undefined;
   }
 
   private static toSectionPanelSpan(value: string | null | undefined): HelpCenterSectionPanelSpan | undefined {

@@ -77,13 +77,13 @@ function initialBackendReady(): boolean {
   return ready;
 }
 
-function isLandingPage(): boolean {
+export function isLandingPage(): boolean {
   const base = new URL(document.baseURI).pathname.replace(/\/$/, '');
   const path = location.pathname.replace(/\/$/, '');
   return path === base || path === `${base}/entry`;
 }
 
-function anonymousLanding(): boolean {
+export function anonymousLanding(): boolean {
   // A retained real/operator/support session must never become a synthetic actor.
   return isLandingPage() && localStorage.getItem(HTTP_SESSION) === null;
 }

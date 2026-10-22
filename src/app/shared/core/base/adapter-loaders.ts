@@ -96,8 +96,9 @@ export type AdapterMode = 'local' | 'http';
 const constructors: Partial<Record<AdapterKey, Type<unknown>>> = {};
 let localModule: Promise<LocalTypes> | undefined;
 let httpModule: Promise<HttpTypes> | undefined;
+let httpEntryModule: Promise<void> | undefined;
 
-// One import/cache per side. Route selection stays in BaseRouteModeService.
+// One cached load per transport phase. Route selection stays in BaseRouteModeService.
 function loadLocal(): Promise<LocalTypes> {
   return localModule ??= import('./local-adapters').then(module => {
     Object.assign(constructors, module.LOCAL_ADAPTER_TYPES);
@@ -114,7 +115,13 @@ function loadHttp(): Promise<HttpTypes> {
 
 export const ADAPTER_MODE_LOADERS = { local: loadLocal, http: loadHttp };
 
-export async function preloadAdapterMode(mode: AdapterMode): Promise<void> {
+export async function preloadAdapterMode(mode: AdapterMode, phase: 'entry' | 'workspace' = 'workspace'): Promise<void> {
+  if (mode === 'http' && phase === 'entry') {
+    await (httpEntryModule ??= import('./http-entry-adapters').then(module => {
+      Object.assign(constructors, module.HTTP_ENTRY_ADAPTER_TYPES);
+    }).catch(error => { httpEntryModule = undefined; throw error; }));
+    return;
+  }
   await ADAPTER_MODE_LOADERS[mode]();
 }
 
@@ -126,5 +133,6 @@ type AdapterLoaders = { [K in AdapterKey]: () => Promise<Type<AdapterInstance<K>
 
 export const ADAPTER_LOADERS = Object.fromEntries([
   ...Object.values(LOCAL_ADAPTER).map(key => [key, () => loadLocal().then(types => types[key])]),
-  ...Object.values(HTTP_ADAPTER).map(key => [key, () => loadHttp().then(types => types[key])])
+  ...Object.values(HTTP_ADAPTER).map(key => [key, () => constructors[key]
+    ? Promise.resolve(constructors[key]) : loadHttp().then(types => types[key])])
 ]) as AdapterLoaders;
