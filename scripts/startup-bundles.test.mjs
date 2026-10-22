@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { consolidateStartupBundles } from './startup-bundles.js';
 
-function fixture({ localAdapters = false, httpEntryAdapters = false } = {}) {
+function fixture({ localAdapters = false, httpEntryAdapters = false, publicHelp = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'myscoutee-startup-bundles-'));
   const files = {
     'chunk-BOOT0001.js': 'export const token = {}; export const state = {ready:false};',
@@ -42,6 +42,13 @@ function fixture({ localAdapters = false, httpEntryAdapters = false } = {}) {
     files['chunk-ENTRY001.js'] += ` export const openPublicAdapters=()=>import('./chunk-PUBLIC01.js');`;
     entries['chunk-PUBLIC01.js'] = 'src/app/shared/core/base/http-entry-adapters.ts';
   }
+  if (publicHelp) {
+    files['chunk-GUIDE001.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__guideLoaded=true; export const guide={service};`;
+    files['chunk-DOC00001.js'] = `import {service} from './chunk-SHARED01.js'; globalThis.__documentLoaded=true; export const document={service};`;
+    files['chunk-ENTRY001.js'] += ` export const openGuide=()=>import('./chunk-GUIDE001.js'); export const openDocument=()=>import('./chunk-DOC00001.js');`;
+    entries['chunk-GUIDE001.js'] = 'src/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.ts';
+    entries['chunk-DOC00001.js'] = 'src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts';
+  }
   for (const [name, source] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), source);
   fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify({ outputs: Object.fromEntries(
     Object.keys(files).map(name => [name, entries[name] ? {entryPoint:entries[name]} : {}])
@@ -49,6 +56,32 @@ function fixture({ localAdapters = false, httpEntryAdapters = false } = {}) {
   fs.writeFileSync(path.join(dir, 'index.html'), '<link rel="modulepreload" href="chunk-BOOT0001.js"><script type="module" src="main-ORIGINAL.js"></script>');
   return dir;
 }
+
+test('opening the public guide does not evaluate the explanation document or workspace adapters', async () => {
+  const dir = fixture({ publicHelp: true, localAdapters: true, httpEntryAdapters: true });
+  try {
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.startup.length, 2);
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const {app, entry} = await globalThis.__startupBundleProof;
+    assert.equal(globalThis.__guideLoaded, undefined);
+    assert.equal(globalThis.__documentLoaded, undefined);
+    const guide = await entry.openGuide();
+    assert.equal(guide.guide.service, app.App.service);
+    assert.equal(globalThis.__guideLoaded, true);
+    assert.equal(globalThis.__documentLoaded, undefined);
+    assert.equal(globalThis.__httpAdaptersLoaded, undefined);
+    assert.equal(globalThis.__localAdaptersLoaded, undefined);
+    const document = await entry.openDocument();
+    assert.equal(document.document.service, app.App.service);
+    assert.equal(globalThis.__documentLoaded, true);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    delete globalThis.__guideLoaded;
+    delete globalThis.__documentLoaded;
+    delete globalThis.__startupBundleProof;
+  }
+});
 
 test('keeps only the build profile adapter side in the existing startup pair and preserves shared identities', async () => {
   for (const standalone of [false, true]) {

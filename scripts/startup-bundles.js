@@ -108,7 +108,7 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           for (const [phase, roots] of [
             ['entry-popups', [
               findEntry('src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'),
-              findEntry('src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts'),
+              findEntry('src/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.ts'),
               findEntry('src/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.ts')
             ].filter(Boolean)],
             ['workspace-adapters', localAdaptersInStartup ? [] : [findEntry(workspaceAdapters)].filter(Boolean)],

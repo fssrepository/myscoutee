@@ -116,4 +116,17 @@ describe('PopupAdapterProxyService', () => {
     expect(await first).toBe(module);
     expect(loader).toHaveBeenCalledOnce();
   });
+
+  it('loads public guide surfaces without starting workspace adapters', async () => {
+    const proxy = TestBed.inject(PopupAdapterProxyService);
+    for (const key of [POPUP_ADAPTER.EXPLANATION_GUIDE, POPUP_ADAPTER.EXPLANATION_DOCUMENT]) {
+      const module = {} as any;
+      const loader = vi.spyOn(POPUP_ADAPTER_LOADERS, key).mockResolvedValue(module);
+      const first = proxy.load(key);
+      expect(proxy.load(key)).toBe(first);
+      expect(await first).toBe(module);
+      expect(loader).toHaveBeenCalledOnce();
+    }
+    expect(ADAPTER_MODE_LOADERS.local).not.toHaveBeenCalled();
+  });
 });

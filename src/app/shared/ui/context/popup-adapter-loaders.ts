@@ -22,6 +22,8 @@ export const POPUP_ADAPTER = {
   CONTACTS_POPUP: 'src/app/profile/components/contacts-popup/contacts-popup.component.ts',
   CONTENT_MODERATION_POPUP: 'src/app/admin/components/content-moderation-popup/content-moderation-popup.component.ts',
   DEMO_BOOTSTRAP_SELECTOR: 'src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts',
+  EXPLANATION_GUIDE: 'src/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.ts',
+  EXPLANATION_DOCUMENT: 'src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts',
   EVENT_CHAT_POPUP: 'src/app/activity/components/event-chat-popup/event-chat-popup.component.ts',
   EVENT_CHECKOUT_SLOT_PICKER_POPUP: 'src/app/activity/components/event-checkout-slot-picker-popup/event-checkout-slot-picker-popup.component.ts',
   EVENT_EDITOR_POPUP: 'src/app/activity/components/event-editor-popup/event-editor-popup.component.ts',
@@ -69,6 +71,8 @@ export const POPUP_ADAPTER_LOADERS = {
   [POPUP_ADAPTER.CONTACTS_POPUP]: () => import('../../../profile/components/contacts-popup/contacts-popup.component'),
   [POPUP_ADAPTER.CONTENT_MODERATION_POPUP]: () => import('../../../admin/components/content-moderation-popup/content-moderation-popup.component'),
   [POPUP_ADAPTER.DEMO_BOOTSTRAP_SELECTOR]: () => import('../components/demo-bootstrap-selector/demo-bootstrap-selector.component'),
+  [POPUP_ADAPTER.EXPLANATION_GUIDE]: () => import('../components/explanation-popup/explanation-guide-overlay.component'),
+  [POPUP_ADAPTER.EXPLANATION_DOCUMENT]: () => import('../components/explanation-popup/explanation-popup.component'),
   [POPUP_ADAPTER.EVENT_CHAT_POPUP]: () => import('../../../activity/components/event-chat-popup/event-chat-popup.component'),
   [POPUP_ADAPTER.EVENT_CHECKOUT_SLOT_PICKER_POPUP]: () => import('../../../activity/components/event-checkout-slot-picker-popup/event-checkout-slot-picker-popup.component'),
   [POPUP_ADAPTER.EVENT_EDITOR_POPUP]: () => import('../../../activity/components/event-editor-popup/event-editor-popup.component'),
@@ -94,6 +98,11 @@ export const POPUP_ADAPTER_LOADERS = {
 };
 
 export type PopupAdapterKey = keyof typeof POPUP_ADAPTER_LOADERS;
+// These public surfaces use the guide's data, without workspace adapters.
+export const PUBLIC_POPUP_ADAPTERS: ReadonlySet<PopupAdapterKey> = new Set([
+  POPUP_ADAPTER.EXPLANATION_GUIDE,
+  POPUP_ADAPTER.EXPLANATION_DOCUMENT
+]);
 export type PopupAdapterModule<K extends PopupAdapterKey> = Awaited<ReturnType<(typeof POPUP_ADAPTER_LOADERS)[K]>>;
 
 // Outgoing module calls prepared during the visible list's first load.

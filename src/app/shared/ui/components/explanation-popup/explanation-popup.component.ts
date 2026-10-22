@@ -14,7 +14,6 @@ import {
 } from '@fssrepository/myscoutee-components';
 import * as AppConstants from '../../../core/common/constants';
 
-import { ExplanationGuideOverlayComponent } from './explanation-guide-overlay.component';
 
 type HomeFilterModeOption = Readonly<{
   key: string;
@@ -27,7 +26,7 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 @Component({
   selector: 'app-explanation-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, PopupComponent, ExplanationGuideOverlayComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './explanation-popup.component.html',
   styleUrl: './explanation-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

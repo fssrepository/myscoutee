@@ -1,4 +1,5 @@
-import { Component, DestroyRef, ElementRef, Input, afterEveryRender, computed, inject, signal, untracked } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
+import { Component, DestroyRef, ElementRef, ErrorHandler, Input, type Type, afterEveryRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   ExplanationGuideService,
   FloatingLauncherComponent,
@@ -10,10 +11,11 @@ import {
   type AppMenuTrigger
 } from '@fssrepository/myscoutee-components';
 import { AppSetupStore } from '../../context/stores/app/app-setup.store';
-import { ExplanationPopupComponent } from './explanation-popup.component';
+import { POPUP_ADAPTER } from '../../context/popup-adapter-loaders';
+import { PopupAdapterProxyService } from '../../context/popup-adapter-proxy.service';
 
 @Component({ selector: 'app-explanation-launcher', standalone: true,
-  imports: [FloatingLauncherComponent, ExplanationPopupComponent, IndicatorComponent, I18nPipe],
+  imports: [FloatingLauncherComponent, NgComponentOutlet, IndicatorComponent, I18nPipe],
   template: `
     @if (guide.popupOpen() && (guide.loading() || !guide.hasVisiblePopup())) {
       <div class="explanation-guide-loading" role="status" aria-busy="true"
@@ -38,8 +40,8 @@ import { ExplanationPopupComponent } from './explanation-popup.component';
         }
       </div>
     }
-    @defer (when guide.popupOpen()) {
-      @if (!guide.loading()) { <app-explanation-popup></app-explanation-popup> }
+    @if (guide.popupOpen() && !guide.loading()) {
+      <ng-container *ngComponentOutlet="popupComponent()"></ng-container>
     }`,
   styles: [`.explanation-guide-loading { position: fixed; inset: 0; display: grid; place-items: center;
     background: rgba(10, 18, 37, 0.73); }
@@ -56,8 +58,24 @@ export class ExplanationLauncherComponent {
   protected readonly guide = inject(ExplanationGuideService);
   protected readonly setup = inject(AppSetupStore);
   private readonly popups = inject(PopupPresenceStore);
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
+  private readonly errors = inject(ErrorHandler);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly tourComponent = signal<Type<unknown> | null>(null);
+  private readonly documentComponent = signal<Type<unknown> | null>(null);
+  protected readonly popupComponent = computed(() => this.guide.popupMode() === 'tour'
+    ? this.tourComponent() : this.documentComponent());
   protected readonly position = signal<AppMenuDragPosition>({ x: 0, y: 0 });
   constructor() {
+    effect(() => {
+      if (!this.guide.popupOpen() || this.guide.loading() || this.popupComponent()) return;
+      const loading = this.guide.popupMode() === 'tour'
+        ? this.popupAdapters.load(POPUP_ADAPTER.EXPLANATION_GUIDE)
+          .then(module => { if (!this.destroyRef.destroyed) this.tourComponent.set(module.ExplanationGuideOverlayComponent); })
+        : this.popupAdapters.load(POPUP_ADAPTER.EXPLANATION_DOCUMENT)
+          .then(module => { if (!this.destroyRef.destroyed) this.documentComponent.set(module.ExplanationPopupComponent); });
+      void loading.catch(error => this.errors.handleError(error));
+    });
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterEveryRender({ read: () => {
       if (this.setup.guideRequested() && !this.guide.popupOpen()) {
