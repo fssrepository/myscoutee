@@ -155,7 +155,6 @@ interface EntryDemoNewProfileRequestEvent {
   standalone: true,
   imports: [
     ExplanationLauncherComponent,
-    LandingGuideSurfaceDirective,
     EntryLandingComponent,
     PopupComponent,
     IndicatorComponent
