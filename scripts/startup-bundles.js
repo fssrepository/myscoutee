@@ -239,7 +239,8 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
     .map(name => `<link rel="modulepreload" href="${name}">`).join('');
   fs.writeFileSync(indexPath, html.replaceAll(path.basename(main), entry.fileName)
     .replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/g, '')
-    .replace(/<script\b[^>]*\bsrc=["'][^"']*["'][^>]*>/i, tag => preloads + tag));
+    .replace(/<script\b[^>]*\bsrc=["']([^"']*)["'][^>]*>/gi,
+      (tag, src) => path.basename(src) === entry.fileName ? preloads + tag : tag));
   const retained = new Set(files.map(file => file.name));
   for (const file of oldFiles) {
     if (!retained.has(path.basename(file))) fs.rmSync(file);

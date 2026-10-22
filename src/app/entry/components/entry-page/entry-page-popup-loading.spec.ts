@@ -110,3 +110,23 @@ it('does not mount a popup after its owning page has been destroyed', async () =
   expect(owner.onboardingPopup()).toBeNull();
   fixture.destroy();
 });
+
+it('keeps the lazy login popup mobile at 760px and updates its input after a desktop resize', async () => {
+  let width = 760;
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: width <= Number(query.match(/max-width:\s*([\d.]+)px/)?.[1] ?? 0)
+  }));
+  const { fixture, owner } = popupOwner();
+  owner.onWindowResize();
+  await owner.ensureFirebaseAuthPopupLoaded();
+  fixture.detectChanges();
+  const popup = owner.firebaseAuthPopup().instance as EntryFirebaseAuthPopupComponent;
+  expect(popup.isMobileView).toBe(true);
+  width = 761;
+  owner.onWindowResize();
+  expect(owner.isMobileView).toBe(false);
+  fixture.changeDetectorRef.markForCheck();
+  fixture.detectChanges();
+  expect(popup.isMobileView).toBe(false);
+  fixture.destroy();
+});

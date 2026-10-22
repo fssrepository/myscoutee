@@ -229,7 +229,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
 
-  protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
+  protected isMobileView = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)').matches : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
   protected onboardingTitle = 'profile.setup';
@@ -985,7 +985,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private syncMobileView(): void {
-    this.isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
+    this.isMobileView = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)').matches : false;
   }
 
   private beginAutoOnboardingIfReady(): void {

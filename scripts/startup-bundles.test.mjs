@@ -132,6 +132,25 @@ test('loads optional Firebase SDKs together without evaluating them on the landi
   }
 });
 
+test('keeps startup preloads outside an earlier optional script condition', async () => {
+  const dir = fixture();
+  try {
+    const index = path.join(dir, 'index.html');
+    fs.writeFileSync(index, '<!--# if expr="$optional = 1" --><script src="assets/optional.js" async></script><!--# endif -->'
+      + fs.readFileSync(index, 'utf8'));
+    const manifest = await consolidateStartupBundles(dir);
+    const html = fs.readFileSync(index, 'utf8');
+    const conditional = html.match(/<!--# if[\s\S]*?<!--# endif -->/)[0];
+    assert.ok(!conditional.includes('modulepreload'));
+    const enabledOrDisabled = html.replace(conditional, '');
+    const preloads = [...enabledOrDisabled.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map(match => match[1]);
+    assert.deepEqual(preloads, manifest.startup.filter(name => name !== manifest.main));
+    assert.ok(enabledOrDisabled.indexOf('modulepreload') < enabledOrDisabled.indexOf(`src="${manifest.main}"`));
+  } finally {
+    fs.rmSync(dir, {recursive:true, force:true});
+  }
+});
+
 test('groups startup while preserving environment ordering, shared identities and genuinely lazy features', async () => {
   const dir = fixture();
   try {
