@@ -38,12 +38,12 @@ import {
   I18nPipe
 } from '@fssrepository/myscoutee-components';
 
-import {
-  UsersService,
-  type BootstrapProcessState,
-  type BootstrapProcessStage,
-  type UserSelectorListItemDto
-} from '../../../core';
+import { UsersService } from '../../../core/base/services/accounts/users.service';
+import type {
+  BootstrapProcessState,
+  BootstrapProcessStage
+} from '../../../core/base/services/platform/bootstrap.service';
+import type { UserSelectorListItemDto } from '../../../core/contracts/accounts/user.interface';
 import {
   UserProfileState
 } from '../../../core/common/user-profile-state';

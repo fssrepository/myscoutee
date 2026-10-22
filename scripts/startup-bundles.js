@@ -106,12 +106,12 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           // Keep the first public demo independent of the workspace shell, and
           // keep transport constructors independent of the controls they serve.
           for (const [phase, roots] of [
-            ['workspace-adapters', localAdaptersInStartup ? [] : [findEntry(workspaceAdapters)].filter(Boolean)],
             ['entry-popups', [
               findEntry('src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'),
               findEntry('src/app/shared/ui/components/explanation-popup/explanation-popup.component.ts'),
               findEntry('src/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.ts')
             ].filter(Boolean)],
+            ['workspace-adapters', localAdaptersInStartup ? [] : [findEntry(workspaceAdapters)].filter(Boolean)],
             ['member-controls', controls]
           ]) {
             for (const module of closure(roots, getModuleInfo)) {
@@ -127,8 +127,8 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           const available = [
             ['bootstrap', new Set(['bootstrap'])],
             ['landing', new Set(['bootstrap', 'landing'])],
-            ['workspace-adapters', new Set(['bootstrap', 'landing', 'workspace-adapters'])],
-            ['entry-popups', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups'])],
+            ['entry-popups', new Set(['bootstrap', 'landing', 'entry-popups'])],
+            ['workspace-adapters', new Set(['bootstrap', 'landing', 'entry-popups', 'workspace-adapters'])],
             ['member-controls', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls'])],
             ['member-shared', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared'])],
             ['member-home', new Set(['bootstrap', 'landing', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-home'])],
@@ -162,7 +162,9 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
               loadingGroups.set(module, 'member-shared');
             }
           }
-          const commonSources = ['/shared/ui/converters/', '/shared/core/base/builders/',
+          // Shared service wrappers use the existing workspace group; explicit
+          // lazy service entry points retain their own loading boundary.
+          const commonSources = ['/shared/ui/converters/', '/shared/core/base/builders/', '/shared/core/base/services/',
             '/shared/core/contracts/', '/shared/core/common/'];
           for (const [name, info] of Object.entries(metadata.outputs)) {
             const module = outputFile(name);
@@ -181,6 +183,12 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           // cross-popup store/signal reference cannot pull in another surface.
           const phases = new Map(Object.entries(popupModuleGroups).map(([phase, sources]) =>
             [phase, sources.map(findEntry).filter(Boolean)]));
+          // Optional Firebase SDKs share one loading boundary; neither belongs
+          // to the public landing or the automatic guide.
+          phases.set('firebase-runtime', [
+            findEntry('src/app/shared/core/base/services/accounts/firebase-auth.service.ts'),
+            findEntry('node_modules/firebase/messaging/dist/esm/index.esm.js')
+          ].filter(Boolean));
           const lazyRoots = new Set([...getModuleIds()].flatMap(module => getModuleInfo(module).dynamicallyImportedIds));
           const infrastructure = [...loadingGroups].filter(([, group]) => group === 'member-shared').map(([module]) => module);
           for (const dependency of closure(infrastructure, getModuleInfo)) {

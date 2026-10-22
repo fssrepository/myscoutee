@@ -99,6 +99,39 @@ test('keeps public HTTP adapters in startup and workspace transport separate fro
   }
 });
 
+test('loads optional Firebase SDKs together without evaluating them on the landing', async () => {
+  const dir = fixture();
+  try {
+    const metadata = JSON.parse(fs.readFileSync(path.join(dir, 'stats.json')));
+    const authSource = 'src/app/shared/core/base/services/accounts/firebase-auth.service.ts';
+    const messagingSource = 'node_modules/firebase/messaging/dist/esm/index.esm.js';
+    fs.writeFileSync(path.join(dir, 'chunk-AUTH0001.js'), "import {service} from './chunk-SHARED01.js'; globalThis.__firebaseAuthLoaded=true; export {service};");
+    fs.writeFileSync(path.join(dir, 'chunk-PUSH0001.js'), "import {service} from './chunk-SHARED01.js'; globalThis.__firebaseMessagingLoads=(globalThis.__firebaseMessagingLoads??0)+1; export {service};");
+    metadata.outputs['chunk-AUTH0001.js'] = {entryPoint:authSource};
+    metadata.outputs['chunk-PUSH0001.js'] = {entryPoint:messagingSource};
+    fs.appendFileSync(path.join(dir, 'chunk-ENTRY001.js'), " export const openAuth=()=>import('./chunk-AUTH0001.js'); export const openMessaging=()=>import('./chunk-PUSH0001.js');");
+    fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify(metadata));
+    const manifest = await consolidateStartupBundles(dir);
+    const authChunk = manifest.loads[authSource][0];
+    assert.equal(authChunk, manifest.loads[messagingSource][0]);
+    assert.ok(!manifest.startup.includes(authChunk));
+    assert.equal(manifest.files.length, 6);
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const {app, entry} = await globalThis.__startupBundleProof;
+    assert.equal(globalThis.__firebaseAuthLoaded, undefined);
+    assert.equal(globalThis.__firebaseMessagingLoads, undefined);
+    const messaging = await entry.openMessaging();
+    assert.equal(messaging.service, app.App.service);
+    assert.equal(globalThis.__firebaseAuthLoaded, true);
+    assert.equal(globalThis.__firebaseMessagingLoads, 1);
+    assert.equal((await entry.openAuth()).service, messaging.service);
+    assert.equal(globalThis.__firebaseMessagingLoads, 1);
+  } finally {
+    fs.rmSync(dir, {recursive:true, force:true});
+    for (const key of ['__startupBundleProof', '__firebaseAuthLoaded', '__firebaseMessagingLoads']) delete globalThis[key];
+  }
+});
+
 test('groups startup while preserving environment ordering, shared identities and genuinely lazy features', async () => {
   const dir = fixture();
   try {
@@ -152,6 +185,39 @@ test('absorbs a lazy JSON-style default wrapper and preserves its namespace, ide
   }
 });
 
+test('shares lazy base services and their facade without another physical request or early evaluation', async () => {
+  const dir = fixture();
+  try {
+    const metadata = JSON.parse(fs.readFileSync(path.join(dir, 'stats.json')));
+    fs.writeFileSync(path.join(dir, 'chunk-SERVICE1.js'), 'globalThis.__baseServiceLoads=(globalThis.__baseServiceLoads??0)+1; export class ResourceService {}');
+    metadata.outputs['chunk-SERVICE1.js'] = {inputs:{
+      'src/app/shared/core/base/services/events/activity-resources.service.ts':{bytesInOutput:100}
+    }};
+    fs.appendFileSync(path.join(dir, 'chunk-FEATURE1.js'), " export {ResourceService} from './chunk-SERVICE1.js';");
+    fs.writeFileSync(path.join(dir, 'chunk-SECOND01.js'), "export {ResourceService} from './chunk-SERVICE1.js'; export const second=true;");
+    metadata.outputs['chunk-SECOND01.js'] = {entryPoint:'src/app/second-popup.ts'};
+    fs.writeFileSync(path.join(dir, 'chunk-FACADE01.js'), "export {ResourceService} from './chunk-SERVICE1.js';");
+    metadata.outputs['chunk-FACADE01.js'] = {entryPoint:'src/app/resource-service.ts'};
+    fs.appendFileSync(path.join(dir, 'chunk-ENTRY001.js'), " export const openSecond=()=>import('./chunk-SECOND01.js'); export const openFacade=()=>import('./chunk-FACADE01.js');");
+    fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify(metadata));
+    const manifest = await consolidateStartupBundles(dir);
+    assert.equal(manifest.files.length, 6);
+    assert.equal(manifest.startup.length, 2);
+    await import(pathToFileURL(path.join(dir, manifest.main)));
+    const {entry} = await globalThis.__startupBundleProof;
+    assert.equal(globalThis.__baseServiceLoads, undefined);
+    const feature = await entry.openFeature();
+    assert.equal(globalThis.__baseServiceLoads, 1);
+    assert.equal(feature.ResourceService, (await entry.openSecond()).ResourceService);
+    assert.equal(feature.ResourceService, (await entry.openFacade()).ResourceService);
+    assert.equal(globalThis.__baseServiceLoads, 1);
+    assert.equal(globalThis.__homeLoaded, undefined);
+  } finally {
+    fs.rmSync(dir, {recursive:true, force:true});
+    for (const key of ['__baseServiceLoads','__startupBundleProof','__optionalFeatureLoaded','__homeLoaded','__menuLoaded']) delete globalThis[key];
+  }
+});
+
 test('opens the public demo without workspace controls and keeps the date renderer with its form controls', async () => {
   const dir = fixture({localAdapters:true,httpEntryAdapters:true});
   try {
@@ -161,6 +227,7 @@ test('opens the public demo without workspace controls and keeps the date render
       metadata.outputs[file] = info;
     };
     add('chunk-CHOICE01.js', 'export const choice={};', {inputs:{'src/app/shared/core/common/user-profile-state.ts':{bytesInOutput:20}}});
+    fs.appendFileSync(path.join(dir, 'chunk-HTTP0001.js'), " import {choice} from './chunk-CHOICE01.js'; export {choice};");
     add('chunk-DEMO0001.js', "import {choice} from './chunk-CHOICE01.js'; export {choice};", {
       entryPoint:'src/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.ts'
     });
@@ -188,6 +255,7 @@ test('opens the public demo without workspace controls and keeps the date render
     const {entry}=await globalThis.__startupBundleProof;
     const demo=await entry.openDemo();
     assert.equal(demo.choice,(await entry.openGuide()).choice);
+    assert.equal(globalThis.__httpAdaptersLoaded,undefined);
     await entry.openHttpAdapters();
     assert.equal(globalThis.__formControlsLoaded,undefined);
     assert.equal(globalThis.__dateControlLoaded,undefined);
@@ -352,7 +420,7 @@ test('the stamped worker installs the startup shell without fetching unused feat
     fs.writeFileSync(path.join(dir, 'media/roboto-greek.woff2'), 'GREEK');
     fs.writeFileSync(path.join(dir, 'media/material-icons-FILLED001.woff2'), 'FILLED');
     fs.writeFileSync(path.join(dir, 'styles-STYLE001.css'), '@font-face{font-family:Roboto;src:url(media/roboto-latin.woff2)}@font-face{font-family:Material Icons;src:url("./media/material-icons-FILLED001.woff2")}');
-    fs.appendFileSync(path.join(dir, 'index.html'), '<script src="assets/diagnostics/landing.js" async></script><link rel="stylesheet" href="styles-STYLE001.css">');
+    fs.appendFileSync(path.join(dir, 'index.html'), '<script id="myscoutee-landing-debug-recorder" src="assets/diagnostics/landing.js" async></script><link rel="stylesheet" href="styles-STYLE001.css">');
     const stamp = () => execFileSync(process.execPath, [new URL('./stamp-prod-build.js', import.meta.url).pathname], {
       env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, MYSCOUTEE_UI_BUILD_ID:'startup-precache-test'},
       stdio:'pipe'
@@ -383,10 +451,18 @@ test('the stamped worker installs the startup shell without fetching unused feat
     await install;
     const buildRequests = fetched.filter(url => /\.(?:js|css|woff2?)$/.test(url));
     assert.deepEqual(buildRequests.sort(), [
-      ...manifest.startup, 'assets/diagnostics/landing.js', 'styles-STYLE001.css'
+      ...manifest.startup, 'styles-STYLE001.css'
     ].map(name => `https://qa.example/myscoutee/${name}`).sort());
     assert.ok(!fetched.some(url => url.includes('/media/')));
     assert.ok(!fetched.some(url => url.includes('/assets/i18n/')), 'Language assets are cached on use, never downloaded by worker installation');
+    assert.ok(!fetched.some(url => url.includes('/assets/diagnostics/')), 'Disabled diagnostics are not downloaded by worker installation');
+    assert.ok(html.includes('id="myscoutee-landing-debug-recorder"'), 'HTTP builds retain the server-controlled recorder');
+    execFileSync(process.execPath, [new URL('./stamp-prod-build.js', import.meta.url).pathname], {
+      env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, FRONTEND_BUILD_PROFILE:'standalone', MYSCOUTEE_UI_BUILD_ID:'startup-precache-test'},
+      stdio:'pipe'
+    });
+    assert.ok(!fs.readFileSync(path.join(dir, 'index.html'), 'utf8').includes('id="myscoutee-landing-debug-recorder"'),
+      'Standalone builds do not load the nginx-owned recorder');
     assert.equal(requests.find(request => request.url.endsWith('/' + manifest.main)).cache, 'default');
     assert.equal(requests.find(request => request.url.endsWith('/index.html')).cache, 'reload');
     for (const file of manifest.files.filter(file => !manifest.startup.includes(file.name))) {

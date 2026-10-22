@@ -34,6 +34,10 @@ function stampIndexHtml() {
   const metaTag = `<meta name="myscoutee-build-id" content="${buildId}">`;
   const buildMetaPattern = /<meta\s+name=["']myscoutee-build-id["']\s+content=["'][^"']*["']\s*\/?>/i;
   let html = fs.readFileSync(indexPath, 'utf8');
+  if (process.env.FRONTEND_BUILD_PROFILE === 'standalone') {
+    // The recorder requires the nginx-owned switch and endpoint.
+    html = html.replace(/<script\b[^>]*\bid=["']myscoutee-landing-debug-recorder["'][^>]*>\s*<\/script>/gi, '');
+  }
   if (buildMetaPattern.test(html)) {
     html = html.replace(buildMetaPattern, metaTag);
   } else if (/<meta\s+name=["']theme-color["'][^>]*>/i.test(html)) {
@@ -143,6 +147,8 @@ function collectPrecacheBuildAssetUrls(manifest) {
   for (const match of html.matchAll(/<(script|link)\b[^>]*>/gi)) {
     const tag = match[0];
     const script = match[1].toLowerCase() === 'script';
+    // Optional diagnostics are cached on use, not as part of the offline shell.
+    if (script && /\bid=["']myscoutee-landing-debug-recorder["']/i.test(tag)) continue;
     if (!script && !/\brel=["']stylesheet["']/i.test(tag)) continue;
     const reference = tag.match(script ? /\bsrc=["']([^"']+)["']/i : /\bhref=["']([^"']+)["']/i)?.[1];
     if (!reference || /^(?:[a-z]+:|\/\/)/i.test(reference)) continue;

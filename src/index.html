@@ -6,7 +6,9 @@
   <script id="myscoutee-consent-auto" type="application/json"><!--# echo var="myscoutee_consent_auto" default="1" --></script>
   <script id="myscoutee-landing-debug" type="application/json"><!--# echo var="myscoutee_landing_debug" default="0" --></script>
   <script id="myscoutee-landing-debug-context" type="application/json">[<!--# echo var="myscoutee_landing_purpose" default="0" -->,<!--# echo var="myscoutee_landing_user" default="0" -->]</script>
+  <!--# if expr="$myscoutee_landing_debug = 1" -->
   <script id="myscoutee-landing-debug-recorder" src="assets/diagnostics/landing.js" async></script>
+  <!--# endif -->
   <script id="myscoutee-runtime-status" type="application/json"><!--# include virtual="/api/runtime-status" --></script>
   <title>MyScoutee</title>
   <meta name="description" content="MyScoutee - Connect with people through shared activities and experiences">

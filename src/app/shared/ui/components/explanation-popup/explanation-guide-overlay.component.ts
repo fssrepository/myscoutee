@@ -14,7 +14,7 @@ import {
   type AppMenuModel,
   type AppMenuTrigger
 } from '@fssrepository/myscoutee-components';
-import { I18nService } from '../../../core';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 
 import { AppSetupStore } from '../../context/stores/app/app-setup.store';
 

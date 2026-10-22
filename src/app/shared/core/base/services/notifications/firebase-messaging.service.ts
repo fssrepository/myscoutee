@@ -14,13 +14,9 @@ import {
   type FirebaseApp,
   type FirebaseOptions
 } from 'firebase/app';
-import {
-  getMessaging,
-  getToken,
-  isSupported,
-  onMessage,
-  type Messaging
-} from 'firebase/messaging';
+import type { Messaging } from 'firebase/messaging';
+
+type FirebaseMessagingSdk = typeof import('firebase/messaging');
 
 import {
   environment
@@ -63,6 +59,8 @@ export class FirebaseMessagingService {
   // It runs in the background and must not share the short settings-write timeout.
   private static readonly TOKEN_TIMEOUT_MS = 30_000;
   private static readinessAppSequence = 0;
+
+  private messagingSdkPromise: Promise<FirebaseMessagingSdk> | null = null;
 
   private readonly deviceRegistrations = inject(DeviceRegistrationsService);
   private readonly i18n = inject(I18nService);
@@ -279,8 +277,9 @@ export class FirebaseMessagingService {
     if (permission !== 'granted') {
       throw this.browserReadinessError();
     }
-    const messagingSupported = await isSupported().catch(() => false);
-    if (!messagingSupported) {
+    const sdk = await this.loadMessagingSdk().catch(() => null);
+    const messagingSupported = sdk && await sdk.isSupported().catch(() => false);
+    if (!sdk || !messagingSupported) {
       throw this.browserReadinessError();
     }
     const serviceWorkerRegistration =
@@ -315,8 +314,8 @@ export class FirebaseMessagingService {
       throw this.browserReadinessError();
     }
     try {
-      const messaging = getMessaging(app);
-      const token = await getToken(messaging, {
+      const messaging = sdk.getMessaging(app);
+      const token = await sdk.getToken(messaging, {
         vapidKey: configuration.vapidKey,
         serviceWorkerRegistration
       });
@@ -342,6 +341,17 @@ export class FirebaseMessagingService {
       await this.deleteReadinessApp(app);
       throw this.browserReadinessError();
     }
+  }
+
+  private loadMessagingSdk(): Promise<FirebaseMessagingSdk> {
+    if (!this.messagingSdkPromise) {
+      const pending = import('firebase/messaging');
+      this.messagingSdkPromise = pending;
+      void pending.catch(() => {
+        if (this.messagingSdkPromise === pending) this.messagingSdkPromise = null;
+      });
+    }
+    return this.messagingSdkPromise;
   }
 
   private async registerActiveDevice(
@@ -370,13 +380,14 @@ export class FirebaseMessagingService {
     if (!serviceWorkerRegistration) {
       return false;
     }
-    const messagingSupported = await isSupported().catch(() => false);
-    if (!messagingSupported) {
+    const sdk = await this.loadMessagingSdk().catch(() => null);
+    const messagingSupported = sdk && await sdk.isSupported().catch(() => false);
+    if (!sdk || !messagingSupported) {
       return false;
     }
     try {
-      const messaging = getMessaging(firebaseRuntime.app);
-      const firebaseToken = await this.withTokenTimeout(getToken(messaging, {
+      const messaging = sdk.getMessaging(firebaseRuntime.app);
+      const firebaseToken = await this.withTokenTimeout(sdk.getToken(messaging, {
         vapidKey: firebaseRuntime.config.vapidKey,
         serviceWorkerRegistration
       }));
@@ -408,7 +419,7 @@ export class FirebaseMessagingService {
         return false;
       }
       this.storeToken(firebaseToken, userId);
-      this.bindForegroundMessages(firebaseRuntime.app, messaging);
+      this.bindForegroundMessages(firebaseRuntime.app, messaging, sdk.onMessage);
       return true;
     } catch {
       // Explicit Save reports failure; startup registration stays best-effort.
@@ -433,7 +444,8 @@ export class FirebaseMessagingService {
 
   private bindForegroundMessages(
     app: FirebaseApp,
-    messaging: Messaging
+    messaging: Messaging,
+    onMessage: FirebaseMessagingSdk['onMessage']
   ): void {
     if (
       this.foregroundListenerApp === app
