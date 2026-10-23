@@ -172,34 +172,21 @@ for (const database of ['demo_db', 'e2e_db', 'myscoutee_db']) {
   }
   const users = read(path.join(dir, 'users.json')).filter(user => user.workspaceGroupId !== group.id);
   const byName = new Map(users.filter(user => !user.workspaceGroupId).map(user => [user.name, user]));
-  const cities = Object.entries(locations.cities);
-  for (const [index, account] of locations.accounts.entries()) {
+  for (const account of locations.accounts) {
     const user = byName.get(account.name);
     if (!user) throw new Error(`Missing ${database} demo account ${account.name}`);
-    const [city, center] = cities[Math.floor(index / 4) % cities.length];
+    const city = account.city;
+    const center = locations.cities[city];
     let hash = 0;
     for (const char of account.id) hash = (hash * 31 + char.charCodeAt(0)) % 104729;
     const coordinates = {
       latitude: Number((center.latitude + ((hash % 29) - 14) * 0.0012).toFixed(6)),
       longitude: Number((center.longitude + ((Math.floor(hash / 29) % 29) - 14) * 0.0012).toFixed(6))
     };
-    const partitionKey = coordinates ? ({ Budapest: 'country:hu', Berlin: 'country:de', Madrid: 'country:es', London: 'country:gb' })[city] : null;
+    const partitionKey = center.partitionKey;
     for (const profile of users.filter(profile => profile === user || profile.accountUserId === user.userId)) {
       Object.assign(profile, { city, locationCoordinates: coordinates, partitionKey });
     }
-  }
-  const settings = read(path.join(dir, 'appSettings.json')).find(row => row._id === 'app-settings-global');
-  const adminEmails = new Set(settings?.adminAccessEnabled ? settings.adminEmails ?? [] : []);
-  for (const profile of users.filter(user => user.operator === true || adminEmails.has(user.email)
-    || adminEmails.has(users.find(account => account.userId === user.accountUserId)?.email))) {
-    let hash = 0;
-    const accountId = profile.accountUserId ?? profile.userId;
-    for (const char of accountId) hash = (hash * 31 + char.charCodeAt(0)) % 104729;
-    const center = locations.cities.Budapest;
-    Object.assign(profile, { city: 'Budapest', partitionKey: 'country:hu', locationCoordinates: {
-      latitude: Number((center.latitude + ((hash % 29) - 14) * 0.0012).toFixed(6)),
-      longitude: Number((center.longitude + ((Math.floor(hash / 29) % 29) - 14) * 0.0012).toFixed(6))
-    } });
   }
   const owner = byName.get(group.owner);
   if (!owner) throw new Error(`Missing Work owner in ${database}`);

@@ -16,8 +16,18 @@ describe('Pre-registered demo location seed', () => {
       .toEqual(new Set(['country:hu', 'country:de', 'country:es', 'country:gb']));
     for (const user of users) {
       expect(user.locationCoordinates, user.id).toBeDefined();
-      expect(partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates), user.id).not.toBeNull();
+      expect(partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates), user.id).toBe(user.partitionKey);
+      for (const coordinate of Object.values(user.locationCoordinates!)) {
+        expect(coordinate, user.id).toBe(Number(coordinate.toFixed(6)));
+      }
     }
+  });
+
+  it('keeps every account location and partition unchanged when the seed is rebuilt', () => {
+    const locations = () => SeedUserBuilder.buildExpandedDemoUsers(50).map(user => ({
+      id: user.id, city: user.city, locationCoordinates: user.locationCoordinates, partitionKey: user.partitionKey
+    }));
+    expect(locations()).toEqual(locations());
   });
 
   it('does not turn an explicitly unsupported fixture coordinate into an eligible one', () => {

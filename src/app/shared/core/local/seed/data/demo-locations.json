@@ -2,221 +2,290 @@
   "cities": {
     "Budapest": {
       "latitude": 47.4979,
-      "longitude": 19.0402
+      "longitude": 19.0402,
+      "partitionKey": "country:hu"
     },
     "Berlin": {
       "latitude": 52.52,
-      "longitude": 13.405
+      "longitude": 13.405,
+      "partitionKey": "country:de"
     },
     "Madrid": {
       "latitude": 40.4168,
-      "longitude": -3.7038
+      "longitude": -3.7038,
+      "partitionKey": "country:es"
     },
     "London": {
       "latitude": 51.5074,
-      "longitude": -0.1278
+      "longitude": -0.1278,
+      "partitionKey": "country:gb"
     }
   },
   "accounts": [
     {
       "id": "u1",
-      "name": "Farkas Anna"
+      "name": "Farkas Anna",
+      "city": "Budapest"
     },
     {
       "id": "u2",
-      "name": "Kiss Balázs"
+      "name": "Kiss Balázs",
+      "city": "Madrid"
     },
     {
       "id": "u3",
-      "name": "Nagy Eszter"
+      "name": "Nagy Eszter",
+      "city": "Madrid"
     },
     {
       "id": "u4",
-      "name": "Maya Stone"
+      "name": "Maya Stone",
+      "city": "Berlin"
     },
     {
       "id": "u5",
-      "name": "Lina Park"
+      "name": "Lina Park",
+      "city": "London"
     },
     {
       "id": "u6",
-      "name": "Iris Bloom"
+      "name": "Iris Bloom",
+      "city": "Budapest"
     },
     {
       "id": "u7",
-      "name": "Noah Hart"
+      "name": "Noah Hart",
+      "city": "Madrid"
     },
     {
       "id": "u8",
-      "name": "Evan Reed"
+      "name": "Evan Reed",
+      "city": "Budapest"
     },
     {
       "id": "u9",
-      "name": "Kai Morgan"
+      "name": "Kai Morgan",
+      "city": "Berlin"
     },
     {
       "id": "u10",
-      "name": "Luca Hale"
+      "name": "Luca Hale",
+      "city": "London"
     },
     {
       "id": "u11",
-      "name": "Theo Lane"
+      "name": "Theo Lane",
+      "city": "London"
     },
     {
       "id": "u12",
-      "name": "Milo Grant"
+      "name": "Milo Grant",
+      "city": "Madrid"
     },
     {
       "id": "u13",
-      "name": "Emma Parker"
+      "name": "Emma Parker",
+      "city": "London"
     },
     {
       "id": "u14",
-      "name": "Liam Parker"
+      "name": "Liam Parker",
+      "city": "London"
     },
     {
       "id": "u15",
-      "name": "Sophia Lane"
+      "name": "Sophia Lane",
+      "city": "Budapest"
     },
     {
       "id": "u16",
-      "name": "Noah Lane"
+      "name": "Noah Lane",
+      "city": "Berlin"
     },
     {
       "id": "u17",
-      "name": "Olivia Rivera"
+      "name": "Olivia Rivera",
+      "city": "Madrid"
     },
     {
       "id": "u18",
-      "name": "Ethan Rivera"
+      "name": "Ethan Rivera",
+      "city": "Budapest"
     },
     {
       "id": "u19",
-      "name": "Mia Grant"
+      "name": "Mia Grant",
+      "city": "London"
     },
     {
       "id": "u20",
-      "name": "Mason Grant"
+      "name": "Mason Grant",
+      "city": "Madrid"
     },
     {
       "id": "u21",
-      "name": "Lina Stone"
+      "name": "Lina Stone",
+      "city": "Budapest"
     },
     {
       "id": "u22",
-      "name": "Lucas Stone"
+      "name": "Lucas Stone",
+      "city": "London"
     },
     {
       "id": "u23",
-      "name": "Nora Hale"
+      "name": "Nora Hale",
+      "city": "Berlin"
     },
     {
       "id": "u24",
-      "name": "Owen Hale"
+      "name": "Owen Hale",
+      "city": "Berlin"
     },
     {
       "id": "u25",
-      "name": "Chloe Brooks"
+      "name": "Chloe Brooks",
+      "city": "Budapest"
     },
     {
       "id": "u26",
-      "name": "Elijah Brooks"
+      "name": "Elijah Brooks",
+      "city": "Berlin"
     },
     {
       "id": "u27",
-      "name": "Ivy Reed"
+      "name": "Ivy Reed",
+      "city": "Madrid"
     },
     {
       "id": "u28",
-      "name": "Leo Reed"
+      "name": "Leo Reed",
+      "city": "London"
     },
     {
       "id": "u29",
-      "name": "Ava Baker"
+      "name": "Ava Baker",
+      "city": "Berlin"
     },
     {
       "id": "u30",
-      "name": "Ryan Baker"
+      "name": "Ryan Baker",
+      "city": "Madrid"
     },
     {
       "id": "u31",
-      "name": "Zoe Turner"
+      "name": "Zoe Turner",
+      "city": "Madrid"
     },
     {
       "id": "u32",
-      "name": "Alex Turner"
+      "name": "Alex Turner",
+      "city": "Madrid"
     },
     {
       "id": "u33",
-      "name": "Emma Reed"
+      "name": "Emma Reed",
+      "city": "London"
     },
     {
       "id": "u34",
-      "name": "Liam Reed"
+      "name": "Liam Reed",
+      "city": "Budapest"
     },
     {
       "id": "u35",
-      "name": "Sophia Baker"
+      "name": "Sophia Baker",
+      "city": "Budapest"
     },
     {
       "id": "u36",
-      "name": "Noah Baker"
+      "name": "Noah Baker",
+      "city": "Budapest"
     },
     {
       "id": "u37",
-      "name": "Olivia Turner"
+      "name": "Olivia Turner",
+      "city": "Budapest"
     },
     {
       "id": "u38",
-      "name": "Ethan Turner"
+      "name": "Ethan Turner",
+      "city": "London"
     },
     {
       "id": "u39",
-      "name": "Mia Parker"
+      "name": "Mia Parker",
+      "city": "London"
     },
     {
       "id": "u40",
-      "name": "Mason Parker"
+      "name": "Mason Parker",
+      "city": "Berlin"
     },
     {
       "id": "u41",
-      "name": "Lina Lane"
+      "name": "Lina Lane",
+      "city": "Berlin"
     },
     {
       "id": "u42",
-      "name": "Lucas Lane"
+      "name": "Lucas Lane",
+      "city": "Berlin"
     },
     {
       "id": "u43",
-      "name": "Nora Rivera"
+      "name": "Nora Rivera",
+      "city": "Madrid"
     },
     {
       "id": "u44",
-      "name": "Owen Rivera"
+      "name": "Owen Rivera",
+      "city": "London"
     },
     {
       "id": "u45",
-      "name": "Chloe Grant"
+      "name": "Chloe Grant",
+      "city": "Madrid"
     },
     {
       "id": "u46",
-      "name": "Elijah Grant"
+      "name": "Elijah Grant",
+      "city": "Madrid"
     },
     {
       "id": "u47",
-      "name": "Ivy Stone"
+      "name": "Ivy Stone",
+      "city": "Budapest"
     },
     {
       "id": "u48",
-      "name": "Leo Stone"
+      "name": "Leo Stone",
+      "city": "London"
     },
     {
       "id": "u49",
-      "name": "Ava Hale"
+      "name": "Ava Hale",
+      "city": "Budapest"
     },
     {
       "id": "u50",
-      "name": "Ryan Hale"
+      "name": "Ryan Hale",
+      "city": "Berlin"
+    },
+    {
+      "id": "admin-demo-ava",
+      "name": "Ava Moderation",
+      "city": "Budapest"
+    },
+    {
+      "id": "admin-demo-noel",
+      "name": "Noel Safety",
+      "city": "Berlin"
+    },
+    {
+      "id": "operator-demo-dev",
+      "name": "Demo Operator",
+      "city": "Berlin"
     }
   ]
 }
