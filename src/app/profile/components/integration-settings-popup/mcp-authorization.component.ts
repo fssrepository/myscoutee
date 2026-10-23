@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   standalone: true, imports: [PopupComponent, AppMenuComponent, I18nPipe, MatIconModule],
-  styleUrl: './mcp-authorization.component.scss',
+  styleUrl: '../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/profile/components/integration-settings-popup/mcp-authorization.component.scss',
   template: `<app-popup [model]="model()" guideContext="profile.mcp-authorization">
     <div class="authorization-body">
     @if (context(); as value) {

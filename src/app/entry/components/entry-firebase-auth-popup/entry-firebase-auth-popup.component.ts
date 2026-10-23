@@ -20,8 +20,8 @@ import { I18nPipe } from '@fssrepository/myscoutee-components';
     MatIconModule,
     I18nPipe
   ],
-  templateUrl: './entry-firebase-auth-popup.component.html',
-  styleUrl: './entry-firebase-auth-popup.component.scss'
+  templateUrl: '../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.html',
+  styleUrl: '../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/entry/components/entry-firebase-auth-popup/entry-firebase-auth-popup.component.scss'
 })
 export class EntryFirebaseAuthPopupComponent {
   @Input() open = false;

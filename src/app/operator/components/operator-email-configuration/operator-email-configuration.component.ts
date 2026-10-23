@@ -48,7 +48,7 @@ import type { OperatorEmailConfiguration } from '@fssrepository/myscoutee-base/e
       @if (error()) { <p class="operator-action-popup__result is-error" role="alert">{{ 'operator.email.failed' | i18n }}</p> }
       @if (saved()) { <p class="operator-action-popup__result is-success" role="status">{{ 'operator.email.saved' | i18n }}</p> }
     </section>`,
-  styleUrl: './operator-email-configuration.component.scss'
+  styleUrl: '../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/operator/components/operator-email-configuration/operator-email-configuration.component.scss'
 })
 export class OperatorEmailConfigurationComponent implements OnInit, OnDestroy {
   private readonly service = inject(OperatorEmailService);

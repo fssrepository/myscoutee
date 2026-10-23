@@ -73,8 +73,8 @@ type DemoSelectorPopupMenuContext = DemoSelectorHeaderMenuContext | DemoSelector
     IndicatorComponent,
     I18nPipe
   ],
-  templateUrl: './demo-bootstrap-selector.component.html',
-  styleUrl: './demo-bootstrap-selector.component.scss'
+  templateUrl: '../../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.html',
+  styleUrl: '../../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/shared/ui/components/demo-bootstrap-selector/demo-bootstrap-selector.component.scss'
 })
 export class DemoBootstrapSelectorComponent {
   private readonly i18n = inject(I18nService);

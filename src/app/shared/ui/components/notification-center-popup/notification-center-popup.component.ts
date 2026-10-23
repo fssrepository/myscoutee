@@ -79,8 +79,8 @@ type NotificationHeaderMenuContext =
     SmartListComponent,
     SingleRowComponent
   ],
-  templateUrl: './notification-center-popup.component.html',
-  styleUrl: './notification-center-popup.component.scss',
+  templateUrl: '../../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/shared/ui/components/notification-center-popup/notification-center-popup.component.html',
+  styleUrl: '../../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/shared/ui/components/notification-center-popup/notification-center-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationCenterPopupComponent implements OnDestroy {

@@ -1,5 +1,5 @@
 @use './home/shared/home-page-frame';
-@use './shared/ui/components/side-menu/navigator-avatar';
+@use '@fssrepository/myscoutee-base/resources/app/shared/ui/components/side-menu/_navigator-avatar.scss';
 
 :host {
   @include home-page-frame.geometry;
