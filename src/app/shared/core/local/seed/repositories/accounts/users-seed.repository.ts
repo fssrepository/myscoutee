@@ -265,6 +265,10 @@ export class SeedUsersRepository {
           locationCoordinates: { ...seededUser.locationCoordinates } };
         changed = true;
       }
+      if (!existing.partitionKey && seededUser.partitionKey) {
+        nextById[userId] = { ...(nextById[userId] ?? existing), partitionKey: seededUser.partitionKey };
+        changed = true;
+      }
       if (existing.profileDetails == null && seededUser.profileDetails) {
         nextById[userId] = { ...(nextById[userId] ?? existing),
           profileDetails: structuredClone(seededUser.profileDetails) };

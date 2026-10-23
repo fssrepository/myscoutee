@@ -1,75 +1,37 @@
 import '@angular/compiler';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 import { LocalCountryPartitionsRepository } from './country-partitions.repository';
 
-describe('Hungary country eligibility', () => {
+describe('Offline partition catalog', () => {
   const repository = new LocalCountryPartitionsRepository();
-  it('lists Hungary and resolves its country code', () => {
-    expect(repository.querySupportedCountries()).toContainEqual({ countryCode: 'HU', countryName: 'Hungary' });
-    expect(repository.resolvePartitionKeyByCountryCode('hu')).toBe('country:hu');
-  });
-  it.each([[47.4979, 19.0402], [46.253, 20.1414]])(
-    'accepts Hungarian coordinates %s, %s', (latitude, longitude) => {
-      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBe('country:hu');
-    });
-  it.each([[48.1486, 17.1077], [46.1866, 21.3123]])(
-    'rejects neighbouring-country coordinates inside the old rectangle at %s, %s', (latitude, longitude) => {
-      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBeNull();
-    });
-});
+  afterEach(() => vi.restoreAllMocks());
 
-describe('Germany country eligibility', () => {
-  const repository = new LocalCountryPartitionsRepository();
-  it('lists Germany and resolves its country code', () => {
-    expect(repository.querySupportedCountries()).toContainEqual({ countryCode: 'DE', countryName: 'Germany' });
-    expect(repository.resolvePartitionKeyByCountryCode('de')).toBe('country:de');
+  it('keeps the four supported countries without loading boundary geometry', () => {
+    expect(repository.querySupportedCountries().map(country => country.countryCode)).toEqual(['DE', 'ES', 'GB', 'HU']);
+    for (const code of ['DE', 'ES', 'GB', 'HU']) {
+      const partition = repository.queryPartitionByCountryCode(code)!;
+      expect(partition).not.toHaveProperty('geometry');
+      expect(partition).not.toHaveProperty('bounds');
+      expect(partition.partitionKey).toBe(`country:${code.toLowerCase()}`);
+      expect(partition.locationCoordinates.latitude).toBeTypeOf('number');
+    }
   });
-  it.each([[52.52, 13.405], [48.137, 11.575], [53.5511, 9.9937], [50.9375, 6.9603]])(
-    'accepts a German city at %s, %s', (latitude, longitude) => {
-      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBe('country:de');
-    });
-  it.each([[50.0755, 14.4378], [47.3769, 8.5417], [52.3676, 4.9041], [48.8566, 2.3522]])(
-    'does not expand Germany to neighbouring cities at %s, %s', (latitude, longitude) => {
-      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBeNull();
-    });
-  it('preserves Hungary', () => {
-    expect(repository.resolvePartitionKeyByCoordinates({ latitude: 47.4979, longitude: 19.0402 })).toBe('country:hu');
-  });
-});
 
-describe('Spain country eligibility', () => {
-  const repository = new LocalCountryPartitionsRepository();
-  it('lists Spain and resolves its country code', () => {
-    expect(repository.querySupportedCountries()).toContainEqual({ countryCode: 'ES', countryName: 'Spain' });
-    expect(repository.resolvePartitionKeyByCountryCode('es')).toBe('country:es');
-  });
-  it.each([
-    [40.4168, -3.7038], [41.3874, 2.1686], [37.3891, -5.9845],
-    [39.5696, 2.6502], [28.4636, -16.2518]
-  ])('accepts mainland and island coordinates %s, %s', (latitude, longitude) => {
-    expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBe('country:es');
-  });
-  it.each([[38.7223, -9.1393], [42.5063, 1.5218], [43.2965, 5.3698]])(
-    'rejects neighbouring-country coordinates %s, %s', (latitude, longitude) => {
-      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBeNull();
+  it.each([[0, 'DE'], [0.25, 'ES'], [0.5, 'GB'], [0.9999, 'HU']] as const)(
+    'can assign each supported partition with random value %s', (random, code) => {
+      vi.spyOn(Math, 'random').mockReturnValue(random);
+      expect(repository.randomPartition().countryCode).toBe(code);
     });
-});
 
-describe('United Kingdom country eligibility', () => {
-  const repository = new LocalCountryPartitionsRepository();
-  it('uses one GB country partition', () => {
-    expect(repository.querySupportedCountries()).toContainEqual({countryCode: 'GB', countryName: 'United Kingdom'});
-    expect(repository.resolvePartitionKeyByCountryCode('gb')).toBe('country:gb');
+  it('keeps the catalog sample unchanged when a returned location is edited', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    repository.randomPartition().locationCoordinates.latitude = 0;
+    expect(repository.randomPartition().locationCoordinates.latitude).toBe(52.52);
   });
-  it.each([
-    ['London, England', 51.5074, -0.1278],
-    ['Edinburgh, Scotland', 55.9533, -3.1883],
-    ['Cardiff, Wales', 51.4816, -3.1791],
-    ['Belfast, Northern Ireland', 54.5973, -5.9301]
-  ])('includes %s in GB', (_name, latitude, longitude) => {
-    expect(repository.resolvePartitionKeyByCoordinates({latitude: Number(latitude), longitude: Number(longitude)})).toBe('country:gb');
-  });
-  it('does not include Dublin in GB', () => {
-    expect(repository.resolvePartitionKeyByCoordinates({latitude: 53.3498, longitude: -6.2603})).toBeNull();
+
+  it('normalizes supported codes and rejects unknown codes', () => {
+    expect(repository.resolvePartitionKeyByCountryCode(' hu ')).toBe('country:hu');
+    expect(repository.resolvePartitionKeyByCountryCode('US')).toBeNull();
+    expect(repository.resolvePartitionKeyByCountryCode(null)).toBeNull();
   });
 });

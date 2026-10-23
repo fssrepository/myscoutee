@@ -25,6 +25,28 @@ describe('LocalUsersRepository demo selector', () => {
     TestBed.resetTestingModule();
   });
 
+  it('preserves the stored partition when another save omits it', async () => {
+    const saved = repository.upsertUser(user('new-local-account', 'New account', {
+      city: 'Madrid', partitionKey: 'country:es', locationCoordinates: { latitude: 40.4168, longitude: -3.7038 }
+    }));
+    await repository.flushToIndexedDb();
+    const edited = repository.upsertUser({ ...saved, name: 'Edited account', partitionKey: undefined });
+    expect(edited.partitionKey).toBe('country:es');
+    expect(repository.queryUserById(saved.id)?.partitionKey).toBe('country:es');
+  });
+
+  it('inherits the account partition and coordinates when creating a workspace profile', () => {
+    const account = repository.upsertUser(user('partition-account', 'Account', {
+      city: 'Berlin', partitionKey: 'country:de', locationCoordinates: { latitude: 52.52, longitude: 13.405 }
+    }));
+    const profile = repository.upsertUser(user('partition-profile', 'Profile', {
+      accountUserId: account.id, workspaceGroupId: 'new-workspace'
+    }));
+    expect(profile.partitionKey).toBe(account.partitionKey);
+    expect(profile.locationCoordinates).toEqual(account.locationCoordinates);
+    expect(profile.city).toBe(account.city);
+  });
+
   it('keeps page filters when home filters change and isolates users', () => {
     const filters = { friendsOnly: true, openSpotsOnly: false, topic: 'Music', mode: 'Mingle' as const };
     repository.upsertUserFilterPreferences('viewer', { ageMin: 20, pageFilters: { 'event-explore': filters } });
