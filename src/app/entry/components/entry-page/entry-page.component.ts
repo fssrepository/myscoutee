@@ -1,6 +1,6 @@
 import { finishLandingDebug, markLandingDebug } from '../../../shared/core/common/landing-debug';
 import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
-import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
+import { backendUnavailable } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
 import { preloadAdapterMode } from '../../../shared/core/base/adapter-loaders';

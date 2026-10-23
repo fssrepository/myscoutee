@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideUiTranslations } from '@fssrepository/myscoutee-components';
 import { environment } from '../../../../../../environments/environment';
-import { reportBackendReadiness } from '../../../common/backend-connectivity';
+import { reportBackendReadiness } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
 import { LandingContentService } from '../content/landing-content.service';
 import { I18nService } from '../localization/i18n.service';
 import { LANDING_EXPLANATION_GUIDE } from './landing-explanation-guide';

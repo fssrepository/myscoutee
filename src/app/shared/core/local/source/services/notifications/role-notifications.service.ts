@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { NotificationCategory } from '../../../../contracts/notifications/notification.interface';
+import type { NotificationCategory } from '@fssrepository/myscoutee-base/notifications/contracts';
 import type { UserDto } from '../../../../contracts/accounts/user.interface';
 import templates from '../../../seed/data/role-notifications.json';
 import { LocalNotificationsRepository } from '../../repositories/notifications/notifications.repository';

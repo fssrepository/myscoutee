@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
 
 import type { LocationCoordinates } from '../../../../contracts/accounts/user.interface';
-import type { CountryPartition } from '../../entity/platform/country-partition.entity';
-import { GERMANY_PARTITION } from './country-de.generated';
-import { UNITED_KINGDOM_PARTITION } from './country-gb.generated';
-import { SPAIN_PARTITION } from './country-es.generated';
+import type { CountryPartition } from '@fssrepository/myscoutee-base/platform/country-partition';
+import { GERMANY_PARTITION } from '@fssrepository/myscoutee-base/platform/country-de';
+import { UNITED_KINGDOM_PARTITION } from '@fssrepository/myscoutee-base/platform/country-gb';
+import { SPAIN_PARTITION } from '@fssrepository/myscoutee-base/platform/country-es';
 
 const DEMO_COUNTRY_PARTITIONS: readonly CountryPartition[] = [
   GERMANY_PARTITION,

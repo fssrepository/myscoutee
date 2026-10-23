@@ -28,7 +28,7 @@ import { ProfileStore } from '../../context/stores/profile/profile.store';
 import { ContactChatAccessStore } from '../../context/stores/chat/contact-chat-access.store';
 import { GroupWorkspaceStore } from '../../context/stores/community/group-workspace.store';
 import { environment } from '../../../../../environments/environment';
-import { backendUnavailable } from '../../../core/common/backend-connectivity';
+import { backendUnavailable } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
 import { AppRuntimeStore } from '../../context/stores/app/app-runtime.store';
 import {
   ChangeDetectionStrategy,
@@ -48,7 +48,7 @@ import type {
   NotificationDto,
   NotificationListFilters,
   NotificationSyncRequestDto
-} from '../../../core/contracts/notifications/notification.interface';
+} from '@fssrepository/myscoutee-base/notifications/contracts';
 
 import {
   NotificationSingleRowConverter

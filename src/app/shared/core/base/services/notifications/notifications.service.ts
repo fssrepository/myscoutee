@@ -9,7 +9,7 @@ import type {
   NotificationReadResponseDto,
   NotificationSyncRequestDto,
   NotificationSyncResponseDto
-} from '../../../contracts/notifications/notification.interface';
+} from '@fssrepository/myscoutee-base/notifications/contracts';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 
 import { RouteDelayService } from '../platform/route-delay.service';

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../../common/app.db';
-import type { DeviceRegistrationDto, DeviceRegistrationRemovalDto } from '../../../../contracts/accounts/device-registration.interface';
+import type { DeviceRegistrationDto, DeviceRegistrationRemovalDto } from '@fssrepository/myscoutee-base/accounts/device-registration';
 import { USERS_TABLE_NAME } from '../../entity/accounts/user.entity';
 
 @Injectable({ providedIn: 'root' })

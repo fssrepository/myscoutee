@@ -30,7 +30,7 @@ import { LocalIntegrationService } from '../local/source/services/integrations/i
 import { LocalLandingContentService } from '../local/source/services/content/landing-content.service';
 import { LocalMediaService } from '../local/source/services/media/media.service';
 import { LocalNotificationsService } from '../local/source/services/notifications/notifications.service';
-import { LocalOperatorEmailService } from '../local/source/services/email/operator-email.service';
+import { LocalOperatorEmailService } from '@fssrepository/myscoutee-base/email/local-operator-email';
 import { LocalOperatorRegistryService } from '../local/source/services/operator/operator-registry.service';
 import { LocalPaymentMethodsService } from '../local/source/services/payments/payment-methods.service';
 import { LocalPhotoFeedService } from '../local/source/services/content/photo-feed.service';

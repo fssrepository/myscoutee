@@ -1,7 +1,7 @@
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
-import { DEVICE_REGISTRATIONS_ROUTE, type DeviceRegistrationDto, type DeviceRegistrationRemovalDto } from '../../../contracts/accounts/device-registration.interface';
+import { DEVICE_REGISTRATIONS_ROUTE, type DeviceRegistrationDto, type DeviceRegistrationRemovalDto } from '@fssrepository/myscoutee-base/accounts/device-registration';
 
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 

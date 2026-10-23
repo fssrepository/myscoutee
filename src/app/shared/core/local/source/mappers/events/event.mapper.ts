@@ -1,7 +1,7 @@
 import { normalizeScheduleFrequency, clampNumber, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import { normalizeImageDetails } from '../../../../contracts/media/image-gallery.interface';
-import type { DtoListMapper, DtoMapper } from '../common/mapper.types';
+import type { DtoListMapper, DtoMapper } from '@fssrepository/myscoutee-base/common/mapper-types';
 import { AppUtils } from '../../../../base/app-utils';
 import { PricingBuilder } from '../../../../base/builders';
 import {

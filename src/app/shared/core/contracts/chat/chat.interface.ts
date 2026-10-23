@@ -3,7 +3,7 @@ import type * as AppConstants from '../../common/constants';
 import type { ActivityEventStatus } from '../common/activity.interface';
 import type { SubEventDTO } from '../events/event.interface';
 import type { UserChatCountersDto } from '../accounts/user.interface';
-import type { ChatCallEvent } from './chat-call.interface';
+import type { ChatCallEvent } from '@fssrepository/myscoutee-base/chat/contracts';
 
 export const RANDOM_ROOM_WELCOME_MESSAGE =
   'Welcome! We matched you here by affinity and past interactions. Leave anytime. '

@@ -9,7 +9,7 @@ import type {
 } from '../../../../contracts/integrations/integration.interface';
 import type { LocalIntegrationTokenRecord } from '../../entity/integrations/integration.entity';
 import { USERS_TABLE_NAME, type UserRecord } from '../../entity/accounts/user.entity';
-import { secureRandomUuid } from '../../../../common/secure-random';
+import { secureRandomUuid } from '@fssrepository/myscoutee-base/common/secure-random';
 import type { PricingCancellationPolicy } from '../../../../contracts/payments/pricing.interface';
 import type { PaymentRefundPreviewDto } from '../../../../contracts/payments/payment-method.interface';
 

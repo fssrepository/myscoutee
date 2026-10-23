@@ -2,7 +2,7 @@ import type {
   ContextualDtoToRecordMapper,
   DtoRecordMapper,
   NullableRecordToDtoMapper
-} from '../common/mapper.types';
+} from '@fssrepository/myscoutee-base/common/mapper-types';
 import { BaseUserRatesMapper, type UserRateRecordDTO } from '../../../../base/mappers/affinity/rate.mapper';
 import type { ActivityRateDTO, UserGameFilterPreferencesDto } from '../../../../contracts/common/activity.interface';
 import type { UserFilterPreferencesRecord, UserRateRecord } from '../../entity/affinity/rate.entity';

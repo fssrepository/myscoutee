@@ -7,7 +7,7 @@ import type {
   NotificationPageResultDto,
   NotificationSyncRequestDto,
   NotificationSyncResponseDto
-} from '../../../../core/contracts/notifications/notification.interface';
+} from '@fssrepository/myscoutee-base/notifications/contracts';
 import { type ListQuery, type AppMenuDragPosition } from '@fssrepository/myscoutee-components';
 import { NotificationsService } from '../../../../core/base/services/notifications/notifications.service';
 

@@ -1,9 +1,9 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { ChatDTO } from '../../../contracts/chat/chat.interface';
-import type { ChatCallEvent, ChatCallParticipant, ChatCallStunNode } from '../../../contracts/chat/chat-call.interface';
+import type { ChatCallEvent, ChatCallParticipant, ChatCallStunNode } from '@fssrepository/myscoutee-base/chat/contracts';
 import { ChatsService } from './chats.service';
-import { ChatCallMls, type CallMlsCommit } from './chat-call-mls';
-import { ChatCallVoiceActivity } from './chat-call-voice-activity';
+import { ChatCallMls, type CallMlsCommit } from '@fssrepository/myscoutee-base/chat/call-mls';
+import { ChatCallVoiceActivity } from '@fssrepository/myscoutee-base/chat/voice-activity';
 
 export interface ChatCallRemote {
   id: string;

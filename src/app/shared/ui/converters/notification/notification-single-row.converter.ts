@@ -1,7 +1,7 @@
 import type {
   NotificationCategory,
   NotificationDto
-} from '../../../core/contracts/notifications/notification.interface';
+} from '@fssrepository/myscoutee-base/notifications/contracts';
 import * as AppConstants from '../../../core/common/constants';
 import { AppUtils } from '../../../core/base/app-utils';
 import { EventModeMenuConverter } from '../event/event-mode-menu.converter';

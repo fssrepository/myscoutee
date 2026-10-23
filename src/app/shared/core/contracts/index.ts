@@ -9,7 +9,7 @@ export * from './content/content.interface';
 export * from './platform/deployment-configuration.interface';
 export * from './events/event.interface';
 
-export * from './notifications/notification.interface';
+export * from '@fssrepository/myscoutee-base/notifications/contracts';
 export * from './payments/payment-method.interface';
 export * from './operator/operator.interface';
 export * from './payments/pricing.interface';

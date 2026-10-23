@@ -24,7 +24,7 @@ import {
   I18nPipe
 } from '@fssrepository/myscoutee-components';
 import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
-import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
+import { backendUnavailable } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,

@@ -20,7 +20,7 @@ export {
 } from './source/entity/assets/asset.entity';
 export { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersMemorySchema, type ActivityResourcesMemorySchema, type ActivitySubEventResourceRecord } from './source/entity/common/activity.entity';
 
-export { type CountryPartition, type CountryPartitionBounds } from './source/entity/platform/country-partition.entity';
+export { type CountryPartition, type CountryPartitionBounds } from '@fssrepository/myscoutee-base/platform/country-partition';
 export { type ActivityEventRecord } from '../contracts/common/activity.interface';
 
 export { USERS_TABLE_NAME, type UsersMemorySchema } from './source/entity/accounts/user.entity';

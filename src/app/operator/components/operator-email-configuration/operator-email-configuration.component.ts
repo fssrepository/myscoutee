@@ -9,7 +9,7 @@ import {
   type AppMenuPalette
 } from '@fssrepository/myscoutee-components';
 import { OperatorEmailService } from '../../../shared/core/base/services/email/operator-email.service';
-import type { OperatorEmailConfiguration } from '../../../shared/core/contracts/email/operator-email.interface';
+import type { OperatorEmailConfiguration } from '@fssrepository/myscoutee-base/email/contracts';
 @Component({ selector: 'app-operator-email-configuration', standalone: true, imports: [FormsModule, MatIconModule, AppMenuComponent, I18nPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

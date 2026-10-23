@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import type * as AssetContracts from '../../../contracts/assets/asset.interface';
 import type { UserByIdQueryResponse } from '../../../contracts/accounts/user.interface';
 import { offlineCacheTicketsStorageKey, offlineCacheUserStorageKey } from '../../../common/storage-scope';
-import { isPublicMediaUrl } from '../../../common/public-media';
+import { isPublicMediaUrl } from '@fssrepository/myscoutee-base/media/public-media';
 
 interface CachedTicketPagePayload {
   items: readonly AssetContracts.AssetTicketDTO[];

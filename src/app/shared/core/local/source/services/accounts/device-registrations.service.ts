@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { DEVICE_REGISTRATIONS_ROUTE, type DeviceRegistrationDto, type DeviceRegistrationRemovalDto } from '../../../../contracts/accounts/device-registration.interface';
+import { DEVICE_REGISTRATIONS_ROUTE, type DeviceRegistrationDto, type DeviceRegistrationRemovalDto } from '@fssrepository/myscoutee-base/accounts/device-registration';
 import { LocalDeviceRegistrationsRepository } from '../../repositories/accounts/device-registrations.repository';
 import { LocalRouteDelayService } from '../platform/route-delay.service';
 

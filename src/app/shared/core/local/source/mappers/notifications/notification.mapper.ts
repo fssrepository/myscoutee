@@ -1,7 +1,7 @@
 import type {
   NotificationDto,
   NotificationPageResponseDto
-} from '../../../../contracts/notifications/notification.interface';
+} from '@fssrepository/myscoutee-base/notifications/contracts';
 import type { NotificationRecord } from '../../entity/notifications/notification.entity';
 
 export class LocalNotificationMapper {

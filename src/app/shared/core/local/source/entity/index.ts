@@ -2,7 +2,7 @@ export * from './common/activity.entity';
 export * from './assets/asset.entity';
 export * from './chat/chat.entity';
 export * from './content/content.entity';
-export * from './platform/country-partition.entity';
+export * from '@fssrepository/myscoutee-base/platform/country-partition';
 export * from './events/event.entity';
 export * from './events/event-ticket.entity';
 export * from './notifications/notification.entity';
