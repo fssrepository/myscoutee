@@ -17,7 +17,7 @@ import { BaseRouteModeService } from '../platform/base-route-mode.service';
 import { ActivityMembersService } from '../events/activity-members.service';
 import { RouteDelayService } from '../platform/route-delay.service';
 import type * as ActivityContracts from '../../../contracts/common/activity.interface';
-import type { ChatCallRequest } from '@fssrepository/myscoutee-base/chat/contracts';
+import type { ChatCallRequest } from '../../../contracts/chat/chat-call.interface';
 
 type ChatMessagesLoadContext = {
   readReceipt?: ContractTypes.ChatReadReceipt | null;

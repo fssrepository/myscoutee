@@ -1,0 +1,30 @@
+@if (store.isOpen()) {
+  <app-popup [model]="popupModel()" [zIndex]="23000">
+    <section class="notification-center-popup__body">
+      <app-smart-list
+        #notificationsSmartList
+        data-guide-field="notification-list"
+        class="notification-center-popup__list"
+        [config]="smartListConfig"
+        [loadPage]="loadPage"
+        [query]="query()"
+        [itemTemplate]="notificationRowTemplate"
+        (menuItemSelect)="onRowMenuSelect($event)"
+      ></app-smart-list>
+
+      <ng-template
+        #notificationRowTemplate
+        let-notification
+        let-openMenu="openMenu"
+      >
+        <single-row
+          data-guide-field="notification-row-actions"
+          [row]="notificationRow(notification)"
+          [useSharedMenu]="true"
+          [sharedMenuContext]="rowMenuContext(notification)"
+          (menuRequest)="openMenu($event)"
+        ></single-row>
+      </ng-template>
+    </section>
+  </app-popup>
+}

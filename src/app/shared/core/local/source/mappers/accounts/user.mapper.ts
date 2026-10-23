@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../../base/app-utils';
-import type { DtoRecordMapper } from '@fssrepository/myscoutee-base/common/mapper-types';
+import type { DtoRecordMapper } from '../common/mapper.types';
 import type { UserDto, UserSelectorListItemDto } from '../../../../contracts/accounts/user.interface';
 import type { UserRecord } from '../../entity/accounts/user.entity';
 

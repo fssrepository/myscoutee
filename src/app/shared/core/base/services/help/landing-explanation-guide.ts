@@ -2,7 +2,7 @@ import { InjectionToken, inject } from '@angular/core';
 import { ExplanationGuideService } from '@fssrepository/myscoutee-components';
 import { myScouteeGuideOptions } from '../../../../ui/components/explanation-popup/guide-options';
 import { LandingContentService } from '../content/landing-content.service';
-import { backendUnavailable } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
+import { backendUnavailable } from '../../../common/backend-connectivity';
 import { environment } from '../../../../../../environments/environment';
 
 // A separate instance of the shared engine: never calls authenticated help routes.

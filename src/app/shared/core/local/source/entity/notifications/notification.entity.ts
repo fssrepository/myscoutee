@@ -1,4 +1,4 @@
-import type { NotificationCategory } from '@fssrepository/myscoutee-base/notifications/contracts';
+import type { NotificationCategory } from '../../../../contracts/notifications/notification.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../../common/storage-scope';
 
 export const NOTIFICATIONS_TABLE_NAME = APP_INDEXED_DB_KEYS.notifications;

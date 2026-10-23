@@ -27,7 +27,7 @@ import type {
 } from '../../../contracts/chat/chat.interface';
 import { RANDOM_ROOM_WELCOME_MESSAGE } from '../../../contracts/chat/chat.interface';
 import type { IChatsService } from '../../../contracts/common/activity.interface';
-import type { ChatCallEvent, ChatCallRequest } from '@fssrepository/myscoutee-base/chat/contracts';
+import type { ChatCallEvent, ChatCallRequest } from '../../../contracts/chat/chat-call.interface';
 
 import type { ChatFeedFilters } from '../../../contracts';
 import {

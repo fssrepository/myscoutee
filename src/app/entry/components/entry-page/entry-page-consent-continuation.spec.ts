@@ -1,6 +1,6 @@
 import { EntryPageComponent } from './entry-page.component';
 import { environment } from '../../../../environments/environment';
-import { reportBackendReadiness } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
+import { reportBackendReadiness } from '../../../shared/core/common/backend-connectivity';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 
 describe('EntryPageComponent Explore consent continuation', () => {

@@ -13,7 +13,7 @@ describe('landing runtime status', () => {
   };
   let mode: typeof import('../../../../environments/environment').environment;
   let failover: typeof import('./demo-failover');
-  let connectivity: typeof import('@fssrepository/myscoutee-base/platform/backend-connectivity');
+  let connectivity: typeof import('./backend-connectivity');
   let fetchStatus: ReturnType<typeof vi.fn>;
   const response = (ready: boolean, age = 0) => new Response(JSON.stringify({
     ready, checkedAt: Math.floor(Date.now() / 1000) - age
@@ -32,7 +32,7 @@ describe('landing runtime status', () => {
     fetchStatus = vi.fn().mockImplementation(async () => response(true));
     vi.stubGlobal('fetch', fetchStatus);
     failover = await import('./demo-failover');
-    connectivity = await import('@fssrepository/myscoutee-base/platform/backend-connectivity');
+    connectivity = await import('./backend-connectivity');
   });
   afterEach(() => {
     document.querySelector('[data-test-popup]')?.remove();

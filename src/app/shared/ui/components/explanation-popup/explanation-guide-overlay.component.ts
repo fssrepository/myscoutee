@@ -38,8 +38,8 @@ type GuideTarget = { element: HTMLElement; repeatedElements?: HTMLElement[]; men
   selector: 'app-explanation-guide-overlay',
   standalone: true,
   imports: [I18nPipe, NgTemplateOutlet, MatIconModule, AppMenuComponent],
-  templateUrl: '../../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.html',
-  styleUrl: '../../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/shared/ui/components/explanation-popup/explanation-guide-overlay.component.scss',
+  templateUrl: './explanation-guide-overlay.component.html',
+  styleUrl: './explanation-guide-overlay.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ExplanationGuideOverlayComponent implements OnInit, OnDestroy {

@@ -1,4 +1,4 @@
-import { reportBackendReadiness } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
+import { reportBackendReadiness } from './backend-connectivity';
 import { environment } from '../../../../environments/environment';
 
 // Resolve before importing App: storage keys and adapters

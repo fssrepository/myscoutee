@@ -25,7 +25,7 @@ import type {
   ChatServiceEnsureInput
 } from '../../../../contracts/chat/chat.interface';
 import type { IChatsService } from '../../../../contracts/common/activity.interface';
-import type { ChatCallRequest } from '@fssrepository/myscoutee-base/chat/contracts';
+import type { ChatCallRequest } from '../../../../contracts/chat/chat-call.interface';
 import { ActivityResourceBuilder } from '../../../../base/builders';
 import { LocalRouteDelayService } from '../platform/route-delay.service';
 import { LocalChatsRepository } from '../../repositories/chat/chats.repository';

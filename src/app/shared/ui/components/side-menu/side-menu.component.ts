@@ -44,7 +44,7 @@ import { PhotoFeedStore } from '../../context/stores/content/photo-feed.store';
 import { PhotoFeedPopupComponent } from '../photo-feed-popup/photo-feed-popup.component';
 
 import { FollowingStore } from '../../context/stores/activity/following.store';
-import { backendUnavailable } from '@fssrepository/myscoutee-base/platform/backend-connectivity';
+import { backendUnavailable } from '../../../core/common/backend-connectivity';
 import { AppSetupStore } from '../../context/stores/app/app-setup.store';
 import {
   CommonModule

@@ -15,7 +15,7 @@ import type {
   NotificationService,
   NotificationSyncRequestDto,
   NotificationSyncResponseDto
-} from '@fssrepository/myscoutee-base/notifications/contracts';
+} from '../../../contracts/notifications/notification.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { RouteDelayService } from '../../../base/services/platform/route-delay.service';
 

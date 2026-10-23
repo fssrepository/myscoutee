@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import { environment } from '../../../../../../environments/environment';
-import { DEVICE_REGISTRATIONS_ROUTE, type DeviceRegistrationDto, type DeviceRegistrationRemovalDto } from '@fssrepository/myscoutee-base/accounts/device-registration';
+import { DEVICE_REGISTRATIONS_ROUTE, type DeviceRegistrationDto, type DeviceRegistrationRemovalDto } from '../../../contracts/accounts/device-registration.interface';
 
 @Injectable({ providedIn: 'root' })
 export class HttpDeviceRegistrationsService {

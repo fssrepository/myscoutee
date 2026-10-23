@@ -3,7 +3,7 @@ import type {
   ChatDTO,
   ChatMetricsDTO
 } from '../../../../contracts/chat/chat.interface';
-import type { RecordToDtoListMapper } from '@fssrepository/myscoutee-base/common/mapper-types';
+import type { RecordToDtoListMapper } from '../common/mapper.types';
 import type { ChatThreadRecord } from '../../entity/chat/chat.entity';
 
 

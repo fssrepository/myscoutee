@@ -24,7 +24,7 @@ import {
 import {
   APP_STORAGE_KEYS
 } from '../../../common/storage-scope';
-import { pwaNotificationRegistrationEnabled } from '@fssrepository/myscoutee-base/notifications/pwa-runtime-policy';
+import { pwaNotificationRegistrationEnabled } from '../../../common/pwa-runtime-policy';
 import {
   FirebaseAppService,
   type FirebaseAppRuntime,

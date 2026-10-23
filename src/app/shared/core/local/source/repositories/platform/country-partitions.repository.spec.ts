@@ -2,6 +2,22 @@ import '@angular/compiler';
 import { describe, expect, it } from 'vitest';
 import { LocalCountryPartitionsRepository } from './country-partitions.repository';
 
+describe('Hungary country eligibility', () => {
+  const repository = new LocalCountryPartitionsRepository();
+  it('lists Hungary and resolves its country code', () => {
+    expect(repository.querySupportedCountries()).toContainEqual({ countryCode: 'HU', countryName: 'Hungary' });
+    expect(repository.resolvePartitionKeyByCountryCode('hu')).toBe('country:hu');
+  });
+  it.each([[47.4979, 19.0402], [46.253, 20.1414]])(
+    'accepts Hungarian coordinates %s, %s', (latitude, longitude) => {
+      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBe('country:hu');
+    });
+  it.each([[48.1486, 17.1077], [46.1866, 21.3123]])(
+    'rejects neighbouring-country coordinates inside the old rectangle at %s, %s', (latitude, longitude) => {
+      expect(repository.resolvePartitionKeyByCoordinates({ latitude, longitude })).toBeNull();
+    });
+});
+
 describe('Germany country eligibility', () => {
   const repository = new LocalCountryPartitionsRepository();
   it('lists Germany and resolves its country code', () => {

@@ -3,7 +3,7 @@ import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
 import { APP_CACHE_KEYS, APP_STORAGE_KEYS } from '../../../common/storage-scope';
-import { pwaNotificationRegistrationEnabled } from '@fssrepository/myscoutee-base/notifications/pwa-runtime-policy';
+import { pwaNotificationRegistrationEnabled } from '../../../common/pwa-runtime-policy';
 
 interface BeforeInstallPromptChoice {
   outcome: 'accepted' | 'dismissed';

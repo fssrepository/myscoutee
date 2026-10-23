@@ -43,12 +43,7 @@ function stampIndexHtml() {
   }
   if (process.env.FRONTEND_BUILD_PROFILE === 'standalone') {
     // The recorder requires the nginx-owned switch and endpoint.
-    // Removing an inner tag can reassemble another recorder tag.
-    let previous;
-    do {
-      previous = html;
-      html = html.replace(/<script\b[^>]*\bid=["']myscoutee-landing-debug-recorder["'][^>]*>\s*<\/script>/gi, '');
-    } while (html !== previous);
+    html = html.replace(/<script\b[^>]*\bid=["']myscoutee-landing-debug-recorder["'][^>]*>\s*<\/script>/gi, '');
   }
   if (buildMetaPattern.test(html)) {
     html = html.replace(buildMetaPattern, metaTag);

@@ -6,7 +6,7 @@ import { environment } from '../../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../../contracts/accounts/user.interface';
 import type { AuthMode } from '../../../common/constants';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
-import { secureRandomUuid } from '@fssrepository/myscoutee-base/common/secure-random';
+import { secureRandomUuid } from '../../../common/secure-random';
 import {
   isFirebaseLoginEnabled,
   resolveRuntimeAuthMode

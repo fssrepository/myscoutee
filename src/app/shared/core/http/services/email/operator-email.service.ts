@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../../../environments/environment';
-import type { OperatorEmailConfiguration, OperatorEmailSave } from '@fssrepository/myscoutee-base/email/contracts';
+import type { OperatorEmailConfiguration, OperatorEmailSave } from '../../../contracts/email/operator-email.interface';
 @Injectable({ providedIn: 'root' })
 export class HttpOperatorEmailService {
   private readonly http = inject(HttpClient);

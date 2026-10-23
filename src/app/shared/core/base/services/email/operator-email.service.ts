@@ -3,7 +3,7 @@ import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
-import type { OperatorEmailSave } from '@fssrepository/myscoutee-base/email/contracts';
+import type { OperatorEmailSave } from '../../../contracts/email/operator-email.interface';
 @Injectable({ providedIn: 'root' })
 export class OperatorEmailService extends BaseRouteModeService {
   private readonly transportAdapters = inject(AdapterProxyService);

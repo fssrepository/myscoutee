@@ -4,7 +4,7 @@ import type {
   NotificationBucket,
   NotificationListFilters,
   NotificationSyncRequestDto
-} from '@fssrepository/myscoutee-base/notifications/contracts';
+} from '../../../../contracts/notifications/notification.interface';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { LocalMemoryDb } from '../../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../entity/common/activity.entity';

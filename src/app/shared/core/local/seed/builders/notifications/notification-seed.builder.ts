@@ -1,5 +1,5 @@
 import roleNotifications from '../../data/role-notifications.json';
-import type { NotificationCategory } from '@fssrepository/myscoutee-base/notifications/contracts';
+import type { NotificationCategory } from '../../../../contracts/notifications/notification.interface';
 import type { NotificationRecord } from '../../../source/entity/notifications/notification.entity';
 import type { UserRecord } from '../../../source/entity/accounts/user.entity';
 import type { ActivityInvitationSeedItem } from '../../entity';

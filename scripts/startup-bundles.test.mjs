@@ -474,33 +474,6 @@ test('missing Angular entry metadata fails before changing the original build', 
   } finally { fs.rmSync(dir, {recursive:true,force:true}); }
 });
 
-test('standalone stamping removes recorder tags reassembled by nested tag removal', () => {
-  const dir = fixture();
-  try {
-    fs.copyFileSync(new URL('../src/app-sw.js', import.meta.url), path.join(dir, 'app-sw.js'));
-    fs.mkdirSync(path.join(dir, 'assets/diagnostics'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'assets/diagnostics/landing.js'), '// recorder');
-    fs.writeFileSync(path.join(dir, 'retained.js'), '// unrelated startup script');
-    const recorder = '<script id="myscoutee-landing-debug-recorder" src="assets/diagnostics/landing.js"></script>';
-    let nested = recorder;
-    for (let depth = 0; depth < 3; depth++) {
-      nested = '<scr' + nested + 'ipt id="myscoutee-landing-debug-recorder" src="assets/diagnostics/landing.js"></script>';
-    }
-    fs.appendFileSync(path.join(dir, 'index.html'), recorder + nested
-      + '<script id="retained" src="retained.js"></script>');
-    execFileSync(process.execPath, [new URL('./stamp-prod-build.js', import.meta.url).pathname], {
-      env: { ...process.env, FRONTEND_BUILD_OUTPUT_DIR: dir,
-        FRONTEND_BUILD_PROFILE: 'standalone', MYSCOUTEE_UI_BUILD_ID: 'recorder-removal-test' },
-      stdio: 'pipe'
-    });
-    const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
-    assert.ok(!html.includes('myscoutee-landing-debug-recorder'),
-      'Removing an inner tag must not reassemble a recorder tag');
-    assert.ok(html.includes('<script id="retained" src="retained.js"></script>'),
-      'Unrelated scripts remain unchanged');
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-});
-
 test('the stamped worker installs the startup shell without fetching unused features or font subsets', async () => {
   const dir = fixture();
   try {

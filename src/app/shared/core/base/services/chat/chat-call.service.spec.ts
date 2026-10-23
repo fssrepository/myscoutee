@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ChatCallService } from './chat-call.service';
 import { ChatsService } from './chats.service';
-import type { ChatCallEvent } from '@fssrepository/myscoutee-base/chat/contracts';
+import type { ChatCallEvent } from '../../../contracts/chat/chat-call.interface';
 
 describe('Chat call room end ordering', () => {
   let service: ChatCallService;

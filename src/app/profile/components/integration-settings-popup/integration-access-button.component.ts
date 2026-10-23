@@ -38,7 +38,7 @@ const STYLE = {
       </app-popup>
     }
   `,
-  styleUrl: '../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/profile/components/integration-settings-popup/integration-access-button.component.scss'
+  styleUrl: './integration-access-button.component.scss'
 })
 export class IntegrationAccessButtonComponent implements OnDestroy {
   readonly clientId = input<string | null>(null);

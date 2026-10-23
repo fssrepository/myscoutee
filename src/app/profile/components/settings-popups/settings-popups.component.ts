@@ -50,7 +50,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user
     ProfileReportUserPopupComponent
   ],
   templateUrl: './settings-popups.component.html',
-  styleUrl: '../../../../../node_modules/@fssrepository/myscoutee-base/resources/app/profile/components/settings-popups/settings-popups.component.scss'
+  styleUrl: './settings-popups.component.scss'
 })
 export class ProfileSettingsPopupsComponent {
   private readonly i18n = inject(I18nService);

@@ -1,4 +1,4 @@
-import type { DeviceRegistrationRecord } from '@fssrepository/myscoutee-base/accounts/device-registration-entity';
+import type { DeviceRegistrationRecord } from './device-registration.entity';
 import type {
   DetailPrivacy,
   ProfileStatus,
