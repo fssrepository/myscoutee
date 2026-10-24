@@ -1,3 +1,5 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { CommunityServicesHomeComponent } from '../community-services-home/community-services-home.component';
 import { CommunityAnnouncementsComponent } from '../../../shared/ui/components/community-announcements/community-announcements.component';
@@ -20,7 +22,6 @@ import {
   PairCardComponent,
   SingleCardComponent,
   SmartListComponent,
-  ExplanationGuideService,
   I18nPipe
 } from '@fssrepository/myscoutee-components';
 import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
@@ -2848,17 +2849,7 @@ export class HomeComponent implements OnDestroy {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       activities: {
-        game: user.activities?.game ?? 0,
-        chats: user.activities?.chats ?? 0,
-        invitations: user.activities?.invitations ?? 0,
-        events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0,
-        cars: user.activities?.cars ?? 0,
-        accommodation: user.activities?.accommodation ?? 0,
-        supplies: user.activities?.supplies ?? 0,
-        tickets: user.activities?.tickets ?? 0,
-        contacts: user.activities?.contacts ?? 0,
-        feedback: user.activities?.feedback ?? 0,
+        ...AppUtils.copyActivityCounts(user.activities),
         adminJobs: user.activities?.adminJobs ?? 0,
         adminMetrics: user.activities?.adminMetrics ?? 0
       }

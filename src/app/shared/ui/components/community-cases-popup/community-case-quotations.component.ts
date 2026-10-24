@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
+import { Component, computed, effect, inject, signal, untracked, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
 import { AppUtils } from '../../../core/base/app-utils';
@@ -14,8 +15,7 @@ import {
   type SmartListLoadPage,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  I18nPipe,
-  ExplanationGuideService
+  I18nPipe
 } from '@fssrepository/myscoutee-components';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
@@ -30,6 +30,7 @@ const emptyOffer = () => ({amount:0,currency:'EUR',note:'',workPolicies:[] as Ev
 @Component({selector:'app-community-case-quotations',standalone:true,
  imports:[PopupComponent,FormFlowComponent,FormsModule,SmartListComponent,SingleRowComponent,I18nPipe],
  styles:[`:host { --policies-open-button-mobile-width: auto; --form-flow-mobile-control-columns: minmax(0, 1fr) auto; }`],
+ changeDetection: ChangeDetectionStrategy.Eager,
  template:`<app-popup [model]="model()" [zIndex]="14900" data-guide-context="community-case-quotations">
    @if (store.quotations()?.canReviewOffers) {
      <app-smart-list data-guide-field="case-quotations" #list [config]="config" [query]="query()" [loadPage]="loadPage" [itemTemplate]="rowTemplate" (menuItemSelect)="action($event)"></app-smart-list>

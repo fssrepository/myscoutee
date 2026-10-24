@@ -1,13 +1,18 @@
+import { GUIDE_CONTEXT } from '@fssrepository/myscoutee-components';
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { type HelpCenterRevisionDto } from '../../../shared/core/contracts/content/content.interface';
+import { type HelpCenterSectionDto } from '../../../shared/core/contracts/content/content.interface';
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { finishLandingDebug, markLandingDebug } from '../../../shared/core/common/landing-debug';
 import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
+import { preloadAdapterMode } from '../../../shared/core/base/adapter-loaders';
+import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
+import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
 import { ExplanationLauncherComponent } from '../../../shared/ui/components/explanation-popup/explanation-launcher.component';
 import {
-  ExplanationGuideService,
-  type GuideRevision as HelpCenterRevisionDto,
-  type GuideSection as HelpCenterSectionDto,
   DialogStore,
   IndicatorComponent,
   PopupComponent,
@@ -22,6 +27,9 @@ import {
   HostListener,
   ComponentRef,
   DestroyRef,
+  ErrorHandler,
+  Type,
+  untracked,
   DoCheck,
   NgZone,
   OnDestroy,
@@ -32,7 +40,8 @@ import {
   outputBinding,
   signal,
   viewChild,
-  ViewContainerRef
+  ViewContainerRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   ActivatedRoute,
@@ -107,7 +116,7 @@ import {
 } from '../../../shared/ui/context/stores/admin/admin-workspace.store';
 
 import {
-  DocumentViewerComponent,
+  type DocumentViewerComponent,
   type DocumentViewerAction,
   type DocumentViewerActionEvent,
   type DocumentViewerActionVisibility,
@@ -145,21 +154,26 @@ interface EntryDemoNewProfileRequestEvent {
 
 @Component({
   selector: 'app-entry-page',
-  providers: [{ provide: ExplanationGuideService, useFactory: () => inject(LANDING_EXPLANATION_GUIDE) }],
+  providers: [{ provide: GUIDE_CONTEXT, useExisting: ExplanationGuideService }, { provide: ExplanationGuideService, useFactory: () => inject(LANDING_EXPLANATION_GUIDE) }],
   standalone: true,
   imports: [
     ExplanationLauncherComponent,
-    LandingGuideSurfaceDirective,
     EntryLandingComponent,
-    DocumentViewerComponent,
     PopupComponent,
     IndicatorComponent
   ],
   templateUrl: './entry-page.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './entry-page.component.scss'
 })
 export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly documentViewerComponent = signal<Type<DocumentViewerComponent> | null>(null);
+  private readonly privacyDocumentHost = viewChild('privacyDocumentHost', { read: ViewContainerRef });
+  private readonly termsDocumentHost = viewChild('termsDocumentHost', { read: ViewContainerRef });
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
+  private readonly popupErrors = inject(ErrorHandler);
+  private documentViewerLoad: Promise<void> | null = null;
   private readonly firebaseAuthPopupHost = viewChild.required('firebaseAuthPopupHost', { read: ViewContainerRef });
   private readonly onboardingPopupHost = viewChild.required('onboardingPopupHost', { read: ViewContainerRef });
   protected readonly firebaseAuthPopup = signal<ComponentRef<EntryFirebaseAuthPopupComponent> | null>(null);
@@ -228,7 +242,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
 
-  protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
+  protected isMobileView = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)').matches : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
   protected onboardingTitle = 'profile.setup';
@@ -261,6 +275,28 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   };
 
   constructor() {
+    effect(onCleanup => {
+      const host = this.privacyDocumentHost();
+      const component = this.documentViewerComponent();
+      if (!host) return;
+      if (!component) { void this.ensureDocumentViewerLoaded(); return; }
+      const ref = untracked(() => host.createComponent(component, { bindings: [
+        inputBinding('config', () => this.entryPrivacyDocumentConfig()),
+        outputBinding<DocumentViewerActionEvent>('action', event => this.onEntryPrivacyDocumentAction(event))
+      ], directives: [{ type: LandingGuideSurfaceDirective, bindings: [
+        inputBinding('appLandingGuideSurface', () => this.entryPrivacyLoading || this.entryConsentViewOnly ? null : 'landing.consent')
+      ] }] }));
+      onCleanup(() => ref.destroy());
+    });
+    effect(onCleanup => {
+      const host = this.termsDocumentHost();
+      const component = this.documentViewerComponent();
+      if (!host || !component) return;
+      const ref = untracked(() => host.createComponent(component, {
+        bindings: [inputBinding('config', () => this.entryTermsDocumentConfig())]
+      }));
+      onCleanup(() => ref.destroy());
+    });
     this.initializeEntryFlow();
     effect(() => {
       if (!this.appSetupStore.privacyRequested()) return;
@@ -356,7 +392,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   protected async openEntryDemo(): Promise<void> {
-    if (this.entryNetworkUnavailable) {
+    if (this.entryNetworkUnavailable && environment.activitiesDataSource === 'http') {
       return;
     }
     if (!await this.ensureEntryConsent()) {
@@ -411,8 +447,10 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   private ensureFirebaseAuthPopupLoaded(): Promise<void> {
     if (this.firebaseAuthPopup()) return Promise.resolve();
-    return this.firebaseAuthPopupLoad ??= import('../entry-firebase-auth-popup/entry-firebase-auth-popup.component')
-      .then(module => {
+    return this.firebaseAuthPopupLoad ??= Promise.all([
+      import('../entry-firebase-auth-popup/entry-firebase-auth-popup.component'),
+      preloadAdapterMode(environment.activitiesDataSource)
+    ]).then(([module]) => {
         if (this.destroyRef.destroyed) return;
         this.firebaseAuthPopupInputs.set({ open: this.showFirebaseAuthPopup, mobile: this.isMobileView });
         this.firebaseAuthPopup.set(this.firebaseAuthPopupHost().createComponent(module.EntryFirebaseAuthPopupComponent, {
@@ -426,6 +464,15 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
           ]
         }));
       }).finally(() => { this.firebaseAuthPopupLoad = null; });
+  }
+
+  private ensureDocumentViewerLoaded(): Promise<void> {
+    if (this.documentViewerComponent()) return Promise.resolve();
+    return this.documentViewerLoad ??= this.popupAdapters.load(POPUP_ADAPTER.DOCUMENT_VIEWER)
+      .then(module => {
+        if (!this.destroyRef.destroyed) this.documentViewerComponent.set(module.DocumentViewerComponent);
+      }).catch(error => this.popupErrors.handleError(error))
+      .finally(() => { this.documentViewerLoad = null; });
   }
 
   private ensureOnboardingPopupLoaded(): Promise<void> {
@@ -539,6 +586,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   protected openEntryTermsPopup(): void {
     markLandingDebug('terms.open');
+    void this.ensureDocumentViewerLoaded();
     this.showEntryTermsPopup = true;
     void this.termsPolicy.prepareOpen();
   }
@@ -685,14 +733,14 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private async ensureEntryConsent(): Promise<boolean> {
-    if (this.entryNetworkUnavailable) {
+    if (this.entryNetworkUnavailable && environment.activitiesDataSource === 'http') {
       return false;
     }
     if (!automaticPrivacyConsentEnabled()) return true;
     if (this.entryPrivacyLoading || this.privacyPolicy.state() === null) {
       await this.loadEntryContent();
     }
-    if (this.entryNetworkUnavailable || this.entryPrivacyLoading) {
+    if ((this.entryNetworkUnavailable && environment.activitiesDataSource === 'http') || this.entryPrivacyLoading) {
       return false;
     }
     if (this.hasEntryConsent) {
@@ -899,6 +947,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   protected async onFirebaseSessionContinueRequested(): Promise<void> {
     this.firebaseEntryTransitionBusy = true;
     try {
+      await preloadAdapterMode(environment.activitiesDataSource);
       const entryAccessApproved = this.firebaseEntryAccessApproved;
       const session = await this.sessionService.restoreFirebaseSession();
       if (!session) {
@@ -981,7 +1030,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private syncMobileView(): void {
-    this.isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
+    this.isMobileView = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)').matches : false;
   }
 
   private beginAutoOnboardingIfReady(): void {
@@ -1008,6 +1057,8 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   ): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
     const sessionIdentity = this.sessionService.identity();
+    await preloadAdapterMode(environment.activitiesDataSource);
+    if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) return;
     const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
     let user: UserDto | null = loadedUser ?? null;
     if (!loadedUser) {
@@ -1117,8 +1168,9 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   private openOnboardingGate(
     user: UserDto,
     redirectUrl: string,
-    copy: { title: string; message?: string } = { title: 'profile.setup' }
+    copy?: { title: string; message?: string }
   ): void {
+    copy ??= { title: 'profile.setup' };
     this.ngZone.run(() => {
       this.pendingRedirectAfterOnboarding = redirectUrl;
       this.onboardingUser = user;
@@ -1190,7 +1242,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
     }
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    return `${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 
   private emptyActivities(): UserDto['activities'] {
@@ -1504,7 +1556,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     const optionalSectionIds = this.optionalPrivacySectionIds(revision.sections);
     const approvedSectionIds = Array.from(new Set(selectedSectionIds))
       .filter(sectionId => optionalSectionIds.has(sectionId))
-      .sort();
+      .sort(AppUtils.compareCodeUnits);
     this.privacyPolicy.saveEntryOptionalApprovals(revision, approvedSectionIds);
     this.entryApprovedPrivacySectionIds = new Set(approvedSectionIds);
     this.entryOptionalApprovalsLoadedForRevision = this.privacyPolicy.revisionKey(revision);
@@ -1527,15 +1579,15 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private hasOptionalPrivacySections(revision: HelpCenterRevisionDto): boolean {
-    return revision.sections.some(section => section.optional === true);
+    return this.privacyPolicy.hasOptionalPrivacySections(revision);
   }
 
   private optionalPrivacySectionIds(sections: readonly HelpCenterSectionDto[]): Set<string> {
-    return new Set(sections.filter(section => section.optional === true).map(section => section.id));
+    return this.privacyPolicy.optionalPrivacySectionIds(sections);
   }
 
   private filteredSectionIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): Set<string> {
-    return new Set(Array.from(source).filter(sectionId => allowedIds.has(sectionId)));
+    return this.privacyPolicy.filteredSectionIds(source, allowedIds);
   }
 
   private startEntryPrivacyLoadingWindow(): void {

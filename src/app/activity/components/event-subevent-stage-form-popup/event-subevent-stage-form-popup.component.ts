@@ -18,7 +18,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -119,6 +119,7 @@ export interface EventSubeventStageFormSubmit {
     I18nPipe
   ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./event-subevent-stage-form-popup.component.scss']
 })
 export class EventSubeventStageFormPopupComponent implements OnChanges {
@@ -137,7 +138,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   };
 
   @Output() readonly save = new EventEmitter<EventSubeventStageFormSubmit>();
-  @Output() readonly cancel = new EventEmitter<Event>();
+  @Output() readonly cancelled = new EventEmitter<Event>();
 
   @ViewChild('nameInput') private nameInput?: ElementRef<HTMLInputElement>;
   @ViewChild('descriptionInput') private descriptionInput?: ElementRef<HTMLTextAreaElement>;
@@ -182,7 +183,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       bodyLayout: 'fill',
       backdropTone: 'dim',
       headerControls: this.stagePopupHeaderControls(),
-      onClose: event => this.cancel.emit(event),
+      onClose: event => this.cancelled.emit(event),
       onMenuSelect: event => this.onStagePopupMenuSelect(event)
     };
   }

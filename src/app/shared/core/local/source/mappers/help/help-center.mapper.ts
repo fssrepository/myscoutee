@@ -1,10 +1,10 @@
-import type {
-  GuideDocumentKind as HelpCenterDocumentKind,
-  GuideHeaderColor as HelpCenterHeaderColor,
-  GuideRevision as HelpCenterRevisionDto,
-  GuideSection as HelpCenterSectionDto,
-  GuideSectionPanelSpan as HelpCenterSectionPanelSpan
-} from '@fssrepository/myscoutee-components';
+import type { HelpCenterDocumentKind } from '../../../../contracts/content/content.interface';
+import type { HelpCenterRevisionDto } from '../../../../contracts/content/content.interface';
+import type { HelpCenterSectionDto } from '../../../../contracts/content/content.interface';
+import type { HelpCenterHeaderColor } from '../../../../contracts/content/content.interface';
+import type { HelpCenterSectionPanelSpan } from '../../../../contracts/content/content.interface';
+import { HelpCenterContentBuilder } from '../../../../base/builders/help/help-center-content.builder';
+
 import type { HelpCenterAuditEntryDto, HelpCenterAuditAction, PrivacyConsentSource, PrivacyConsentDto } from '../../../../contracts/content/content.interface';
 import type {
   HelpCenterAuditRecord,
@@ -13,11 +13,30 @@ import type {
   PrivacyConsentLocalRecord
 } from '../../entity/content/content.entity';
 import { AppUtils } from '../../../../base/app-utils';
-import { APP_STATIC_DATA } from '../../../../common/app-static-data';
+import { HELP_CENTER_HEADER_COLORS } from '../../../../common/help-center-options';
 
 export class LocalHelpCenterMapper {
+
+  static revisionKind(revision: HelpCenterRevisionDto): HelpCenterDocumentKind { const kind = revision.documentKind; return kind === 'privacy' || kind === 'terms' || kind === 'explanation' ? kind : 'help'; }
+
+  static auditEntry(revision: HelpCenterRevisionDto, action: HelpCenterAuditEntryDto['action'], message: string, identity: Pick<HelpCenterAuditEntryDto, 'id' | 'documentKind' | 'lang' | 'languageLabel' | 'actorUserId'>): HelpCenterAuditEntryDto { return { ...identity, revisionId: revision.id, version: revision.version, action, createdAtIso: new Date().toISOString(), message }; }
+
+  static revisionsForKind(table: {
+    revisionIds: string[];
+    revisionsById: Record<string, HelpCenterRevisionRecord>;
+  }, kind: HelpCenterDocumentKind, language: string, context: string | null, contextOf: (revision: HelpCenterRevisionDto) => string | null): HelpCenterRevisionDto[] { return table.revisionIds.map(id => table.revisionsById[id]).filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision)).map(revision => this.toDto(revision)).filter(revision => this.revisionKind(revision) === kind && HelpCenterContentBuilder.normalizeLang(revision.lang) === language && (kind !== 'explanation' || !context || contextOf(revision) === context)); }
+
+  static normalizedRevisionsById(table: {
+    revisionIds: string[];
+    revisionsById: Record<string, HelpCenterRevisionRecord>;
+  }, contextOf: (revision: HelpCenterRevisionDto) => string | null): Record<string, HelpCenterRevisionRecord> {
+    return Object.fromEntries(table.revisionIds.filter(id => Boolean(table.revisionsById[id])).map(id => { const revision = this.toDto(table.revisionsById[id]); const lang = HelpCenterContentBuilder.normalizeLang(revision.lang); return [id, this.toRecord({ ...revision, documentKind: this.revisionKind(revision), contextKey: contextOf(revision), lang, languageLabel: HelpCenterContentBuilder.languageLabel(lang) })]; }));
+  }
+
   static toDto(record: HelpCenterRevisionRecord): HelpCenterRevisionDto;
+
   static toDto(record: HelpCenterAuditRecord): HelpCenterAuditEntryDto;
+
   static toDto(record: PrivacyConsentLocalRecord): PrivacyConsentDto;
   static toDto(
     record: HelpCenterRevisionRecord | HelpCenterAuditRecord | PrivacyConsentLocalRecord
@@ -32,7 +51,9 @@ export class LocalHelpCenterMapper {
   }
 
   static toRecord(dto: HelpCenterRevisionDto): HelpCenterRevisionRecord;
+
   static toRecord(dto: HelpCenterAuditEntryDto): HelpCenterAuditRecord;
+
   static toRecord(dto: PrivacyConsentDto): PrivacyConsentLocalRecord;
   static toRecord(
     dto: HelpCenterRevisionDto | HelpCenterAuditEntryDto | PrivacyConsentDto
@@ -193,7 +214,7 @@ export class LocalHelpCenterMapper {
   }
 
   private static toHeaderColor(value: string | null | undefined): HelpCenterHeaderColor | undefined {
-    return AppUtils.enumValueOrNull(value, APP_STATIC_DATA.helpCenterHeaderColors) ?? undefined;
+    return AppUtils.enumValueOrNull(value, HELP_CENTER_HEADER_COLORS) ?? undefined;
   }
 
   private static toSectionPanelSpan(value: string | null | undefined): HelpCenterSectionPanelSpan | undefined {

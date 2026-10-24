@@ -9,7 +9,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   DomSanitizer,
@@ -32,6 +33,7 @@ import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runti
   standalone: true,
   imports: [CommonModule, IndicatorComponent, PopupComponent, I18nPipe],
   templateUrl: './admin-affinity-graph-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
 export class AdminAffinityGraphPopupComponent implements OnDestroy {
@@ -125,7 +127,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     const params = new URLSearchParams({
       v: Date.now().toString()
     });
-    this.graphUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(
+    this.graphUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl( // NOSONAR S6268: fixed bundled asset path; the only parameter is a URL-encoded timestamp.
       `assets/admin/affinity-graph/index.html?${params.toString()}`
     ));
   }

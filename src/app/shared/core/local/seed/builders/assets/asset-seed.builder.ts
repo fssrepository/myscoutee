@@ -1,3 +1,4 @@
+import { SeedPricingBuilder } from '../payments/pricing-seed.builder';
 import type { AssetPolicyRecord, AssetPricingConfigRecord } from '../../../source/entity/assets/asset.entity';
 
 import * as AppConstants from '../../../../common/constants';
@@ -26,89 +27,7 @@ export interface SeedAssetTemplate {
 export class SeedAssetBuilder {
   static createSamplePricingConfig(
     mode: AppConstants.PricingMode = 'hybrid'
-  ): AssetPricingConfigRecord {
-    return {
-      enabled: true,
-      mode,
-      basePrice: 25,
-      currency: 'USD',
-      taxMode: 'excluded',
-      chargeType: 'per_attendee',
-      quantityRulesEnabled: false,
-      quantityRules: [],
-      minPrice: 15,
-      maxPrice: 60,
-      rounding: 'whole',
-      demandRulesEnabled: mode === 'demand-based' || mode === 'hybrid',
-      demandRules: [
-        {
-          id: 'demand-rule-1',
-          operator: 'gte',
-          capacityFilledPercent: 50,
-          action: {
-            kind: 'increase_percent',
-            value: 10
-          },
-          appliesTo: 'all_slots',
-          slotIds: []
-        }
-      ],
-      timeRulesEnabled: mode === 'time-based' || mode === 'hybrid',
-      timeRules: [
-        {
-          id: 'time-rule-1',
-          trigger: 'days_before_start',
-          offsetValue: 7,
-          specificDateStart: null,
-          specificDateEnd: null,
-          action: {
-            kind: 'decrease_percent',
-            value: 5
-          },
-          appliesTo: 'all_slots',
-          slotIds: []
-        }
-      ],
-      cancellationPolicy: {
-        enabled: true,
-        rules: [
-          {
-            id: 'cancellation-rule-1',
-            offsetUnit: 'days',
-            offsetValue: 7,
-            refundKind: 'percent',
-            refundValue: 50
-          },
-          {
-            id: 'cancellation-rule-2',
-            offsetUnit: 'hours',
-            offsetValue: 24,
-            refundKind: 'none',
-            refundValue: null
-          }
-        ]
-      },
-      slotPricingEnabled: false,
-      slotOverrides: [],
-      audience: {
-        enabled: false,
-        memberPrice: 20,
-        vipPrice: 15,
-        inviteOnlyDiscountPercent: 25,
-        promoCodes: [
-          {
-            id: 'promo-code-1',
-            code: 'EARLY',
-            action: {
-              kind: 'decrease_percent',
-              value: 10
-            }
-          }
-        ],
-        soldOutLabel: 'Show "Sold Out"'
-      }
-    };
-  }
+  ): AssetPricingConfigRecord { return SeedPricingBuilder.createSamplePricingConfig(mode); }
 
   static clonePricingConfig(
     pricing: AssetPricingConfigRecord | null | undefined

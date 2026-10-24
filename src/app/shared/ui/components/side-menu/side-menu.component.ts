@@ -1,3 +1,7 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
+import { type HelpCenterRevisionDto } from '../../../core/contracts/content/content.interface';
+import ADMIN_NAVIGATION from './admin-navigation.json';
+import { ErrorHandler, ChangeDetectionStrategy } from '@angular/core';
 import { FeedbackStore } from '../../context/stores/feedback/feedback.store';
 import { EventCheckoutSlotPickerStore } from '../../context/stores/event/event-checkout-slot-picker.store';
 import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
@@ -22,8 +26,6 @@ import {
   HeaderCardComponent,
   UiPollCoordinator,
   UiTaskScheduler,
-  ExplanationGuideService,
-  type GuideRevision as HelpCenterRevisionDto,
   DialogStore,
   PopupPresenceStore,
   PopupComponent,
@@ -258,9 +260,15 @@ type NavigatorHeaderActionMenuItemId =
     I18nPipe
   ],
   templateUrl: './side-menu.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
+  private navigatorMenuItem<T extends NavigatorAdminMenuShortcutId | NavigatorMenuShortcutId>(id: T, label: string, icon: string, palette: AppMenuItem<T>['palette'], ariaLabel: string, disabled: boolean): AppMenuItem<T> {
+    return { id, label, icon, palette, ariaLabel, disabled };
+  }
+
+  private readonly actionErrors = inject(ErrorHandler);
   protected readonly moderationStore = inject(ContentModerationStore);
   private readonly moderationService = inject(ContentModerationService);
   private readonly adminNotificationsService = inject(AdminNotificationsService);
@@ -885,45 +893,10 @@ export class SideMenuComponent implements OnDestroy {
           icon: 'local_activity',
           palette: 'blue',
           items: [
-            ...(this.announcements.groupId() ? [{
-              id: 'votes' as const,
-              label: 'announcement.title',
-              icon: 'how_to_vote',
-              palette: 'gold' as const,
-              ariaLabel: 'announcement.title',
-              disabled: primaryDisabled
-            }] : [{
-              id: 'rates' as const,
-              label: 'rates',
-              icon: 'star',
-              palette: 'gold' as const,
-              ariaLabel: 'open.rates',
-              disabled: primaryDisabled
-            }]),
-            {
-              id: 'chat',
-              label: 'chats',
-              icon: 'chat',
-              palette: 'blue',
-              ariaLabel: 'open.chat',
-              disabled: this.serverActionsUnavailable()
-            },
-            {
-              id: 'invitations',
-              label: 'invitations',
-              icon: 'mail',
-              palette: 'purple',
-              ariaLabel: 'open.invitations',
-              disabled: primaryDisabled
-            },
-            {
-              id: 'events',
-              label: 'events',
-              icon: 'event',
-              palette: 'blue',
-              ariaLabel: 'open.events',
-              disabled: primaryDisabled
-            },
+            ...(this.announcements.groupId() ? [this.navigatorMenuItem('votes' as const, 'announcement.title', 'how_to_vote', 'gold' as const, 'announcement.title', primaryDisabled)] : [this.navigatorMenuItem('rates' as const, 'rates', 'star', 'gold' as const, 'open.rates', primaryDisabled)]),
+            this.navigatorMenuItem('chat', 'chats', 'chat', 'blue', 'open.chat', this.serverActionsUnavailable()),
+            this.navigatorMenuItem('invitations', 'invitations', 'mail', 'purple', 'open.invitations', primaryDisabled),
+            this.navigatorMenuItem('events', 'events', 'event', 'blue', 'open.events', primaryDisabled),
             {
               id: 'payment-history',
               label: 'payment.history.menu',
@@ -941,38 +914,10 @@ export class SideMenuComponent implements OnDestroy {
           icon: 'inventory_2',
           palette: 'brown',
           items: [
-            {
-              id: 'transport',
-              label: AppConstants.ASSET_TYPE_TRANSPORT,
-              icon: 'directions_car',
-              palette: 'blue',
-              ariaLabel: AppConstants.ASSET_TYPE_TRANSPORT,
-              disabled: primaryDisabled
-            },
-            {
-              id: 'accommodation',
-              label: AppConstants.ASSET_TYPE_ACCOMMODATION,
-              icon: 'apartment',
-              palette: 'green',
-              ariaLabel: AppConstants.ASSET_TYPE_ACCOMMODATION,
-              disabled: primaryDisabled
-            },
-            {
-              id: 'supplies',
-              label: AppConstants.ASSET_TYPE_SUPPLIES,
-              icon: 'inventory_2',
-              palette: 'brown',
-              ariaLabel: AppConstants.ASSET_TYPE_SUPPLIES,
-              disabled: primaryDisabled
-            },
-            {
-              id: 'tickets',
-              label: AppConstants.ASSET_FILTER_TICKET,
-              icon: 'qr_code_2',
-              palette: 'blue',
-              ariaLabel: AppConstants.ASSET_FILTER_TICKET,
-              disabled: this.isBlockedUser(user)
-            },
+            this.navigatorMenuItem('transport', AppConstants.ASSET_TYPE_TRANSPORT, 'directions_car', 'blue', AppConstants.ASSET_TYPE_TRANSPORT, primaryDisabled),
+            this.navigatorMenuItem('accommodation', AppConstants.ASSET_TYPE_ACCOMMODATION, 'apartment', 'green', AppConstants.ASSET_TYPE_ACCOMMODATION, primaryDisabled),
+            this.navigatorMenuItem('supplies', AppConstants.ASSET_TYPE_SUPPLIES, 'inventory_2', 'brown', AppConstants.ASSET_TYPE_SUPPLIES, primaryDisabled),
+            this.navigatorMenuItem('tickets', AppConstants.ASSET_FILTER_TICKET, 'qr_code_2', 'blue', AppConstants.ASSET_FILTER_TICKET, this.isBlockedUser(user)),
             {
               id: 'contacts',
               counter: user.activities.contactRequestsPending || undefined,
@@ -999,133 +944,13 @@ export class SideMenuComponent implements OnDestroy {
     const showPaymentSimulator = activeUserId.startsWith('admin-demo-');
     return {
       nodes: [
-        {
-          id: 'admin-moderation',
-          label: 'moderation.and.support',
-          icon: 'admin_panel_settings',
-          palette: 'orange',
-          items: [
-            {
-              id: 'adminModeration', label: 'moderation.title', icon: 'fact_check', palette: 'teal', ariaLabel: 'moderation.title', disabled
-            },
-            {
-              id: 'adminReports',
-              label: 'reports',
-              icon: 'report',
-              palette: 'orange',
-              ariaLabel: 'open.reports',
-              disabled
-            },
-            {
-              id: 'adminFeedback',
-              label: 'feedback',
-              icon: 'feedback',
-              palette: 'purple',
-              ariaLabel: 'open.application.feedback',
-              disabled
-            },
-            {
-              id: 'adminChat',
-              label: 'chats',
-              icon: 'chat',
-              palette: 'blue',
-              ariaLabel: 'open.admin.chats',
-              disabled
-            }
-          ]
-        },
-        {
-          id: 'admin-configuration',
-          label: 'configuration',
-          icon: 'tune',
-          palette: 'teal',
-          items: [
-            {
-              id: 'adminJobs',
-              label: 'jobs',
-              icon: 'pending_actions',
-              palette: 'blue',
-              ariaLabel: 'open.jobs',
-              disabled
-            },
-            {
-              id: 'adminParams',
-              label: 'params',
-              icon: 'tune',
-              palette: 'purple',
-              ariaLabel: 'open.parameters',
-              disabled
-            },
-            {
-              id: 'adminContent',
-              label: 'content',
-              icon: 'edit_note',
-              palette: 'green',
-              ariaLabel: 'open.content.editor',
-              disabled
-            },
-            {
-              id: 'adminArticle',
-              label: 'article',
-              icon: 'tips_and_updates',
-              palette: 'gold',
-              ariaLabel: 'open.article.editor',
-              disabled
-            }
-          ]
-        },
-        {
-          id: 'admin-monitoring',
-          label: 'monitoring',
-          icon: 'monitoring',
-          palette: 'blue',
-          items: [
-            {
-              id: 'adminStats',
-              label: 'stats',
-              icon: 'query_stats',
-              palette: 'green',
-              ariaLabel: 'open.stats',
-              disabled
-            },
-            {
-              id: 'adminMetrics',
-              label: 'metrics',
-              icon: 'monitoring',
-              palette: 'cyan',
-              ariaLabel: 'open.monitoring.metrics',
-              disabled
-            },
-            {
-              id: 'adminGraph',
-              label: 'graph',
-              icon: 'hub',
-              palette: 'violet',
-              ariaLabel: 'open.affinity.graph',
-              disabled
-            }
-          ]
-        },
+        ...ADMIN_NAVIGATION.map(group => ({id: group.id, label: group.label, icon: group.icon, palette: group.palette as AppMenuPalette, items: group.items.map(([id, label, icon, palette, ariaLabel]) => this.navigatorMenuItem(id as NavigatorAdminMenuShortcutId, label, icon, palette as AppMenuPalette, ariaLabel, disabled))})),
         ...(showPaymentSimulator ? [{
           id: 'admin-testing',
           label: 'admin.testing',
           icon: 'science',
           palette: 'cyan' as const,
-          items: [{
-            id: 'adminPaymentSimulator' as const,
-            label: 'admin.payment.simulator',
-            icon: 'credit_card_gear',
-            palette: 'cyan' as const,
-            ariaLabel: 'admin.payment.simulator.open',
-            disabled: disabled || !paymentSimulatorConfigUrl
-          }, {
-            id: 'adminPaymentAuthorizations' as const,
-            label: 'admin.payment.simulator.3ds',
-            icon: 'verified_user',
-            palette: 'green' as const,
-            ariaLabel: 'admin.payment.simulator.authorization.open',
-            disabled: disabled || !paymentSimulatorConfigUrl
-          }]
+          items: [this.navigatorMenuItem('adminPaymentSimulator' as const, 'admin.payment.simulator', 'credit_card_gear', 'cyan' as const, 'admin.payment.simulator.open', disabled || !paymentSimulatorConfigUrl), this.navigatorMenuItem('adminPaymentAuthorizations' as const, 'admin.payment.simulator.3ds', 'verified_user', 'green' as const, 'admin.payment.simulator.authorization.open', disabled || !paymentSimulatorConfigUrl)]
         }] : [])
       ]
     };
@@ -1786,7 +1611,7 @@ export class SideMenuComponent implements OnDestroy {
   protected openChatShortcut(event?: Event): void {
     event?.stopPropagation();
     if (this.isBlockedUser()) {
-      this.openBlockedUserSupportChat();
+      void this.openBlockedUserSupportChat().catch(error => this.actionErrors.handleError(error));
       return;
     }
     this.openActivitiesShortcut('chats');

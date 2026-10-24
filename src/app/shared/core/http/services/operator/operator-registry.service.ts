@@ -1,3 +1,5 @@
+import { OperatorSettlementBuilder } from '../../../base/builders/operator/operator-settlement.builder';
+import { AppUtils } from '../../../base/app-utils';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -352,12 +354,28 @@ interface RemoteOperatorMeasurementReportPage {
   providedIn: 'root'
 })
 export class HttpOperatorRegistryService implements OperatorRegistryServiceContract {
+
+  private reportPageParams(query: ListQuery<{
+    status?: string;
+  }>) {
+    const page = Math.max(0, Math.min(1000000, Math.trunc(Number(query.page) || 0)));
+    const size = Math.max(1, Math.min(100, Math.trunc(Number(query.pageSize) || 10)));
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size);
+    const status = query.filters?.status;
+    if (status) {
+      params = params.set('status', status);
+    }
+    return { page, params };
+  }
+
   readonly source = 'http' as const;
   private readonly http = inject(HttpClient);
   private readonly i18n = inject(I18nService);
   private readonly sessionService = inject(SessionService);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+  private readonly apiBaseUrl = AppUtils.trimEndCharacters((environment.apiBaseUrl ?? '/api'), "/");
   private readonly endpoint = `${this.apiBaseUrl}${OPERATOR_REGISTRY_ROUTE}`;
   private readonly operatorEndpoint = `${this.apiBaseUrl}${OPERATOR_NETWORK_ROUTE}`;
   private latestUpdateAnnouncement: RemoteOperatorAnnouncement | null = null;
@@ -458,33 +476,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async measurementReportPage(
-    query: ListQuery<OperatorMeasurementReportFilters>,
-    signal?: AbortSignal
-  ): Promise<OperatorMeasurementReportPageDto> {
+  async measurementReportPage(query: ListQuery<OperatorMeasurementReportFilters>, signal?: AbortSignal): Promise<OperatorMeasurementReportPageDto> {
     this.throwIfAborted(signal);
-    const page = Math.max(0, Math.min(
-      1_000_000,
-      Math.trunc(Number(query.page) || 0)
-    ));
-    const size = Math.max(1, Math.min(
-      100,
-      Math.trunc(Number(query.pageSize) || 10)
-    ));
-    let params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
-    const status = query.filters?.status;
-    if (status) {
-      params = params.set('status', status);
-    }
-    const result = await this.requireResponse(
-      `${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
-      this.http.get<RemoteOperatorMeasurementReportPage>(
-        `${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports`,
-        this.requestOptions(params)
-      ).toPromise()
-    );
+    const { page, params } = this.reportPageParams(query);
+    const result = await this.requireResponse(`${OPERATOR_MEASUREMENTS_ROUTE}/reports`, this.http.get<RemoteOperatorMeasurementReportPage>(`${this.apiBaseUrl}${OPERATOR_MEASUREMENTS_ROUTE}/reports`, this.requestOptions(params)).toPromise());
     this.throwIfAborted(signal);
     if (Math.trunc(Number(result.page)) !== page) {
       throw new Error('operator.measurements.reports.response.invalid');
@@ -1065,33 +1060,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async revenueReportPage(
-    query: ListQuery<OperatorRevenueReportFilters>,
-    signal?: AbortSignal
-  ): Promise<OperatorRevenueReportPageDto> {
+  async revenueReportPage(query: ListQuery<OperatorRevenueReportFilters>, signal?: AbortSignal): Promise<OperatorRevenueReportPageDto> {
     this.throwIfAborted(signal);
-    const page = Math.max(0, Math.min(
-      1_000_000,
-      Math.trunc(Number(query.page) || 0)
-    ));
-    const size = Math.max(1, Math.min(
-      100,
-      Math.trunc(Number(query.pageSize) || 10)
-    ));
-    let params = new HttpParams()
-      .set('page', page)
-      .set('size', size);
-    const status = query.filters?.status;
-    if (status) {
-      params = params.set('status', status);
-    }
-    const result = await this.requireResponse(
-      `${OPERATOR_REVENUE_ROUTE}/reports`,
-      this.http.get<RemoteOperatorRevenueReportPage>(
-        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports`,
-        this.requestOptions(params)
-      ).toPromise()
-    );
+    const { page, params } = this.reportPageParams(query);
+    const result = await this.requireResponse(`${OPERATOR_REVENUE_ROUTE}/reports`, this.http.get<RemoteOperatorRevenueReportPage>(`${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/reports`, this.requestOptions(params)).toPromise());
     this.throwIfAborted(signal);
     if (Math.trunc(Number(result.page)) !== page) {
       throw new Error('operator.revenue.delivery.reports.response.invalid');
@@ -1119,34 +1091,11 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async settlementPage(
-    query: ListQuery<OperatorSettlementFilters>,
-    signal?: AbortSignal
-  ): Promise<OperatorSettlementPageDto> {
+  async settlementPage(query: ListQuery<OperatorSettlementFilters>, signal?: AbortSignal): Promise<OperatorSettlementPageDto> {
     this.throwIfAborted(signal);
-    const limit = Math.max(
-      1,
-      Math.min(100, Math.trunc(Number(query.pageSize) || 10))
-    );
-    const currencyCode =
-      `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
-    const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
-    const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
-    if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
-      throw new Error('operator.revenue.settlement.currency.invalid');
-    }
-    if (
-      (fromPeriod && !this.validSettlementPeriod(fromPeriod))
-      || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
-      || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
-    ) {
-      throw new Error('operator.revenue.settlement.period.invalid');
-    }
-    const cursor = this.decodeSettlementCursor(query.cursor);
+    const { limit, currencyCode, fromPeriod, throughPeriod, cursor } = OperatorSettlementBuilder.queryFilters(query);
     let params = new HttpParams()
-      .set('includeSuperseded', Boolean(
-        query.filters?.includeSuperseded
-      ))
+      .set('includeSuperseded', Boolean(query.filters?.includeSuperseded))
       .set('limit', limit);
     if (currencyCode) {
       params = params.set('currencyCode', currencyCode);
@@ -1162,40 +1111,25 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         .set('afterPeriod', cursor.afterPeriod)
         .set('afterSettlementId', cursor.afterSettlementId);
     }
-    const result = await this.requireResponse(
-      `${OPERATOR_REVENUE_ROUTE}/settlements`,
-      this.http.get<RemoteOperatorSettlementPage>(
-        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/settlements`,
-        this.requestOptions(params)
-      ).toPromise()
-    );
+    const result = await this.requireResponse(`${OPERATOR_REVENUE_ROUTE}/settlements`, this.http.get<RemoteOperatorSettlementPage>(`${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}/settlements`, this.requestOptions(params)).toPromise());
     this.throwIfAborted(signal);
     if (!Array.isArray(result.items)) {
       throw new Error('operator.revenue.settlement.response.invalid');
     }
-    const generatedAtIso =
-      this.settlementText(result.generatedAtIso);
+    const generatedAtIso = this.settlementText(result.generatedAtIso);
     if (!this.validIsoTimestamp(generatedAtIso)) {
       throw new Error('operator.revenue.settlement.response.invalid');
     }
-    const nextAfterPeriod =
-      this.settlementText(result.nextAfterPeriod);
-    const nextAfterSettlementId =
-      this.settlementText(result.nextAfterSettlementId);
+    const nextAfterPeriod = this.settlementText(result.nextAfterPeriod);
+    const nextAfterSettlementId = this.settlementText(result.nextAfterSettlementId);
     if (Boolean(nextAfterPeriod) !== Boolean(nextAfterSettlementId)) {
       throw new Error('operator.revenue.settlement.cursor.invalid');
     }
     const nextCursor = nextAfterPeriod
-      ? this.encodeSettlementCursor(
-          nextAfterPeriod,
-          nextAfterSettlementId
-        )
+      ? this.encodeSettlementCursor(nextAfterPeriod, nextAfterSettlementId)
       : null;
-    const items = result.items.map(item =>
-      this.toSettlement(item)
-    );
-    const pageOffset =
-      Math.max(0, Math.trunc(Number(query.page) || 0)) * limit;
+    const items = result.items.map(item => this.toSettlement(item));
+    const pageOffset = Math.max(0, Math.trunc(Number(query.page) || 0)) * limit;
     return {
       items,
       total: pageOffset + items.length + (nextCursor ? 1 : 0),
@@ -1725,7 +1659,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       || !payload.verificationContactRole
       || payload.verificationContactRole.length > 120
       || payload.verificationContactEmail.length > 254
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
+      || !AppUtils.isEmail(payload.verificationContactEmail)
       || !payload.authorityAttested
     ) {
       throw new Error('operator.claim.verification.error.required');
@@ -2499,33 +2433,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     afterPeriod: string;
     afterSettlementId: string;
   } | null {
-    const normalized = `${cursor ?? ''}`.trim();
-    if (!normalized) {
-      return null;
-    }
-    if (!normalized.startsWith('operator-settlement:')) {
-      throw new Error('operator.revenue.settlement.cursor.invalid');
-    }
-    try {
-      const parsed = JSON.parse(decodeURIComponent(
-        normalized.slice('operator-settlement:'.length)
-      )) as {
-        afterPeriod?: unknown;
-        afterSettlementId?: unknown;
-      };
-      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
-      const afterSettlementId =
-        `${parsed.afterSettlementId ?? ''}`.trim();
-      if (
-        !this.validSettlementPeriod(afterPeriod)
-        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
-      ) {
-        throw new Error();
-      }
-      return { afterPeriod, afterSettlementId };
-    } catch {
-      throw new Error('operator.revenue.settlement.cursor.invalid');
-    }
+    return OperatorSettlementBuilder.decodeSettlementCursor(cursor);
   }
 
   private settlementText(value: unknown): string {
@@ -2540,7 +2448,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   }
 
   private validSettlementPeriod(value: string): boolean {
-    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+    return OperatorSettlementBuilder.validSettlementPeriod(value);
   }
 
   private validSettlementShare(

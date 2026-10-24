@@ -1,8 +1,8 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { SLOTS_INPUT_LABELS } from '../core/form/flow/slots-input-labels';
 import {
   SlotsInputComponent,
   type SlotsInputConfig,
-  ExplanationGuideService,
   PopupComponent,
   type PopupModel,
   FormFlowComponent,
@@ -11,7 +11,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../core/base/app-utils';
 
-import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input } from '@angular/core';
+import { Component, OnChanges, OnDestroy, ViewChild, inject, computed, signal, input, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { CommunityCasesStore, type CaseEditorState } from '../../context/stores/community/community-cases.store';
@@ -22,6 +22,7 @@ import { CASE_TYPES, type SaveCommunityScheduledTask, type CommunityCase, type T
 
 @Component({ selector: 'app-community-case-editor', standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent, SlotsInputComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-popup [model]="popupModel()" [zIndex]="15000" data-guide-context="community-case-editor">
     <app-form-flow data-guide-field="case-details" [model]="flowModel()" [ngModel]="form()" (ngModelChange)="form.set($event)" (action)="audienceAction($event)" [saving]="store.busy()"></app-form-flow>
     @if (editor().kind === 'task') {

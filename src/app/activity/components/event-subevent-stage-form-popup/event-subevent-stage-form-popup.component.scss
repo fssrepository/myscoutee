@@ -94,7 +94,7 @@
   align-self: end;
 }
 
-.experience-form-grid label,
+.experience-form-grid :is(label, .subevent-position-field, .subevent-tournament-field),
 .subevent-stage-insert-field {
   display: grid;
   grid-template-rows: min-content;

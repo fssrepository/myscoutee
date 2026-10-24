@@ -1,3 +1,5 @@
+import { type HelpCenterRevisionDto } from '../../../shared/core/contracts/content/content.interface';
+import { type HelpCenterSectionDto } from '../../../shared/core/contracts/content/content.interface';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import {
@@ -6,7 +8,8 @@ import {
   Component,
   HostListener,
   effect,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {
@@ -19,8 +22,6 @@ import { HelpCenterService } from '../../../shared/core/base/services/help/help-
 import { PrivacyPolicyService } from '../../../shared/core/base/services/help/privacy-policy.service';
 import { AppSetupStore } from '../../../shared/ui/context/stores/app/app-setup.store';
 import {
-  type GuideRevision as HelpCenterRevisionDto,
-  type GuideSection as HelpCenterSectionDto,
   PopupComponent,
   type PopupModel
 } from '@fssrepository/myscoutee-components';
@@ -50,6 +51,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user
     ProfileReportUserPopupComponent
   ],
   templateUrl: './settings-popups.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './settings-popups.component.scss'
 })
 export class ProfileSettingsPopupsComponent {
@@ -280,7 +282,7 @@ export class ProfileSettingsPopupsComponent {
       const optionalSectionIds = this.optionalPrivacySectionIds(revision.sections);
       const approvedOptionalSectionIds = Array.from(new Set(selectedSectionIds))
         .filter(sectionId => optionalSectionIds.has(sectionId))
-        .sort();
+        .sort(AppUtils.compareCodeUnits);
       const consent = await this.privacyPolicy.saveConsent({
         userId,
         revisionId: revision.id,
@@ -346,15 +348,15 @@ export class ProfileSettingsPopupsComponent {
   }
 
   private hasOptionalPrivacySections(revision: HelpCenterRevisionDto): boolean {
-    return revision.sections.some(section => section.optional === true);
+    return this.privacyPolicy.hasOptionalPrivacySections(revision);
   }
 
   private optionalPrivacySectionIds(sections: readonly HelpCenterSectionDto[]): Set<string> {
-    return new Set(sections.filter(section => section.optional === true).map(section => section.id));
+    return this.privacyPolicy.optionalPrivacySectionIds(sections);
   }
 
   private filteredSectionIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): Set<string> {
-    return new Set(Array.from(source).filter(sectionId => allowedIds.has(sectionId)));
+    return this.privacyPolicy.filteredSectionIds(source, allowedIds);
   }
 
   private isPrivacyConsentCurrent(

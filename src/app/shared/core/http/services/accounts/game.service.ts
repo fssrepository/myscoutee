@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -174,32 +175,7 @@ export class HttpGameService implements UserGameDataService {
     }
   }
 
-  private cloneUser(user: UserDto): UserDto {
-    return {
-      ...user,
-      locationCoordinates: user.locationCoordinates
-        ? {
-            latitude: Number(user.locationCoordinates.latitude),
-            longitude: Number(user.locationCoordinates.longitude)
-          }
-        : undefined,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      activities: {
-        game: user.activities?.game ?? 0,
-        chats: user.activities?.chats ?? 0,
-        invitations: user.activities?.invitations ?? 0,
-        events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0,
-        cars: user.activities?.cars ?? 0,
-        accommodation: user.activities?.accommodation ?? 0,
-        supplies: user.activities?.supplies ?? 0,
-        tickets: user.activities?.tickets ?? 0,
-        contacts: user.activities?.contacts ?? 0,
-        feedback: user.activities?.feedback ?? 0
-      }
-    };
-  }
+  private cloneUser(user: UserDto): UserDto { return AppUtils.cloneUser(user); }
 
   private cloneSocialCard(card: UserGameSocialCard): UserGameSocialCard {
     const socialContext = card.socialContext === 'friends-in-common' || card.socialContext === 'separated-friends'

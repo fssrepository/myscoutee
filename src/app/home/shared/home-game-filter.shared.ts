@@ -128,27 +128,11 @@ export function normalizeGameFilter(filter: GameFilterForm): GameFilterForm {
   const minHeight = Math.max(GAME_FILTER_HEIGHT_MIN_CM, Math.min(filter.heightMinCm, filter.heightMaxCm));
   const maxHeight = Math.min(GAME_FILTER_HEIGHT_MAX_CM, Math.max(filter.heightMinCm, filter.heightMaxCm));
   return {
+    ...cloneGameFilter(filter),
     ageMin: minAge,
     ageMax: maxAge,
     heightMinCm: minHeight,
-    heightMaxCm: maxHeight,
-    interests: [...filter.interests],
-    values: [...filter.values],
-    physiques: [...filter.physiques],
-    languages: [...filter.languages],
-    genders: [...filter.genders],
-    horoscopes: [...filter.horoscopes],
-    traitLabels: [...filter.traitLabels],
-    smoking: [...filter.smoking],
-    drinking: [...filter.drinking],
-    workout: [...filter.workout],
-    pets: [...filter.pets],
-    familyPlans: [...filter.familyPlans],
-    children: [...filter.children],
-    loveStyles: [...filter.loveStyles],
-    communicationStyles: [...filter.communicationStyles],
-    sexualOrientations: [...filter.sexualOrientations],
-    religions: [...filter.religions]
+    heightMaxCm: maxHeight
   };
 }
 

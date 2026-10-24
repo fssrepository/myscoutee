@@ -64,7 +64,7 @@
               (itemSelect)="onInlineChatMenuSelect($event)"
             ></app-menu>
           </span>
-          <input
+          <input [attr.aria-label]="'asset.view.image.label' | i18n"
             #imageAttachmentInput
             class="chat-attachment-input"
             type="file"
@@ -135,7 +135,7 @@
                     </div>
                   }
                 }
-                <textarea
+                <textarea [attr.aria-label]="'chat.message.compose.placeholder' | i18n"
                   #messageTextarea
                   rows="1"
                   [attr.placeholder]="'chat.message.compose.placeholder' | i18n"
@@ -162,7 +162,7 @@
   <app-popup [model]="createPollPopupModel()" [zIndex]="chatDialogZIndex()">
     <div class="chat-poll-composer">
       <div class="chat-poll-composer-header">
-        <input
+        <input [attr.aria-label]="'chat.poll.question.placeholder' | i18n"
           type="text"
           [attr.placeholder]="'chat.poll.question.placeholder' | i18n"
           [(ngModel)]="pollQuestionDraft"
@@ -172,7 +172,7 @@
       <div class="chat-poll-composer-options">
         @for (option of pollOptionDrafts; track $index; let index = $index) {
           <span class="chat-poll-composer-option">
-            <input
+            <input [attr.aria-label]="'Option ' + (index + 1)"
               type="text"
               [placeholder]="'Option ' + (index + 1)"
               [(ngModel)]="pollOptionDrafts[index]"

@@ -211,40 +211,8 @@ export class SeedChatsRepository {
     return LocalChatMessageMapper.toDtoList(pageRecords);
   }
 
-  private upsertMessageRecord(
-    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
-    message: ChatMessageRecord
-  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
-    if (!message.recordId) {
-      return table;
-    }
-    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
-    const nextById = {
-      ...table.byId,
-      [message.recordId]: message
-    };
-    const nextIds = table.ids.includes(message.recordId)
-      ? [...table.ids]
-      : [...table.ids, message.recordId];
-    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
-      ? [...table.idsByChatKey[chatKey]]
-      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
-    nextChatIds.sort((leftId, rightId) => {
-      const left = nextById[leftId];
-      const right = nextById[rightId];
-      return left && right
-        ? UiDateUtils.toSortableDate(left.sentAtIso) - UiDateUtils.toSortableDate(right.sentAtIso)
-          || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`)
-        : left ? -1 : right ? 1 : 0;
-    });
-    return {
-      byId: nextById,
-      ids: nextIds,
-      idsByChatKey: {
-        ...table.idsByChatKey,
-        [chatKey]: nextChatIds
-      }
-    };
+  private upsertMessageRecord(table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME], message: ChatMessageRecord): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    return LocalChatMessageMapper.upsertMessageRecord(table, message);
   }
 
   private chatAttachmentSummary(message: ChatMessageDto): string {

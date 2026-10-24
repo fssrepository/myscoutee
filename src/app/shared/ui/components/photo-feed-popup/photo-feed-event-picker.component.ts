@@ -8,7 +8,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '@fssrepository/myscoutee-components';
-import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { defer } from 'rxjs';
 import { PhotoFeedService } from '../../../core/base/services/content/photo-feed.service';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -18,6 +18,7 @@ import type { PhotoFeedEventOption } from '../../../core/contracts/content/photo
 @Component({
   selector: 'app-photo-feed-event-picker', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-popup [model]="popupModel()">
       <app-smart-list data-guide-field="image-event-options" [config]="config" [loadPage]="loadPage" [itemTemplate]="eventTemplate"></app-smart-list>

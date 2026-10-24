@@ -53,6 +53,7 @@ import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {
+
   @Input() row: InfoCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
@@ -142,6 +143,27 @@ type InvitationApprovalContext = {
 };
 
 export class ActivitiesEventsController {
+
+  private checkoutJoinOptions(selection?: ActivityContracts.EventCheckoutSelection | null): ActivityContracts.EventJoinOptions {
+    return {
+      slotSourceId: selection?.slotSourceId ?? null,
+      optionalSubEventIds: selection?.optionalSubEventIds ?? [],
+      assetSelections: selection?.assetSelections ?? [],
+      acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+      appliedPromoCodes: selection?.appliedPromoCodes ?? [],
+      paymentSessionId: selection?.paymentSessionId ?? null,
+      bookingConfirmed: selection?.bookingConfirmed !== false,
+      pendingReason: selection?.pendingReason ?? null,
+      checkoutState: selection?.checkoutState,
+      basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
+      pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
+      lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
+      totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
+      currency: selection?.basketItems?.length ? selection.currency : undefined,
+      skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
+    };
+  }
+
   constructor(private readonly host: ActivitiesEventsHost) {}
 
   private get activeUser() { return this.host.activeUser as any; }
@@ -633,31 +655,12 @@ export class ActivitiesEventsController {
     return 'none';
   }
 
-  private async submitActivityCheckoutContinuation(
-    row: InfoCardData,
-    selection: ActivityContracts.EventCheckoutSelection
-  ): Promise<void> {
+  private async submitActivityCheckoutContinuation(row: InfoCardData, selection: ActivityContracts.EventCheckoutSelection): Promise<void> {
     const activeUserId = this.activeUserId();
     if (!activeUserId) {
       throw new Error('Unable to resolve active user.');
     }
-    const joinResult = await this.eventsService.requestJoin(activeUserId, row.id, {
-      slotSourceId: selection?.slotSourceId ?? null,
-      optionalSubEventIds: selection?.optionalSubEventIds ?? [],
-      assetSelections: selection?.assetSelections ?? [],
-      acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
-      appliedPromoCodes: selection?.appliedPromoCodes ?? [],
-      paymentSessionId: selection?.paymentSessionId ?? null,
-      bookingConfirmed: selection?.bookingConfirmed !== false,
-      pendingReason: selection?.pendingReason ?? null,
-      checkoutState: selection?.checkoutState,
-      basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
-      pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
-      lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
-      totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
-      currency: selection?.basketItems?.length ? selection.currency : undefined,
-      skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
-    });
+    const joinResult = await this.eventsService.requestJoin(activeUserId, row.id, this.checkoutJoinOptions(selection));
     if (joinResult?.reason === 'tournament-registration-closed') {
       throw new Error('event.tournament.registration.closed.message');
     }
@@ -727,16 +730,7 @@ export class ActivitiesEventsController {
     const dto = this.activityEventDTOForRow(row);
     const draft = this.eventCheckoutDraftStore.read(this.activeUserId(), row.id);
     return {
-      menu: 'activity-event-card',
-      id: row.id,
-      status: dto?.status ?? row.status ?? null,
-      ownerUserId: dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? null,
-      adminIds: [...(dto?.adminIds ?? [])],
-      acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
-      activity: dto?.activity ?? row.menuBadgeCount ?? 0,
+      ...ActivityEventInfoCardMenuConverter.eventSubject(row, dto),
       cancelled: dto?.cancelled,
       cancellationRefundsPending: dto?.cancellationRefundsPending,
       canCancelForFullRefund: dto?.canCancelForFullRefund,
@@ -1415,31 +1409,11 @@ export class ActivitiesEventsController {
     return Boolean(record?.pricing?.enabled && (Number(record?.pricing?.basePrice) || 0) > 0);
   }
 
-  private async confirmActivityInvitationApproval(
-    row: InfoCardData,
-    selection?: ActivityContracts.EventCheckoutSelection | null,
-    context?: InvitationApprovalContext | null
-  ): Promise<void> {
+  private async confirmActivityInvitationApproval(row: InfoCardData, selection?: ActivityContracts.EventCheckoutSelection | null, context?: InvitationApprovalContext | null): Promise<void> {
     const activeUserId = this.activeUserId();
     const { eventDetailDTO } = await this.buildAcceptedInvitationSaveResult(row, selection, context);
     const pendingReason = this.acceptedInvitationPendingReason(activeUserId, eventDetailDTO, selection);
-    const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, {
-      slotSourceId: selection?.slotSourceId ?? null,
-      optionalSubEventIds: selection?.optionalSubEventIds ?? [],
-      assetSelections: selection?.assetSelections ?? [],
-      acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
-      appliedPromoCodes: selection?.appliedPromoCodes ?? [],
-      paymentSessionId: selection?.paymentSessionId ?? null,
-      bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
-      pendingReason,
-      checkoutState: selection?.checkoutState,
-      basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
-      pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
-      lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
-      totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
-      currency: selection?.basketItems?.length ? selection.currency : undefined,
-      skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
-    });
+    const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, { ...this.checkoutJoinOptions(selection), bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false, pendingReason });
     if (joinResult?.reason === 'tournament-registration-closed') {
       throw new Error('event.tournament.registration.closed.message');
     }

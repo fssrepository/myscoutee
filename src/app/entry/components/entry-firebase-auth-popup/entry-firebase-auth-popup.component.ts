@@ -1,5 +1,6 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +22,7 @@ import { I18nPipe } from '@fssrepository/myscoutee-components';
     I18nPipe
   ],
   templateUrl: './entry-firebase-auth-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './entry-firebase-auth-popup.component.scss'
 })
 export class EntryFirebaseAuthPopupComponent {
@@ -208,6 +210,6 @@ export class EntryFirebaseAuthPopupComponent {
   }
 
   private isValidEmail(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    return AppUtils.isEmail(value);
   }
 }

@@ -1,3 +1,4 @@
+import { PricingBuilder } from '../../../../shared/core/base/builders/payments/pricing.builder';
 import {
   UiDateUtils,
   AppMenuComponent,
@@ -282,17 +283,5 @@ export class EventBasketInputComponent {
     return `${symbol}${formattedAmount}`;
   }
 
-  private currencySymbol(currency: string): string {
-    switch ((currency || '').trim().toUpperCase()) {
-      case 'EUR':
-        return 'EUR ';
-      case 'GBP':
-        return 'GBP ';
-      case 'USD':
-      case '':
-        return '$';
-      default:
-        return `${currency.trim().toUpperCase()} `;
-    }
-  }
+  private currencySymbol(currency: string): string { return PricingBuilder.currencySymbol(currency); }
 }

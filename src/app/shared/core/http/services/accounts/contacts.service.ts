@@ -1,3 +1,4 @@
+import { ProfileExperiencesMapper } from '../../../base/mappers/accounts/profile-experiences.mapper';
 import type { ContactChatAccessAction, ContactChatAccessSnapshot } from '../../../contracts/accounts/contact.interface';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
@@ -193,24 +194,6 @@ export class HttpContactsService {
   }
 
   private normalizeExperienceEntry(entry: Partial<ProfileContracts.ExperienceEntry> | null | undefined): ProfileContracts.ExperienceEntry | null {
-    const id = `${entry?.id ?? ''}`.trim();
-    if (!id) {
-      return null;
-    }
-    const type = entry?.type === 'School'
-      || entry?.type === 'Online Session'
-      || entry?.type === 'Additional Project'
-      ? entry.type
-      : 'Workspace';
-    return {
-      id,
-      type,
-      title: `${entry?.title ?? ''}`.trim(),
-      org: `${entry?.org ?? ''}`.trim(),
-      city: `${entry?.city ?? ''}`.trim(),
-      dateFrom: `${entry?.dateFrom ?? ''}`.trim(),
-      dateTo: `${entry?.dateTo ?? ''}`.trim() || 'Present',
-      description: `${entry?.description ?? ''}`.trim()
-    };
+    return ProfileExperiencesMapper.toEntry(entry);
   }
 }

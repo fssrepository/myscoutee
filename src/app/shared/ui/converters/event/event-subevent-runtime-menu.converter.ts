@@ -1,3 +1,16 @@
+interface MingleActionOptions {
+      action: EventSubeventRuntimeMingleAction;
+      backendAction: 'start' | 'next' | 'pause' | 'resume' | 'complete';
+      label: string;
+      icon: string;
+      palette: AppMenuPalette;
+      title: string;
+      description: string;
+      confirmLabel: string;
+      busyLabel: string;
+      destructive: boolean;
+    }
+import MINGLE_ACTIONS from './mingle-actions.json';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import * as AppConstants from '../../../core/common/constants';
 import type { SubEventResourceFilter } from '../../../core/common/constants';
@@ -215,19 +228,10 @@ export class EventSubeventRuntimeMenuConverter {
     return items;
   }
 
-  private static mingleRuntimeItems(
-    item: SubEventDTO,
-    parentEventId: string,
-    roundNumber: number,
-    state: EventSubeventRuntimeMenuConverterOptions['mingleState']
-  ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
+  private static mingleRuntimeItems(item: SubEventDTO, parentEventId: string, roundNumber: number, state: EventSubeventRuntimeMenuConverterOptions['mingleState']): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const current = state?.eventId === parentEventId ? state : null;
     if (!current && roundNumber === 1) {
-      return [this.mingleActionItem(item, parentEventId, 0, {
-        action: 'mingle-start', backendAction: 'start', label: 'mingle.action.start', icon: 'play_circle',
-        palette: 'success', title: 'mingle.action.start.question', description: 'mingle.action.start.description',
-        confirmLabel: 'mingle.action.start.confirm', busyLabel: 'mingle.action.starting', destructive: false
-      })];
+      return [this.mingleActionItem(item, parentEventId, 0, MINGLE_ACTIONS.start as MingleActionOptions)];
     }
     if (!current || current.canManage !== true) {
       return [];
@@ -238,64 +242,24 @@ export class EventSubeventRuntimeMenuConverter {
     }
     if (current.status === 'ROUND' && roundNumber === currentRound) {
       return [
-        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
-          action: 'mingle-pause', backendAction: 'pause', label: 'mingle.action.pause', icon: 'pause_circle',
-          palette: 'amber', title: 'mingle.action.pause.title', description: 'mingle.action.pause.description',
-          confirmLabel: 'mingle.action.pause.confirm', busyLabel: 'mingle.action.pausing', destructive: false
-        }),
-        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
-          action: 'mingle-next', backendAction: 'next', label: 'mingle.action.end', icon: 'skip_next',
-          palette: 'blue', title: 'mingle.action.end.question', description: 'mingle.action.end.description',
-          confirmLabel: 'mingle.action.end', busyLabel: 'mingle.action.ending', destructive: false
-        }),
-        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
-          action: 'mingle-complete', backendAction: 'complete', label: 'mingle.action.complete', icon: 'stop_circle',
-          palette: 'danger', title: 'mingle.action.complete.question', description: 'mingle.action.complete.description',
-          confirmLabel: 'mingle.action.complete.confirm', busyLabel: 'mingle.action.completing', destructive: true
-        })
+        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, MINGLE_ACTIONS.pause as MingleActionOptions),
+        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, MINGLE_ACTIONS.end as MingleActionOptions),
+        this.mingleActionItem(item, parentEventId, current?.revision ?? 0, MINGLE_ACTIONS.complete as MingleActionOptions)
       ];
     }
     if (current.status === 'PAUSED' && roundNumber === currentRound) {
-      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
-        action: 'mingle-resume', backendAction: 'resume', label: 'mingle.action.resume', icon: 'play_circle',
-        palette: 'success', title: 'mingle.action.resume.title', description: 'mingle.action.resume.description',
-        confirmLabel: 'mingle.action.resume.confirm', busyLabel: 'mingle.action.resuming', destructive: false
-      })];
+      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, MINGLE_ACTIONS.resume as MingleActionOptions)];
     }
     if (current.status === 'BREAK' && roundNumber === currentRound + 1) {
-      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
-        action: 'mingle-next', backendAction: 'next', label: 'mingle.action.next.now', icon: 'skip_next',
-        palette: 'success', title: 'mingle.action.next.question', description: 'mingle.action.next.description',
-        confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
-      })];
+      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, MINGLE_ACTIONS.nextNow as MingleActionOptions)];
     }
     if (current.status === 'COMPLETED' && roundNumber === currentRound + 1) {
-      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, {
-        action: 'mingle-start', backendAction: 'start', label: 'mingle.action.next', icon: 'play_circle',
-        palette: 'success', title: 'mingle.action.next.question', description: 'mingle.action.next.restart.description',
-        confirmLabel: 'mingle.action.next.confirm', busyLabel: 'mingle.action.starting', destructive: false
-      })];
+      return [this.mingleActionItem(item, parentEventId, current?.revision ?? 0, MINGLE_ACTIONS.restart as MingleActionOptions)];
     }
     return [];
   }
 
-  private static mingleActionItem(
-    item: SubEventDTO,
-    parentEventId: string,
-    expectedRevision: number,
-    options: {
-      action: EventSubeventRuntimeMingleAction;
-      backendAction: 'start' | 'next' | 'pause' | 'resume' | 'complete';
-      label: string;
-      icon: string;
-      palette: AppMenuPalette;
-      title: string;
-      description: string;
-      confirmLabel: string;
-      busyLabel: string;
-      destructive: boolean;
-    }
-  ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext> {
+  private static mingleActionItem(item: SubEventDTO, parentEventId: string, expectedRevision: number, options: MingleActionOptions): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext> {
     return {
       id: options.action,
       label: options.label,

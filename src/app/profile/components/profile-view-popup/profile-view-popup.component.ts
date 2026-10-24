@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, input, resource, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,8 +10,7 @@ import {
   I18nPipe,
   IndicatorComponent,
   PopupComponent,
-  type PopupModel,
-  ExplanationGuideService
+  type PopupModel
 } from '@fssrepository/myscoutee-components';
 
 import { ContactsService, I18nService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';

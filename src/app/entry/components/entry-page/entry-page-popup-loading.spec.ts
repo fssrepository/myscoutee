@@ -110,3 +110,58 @@ it('does not mount a popup after its owning page has been destroyed', async () =
   expect(owner.onboardingPopup()).toBeNull();
   fixture.destroy();
 });
+
+it('keeps the lazy login popup mobile at 760px and updates its input after a desktop resize', async () => {
+  let width = 760;
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: width <= Number(query.match(/max-width:\s*([\d.]+)px/)?.[1] ?? 0)
+  }));
+  const { fixture, owner } = popupOwner();
+  owner.onWindowResize();
+  await owner.ensureFirebaseAuthPopupLoaded();
+  fixture.detectChanges();
+  const popup = owner.firebaseAuthPopup().instance as EntryFirebaseAuthPopupComponent;
+  expect(popup.isMobileView).toBe(true);
+  width = 761;
+  owner.onWindowResize();
+  expect(owner.isMobileView).toBe(false);
+  fixture.changeDetectorRef.markForCheck();
+  fixture.detectChanges();
+  expect(popup.isMobileView).toBe(false);
+  fixture.destroy();
+});
+
+it('shares the on-demand document constructor and ignores completion after route destruction', async () => {
+  const { fixture, owner } = popupOwner();
+  let finish!: (value: any) => void;
+  owner.documentViewerComponent = signal(null);
+  owner.documentViewerLoad = null;
+  owner.popupErrors = { handleError: vi.fn() };
+  owner.popupAdapters = { load: vi.fn(() => new Promise(resolve => { finish = resolve; })) };
+  const first = owner.ensureDocumentViewerLoaded();
+  expect(owner.ensureDocumentViewerLoaded()).toBe(first);
+  owner.destroyRef.destroyed = true;
+  finish({ DocumentViewerComponent: class {} });
+  await first;
+  expect(owner.documentViewerComponent()).toBeNull();
+  expect(owner.popupAdapters.load).toHaveBeenCalledTimes(1);
+  fixture.destroy();
+});
+
+it('retries a failed document load when the user opens it again and caches the constructor', async () => {
+  const { fixture, owner } = popupOwner();
+  class DocumentViewer {}
+  const error = new Error('network');
+  owner.documentViewerComponent = signal(null);
+  owner.documentViewerLoad = null;
+  owner.popupErrors = { handleError: vi.fn() };
+  owner.popupAdapters = { load: vi.fn().mockRejectedValueOnce(error).mockResolvedValue({ DocumentViewerComponent: DocumentViewer }) };
+  await owner.ensureDocumentViewerLoaded();
+  expect(owner.popupErrors.handleError).toHaveBeenCalledExactlyOnceWith(error);
+  expect(owner.documentViewerComponent()).toBeNull();
+  await owner.ensureDocumentViewerLoaded();
+  expect(owner.documentViewerComponent()).toBe(DocumentViewer);
+  await owner.ensureDocumentViewerLoaded();
+  expect(owner.popupAdapters.load).toHaveBeenCalledTimes(2);
+  fixture.destroy();
+});

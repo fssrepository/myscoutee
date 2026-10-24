@@ -77,6 +77,248 @@ const ASCII_EMOJI_TOKEN_REGEX = new RegExp(
 );
 
 export class AppUtils {
+  static normalizeFilterCounts(counts: Record<string, number> | null | undefined, fallbackAll: number): Record<string, number> {
+    const fallback: Record<string, number> = {
+      all: fallbackAll
+    };
+    const normalized: Record<string, number> = {};
+    for (const [key, value] of Object.entries(counts ?? fallback)) {
+      const normalizedKey = `${key ?? ''}`.trim();
+      const parsed = Math.trunc(Number(value));
+      if (normalizedKey && Number.isFinite(parsed)) {
+        normalized[normalizedKey] = Math.max(0, parsed);
+      }
+    }
+    return Object.keys(normalized).length ? normalized : fallback;
+  }
+
+  static copyActivityCounts(activities: UserDto['activities'] | null | undefined): NonNullable<UserDto['activities']> {
+    return { game: activities?.game ?? 0, chats: activities?.chats ?? 0, invitations: activities?.invitations ?? 0, events: activities?.events ?? 0, hosting: activities?.hosting ?? 0, cars: activities?.cars ?? 0, accommodation: activities?.accommodation ?? 0, supplies: activities?.supplies ?? 0, tickets: activities?.tickets ?? 0, contacts: activities?.contacts ?? 0, feedback: activities?.feedback ?? 0 };
+  }
+
+  static distanceMeters(
+    left: UserDto['locationCoordinates'] | undefined,
+    right: UserDto['locationCoordinates'] | undefined
+  ): number | null {
+    const leftLat = Number(left?.latitude);
+    const leftLon = Number(left?.longitude);
+    const rightLat = Number(right?.latitude);
+    const rightLon = Number(right?.longitude);
+    if (![leftLat, leftLon, rightLat, rightLon].every(Number.isFinite)) {
+      return null;
+    }
+    const earthRadiusMeters = 6371000;
+    const latitudeDelta = this.toRadians(rightLat - leftLat);
+    const longitudeDelta = this.toRadians(rightLon - leftLon);
+    const leftLatitude = this.toRadians(leftLat);
+    const rightLatitude = this.toRadians(rightLat);
+    const haversine = Math.sin(latitudeDelta / 2) ** 2
+      + Math.cos(leftLatitude) * Math.cos(rightLatitude) * (Math.sin(longitudeDelta / 2) ** 2);
+    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  }
+
+  static toRadians(value: number): number {
+    return value * Math.PI / 180;
+  }
+
+  static normalizeMessages(value: Record<string, string> | null, normalizeSourceKey: (value: string) => string): Record<string, string> | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const normalized: Record<string, string> = {};
+    Object.entries(value).forEach(([key, translation]) => {
+      const normalizedKey = normalizeSourceKey(key);
+      const normalizedTranslation = `${translation ?? ''}`.trim();
+      if (normalizedKey && normalizedTranslation) {
+        normalized[normalizedKey] = normalizedTranslation;
+      }
+    });
+    return normalized;
+  }
+
+  static normalizeLanguage(value: string): string {
+    return `${value ?? ''}`
+      .trim()
+      .toLowerCase()
+      .split(',')[0]
+      .split(';')[0]
+      .split('-')[0]
+      .replace(/[^a-z]/g, '');
+  }
+
+  static normalizeLocationCoordinates(value: unknown): { latitude: number; longitude: number } | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const latitude = Number((value as { latitude?: unknown }).latitude);
+    const longitude = Number((value as { longitude?: unknown }).longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+    return {
+      latitude,
+      longitude
+    };
+  }
+
+  static joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const part of parts) {
+      const value = `${part ?? ''}`.trim();
+      const key = value.toLocaleLowerCase();
+      if (!value || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      labels.push(value);
+    }
+    return labels.join(' - ');
+  }
+
+  static uniqueAffinityTokens(values: readonly string[]): string[] {
+    const seen = new Set<string>();
+    for (const value of values) {
+      const normalized = this.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+      if (normalized) {
+        seen.add(normalized);
+      }
+    }
+    return [...seen];
+  }
+
+  static chatUser(
+    id: string,
+    name: string,
+    initials: string,
+    gender: string
+  ): UserDto {
+    return {
+      id: id || 'admin',
+      name: name || 'Admin',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: initials || 'AD',
+      gender: gender === 'man' ? 'man' : 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 100,
+      headline: '',
+      about: '',
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chats: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0
+      }
+    };
+  }
+
+  static cloneUser(user: UserDto): UserDto {
+    return {
+      ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+            latitude: Number(user.locationCoordinates.latitude),
+            longitude: Number(user.locationCoordinates.longitude)
+          }
+        : undefined,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      activities: AppUtils.copyActivityCounts(user.activities)
+    };
+  }
+
+  static openGoogleMapsDirections(stops: string[]): void {
+    const normalized = stops.map(stop => stop.trim()).filter(Boolean);
+    if (normalized.length === 0 || typeof window === 'undefined') {
+      return;
+    }
+    if (normalized.length === 1) {
+      this.openGoogleMapsSearch(normalized[0]);
+      return;
+    }
+    const origin = normalized[0];
+    const destination = normalized[normalized.length - 1];
+    const waypoints = normalized.slice(1, -1);
+    let url = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    if (waypoints.length > 0) {
+      url += `&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  static openGoogleMapsSearch(query: string): void {
+    const trimmed = query.trim();
+    if (!trimmed || typeof window === 'undefined') {
+      return;
+    }
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  }
+
+  static createFallbackUser(userId: string): UserDto {
+    return {
+      id: userId.trim(),
+      name: 'User',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: 'U',
+      gender: 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: AppUtils.copyActivityCounts(undefined)
+    };
+  }
+
+  static trimEndCharacters(value: string, characters: string): string {
+    let end = value.length;
+    while (end > 0 && characters.includes(value[end - 1])) end--;
+    return value.slice(0, end);
+  }
+
+  static trimCharacters(value: string, characters: string): string {
+    const trimmedEnd = this.trimEndCharacters(value, characters);
+    let start = 0;
+    while (start < trimmedEnd.length && characters.includes(trimmedEnd[start])) start++;
+    return trimmedEnd.slice(start);
+  }
+
+  static isEmail(value: string): boolean {
+    const separator = value.indexOf('@');
+    const domainDot = value.lastIndexOf('.');
+    return separator > 0 && separator === value.lastIndexOf('@')
+      && domainDot > separator + 1 && domainDot < value.length - 1
+      && !/\s/.test(value);
+  }
+
+  // Canonical keys and signatures use UTF-16 order, independent of the user's locale.
+  static compareCodeUnits(left: string, right: string): number {
+    return left < right ? -1 : left > right ? 1 : 0;
+  }
+
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {
     const output: Record<string, T[]> = {};
     for (const [key, value] of Object.entries(input)) {

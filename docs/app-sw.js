@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-1.4.5";
-const BUILD_ID = "1.4.5";
+const CACHE_VERSION = "build-5ad0a06fcd21-20261024015533";
+const BUILD_ID = "5ad0a06fcd21-20261024015533";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -27,9 +27,8 @@ const PRECACHE_CORE_URLS = [
   './assets/idea/article-fallback.svg'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./assets/diagnostics/landing.js",
-  "./chunk-7d535711.js",
-  "./main-4c5d0d7e.js",
+  "./chunk-a252562f.js",
+  "./main-1f80e530.js",
   "./styles-RF4YJR7Z.css"
 ];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
@@ -84,8 +83,9 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('message', event => {
+  if (event.origin !== self.location.origin) return;
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    event.waitUntil(self.skipWaiting());
     return;
   }
   if (event.data && event.data.type === 'DEPLOYMENT_BRANDING') {
@@ -196,7 +196,7 @@ async function networkFirst(request, cacheName, timeoutMs) {
     const response = await fetch(request, { cache: 'no-store',
       ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
     if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone()).catch(() => undefined);
     }
     return response;
   } catch {
@@ -248,7 +248,7 @@ async function networkFirstStaticAsset(request) {
   try {
     const response = await fetch(request, { cache: 'no-store' });
     if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone()).catch(() => undefined);
       return response;
     }
     return await matchAppBundleCache(request) || response;
@@ -306,7 +306,7 @@ async function cacheFirst(request, cacheName) {
   try {
     const response = await fetch(request);
     if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone()).catch(() => undefined);
     }
     return response;
   } catch {

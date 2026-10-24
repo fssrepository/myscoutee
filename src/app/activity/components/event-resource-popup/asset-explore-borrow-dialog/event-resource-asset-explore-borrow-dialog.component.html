@@ -68,28 +68,7 @@
                   <span>{{ 'asset.borrow.policies.review' | i18n }}</span>
                 </div>
               </div>
-              <div class="asset-explore-borrow-policy-list">
-                @for (policy of dialog.policies; track policy.id) {
-                  <label class="asset-explore-borrow-policy-card" [class.is-required]="policy.required !== false">
-                    @if (policy.required === false) {
-                        <input
-                          type="checkbox"
-                          [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
-                          (change)="togglePolicy(policy.id)"
-                        />
-                    }
-                    <div>
-                      <strong>{{ policy.title }}</strong>
-                      @if (policy.description) {
-                        <span>{{ policy.description }}</span>
-                      }
-                    </div>
-                    @if (policy.required !== false) {
-                      <em>{{ 'required' | i18n }}</em>
-                    }
-                  </label>
-                }
-              </div>
+              <app-asset-policy-list [policies]="dialog.policies" [acceptedPolicyIds]="dialog.acceptedPolicyIds" (policyToggled)="togglePolicy($event)" />
             </section>
           }
 

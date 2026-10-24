@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   PopupComponent,
   type PopupModel,
   SmartListComponent,
@@ -10,7 +10,7 @@ import {
   type UiAccordionModel
 } from '@fssrepository/myscoutee-components';
 
-import { Component, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ViewChild, computed, effect, inject, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { defer } from 'rxjs';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import type { CampaignHistoryItem } from '../../../shared/core/contracts/campaigns/campaign.interface';
@@ -45,6 +45,7 @@ import { ProfileViewPopupComponent } from '../../../profile/components/profile-v
       </ng-template>
     </app-popup>
   }`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`:host { display: contents; }
     .history-content { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); flex: 1; min-height: 0; }
     .history-list, .organizer { grid-area: 1 / 1; min-width: 0; }

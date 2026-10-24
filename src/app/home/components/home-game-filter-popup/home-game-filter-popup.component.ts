@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   scheduleAfterPaint,
-  ExplanationGuideService,
   AppMenuComponent,
   FormFlowComponent,
   I18nPipe,
@@ -224,42 +224,26 @@ export class HomeGameFilterPopupComponent implements OnChanges, AfterViewInit, O
   }
 
   protected filterMenuTitle(kind: GameFilterMenuKind): string {
-    switch (kind) {
-      case 'interests':
-        return 'interest';
-      case 'values':
-        return 'values';
-      case 'physiques':
-        return 'physique';
-      case 'languages':
-        return 'profile.languages';
-      case 'genders':
-        return 'gender';
-      case 'horoscopes':
-        return 'profile.horoscope';
-      case 'traitLabels':
-        return 'top.trait';
-      case 'smoking':
-        return 'smoking';
-      case 'drinking':
-        return 'drinking';
-      case 'workout':
-        return 'workout';
-      case 'pets':
-        return 'pets';
-      case 'familyPlans':
-        return 'family.plans';
-      case 'children':
-        return 'children';
-      case 'loveStyles':
-        return 'love.style';
-      case 'communicationStyles':
-        return 'communication.style';
-      case 'sexualOrientations':
-        return 'sexual.orientation';
-      case 'religions':
-        return 'religion';
-    }
+    const labels: Record<string, string> = {
+      interests: 'interest',
+      values: 'values',
+      physiques: 'physique',
+      languages: 'profile.languages',
+      genders: 'gender',
+      horoscopes: 'profile.horoscope',
+      traitLabels: 'top.trait',
+      smoking: 'smoking',
+      drinking: 'drinking',
+      workout: 'workout',
+      pets: 'pets',
+      familyPlans: 'family.plans',
+      children: 'children',
+      loveStyles: 'love.style',
+      communicationStyles: 'communication.style',
+      sexualOrientations: 'sexual.orientation',
+      religions: 'religion'
+    };
+    return labels[kind]!;
   }
 
   protected filterMenuTrigger(kind: GameFilterMenuKind): AppMenuTrigger {

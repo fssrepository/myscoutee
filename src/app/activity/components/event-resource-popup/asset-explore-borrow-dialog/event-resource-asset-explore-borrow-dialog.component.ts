@@ -1,3 +1,5 @@
+import { PricingBuilder } from '../../../../shared/core/base/builders/payments/pricing.builder';
+import { AssetPolicyListComponent } from '../../../../shared/ui/components/asset-policy-list/asset-policy-list.component';
 import {
   UiDateUtils,
   DateInputComponent,
@@ -49,7 +51,7 @@ export interface AssetExploreBorrowDialogViewState {
 @Component({
   selector: 'app-event-resource-asset-explore-borrow-dialog',
   standalone: true,
-  imports: [
+  imports: [AssetPolicyListComponent,
     CommonModule,
     FormsModule,
     DateInputComponent,
@@ -147,14 +149,7 @@ export class EventResourceAssetExploreBorrowDialogComponent {
   }
 
   protected formatMoney(amount: number, currency = 'USD'): string {
-    switch ((currency || '').trim().toUpperCase()) {
-      case 'EUR':
-        return `EUR ${(Number(amount) || 0).toFixed(2)}`;
-      case 'GBP':
-        return `GBP ${(Number(amount) || 0).toFixed(2)}`;
-      default:
-        return `$${(Number(amount) || 0).toFixed(2)}`;
-    }
+    return PricingBuilder.formatAssetMoney(amount, currency);
   }
 
   protected availabilityLabel(availableQuantity: number): string {

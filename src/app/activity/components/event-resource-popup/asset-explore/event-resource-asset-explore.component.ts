@@ -1,8 +1,10 @@
+import { ExplanationGuideService } from '../../../../shared/core/base/services/help/explanation-guide.service';
+import { toggleInfoCardMenu } from '../../../../shared/ui/context/info-card-menu';
+import { secureRandomUuid } from '../../../../shared/core/common/secure-random';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   clampNumber,
   UiDateUtils,
-  ExplanationGuideService,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -44,7 +46,8 @@ import {
   computed,
   effect,
   inject,
-  untracked
+  untracked,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -233,9 +236,30 @@ interface AssetExploreBorrowDraftViewState {
   templateUrl: './event-resource-asset-explore.component.html',
   styleUrl: './event-resource-asset-explore.component.scss',
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [AppMenuDispatcher]
 })
 export class EventResourceAssetExploreComponent implements DoCheck {
+  private applyBorrowWindow(dialog: NonNullable<ReturnType<SubEventResourcePopupStore['assetExploreBorrowDialogRef']>>, card: ResourceAssetDTO, normalizedWindow: { startAtIso: string; endAtIso: string } | null): void {
+    if (!normalizedWindow) {
+      return;
+    }
+    const { startAtIso, endAtIso } = normalizedWindow;
+    const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
+    const invalidated = this.invalidateBorrowCheckout(dialog);
+    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
+    this.resourcePopupStore.assetExploreBorrowDialogRef.set({
+      ...invalidated,
+      startAtIso,
+      endAtIso,
+      availableQuantity,
+      quantity,
+      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
+      error: this.borrowAvailabilityError(quantity, availableQuantity)
+    });
+    this.persistChangedBorrowDraft();
+  }
+
   private static readonly BORROW_BASKET_TTL_MS = 10 * 60 * 1000;
   private static readonly BORROW_QUANTITY = 1;
 
@@ -667,22 +691,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected openInfoCardMenu(card: ResourceAssetDTO, request: CardMenuRequestEvent<InfoCardData>): void {
-    const menuId = `asset-explore-card:${request.id}`;
-    if (this.appMenuDispatcher.isOpen(menuId)) {
-      this.appMenuDispatcher.close(menuId);
-      return;
-    }
-    this.appMenuDispatcher.open({
-      id: menuId,
-      kind: 'select',
-      title: this.infoCardMenuTitle(request.card),
-      items: this.infoCardMenuItems(card, request),
-      triggerRect: request.triggerRect,
-      openUp: request.openUp,
-      panelAlign: 'auto',
-      closeOnSelect: true,
-      onClose: request.closeTrigger
-    }, null);
+    toggleInfoCardMenu(this.appMenuDispatcher, `asset-explore-card:${request.id}`, request, () => ({ title: this.infoCardMenuTitle(request.card), items: this.infoCardMenuItems(card, request) }));
   }
 
   protected openOwnerProfile(card: ResourceAssetDTO): void {
@@ -1091,23 +1100,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       end ? UiDateUtils.toIsoDateTimeLocal(end) : dialog.endAtIso,
       dialog.borrowWindow
     );
-    if (!normalizedWindow) {
-      return;
-    }
-    const { startAtIso, endAtIso } = normalizedWindow;
-    const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
-    const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
-    this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-      ...invalidated,
-      startAtIso,
-      endAtIso,
-      availableQuantity,
-      quantity,
-      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: this.borrowAvailabilityError(quantity, availableQuantity)
-    });
-    this.persistChangedBorrowDraft();
+    this.applyBorrowWindow(dialog, card, normalizedWindow);
   }
 
   protected setBorrowTime(edge: 'start' | 'end', value: string): void {
@@ -1124,23 +1117,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       edge === 'end' ? UiDateUtils.applyTimePartToIsoLocal(dialog.endAtIso, value) : dialog.endAtIso,
       dialog.borrowWindow
     );
-    if (!normalizedWindow) {
-      return;
-    }
-    const { startAtIso, endAtIso } = normalizedWindow;
-    const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
-    const invalidated = this.invalidateBorrowCheckout(dialog);
-    const quantity = EventResourceAssetExploreComponent.BORROW_QUANTITY;
-    this.resourcePopupStore.assetExploreBorrowDialogRef.set({
-      ...invalidated,
-      startAtIso,
-      endAtIso,
-      availableQuantity,
-      quantity,
-      acceptedPolicyIds: [...invalidated.acceptedPolicyIds],
-      error: this.borrowAvailabilityError(quantity, availableQuantity)
-    });
-    this.persistChangedBorrowDraft();
+    this.applyBorrowWindow(dialog, card, normalizedWindow);
   }
 
   protected onBorrowQuantityChange(value: number | string): void {
@@ -2644,21 +2621,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private defaultRange(subEvent: ContractTypes.SubEventDTO): { startAtIso: string; endAtIso: string } {
-    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || UiDateUtils.toIsoDateTimeLocal(new Date());
-    const endAtIso = `${subEvent.endAt ?? ''}`.trim();
-    if (endAtIso) {
-      return {
-        startAtIso,
-        endAtIso
-      };
-    }
-    const base = UiDateUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
-    const nextEnd = new Date(base);
-    nextEnd.setHours(nextEnd.getHours() + 2);
-    return {
-      startAtIso,
-      endAtIso: UiDateUtils.toIsoDateTimeLocal(nextEnd)
-    };
+    return ActivityResourceBuilder.defaultAssetExploreRange(subEvent);
   }
 
   private resolveCard(cardId: string): ResourceAssetDTO | null {
@@ -2685,8 +2648,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       capacityTotal: Math.max(0, card.capacityTotal),
       accepted: card.type === AppConstants.ASSET_TYPE_SUPPLIES
         ? this.subEventSupplyProvidedCount(card.id, subEventId)
-        : this.assetAcceptedCount(card, subEventId, managerUserId),
-      pending: this.assetPendingCount(card, subEventId, managerUserId),
+        : this.assetAcceptedCount(card, subEventId),
+      pending: this.assetPendingCount(card, subEventId),
       isMembers: false
     };
   }
@@ -2880,7 +2843,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             ...currentState.supplyContributionEntriesByAssetId,
             [card.id]: [
               {
-                id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                id: `subevent-supply-row-${Date.now()}-${secureRandomUuid()}`,
                 userId: activeUserId,
                 quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
                 addedAtIso: UiDateUtils.toIsoDateTime(new Date())
@@ -2921,18 +2884,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const cars = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
-    nextSubEvent.carsAccepted = cars.joined;
-    nextSubEvent.carsPending = cars.pending;
-    nextSubEvent.carsCapacityMin = cars.capacityMin;
-    nextSubEvent.carsCapacityMax = cars.capacityMax;
-    nextSubEvent.accommodationAccepted = accommodation.joined;
-    nextSubEvent.accommodationPending = accommodation.pending;
-    nextSubEvent.accommodationCapacityMin = accommodation.capacityMin;
-    nextSubEvent.accommodationCapacityMax = accommodation.capacityMax;
-    nextSubEvent.suppliesAccepted = supplies.joined;
-    nextSubEvent.suppliesPending = supplies.pending;
-    nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
-    nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    ActivityResourceBuilder.assignCapacityMetrics(nextSubEvent, { cars: cars, accommodation: accommodation, supplies: supplies });
     nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
     const nextContext = {
       ...context,
@@ -3049,13 +3001,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         continue;
       }
       const previous = existing[assetId];
-      const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
-        capacityMin,
-        capacityMax,
-        quantity: Math.max(1, Math.trunc(Number(previous?.quantity) || 1)),
+        ...AssetCardBuilder.assignedAssetCapacities(source, previous),
         addedByUserId: previous?.addedByUserId ?? this.activeUser().id,
         routeEnabled: previous?.routeEnabled ?? this.normalizeRoutes(type, previous?.routes).length > 0,
         routes: this.normalizeRoutes(type, previous?.routes)
@@ -3117,15 +3064,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private cloneFallbackCards(
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
-    const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
-    for (const type of AppConstants.ASSET_TYPES) {
-      const cards = fallbackCardsByType?.[type];
-      if (!Array.isArray(cards) || cards.length === 0) {
-        continue;
-      }
-      next[type] = cards.map(card => this.cloneAsset(card));
-    }
-    return next;
+    return AssetCardBuilder.cloneFallbackCards(fallbackCardsByType);
   }
 
   private bookingForRange(
@@ -3165,8 +3104,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private newBorrowRequestId(userId: string, assetId: string, subEventId: string): string {
-    const generation = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const generation = secureRandomUuid();
     return `borrow:${userId}:${assetId}:${subEventId}:${generation}`;
   }
 
@@ -3178,7 +3116,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId);
   }
 
-  private assetRequestsForView(card: ResourceAssetDTO, subEventId: string, managerUserId: string | null = null): AppDTOs.AssetMemberRequestDTO[] {
+  private assetRequestsForView(card: ResourceAssetDTO, subEventId: string): AppDTOs.AssetMemberRequestDTO[] {
     const requests = card.requests
       .filter(request => this.isSubEventScopedAssetRequest(request, subEventId))
       .map(request => ({
@@ -3190,42 +3128,21 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             }
           : null
       }));
-    const normalizedManagerUserId = `${managerUserId ?? ''}`.trim();
-    if (!normalizedManagerUserId) {
-      return requests;
-    }
     return requests;
   }
 
-  private assetPendingCount(card: ResourceAssetDTO, subEventId?: string, managerUserId: string | null = null): number {
-    const requests = subEventId ? this.assetRequestsForView(card, subEventId, managerUserId) : card.requests;
+  private assetPendingCount(card: ResourceAssetDTO, subEventId?: string): number {
+    const requests = subEventId ? this.assetRequestsForView(card, subEventId) : card.requests;
     return requests.filter(request => request.status === 'pending').length;
   }
 
-  private assetAcceptedCount(card: ResourceAssetDTO, subEventId?: string, managerUserId: string | null = null): number {
-    const requests = subEventId ? this.assetRequestsForView(card, subEventId, managerUserId) : card.requests;
+  private assetAcceptedCount(card: ResourceAssetDTO, subEventId?: string): number {
+    const requests = subEventId ? this.assetRequestsForView(card, subEventId) : card.requests;
     return requests.filter(request => request.status === 'accepted').length;
   }
 
   private isWindowOverlap(request: AppDTOs.AssetMemberRequestDTO, startAtIso: string, endAtIso: string): boolean {
-    const requestStart = this.parseLocalDateMs(request.booking?.startAtIso);
-    const requestEnd = this.parseLocalDateMs(request.booking?.endAtIso);
-    const windowStart = this.parseLocalDateMs(startAtIso);
-    const windowEnd = this.parseLocalDateMs(endAtIso);
-    if (requestStart !== null && requestEnd !== null && windowStart !== null && windowEnd !== null) {
-      return requestStart < windowEnd && windowStart < requestEnd;
-    }
-    const requestWindow = [
-      `${request.booking?.eventId ?? ''}`.trim(),
-      `${request.booking?.subEventId ?? ''}`.trim(),
-      `${request.booking?.slotKey ?? ''}`.trim(),
-      `${request.booking?.timeframe ?? ''}`.trim()
-    ].filter(Boolean).join('|');
-    const targetWindow = [startAtIso.trim(), endAtIso.trim()].filter(Boolean).join('|');
-    if (requestWindow && targetWindow) {
-      return requestWindow === targetWindow;
-    }
-    return true;
+    return PricingBuilder.isPricingWindowOverlap(request, startAtIso, endAtIso);
   }
 
   private isRangeOverlap(leftStartAtIso: string, leftEndAtIso: string, rightStartAtIso: string, rightEndAtIso: string): boolean {
@@ -3374,58 +3291,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
-  private toAssetDetailDto(card: ResourceAssetDTO): AppDTOs.AssetDetailDTO {
-    return {
-      id: card.id,
-      type: card.type,
-      title: card.title,
-      subtitle: card.subtitle,
-      category: card.category,
-      city: card.city,
-      capacityTotal: card.capacityTotal,
-      quantity: AssetCardBuilder.storedQuantityValue(card),
-      details: this.assetDetailText(card),
-      imageUrl: card.imageUrl,
-      sourceLink: this.assetSourceLink(card),
-      routes: this.normalizeRoutes(card.type, card.routes),
-      topics: [...(card.topics ?? [])],
-      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
-      policies: (card.policies ?? []).map(policy => ({ ...policy })),
-      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : card.pricing,
-      visibility: card.visibility,
-      status: card.status,
-      ownerUserId: card.ownerUserId,
-      ownerName: card.ownerName,
-      ownerAvatarUrl: card.ownerAvatarUrl ?? null,
-      requests: card.requests.map(request => ({
-        ...request,
-        booking: request.booking
-          ? {
-              ...request.booking,
-              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-            }
-          : null
-      })),
-      menuActions: card.menuActions ? [...card.menuActions] : undefined
-    };
-  }
+  private toAssetDetailDto(card: ResourceAssetDTO): AppDTOs.AssetDetailDTO { return AssetCardBuilder.resourceDetail(card); }
 
-  private cloneAsset(card: ResourceAssetDTO): ResourceAssetDTO {
-    return {
-      ...card,
-      routes: [...(card.routes ?? [])],
-      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => ({
-        ...request,
-        booking: request.booking
-          ? {
-              ...request.booking,
-              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-            }
-          : null
-      }))
-    };
-  }
+  private cloneAsset(card: ResourceAssetDTO): ResourceAssetDTO { return AssetCardBuilder.cloneResourceCard(card); }
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
@@ -3435,16 +3303,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private normalizeRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
-    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
-      return [];
-    }
-    const cleaned = (routes ?? [])
-      .map(value => value.trim())
-      .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
-    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
-      return cleaned.length > 0 ? [cleaned[0]] : [''];
-    }
-    return cleaned.length > 0 ? cleaned : [''];
+    return AssetCardBuilder.normalizeAssetRoutes(type, routes);
   }
 
   private assetDetailText(card: ResourceAssetDTO): string {
@@ -3515,19 +3374,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private reportTargetName(userId: string, fallback: string): string {
-    const normalizedUserId = userId.trim();
-    return this.userProfileStore.getUserProfile(normalizedUserId)?.name?.trim()
-      || (normalizedUserId === this.activeUser().id.trim() ? this.activeUser().name?.trim() : '')
-      || fallback;
+    return this.userProfileStore.reportTargetName(userId, fallback, this.activeUser());
   }
 
   private reportContextTimeframe(context: ResourcePopupContext): string {
-    const start = context.subEvent.startAt?.trim();
-    const end = context.subEvent.endAt?.trim();
-    if (start && end) {
-      return `${start} - ${end}`;
-    }
-    return start || end || '';
+    return ActivityResourceBuilder.reportContextTimeframe(context);
   }
 
   private infoCardMenuTitle(card: InfoCardData): string | null {
@@ -3672,71 +3523,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return this.subEventDisplayName(subEvent) || 'Sub Event';
   }
 
-  private createFallbackUser(userId: string): UserDto {
-    return {
-      id: userId.trim(),
-      name: 'User',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: 'U',
-      gender: 'woman',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 0,
-      headline: '',
-      about: '',
-      images: [],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chats: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0
-      }
-    };
-  }
+  private createFallbackUser(userId: string): UserDto { return AppUtils.createFallbackUser(userId); }
 
-  private openGoogleMapsSearch(query: string): void {
-    const trimmed = query.trim();
-    if (!trimmed || typeof window === 'undefined') {
-      return;
-    }
-    window.open(
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
-  }
+  private openGoogleMapsSearch(query: string): void { return AppUtils.openGoogleMapsSearch(query); }
 
-  private openGoogleMapsDirections(stops: string[]): void {
-    const normalized = stops.map(stop => stop.trim()).filter(Boolean);
-    if (normalized.length === 0 || typeof window === 'undefined') {
-      return;
-    }
-    if (normalized.length === 1) {
-      this.openGoogleMapsSearch(normalized[0]);
-      return;
-    }
-    const origin = normalized[0];
-    const destination = normalized[normalized.length - 1];
-    const waypoints = normalized.slice(1, -1);
-    let url = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
-    if (waypoints.length > 0) {
-      url += `&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
-    }
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
+  private openGoogleMapsDirections(stops: string[]): void { return AppUtils.openGoogleMapsDirections(stops); }
 }

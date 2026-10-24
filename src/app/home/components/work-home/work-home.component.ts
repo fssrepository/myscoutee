@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
 import {
-  ExplanationGuideService,
   type UiBranding as DeploymentBrandingDto,
   SmartListComponent,
   SingleCardComponent,

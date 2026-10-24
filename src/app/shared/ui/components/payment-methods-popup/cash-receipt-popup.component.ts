@@ -1,10 +1,10 @@
-import { Component, EventEmitter, Input, Output, inject, signal, computed } from '@angular/core';
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
+import { Component, OnInit, OnDestroy, EventEmitter, Input, Output, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payments/payment-methods.service';
 import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import {
-  ExplanationGuideService,
   PopupComponent,
   type PopupModel,
   FormFlowComponent,
@@ -19,6 +19,7 @@ import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../
   selector: 'app-cash-receipt-popup', standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent, I18nPipe],
   styleUrl: './payment-feedback.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-popup [model]="popupModel()" [zIndex]="22600">
       <app-form-flow [model]="formModel()" [ngModel]="form()" (ngModelChange)="form.set($event)" [loading]="loading()"
@@ -26,7 +27,7 @@ import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../
     </app-popup>
   `
 })
-export class CashReceiptPopupComponent {
+export class CashReceiptPopupComponent implements OnInit, OnDestroy {
   @Input({ required: true }) userId = '';
   @Input() currency = 'EUR';
   @Output() readonly recorded = new EventEmitter<PaymentHistoryMutationDto>();

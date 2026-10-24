@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { LocalIntegrationRepository } from '../../repositories/integrations/integration.repository';
 import { Injectable, inject } from '@angular/core';
@@ -744,8 +745,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const memberName = `${removedUser?.name ?? removedMember.name ?? removedMember.userId}`.trim();
     const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
     const voluntaryLeave = removedMember.userId === actorUserId;
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const commonPayload = {
       eventId: event.id,
       parentEventId: event.id,
@@ -817,8 +817,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const actor = this.localUsersRepository.queryUserById(actorUserId);
     const memberName = `${user?.name ?? member.name ?? member.userId}`.trim();
     const eventTitle = `${event.title ?? event.id}`.trim() || event.id;
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const membershipAction = action === 'disqualify' ? 'disqualified' : 'reinstated';
     const actionText = action === 'disqualify' ? 'disqualified from' : 'reinstated to';
     const kind = `event-member-${membershipAction}`;
@@ -935,8 +934,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const event = this.eventsRepository.peekKnownItemById(actorUserId, eventId);
     const eventTitle = `${event?.title ?? eventId}`.trim() || eventId;
     const actor = this.localUsersRepository.queryUserById(actorUserId);
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const record: NotificationRecord = {
       id: `event-member-approved:${eventId}:${memberUserId}:${occurrenceId}`,
       recipientUserId: memberUserId,
@@ -983,8 +981,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
       ...(memberListOpen ? activeMembers.map(candidate => candidate.userId.trim()) : [])
     ].filter(userId => userId && userId !== joinedMember.userId))];
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
       id: `event-member-joined:${event.id}:${joinedMember.userId}:${occurrenceId}:${recipientUserId}`,
       recipientUserId,

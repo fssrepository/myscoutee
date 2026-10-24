@@ -1,3 +1,4 @@
+import { PricingBuilder } from '../../../../shared/core/base/builders/payments/pricing.builder';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -139,19 +140,7 @@ export class EventPaymentInputComponent {
     return !this.providerLabel.trim() && this.paymentProvider() === null;
   }
 
-  private currencySymbol(currency: string): string {
-    switch ((currency || '').trim().toUpperCase()) {
-      case 'EUR':
-        return 'EUR ';
-      case 'GBP':
-        return 'GBP ';
-      case 'USD':
-      case '':
-        return '$';
-      default:
-        return `${currency.trim().toUpperCase()} `;
-    }
-  }
+  private currencySymbol(currency: string): string { return PricingBuilder.currencySymbol(currency); }
 
   private paymentProvider(): 'stripe' | 'barion' | null {
     const explicitProvider = this.provider.trim().toLowerCase();

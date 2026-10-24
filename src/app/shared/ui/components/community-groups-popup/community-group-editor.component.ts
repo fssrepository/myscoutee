@@ -1,6 +1,7 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { groupType } from '../../../core/contracts/groups/group-type';
 import { groupTypeTrigger, groupTypeMenuItems } from '../../converters/community/group-type-menu';
-import { Component, Input, OnChanges, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   PopupComponent,
@@ -11,8 +12,7 @@ import {
   FormFlowControlModel,
   FormFlowMenuControlConfig,
   AppMenuPalette,
-  I18nPipe,
-  ExplanationGuideService
+  I18nPipe
 } from '@fssrepository/myscoutee-components';
 
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -53,6 +53,7 @@ interface GroupForm extends SaveCommunityGroup { images: string[]; }
       :host { --form-flow-grouped-media-image-height: clamp(160px, 54vw, 260px); }
     }
   `],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-popup [model]="popupModel()" [zIndex]="zIndex">
         <app-form-flow [model]="flowModel()" [(ngModel)]="form" [disabled]="loading || store.busy()" [loading]="loading"

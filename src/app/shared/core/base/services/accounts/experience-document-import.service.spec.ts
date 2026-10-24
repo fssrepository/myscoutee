@@ -5,10 +5,19 @@ const parser = () => new ExperienceDocumentImportService() as unknown as {
   decodePdfLiteral(value: string): string;
   decodeXmlEntities(value: string): string;
   parsePdfToUnicodeMap(value: string): { glyphByCode: Map<string, string> };
+  extractPdfTextFragments(value: string, fonts: ReadonlyMap<string, never>): string[];
   isSkippableParagraph(value: string[]): boolean;
 };
 
 describe('Experience document security boundaries', () => {
+  it('reads text operators without treating text delimiters inside literals as PDF syntax', () => {
+    expect(parser().extractPdfTextFragments(String.raw`BT /F1 12 Tf (A\(B\) C) Tj [(left[) 120 (right])] TJ (literal ET marker) Tj ET`, new Map<string, never>()))
+      .toEqual(['A(B) C', 'left[right]', 'literal ET marker']);
+  });
+
+  it('finishes an unterminated PDF array without repeatedly rescanning its prefix', () => {
+    expect(parser().extractPdfTextFragments('BT [' + '['.repeat(100_000), new Map<string, never>())).toEqual([]);
+  });
   it('decodes PDF escapes once, retaining escaped backslashes and octal results', () => {
     expect(parser().decodePdfLiteral(String.raw`a\nb`)).toBe('a\nb');
     expect(parser().decodePdfLiteral(String.raw`a\\nb`)).toBe('a\\nb');

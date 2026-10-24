@@ -110,32 +110,7 @@
                     }
                   </div>
                   @if (vm.hostActiveTraitCard; as trait) {
-                    <div class="personality-trait-card" [ngClass]="vm.hostActiveTraitCard.toneClass">
-                      <div class="personality-trait-card-head">
-                        <div class="personality-trait-card-title">
-                          <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
-                          <div>
-                            <strong>{{ trait.labelKey | i18n }}</strong>
-                            <p>{{ trait.coreVibe | i18n }}</p>
-                          </div>
-                        </div>
-                        <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
-                      </div>
-                      <div class="personality-trait-card-bar">
-                        <span [style.width.%]="trait.percent"></span>
-                      </div>
-                      <div class="personality-trait-card-meta">
-                        <span>{{ trait.evidenceCount }} signals</span>
-                        @if (trait.lastRatedAtIso) {
-                          <span>{{ trait.lastRatedAtIso | date:'MMM d' }}</span>
-                        }
-                      </div>
-                      <div class="personality-trait-card-highlights">
-                        @for (item of trait.highlights; track item) {
-                          <span class="social-proof-chip chip-personality">{{ item | i18n }}</span>
-                        }
-                      </div>
-                    </div>
+                    <ng-container [ngTemplateOutlet]="personalityTraitCard" [ngTemplateOutletContext]="{ $implicit: trait }" />
                   }
                 </div>
               } @else {
@@ -217,32 +192,7 @@
                     }
                   </div>
                   @if (vm.memberActiveTraitCard; as trait) {
-                    <div class="personality-trait-card" [ngClass]="vm.memberActiveTraitCard.toneClass">
-                      <div class="personality-trait-card-head">
-                        <div class="personality-trait-card-title">
-                          <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
-                          <div>
-                            <strong>{{ trait.labelKey | i18n }}</strong>
-                            <p>{{ trait.coreVibe | i18n }}</p>
-                          </div>
-                        </div>
-                        <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
-                      </div>
-                      <div class="personality-trait-card-bar">
-                        <span [style.width.%]="trait.percent"></span>
-                      </div>
-                      <div class="personality-trait-card-meta">
-                        <span>{{ trait.evidenceCount }} signals</span>
-                        @if (trait.lastRatedAtIso) {
-                          <span>{{ trait.lastRatedAtIso | date:'MMM d' }}</span>
-                        }
-                      </div>
-                      <div class="personality-trait-card-highlights">
-                        @for (item of trait.highlights; track item) {
-                          <span class="social-proof-chip chip-personality">{{ item | i18n }}</span>
-                        }
-                      </div>
-                    </div>
+                    <ng-container [ngTemplateOutlet]="personalityTraitCard" [ngTemplateOutletContext]="{ $implicit: trait }" />
                   }
                 </div>
               } @else {
@@ -270,3 +220,32 @@
     </div>
   </app-popup>
 }
+
+<ng-template #personalityTraitCard let-trait>
+                    <div class="personality-trait-card" [ngClass]="trait.toneClass">
+                      <div class="personality-trait-card-head">
+                        <div class="personality-trait-card-title">
+                          <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
+                          <div>
+                            <strong>{{ trait.labelKey | i18n }}</strong>
+                            <p>{{ trait.coreVibe | i18n }}</p>
+                          </div>
+                        </div>
+                        <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
+                      </div>
+                      <div class="personality-trait-card-bar">
+                        <span [style.width.%]="trait.percent"></span>
+                      </div>
+                      <div class="personality-trait-card-meta">
+                        <span>{{ trait.evidenceCount }} signals</span>
+                        @if (trait.lastRatedAtIso) {
+                          <span>{{ trait.lastRatedAtIso | date:'MMM d' }}</span>
+                        }
+                      </div>
+                      <div class="personality-trait-card-highlights">
+                        @for (item of trait.highlights; track item) {
+                          <span class="social-proof-chip chip-personality">{{ item | i18n }}</span>
+                        }
+                      </div>
+                    </div>
+</ng-template>

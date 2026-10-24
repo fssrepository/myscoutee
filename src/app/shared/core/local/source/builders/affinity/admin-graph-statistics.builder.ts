@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import type { AdminAffinityGraphDto, AdminStatsGraphDto, AdminStatsBreakdownItemDto } from '../../../../contracts/administration/admin.interface';
 import type { UserRateRecord } from '../../entity/affinity/rate.entity';
 import type { ActivityMemberRecord } from '../../entity/common/activity.entity';
@@ -14,7 +15,7 @@ export function adminGraphStatistics(template: AdminStatsGraphDto, graph: AdminA
   const edges = new Map<string, Edge>();
   const add = (left: string, right: string, weight: number, weak: boolean, recurring: boolean, date: string) => {
     if (left === right || !names.has(left) || !names.has(right)) return;
-    const key = [left, right].sort().join(':');
+    const key = [left, right].sort(AppUtils.compareCodeUnits).join(':');
     const old = edges.get(key);
     edges.set(key, { left, right, weight: Math.max(old?.weight ?? 0, weight), count: (old?.count ?? 0) + 1,
       weak: weak || !!old?.weak, recurring: recurring || !!old?.recurring || (old?.count ?? 0) >= 2,
@@ -41,7 +42,7 @@ export function adminGraphStatistics(template: AdminStatsGraphDto, graph: AdminA
   }
   for (const members of accepted.values()) for (let i = 0; i < Math.min(60, members.length); i++) {
     for (let j = i + 1; j < Math.min(60, members.length); j++) add(members[i].userId, members[j].userId, .22, true, false,
-      [members[i].metAtIso || members[i].actionAtIso, members[j].metAtIso || members[j].actionAtIso].sort().at(-1) ?? '');
+      [members[i].metAtIso || members[i].actionAtIso, members[j].metAtIso || members[j].actionAtIso].sort(AppUtils.compareCodeUnits).at(-1) ?? '');
   }
   const rows = [...edges.values()];
   const adjacency = new Map<string, Map<string, number>>();

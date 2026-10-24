@@ -1,3 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import contactMethodOptions from './contact-method-options.json';
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { ContactChatAccessStore } from '../../../shared/ui/context/stores/chat/contact-chat-access.store';
 import type { ContactChatAccessAction } from '../../../shared/core/contracts/accounts/contact.interface';
 import { ChatsService } from '../../../shared/core/base/services/chat/chats.service';
@@ -18,8 +21,7 @@ import {
   type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage,
-  DialogStore,
-  ExplanationGuideService
+  DialogStore
 } from '@fssrepository/myscoutee-components';
 import { ActivitiesPopupStore, eventChatPopupRequestFromChat, eventChatHeaderStateFromChat } from '../../../shared/ui/context/stores/activity/activities-popup.store';
 import {
@@ -31,7 +33,8 @@ import {
   effect,
   inject,
   signal,
-  untracked
+  untracked,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   CommonModule
@@ -62,116 +65,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app/app-runtime.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity/activity-invite-popup.store';
 
-const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
-  {
-    value: 'phone',
-    label: 'phone',
-    icon: 'call',
-    placeholder: '+421 900 123 456',
-    helpText: 'Opens the phone app on mobile or the default calling handler.',
-    inputType: 'tel',
-    inputMode: 'tel',
-    autocomplete: 'tel',
-    actionLabel: 'chat.call.title',
-    openBehavior: 'same-tab'
-  },
-  {
-    value: 'sms',
-    label: 'sms',
-    icon: 'sms',
-    placeholder: '+421 900 123 456',
-    helpText: 'Starts a text message with the number filled in.',
-    inputType: 'tel',
-    inputMode: 'tel',
-    autocomplete: 'tel',
-    actionLabel: 'Text',
-    openBehavior: 'same-tab'
-  },
-  {
-    value: 'whatsapp',
-    label: 'whatsapp',
-    icon: 'chat',
-    placeholder: '+421900123456',
-    helpText: 'Uses the WhatsApp deep link when available.',
-    inputType: 'tel',
-    inputMode: 'tel',
-    autocomplete: 'tel',
-    actionLabel: 'Open WhatsApp',
-    openBehavior: 'new-tab'
-  },
-  {
-    value: 'email',
-    label: 'email',
-    icon: 'mail',
-    placeholder: 'hello@example.com',
-    helpText: 'Opens the default mail app with the address ready.',
-    inputType: 'email',
-    inputMode: 'email',
-    autocomplete: 'email',
-    actionLabel: 'email',
-    openBehavior: 'same-tab'
-  },
-  {
-    value: 'facebook',
-    label: 'facebook',
-    icon: 'thumb_up',
-    placeholder: '@username or https://facebook.com/username',
-    helpText: 'Opens the Facebook profile in the app or a browser tab.',
-    inputType: 'url',
-    inputMode: 'url',
-    autocomplete: 'url',
-    actionLabel: 'Open Facebook',
-    openBehavior: 'new-tab'
-  },
-  {
-    value: 'instagram',
-    label: 'instagram',
-    icon: 'photo_camera',
-    placeholder: '@username or https://instagram.com/username',
-    helpText: 'Opens the Instagram profile.',
-    inputType: 'url',
-    inputMode: 'url',
-    autocomplete: 'url',
-    actionLabel: 'Open Instagram',
-    openBehavior: 'new-tab'
-  },
-  {
-    value: 'telegram',
-    label: 'telegram',
-    icon: 'send',
-    placeholder: '@username or https://t.me/username',
-    helpText: 'Opens the Telegram contact.',
-    inputType: 'url',
-    inputMode: 'url',
-    autocomplete: 'url',
-    actionLabel: 'Open Telegram',
-    openBehavior: 'new-tab'
-  },
-  {
-    value: 'linkedin',
-    label: 'linkedin',
-    icon: 'work',
-    placeholder: 'username or https://linkedin.com/in/username',
-    helpText: 'Opens the LinkedIn profile.',
-    inputType: 'url',
-    inputMode: 'url',
-    autocomplete: 'url',
-    actionLabel: 'Open LinkedIn',
-    openBehavior: 'new-tab'
-  },
-  {
-    value: 'website',
-    label: 'website',
-    icon: 'language',
-    placeholder: 'https://example.com',
-    helpText: 'Opens any profile, portfolio, or custom contact URL.',
-    inputType: 'url',
-    inputMode: 'url',
-    autocomplete: 'url',
-    actionLabel: 'Open Link',
-    openBehavior: 'new-tab'
-  }
-];
+const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = contactMethodOptions as readonly ContactMethodOption[];
 
 const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
   CONTACT_METHOD_OPTIONS.map(option => [option.value, option])
@@ -196,6 +90,7 @@ type ContactsMenuContext =
     SmartListComponent
   ],
   templateUrl: './contacts-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './contacts-popup.component.scss'
 })
 export class ContactsPopupComponent implements OnDestroy {
@@ -1270,7 +1165,7 @@ export class ContactsPopupComponent implements OnDestroy {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return `${prefix}-${crypto.randomUUID()}`;
     }
-    return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+    return `${prefix}-${secureRandomUuid()}`;
   }
 
   private bumpRevision(optimistic = false): void {

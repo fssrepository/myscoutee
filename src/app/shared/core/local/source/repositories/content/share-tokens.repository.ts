@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { SHARE_TOKENS_TABLE_NAME, type ShareTokenRecord } from '../../entity/content/sharing.entity';
 import { Injectable, inject } from '@angular/core';
 
@@ -12,6 +13,61 @@ import { LocalAssetsRepository } from '../assets/assets.repository';
   providedIn: 'root'
 })
 export class LocalShareTokensRepository {
+
+  static isExpired(record: ShareTokenRecord | null | undefined): boolean {
+    if (!record) {
+      return true;
+    }
+    const expiresAtMs = Date.parse(record.expiresAtIso);
+    return !Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now();
+  }
+
+  static ensureAdminHelpTokenIn(memoryDb: Pick<LocalMemoryDb, 'write'>, request: {
+    adminId: string;
+    userId: string;
+    targetKey: string;
+    targetUrl: string;
+  }): string {
+    const adminId = `${request.adminId ?? ''}`.trim();
+    const userId = `${request.userId ?? ''}`.trim();
+    const targetKey = `${request.targetKey ?? ''}`.trim();
+    const targetUrl = `${request.targetUrl ?? ''}`.trim();
+    if (!adminId || !userId || !targetKey || !targetUrl) {
+      return '';
+    }
+    const safeAdminId = adminId.replace(/[^A-Za-z0-9-]/g, '-');
+    const targetSuffix = targetKey === 'current' ? '' : `-${targetKey}`;
+    const token = `myscoutee:token:admin-help-${safeAdminId}-${userId}${targetSuffix}`;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + LocalShareTokensRepository.TOKEN_TTL_MS);
+    const record: ShareTokenRecord = {
+      token,
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: userId,
+      createdAtIso: now.toISOString(),
+      expiresAtIso: expiresAt.toISOString()
+    };
+    memoryDb.write(state => {
+      const table = state[SHARE_TOKENS_TABLE_NAME];
+      const existing = table.byToken[token];
+      if (existing && !LocalShareTokensRepository.isExpired(existing) && existing.entityId === targetUrl) {
+        return state;
+      }
+      return {
+        ...state,
+        [SHARE_TOKENS_TABLE_NAME]: {
+          byToken: {
+            ...table.byToken,
+            [token]: record
+          },
+          tokens: table.tokens.includes(token) ? [...table.tokens] : [...table.tokens, token]
+        }
+      };
+    });
+    return token;
+  }
+
   private static readonly TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly eventsRepository = inject(LocalEventsRepository);
@@ -29,7 +85,7 @@ export class LocalShareTokensRepository {
     }
     const now = new Date();
     const expiresAt = new Date(now.getTime() + LocalShareTokensRepository.TOKEN_TTL_MS);
-    const tokenId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tokenId = secureRandomUuid();
     const token = `myscoutee:token:${tokenId}`;
     const record: ShareTokenRecord = {
       token,
@@ -63,44 +119,7 @@ export class LocalShareTokensRepository {
     targetKey: string;
     targetUrl: string;
   }): string {
-    const adminId = `${request.adminId ?? ''}`.trim();
-    const userId = `${request.userId ?? ''}`.trim();
-    const targetKey = `${request.targetKey ?? ''}`.trim();
-    const targetUrl = `${request.targetUrl ?? ''}`.trim();
-    if (!adminId || !userId || !targetKey || !targetUrl) {
-      return '';
-    }
-    const safeAdminId = adminId.replace(/[^A-Za-z0-9-]/g, '-');
-    const targetSuffix = targetKey === 'current' ? '' : `-${targetKey}`;
-    const token = `myscoutee:token:admin-help-${safeAdminId}-${userId}${targetSuffix}`;
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + LocalShareTokensRepository.TOKEN_TTL_MS);
-    const record: ShareTokenRecord = {
-      token,
-      kind: 'adminHelp',
-      entityId: targetUrl,
-      ownerUserId: userId,
-      createdAtIso: now.toISOString(),
-      expiresAtIso: expiresAt.toISOString()
-    };
-    this.memoryDb.write(state => {
-      const table = state[SHARE_TOKENS_TABLE_NAME];
-      const existing = table.byToken[token];
-      if (existing && !this.isExpired(existing) && existing.entityId === targetUrl) {
-        return state;
-      }
-      return {
-        ...state,
-        [SHARE_TOKENS_TABLE_NAME]: {
-          byToken: {
-            ...table.byToken,
-            [token]: record
-          },
-          tokens: table.tokens.includes(token) ? [...table.tokens] : [...table.tokens, token]
-        }
-      };
-    });
-    return token;
+    return LocalShareTokensRepository.ensureAdminHelpTokenIn(this.memoryDb, request);
   }
 
   resolveToken(token: string, userId: string): ShareTokenResolvedItem | null {

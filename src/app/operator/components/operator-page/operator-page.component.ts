@@ -1,7 +1,7 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
 import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
 import {
-  ExplanationGuideService,
   type ListQuery,
   IndicatorComponent,
   DeploymentBrandComponent,

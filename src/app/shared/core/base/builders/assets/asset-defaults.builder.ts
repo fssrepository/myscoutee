@@ -1,4 +1,4 @@
-import { APP_STATIC_DATA } from '../../../common/app-static-data';
+import { ASSET_TYPE_LABELS, ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE } from '../../../common/constants';
 
 import * as AppConstants from '../../../common/constants';
 export class AssetDefaultsBuilder {
@@ -7,7 +7,7 @@ export class AssetDefaultsBuilder {
   private static readonly suppliesCategories: readonly string[] = AppConstants.SUPPLIES_ASSET_CATEGORIES;
 
   static assetTypeLabel(type: AppConstants.AssetFilterType): string {
-    return APP_STATIC_DATA.assetTypeLabels[type];
+    return ASSET_TYPE_LABELS[type];
   }
 
   static assetTypeIcon(type: AppConstants.AssetFilterType): string {
@@ -62,7 +62,7 @@ export class AssetDefaultsBuilder {
   }
 
   static assetCategoryOptions(type: AppConstants.AssetType): AppConstants.AssetCategory[] {
-    return [...(APP_STATIC_DATA.assetCategoryOptionsByType[type] ?? [])];
+    return [...(ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE[type] ?? [])];
   }
 
   static assetCategoryLabel(category: AppConstants.AssetCategory | null | undefined): string {
@@ -73,61 +73,35 @@ export class AssetDefaultsBuilder {
     category: AppConstants.AssetCategory | null | undefined,
     fallbackType: AppConstants.AssetType = this.assetCategoryType(category)
   ): string {
-    switch (`${category ?? ''}`.trim().toLowerCase()) {
-      case 'sedan':
-        return 'directions_car';
-      case 'suv':
-        return 'directions_car';
-      case 'van':
-      case 'shuttle':
-        return 'airport_shuttle';
-      case 'bus':
-        return 'directions_bus';
-      case 'truck':
-        return 'local_shipping';
-      case 'motorcycle':
-        return 'two_wheeler';
-      case 'bicycle':
-        return 'pedal_bike';
-      case 'boat':
-        return 'directions_boat';
-      case 'flight':
-        return 'flight';
-      case 'hotel':
-        return 'hotel';
-      case 'apartment':
-        return 'apartment';
-      case 'house':
-        return 'home';
-      case 'room':
-        return 'meeting_room';
-      case 'venue':
-        return 'stadium';
-      case 'campsite':
-        return 'cabin';
-      case 'storage':
-        return 'warehouse';
-      case 'workspace':
-        return 'business_center';
-      case 'camping':
-        return 'forest';
-      case 'cooking':
-        return 'restaurant';
-      case 'games':
-        return 'sports_esports';
-      case 'audio':
-        return 'speaker';
-      case 'sports':
-        return 'sports_basketball';
-      case 'safety':
-        return 'health_and_safety';
-      case 'decor':
-        return 'celebration';
-      case 'tech':
-        return 'memory';
-      default:
-        return this.assetTypeIcon(fallbackType);
-    }
+    const labels: Record<string, string> = {
+      sedan: 'directions_car',
+      suv: 'directions_car',
+      van: 'airport_shuttle',
+      shuttle: 'airport_shuttle',
+      bus: 'directions_bus',
+      truck: 'local_shipping',
+      motorcycle: 'two_wheeler',
+      bicycle: 'pedal_bike',
+      boat: 'directions_boat',
+      flight: 'flight',
+      hotel: 'hotel',
+      apartment: 'apartment',
+      house: 'home',
+      room: 'meeting_room',
+      venue: 'stadium',
+      campsite: 'cabin',
+      storage: 'warehouse',
+      workspace: 'business_center',
+      camping: 'forest',
+      cooking: 'restaurant',
+      games: 'sports_esports',
+      audio: 'speaker',
+      sports: 'sports_basketball',
+      safety: 'health_and_safety',
+      decor: 'celebration',
+      tech: 'memory'
+    };
+    return labels[`${category ?? ''}`.trim().toLowerCase()] ?? this.assetTypeIcon(fallbackType);
   }
 
   static assetCategoryClass(

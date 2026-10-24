@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import * as FeedbackContracts from '../../../core/contracts/feedback/feedback.interface';
@@ -23,7 +24,6 @@ import {
   type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage,
-  ExplanationGuideService,
   DialogStore,
   type DialogConfig
 } from '@fssrepository/myscoutee-components';
@@ -38,7 +38,8 @@ import {
   effect,
   inject,
   signal,
-  untracked
+  untracked,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   CommonModule
@@ -98,6 +99,7 @@ interface FeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'onCanc
     InfoCardComponent, I18nPipe
   ],
   templateUrl: './feedback-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './feedback-popup.component.scss'
 })
 export class FeedbackPopupComponent implements OnDestroy {

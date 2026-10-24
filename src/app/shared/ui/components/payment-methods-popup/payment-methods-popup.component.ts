@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { CashReceiptPopupComponent } from './cash-receipt-popup.component';
 import { SummaryCurrencyPopupComponent } from '../summary-currency-popup/summary-currency-popup.component';
 import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, viewChild, computed, effect, untracked, inject, signal } from '@angular/core';
@@ -5,7 +6,7 @@ import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { from } from 'rxjs';
 
 import {
-  ExplanationGuideService,
+  UiLinkUtils,
   type ListQuery,
   DialogStore,
   type AppMenuItem,
@@ -667,14 +668,14 @@ export class PaymentMethodsPopupComponent implements OnDestroy {
       this.finishRegistration(registration.status);
       return;
     }
-    const paymentUrl = registration.paymentUrl?.trim() || '';
+    const paymentUrl = UiLinkUtils.normalizeHttpUrl(registration.paymentUrl);
     if (!paymentUrl) throw new Error('payment.registration.error.page');
     const current = this.registrationRef();
     if (current?.id !== registration.id) {
       this.registrationRef.set({
         id: registration.id,
         url: paymentUrl,
-        safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(paymentUrl),
+        safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(paymentUrl), // NOSONAR S6268: authenticated registration response, normalized to HTTP(S).
         provider: registration.provider,
         expiresAtIso: registration.expiresAtIso,
         replacesPaymentMethodId: registration.replacesPaymentMethodId?.trim() || null

@@ -1,9 +1,9 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { NgTemplateOutlet } from '@angular/common';
 import { DocumentAttachments } from '../core/form/flow/document-attachments';
 import { MediaService } from '../../../core/base/services/media/media.service';
 import { ProfileViewPopupComponent } from '../../../../profile/components/profile-view-popup/profile-view-popup.component';
 import {
-  ExplanationGuideService,
   PopupComponent,
   PopupModel,
   PopupMenuControl,
@@ -12,7 +12,7 @@ import {
   type FormFlowActionEvent,
   I18nPipe
 } from '@fssrepository/myscoutee-components';
-import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
+import { Component, OnChanges, OnDestroy, inject, computed, signal, input, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -49,6 +49,7 @@ export function campaignViewControl(view: CampaignView): PopupMenuControl {
         (action)="formAction($event,files)" [loading]="loading()" [disabled]="loading()||store.busy()" [saving]="(!loading()&&store.busy())||documents.uploading()"></app-form-flow>
     }
   </ng-template>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles:[`:host { --form-flow-grouped-media-image-height:100%; --form-flow-grouped-media-image-align:stretch; --form-flow-grouped-media-image-width:100%; }
     @media(max-width:760px){:host{--form-flow-grouped-media-image-height:clamp(160px,54vw,260px);}}`]
 })

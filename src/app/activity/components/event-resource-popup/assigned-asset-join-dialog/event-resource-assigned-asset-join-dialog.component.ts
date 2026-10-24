@@ -1,3 +1,5 @@
+import { PricingBuilder } from '../../../../shared/core/base/builders/payments/pricing.builder';
+import { AssetPolicyListComponent } from '../../../../shared/ui/components/asset-policy-list/asset-policy-list.component';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
@@ -39,7 +41,7 @@ export interface AssignedAssetJoinDialogViewState {
 @Component({
   selector: 'app-event-resource-assigned-asset-join-dialog',
   standalone: true,
-  imports: [CommonModule, PopupComponent, AppMenuComponent, I18nPipe],
+  imports: [AssetPolicyListComponent, CommonModule, PopupComponent, AppMenuComponent, I18nPipe],
   templateUrl: './event-resource-assigned-asset-join-dialog.component.html',
   styleUrl: './event-resource-assigned-asset-join-dialog.component.scss',
   encapsulation: ViewEncapsulation.None,
@@ -111,14 +113,7 @@ export class EventResourceAssignedAssetJoinDialogComponent {
   }
 
   protected formatMoney(amount: number, currency = 'USD'): string {
-    switch ((currency || '').trim().toUpperCase()) {
-      case 'EUR':
-        return `EUR ${(Number(amount) || 0).toFixed(2)}`;
-      case 'GBP':
-        return `GBP ${(Number(amount) || 0).toFixed(2)}`;
-      default:
-        return `$${(Number(amount) || 0).toFixed(2)}`;
-    }
+    return PricingBuilder.formatAssetMoney(amount, currency);
   }
 
   protected canSubmit(dialog: AssignedAssetJoinDialogViewState): boolean {

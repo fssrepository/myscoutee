@@ -1,10 +1,10 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { McpConnectionsComponent } from './mcp-connections.component';
 import { IntegrationAccessButtonComponent } from './integration-access-button.component';
 import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
 import {
   CopyLinkComponent,
   IndicatorComponent,
-  ExplanationGuideService,
   PopupComponent,
   type PopupActionEvent,
   type PopupModel,

@@ -1,0 +1,97 @@
+{
+  "drinking": {
+    "matches": {
+      "never": "no_drinks",
+      "socially": "groups",
+      "occasionally": "event"
+    },
+    "fallback": "nightlife"
+  },
+  "smoking": {
+    "matches": {
+      "never": "smoke_free",
+      "trying": "healing",
+      "socially": "group"
+    },
+    "fallback": "smoking_rooms"
+  },
+  "workout": {
+    "matches": {
+      "daily": "whatshot",
+      "4x": "fitness_center",
+      "2-3x": "directions_run"
+    },
+    "fallback": "self_improvement"
+  },
+  "pets": {
+    "matches": {
+      "dog": "pets",
+      "cat": "pets",
+      "all": "cruelty_free"
+    },
+    "fallback": "block"
+  },
+  "family": {
+    "matches": {
+      "want": "child_care",
+      "open": "family_restroom",
+      "not sure": "help_outline"
+    },
+    "fallback": "do_not_disturb_alt"
+  },
+  "children": {
+    "matches": {
+      "yes": "child_friendly",
+      "no": "do_not_disturb_alt"
+    },
+    "fallback": "privacy_tip",
+    "exact": true
+  },
+  "love": {
+    "matches": {
+      "long-term": "favorite",
+      "slow-burn": "hourglass_bottom",
+      "open": "hub"
+    },
+    "fallback": "explore"
+  },
+  "communication": {
+    "matches": {
+      "direct": "campaign",
+      "calm": "record_voice_over",
+      "playful": "mood"
+    },
+    "fallback": "forum"
+  },
+  "orientation": {
+    "matches": {
+      "straight": "person",
+      "bisexual": "diversity_3",
+      "gay": "favorite",
+      "lesbian": "favorite",
+      "pansexual": "all_inclusive",
+      "asexual": "do_not_disturb_on"
+    },
+    "fallback": "privacy_tip"
+  },
+  "gender": {
+    "matches": {
+      "woman": "female",
+      "man": "male",
+      "non-binary": "transgender"
+    },
+    "fallback": "privacy_tip"
+  },
+  "religion": {
+    "matches": {
+      "spiritual": "self_improvement",
+      "christian": "church",
+      "muslim": "mosque",
+      "jewish": "synagogue",
+      "buddhist": "temple_buddhist",
+      "hindu": "temple_buddhist",
+      "atheist": "public_off"
+    },
+    "fallback": "privacy_tip"
+  }
+}

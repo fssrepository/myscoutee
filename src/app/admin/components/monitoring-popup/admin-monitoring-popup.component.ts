@@ -6,7 +6,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   MatIconModule
@@ -66,6 +67,7 @@ const MONITORING_FILTER_OPTIONS: Array<{ key: MonitoringFilter; labelKey: string
   standalone: true,
   imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-monitoring-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-monitoring-popup.component.scss'
 })
 export class AdminMonitoringPopupComponent {

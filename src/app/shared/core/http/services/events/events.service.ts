@@ -1,3 +1,6 @@
+import { EventMembershipRemovalOptions } from '../../../contracts/common/activity.interface';
+import { EventJoinOptions } from '../../../contracts/common/activity.interface';
+import { requestWithAbort } from '../../request-lifecycle';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -345,46 +348,7 @@ export class HttpEventsService implements IEventsService {
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      let settled = false;
-      let subscription: { unsubscribe: () => void } | null = null;
-      const cleanup = () => {
-        signal?.removeEventListener('abort', onAbort);
-      };
-      const onAbort = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        subscription?.unsubscribe();
-        cleanup();
-        reject(this.createAbortError());
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      subscription = request$.subscribe({
-        next: value => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(value);
-        },
-        error: error => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          reject(error);
-        },
-        complete: () => cleanup()
-      });
-    });
+    return requestWithAbort(request$, signal);
   }
 
   private createAbortError(): Error {
@@ -966,23 +930,7 @@ export class HttpEventsService implements IEventsService {
   async requestJoin(
     userId: string,
     sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      optionalSubEventIds?: string[];
-      assetSelections?: EventCheckoutAssetSelection[];
-      acceptedPolicyIds?: string[];
-      appliedPromoCodes?: string[];
-      paymentSessionId?: string | null;
-      bookingConfirmed?: boolean;
-      pendingReason?: ActivityPendingReason;
-      checkoutState?: EventCheckoutState;
-      basketItems?: EventCheckoutBasketItem[];
-      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
-      lineItems?: EventCheckoutLineItem[];
-      totalAmount?: number | null;
-      currency?: string | null;
-      skipLocalRouteDelay?: boolean;
-    } = {}
+    options: EventJoinOptions = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -1018,13 +966,7 @@ export class HttpEventsService implements IEventsService {
   async leaveEvent(
     userId: string,
     sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      removeMembershipOnly?: boolean;
-      checkoutState?: EventCheckoutState | null;
-      checkoutResultState?: EventCheckoutResultState | null;
-      checkoutSessionId?: string | null;
-    } = {}
+    options: EventMembershipRemovalOptions = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();

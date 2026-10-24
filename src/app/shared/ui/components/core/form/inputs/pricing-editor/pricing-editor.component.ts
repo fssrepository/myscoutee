@@ -30,6 +30,10 @@ import { PricingBuilder } from '../../../../../../core/base/builders';
 import { I18nService } from '../../../../../../core';
 import {
   I18nPipe,
+  PopupComponent,
+  type PopupAction,
+  type PopupActionEvent,
+  type PopupModel,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
@@ -144,6 +148,7 @@ interface ResolvedPricingEditorConfig {
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     PricingSlotPanelComponent,
+    PopupComponent,
     I18nPipe
   ],
   templateUrl: './pricing-editor.component.html',
@@ -160,6 +165,12 @@ interface ResolvedPricingEditorConfig {
 })
 export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestroy, ControlValueAccessor {
   private static ownerSequence = 0;
+  protected readonly popupPresentation: boolean = false;
+  @Input() popup: FormFlowPricingEditorPopupState | null = null;
+  protected draftValue: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
+  protected showPricingInfoPanel = true;
+  private locallyDirty = false;
+  private originalValue: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
   @Input() config: PricingEditorConfig = {};
   @Input() readOnly = false;
@@ -233,6 +244,18 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected currentFallbackLines: string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['popup'] && this.popup) {
+      this.config = this.popupEditorConfig(this.popup);
+      this.readOnly = this.popup.readOnly;
+      this.disabled = this.popup.readOnly;
+      this.syncResolvedConfig();
+      this.cdr.markForCheck();
+      this.writeValue(PricingBuilder.clonePricingConfig(this.popup.value as ContractTypes.PricingConfig));
+      this.originalValue = PricingBuilder.clonePricingConfig(this.workingPricing);
+      this.draftValue = PricingBuilder.clonePricingConfig(this.workingPricing);
+      this.locallyDirty = false;
+      return;
+    }
     if (changes['config']) {
       this.syncResolvedConfig();
       this.cdr.markForCheck();
@@ -818,7 +841,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
-  protected onDemandRuleActionValueChange(rule: ContractTypes.PricingDemandRule, value: number | string): void {
+
+
+  protected onRuleActionValueChange(
+    rule: { action: ContractTypes.PricingAction },
+    value: number | string
+  ): void {
     rule.action.value = this.parseMoney(value) ?? 0;
     this.emitPricing();
   }
@@ -829,10 +857,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
-  protected onQuantityRuleActionValueChange(rule: ContractTypes.PricingQuantityRule, value: number | string): void {
-    rule.action.value = this.parseMoney(value) ?? 0;
-    this.emitPricing();
-  }
+
 
   protected onDemandRuleScopeChange(rule: ContractTypes.PricingDemandRule, scope: AppConstants.PricingRuleScope): void {
     rule.appliesTo = scope;
@@ -888,10 +913,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
-  protected onTimeRuleActionValueChange(rule: ContractTypes.PricingTimeRule, value: number | string): void {
-    rule.action.value = this.parseMoney(value) ?? 0;
-    this.emitPricing();
-  }
+
 
   protected cancellationUnitLabel(unit: AppConstants.PricingCancellationUnit): string {
     switch (unit) {
@@ -1572,7 +1594,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.cdr.markForCheck();
   }
 
-  protected afterPricingChange(_nextPricing: ContractTypes.PricingConfig): void {}
+  protected afterPricingChange(nextPricing: ContractTypes.PricingConfig): void {
+    if (this.popup) {
+      this.draftValue = PricingBuilder.clonePricingConfig(nextPricing);
+      this.locallyDirty = this.hasDraftChanges();
+    }
+  }
 
   private syncMode(): void {
     const hasDemand = this.workingPricing.demandRulesEnabled;
@@ -2147,5 +2174,79 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
     const day = `${value.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  protected pricingPopupModel(popup: FormFlowPricingEditorPopupState): PopupModel {
+    return {
+      title: popup.title,
+      subtitle: popup.subtitle,
+      ariaLabel: 'pricing.setup.wizard.aria',
+      closeAriaLabel: 'pricing.setup.close.aria',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerActions: this.pricingPopupHeaderActions(popup),
+      onClose: event => this.close(popup, event),
+      onAction: event => this.onPricingPopupAction(popup, event)
+    };
+  }
+
+  private close(popup: FormFlowPricingEditorPopupState, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.formFlowPopupStore.requestPricingEditorPopupClose(popup.ownerId, event);
+  }
+
+  private onPricingPopupAction(popup: FormFlowPricingEditorPopupState, event: PopupActionEvent): void {
+    if (event.action.id === 'pricing-info-toggle') {
+      event.sourceEvent.preventDefault();
+      event.sourceEvent.stopPropagation();
+      this.showPricingInfoPanel = !this.showPricingInfoPanel;
+      return;
+    }
+    if (event.action.id !== 'pricing-save') {
+      return;
+    }
+    if (!this.validatePriceBounds(true)) {
+      return;
+    }
+    this.formFlowPopupStore.requestPricingEditorPopupSave(popup.ownerId, this.draftValue, event.sourceEvent);
+  }
+
+  private pricingPopupHeaderActions(popup: FormFlowPricingEditorPopupState): readonly PopupAction[] {
+    const actions: PopupAction[] = [{
+      id: 'pricing-info-toggle',
+      icon: 'query_stats',
+      ariaLabel: this.showPricingInfoPanel ? 'pricing.summary.hide.aria' : 'pricing.summary.show.aria',
+      palette: 'blue',
+      active: this.showPricingInfoPanel,
+      compactOnMobile: true
+    }];
+    if (popup.readOnly) {
+      return actions;
+    }
+    const canSave = this.canSubmit(popup);
+    actions.push({
+      id: 'pricing-save',
+      icon: 'done',
+      ariaLabel: 'pricing.draft.apply.aria',
+      palette: canSave ? 'success' : 'danger',
+      disabled: !canSave
+    });
+    return actions;
+  }
+
+  private canSubmit(popup: FormFlowPricingEditorPopupState): boolean {
+    return !popup.readOnly && (popup.canSave || this.locallyDirty || this.hasDraftChanges());
+  }
+
+  private hasDraftChanges(): boolean {
+    return JSON.stringify(this.draftValue) !== JSON.stringify(this.originalValue);
+  }
+
+  private popupEditorConfig(popup: FormFlowPricingEditorPopupState): PricingEditorConfig {
+    return popup.config as PricingEditorConfig;
   }
 }

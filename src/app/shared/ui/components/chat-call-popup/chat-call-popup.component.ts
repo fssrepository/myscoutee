@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, QueryList, ViewChildren, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
@@ -6,7 +7,6 @@ import { I18nService } from '../../../core/base/services/localization/i18n.servi
 import { AppUtils } from '../../../core/base/app-utils';
 import { UserProfileStore } from '../../context/stores/profile/user-profile.store';
 import {
-  ExplanationGuideService,
   PopupComponent,
   SmartListComponent,
   SmartListEmptyStateComponent,

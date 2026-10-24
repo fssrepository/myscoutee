@@ -1,3 +1,4 @@
+import { SessionService } from '../../../../core/base/services/accounts/session.service';
 import {
   Injectable,
   computed,
@@ -82,6 +83,33 @@ export interface UserLocationSyncToken {
   providedIn: 'root'
 })
 export class UserProfileStore {
+
+  reportTargetName(userId: string, fallback: string, activeUser: Pick<UserDto, 'id' | 'name'>): string {
+    const normalizedUserId = userId.trim();
+    return this.getUserProfile(normalizedUserId)?.name?.trim()
+      || (normalizedUserId === activeUser.id.trim() ? activeUser.name?.trim() : '')
+      || fallback;
+  }
+
+  resolveActiveUserId(getSession: () => ReturnType<SessionService['currentSession']>, getCachedUsers: () => readonly UserDto[]): string {
+    const activeUserProfileId = this.activeUserProfile()?.id?.trim();
+    if (activeUserProfileId) {
+      return activeUserProfileId;
+    }
+    const activeUserId = this.getActiveUserId().trim();
+    if (activeUserId) {
+      return activeUserId;
+    }
+    const session = getSession();
+    if (session?.kind === 'demo' && session.userId.trim().length > 0) {
+      return session.userId.trim();
+    }
+    if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
+      return session.profile.id.trim();
+    }
+    return getCachedUsers()[0]?.id ?? '';
+  }
+
   private readonly activityStore = inject(ActivityStore);
   private readonly _userProfilesByUserId = signal<Record<string, UserDto>>({});
   private readonly _profileExtByUserId = signal<Record<string, ProfileExtDto>>({});

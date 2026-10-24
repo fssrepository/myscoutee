@@ -145,6 +145,13 @@ export class LocalUsersRepository {
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, user.id);
+      const previous = usersTable.byId[user.id];
+      const account = user.accountUserId ? usersTable.byId[user.accountUserId] : null;
+      const partitionKey = previous?.partitionKey || account?.partitionKey || user.partitionKey;
+      if (partitionKey) {
+        user = { ...user, partitionKey,
+          ...(account && !exists ? { locationCoordinates: account.locationCoordinates, city: account.city } : {}) };
+      }
       const workspaceGroupId = usersTable.byId[user.id]?.workspaceGroupId ?? user.workspaceGroupId;
       const policy = workspaceGroupId ? state.communityGroups.byId[workspaceGroupId]?.policy : null;
       if (policy?.enabled && user.profileDetails) user = { ...user, profileDetails: user.profileDetails.map(section => ({

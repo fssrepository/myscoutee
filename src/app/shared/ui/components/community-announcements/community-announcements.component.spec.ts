@@ -1,6 +1,7 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { ExplanationGuideService } from '@fssrepository/myscoutee-components';
+
 import { CommunityAnnouncementsComponent } from './community-announcements.component';
 import { CommunityAnnouncementEditorComponent } from './community-announcement-editor.component';
 import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';

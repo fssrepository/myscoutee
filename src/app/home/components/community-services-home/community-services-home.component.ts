@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { ratingCriteriaFor } from '../../../shared/core/contracts/affinity/rating-snapshot';
 import {
-  ExplanationGuideService,
   SmartListComponent,
   SingleCardComponent,
   type SingleCardData,
@@ -11,7 +11,7 @@ import {
   type AppMenuItemSelectEvent
 } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../shared/core/base/app-utils';
-import { Component, Input, inject, signal, computed, effect, untracked } from '@angular/core';
+import { Component, Input, inject, signal, computed, effect, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { defer,map } from 'rxjs';
 import { HomeHeaderComponent } from '../home-header/home-header.component';
 import { ServiceOfferingsStore } from '../../../shared/ui/context/stores/services/service-offerings.store';
@@ -32,6 +32,7 @@ type ServiceHomeCard = SingleCardData & { id: string; eagerDetail: ServiceOfferi
    <ng-template #card let-card>@if(card){<app-single-card [card]="card" (detailClick)="openProfile($event.userId)"></app-single-card>}</ng-template>
  </div></section></div>
  @if(!store.session()){@if(store.editor();as editor){<app-service-offering-editor [editor]="editor"></app-service-offering-editor>}}`,
+ changeDetection: ChangeDetectionStrategy.Eager,
  styleUrl:'./community-services-home.component.scss'})
 export class CommunityServicesHomeComponent {
  private readonly guide=inject(ExplanationGuideService);

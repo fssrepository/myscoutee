@@ -45,7 +45,7 @@ import { RouteDelayService } from '../platform/route-delay.service';
 import { OfflineCacheService } from '../platform/offline-cache.service';
 import { UserRealtimeUiConverter } from '../../../../ui/converters/profile/user-realtime-ui.converter';
 
-export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
+export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from '../../../common/constants';
 
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
 const USER_PROFILE_EXT_LOAD_CONTEXT_KEY = 'user-profile-ext';

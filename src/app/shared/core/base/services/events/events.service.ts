@@ -1,3 +1,5 @@
+import { EventMembershipRemovalOptions } from '../../../contracts/common/activity.interface';
+import { EventJoinOptions } from '../../../contracts/common/activity.interface';
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { UiDateUtils, type ListQuery, type PageResult } from '@fssrepository/myscoutee-components';
@@ -422,23 +424,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   requestJoin(
     userId: string,
     sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      optionalSubEventIds?: string[];
-      assetSelections?: EventCheckoutAssetSelection[];
-      acceptedPolicyIds?: string[];
-      appliedPromoCodes?: string[];
-      paymentSessionId?: string | null;
-      bookingConfirmed?: boolean;
-      pendingReason?: ActivityPendingReason;
-      checkoutState?: EventCheckoutState;
-      basketItems?: EventCheckoutBasketItem[];
-      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
-      lineItems?: EventCheckoutLineItem[];
-      totalAmount?: number | null;
-      currency?: string | null;
-      skipLocalRouteDelay?: boolean;
-    } = {}
+    options: EventJoinOptions = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
   }
@@ -446,13 +432,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   leaveEvent(
     userId: string,
     sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      removeMembershipOnly?: boolean;
-      checkoutState?: EventCheckoutState | null;
-      checkoutResultState?: EventCheckoutResultState | null;
-      checkoutSessionId?: string | null;
-    } = {}
+    options: EventMembershipRemovalOptions = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.leaveEvent(userId, sourceId, options);
   }
@@ -474,22 +454,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.userProfileStore.activeUserProfile()?.id?.trim();
-    if (activeUserProfileId) {
-      return activeUserProfileId;
-    }
-    const activeUserId = this.userProfileStore.getActiveUserId().trim();
-    if (activeUserId) {
-      return activeUserId;
-    }
-    const session = this.sessionService.currentSession();
-    if (session?.kind === 'demo' && session.userId.trim().length > 0) {
-      return session.userId.trim();
-    }
-    if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
-      return session.profile.id.trim();
-    }
-    return this.usersService.peekCachedUsers()[0]?.id ?? '';
+    return this.userProfileStore.resolveActiveUserId(() => this.sessionService.currentSession(), () => this.usersService.peekCachedUsers());
   }
 
   private isCalendarActivitiesView(view: string | undefined): boolean {

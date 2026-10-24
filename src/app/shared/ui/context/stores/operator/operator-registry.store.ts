@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../core/base/app-utils';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
@@ -394,7 +395,7 @@ export class OperatorRegistryStore {
       if (requestGeneration === this.requestGeneration) {
         this.errorRef.set(action === 'disconnect'
           ? defaultMessageForAction(action)
-          : messageFromError(error, defaultMessageForAction(action)));
+          : operatorMessageFromError(error, defaultMessageForAction(action)));
       }
       return null;
     } finally {
@@ -504,11 +505,11 @@ function sameRegistryUrl(left: string, right: string): boolean {
     return normalizeOperatorRegistryBaseUrl(left, false)
       === normalizeOperatorRegistryBaseUrl(right, false);
   } catch {
-    return left.trim().replace(/\/+$/, '') === right.trim().replace(/\/+$/, '');
+    return AppUtils.trimEndCharacters(left.trim(), "/") === AppUtils.trimEndCharacters(right.trim(), "/");
   }
 }
 
-function messageFromError(error: unknown, fallback: string): string {
+export function operatorMessageFromError(error: unknown, fallback: string, timeoutMessage = 'operator.registration.error.timeout'): string {
   if (error && typeof error === 'object') {
     const source = error as {
       error?: { message?: unknown; detail?: unknown };
@@ -524,7 +525,7 @@ function messageFromError(error: unknown, fallback: string): string {
       return serverMessage;
     }
     if (source.name === 'TimeoutError') {
-      return 'operator.registration.error.timeout';
+      return timeoutMessage;
     }
     if (typeof source.message === 'string' && source.message.trim()) {
       return source.message.trim();

@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, ChangeDetectionStrategy } from '@angular/core';
 
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
@@ -10,6 +10,7 @@ import type * as AssetContracts from '../../../shared/core/contracts/assets/asse
   standalone: true,
   imports: [I18nPipe],
   templateUrl: './asset-ticket-code-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './asset-ticket-code-popup.component.scss'
 })
 export class AssetTicketCodePopupComponent {

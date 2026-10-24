@@ -21,10 +21,10 @@ const digest = code => createHash('sha256').update(code).digest('hex');
 // chunks. Regroup that existing module graph without copying services/tokens or
 // evaluating the app before prepareDemoFailover has selected its environment.
 async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = false } = {}) {
-  const statsPath = path.join(outputDir, 'stats.json');
+  const statsPath = path.join(outputDir, 'browser-stats.json');
   const manifestPath = path.join(outputDir, 'startup-bundles.json');
   if (!fs.existsSync(statsPath)) {
-    if (!fs.existsSync(manifestPath)) throw new Error('Missing Angular stats.json for startup consolidation');
+    if (!fs.existsSync(manifestPath)) throw new Error('Missing Angular browser-stats.json for startup consolidation');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     if (manifest.version !== 1 || !manifest.files?.length) throw new Error('Missing startup bundle metadata');
     for (const file of manifest.files) {
@@ -52,7 +52,10 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
     return entry;
   }
   const main = entryFile('src/main.ts');
-  const adapterEntry = `src/app/shared/core/base/${localAdaptersInStartup ? 'local' : 'http'}-adapters.ts`;
+  const workspaceAdapters = 'src/app/shared/core/base/http-adapters.ts';
+  const publicAdapters = 'src/app/shared/core/base/http-entry-adapters.ts';
+  const adapterEntry = localAdaptersInStartup ? 'src/app/shared/core/base/local-adapters.ts'
+    : findEntry(publicAdapters) ? publicAdapters : workspaceAdapters;
   const hasAdapterEntry = Object.values(metadata.outputs).some(info =>
     info.entryPoint?.replaceAll('\\', '/').endsWith(adapterEntry));
   const landingEntries = [...LANDING_ENTRIES,
@@ -61,7 +64,9 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
   const homeEntry = entryFile('src/app/home/components/home/home.component.ts');
   const menuEntry = entryFile('src/app/shared/ui/components/side-menu/side-menu.component.ts');
   const oldFiles = Object.keys(metadata.outputs).filter(name => /\.js$/.test(name)).map(outputFile);
-  if (oldFiles.some(file => !/^(?:main|chunk)-[^/]+\.js$/.test(path.basename(file)))) {
+  if (oldFiles.some(file => !/^(?:main|chunk|rolldown-runtime)-[^/]+\.js$/.test(path.basename(file)))
+      || Object.entries(metadata.outputs).some(([name, info]) =>
+        path.basename(name).startsWith('rolldown-runtime-') && info.entryPoint)) {
     throw new Error('Review additional JavaScript entry points before consolidating startup bundles');
   }
   const closure = (roots, getModuleInfo) => {
@@ -95,18 +100,47 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           for (const module of getModuleIds()) {
             if (bootstrap.has(module)) loadingGroups.set(module, 'bootstrap');
             else if (landing.has(module)) loadingGroups.set(module, 'landing');
-            else if (home.has(module) && menu.has(module)) loadingGroups.set(module, 'member-shared');
+          }
+          const controls = Object.entries(metadata.outputs).filter(([name, info]) => name.endsWith('.js')
+            && Object.keys(info.inputs ?? {}).some(source => /\/components-(?:forms|date)\.mjs$/.test(source)
+              || source.includes('/components-core-route-input-popup.component-')))
+            .map(([name]) => outputFile(name));
+          // Keep the first public demo independent of the workspace shell, and
+          // keep transport constructors independent of the controls they serve.
+          for (const [phase, roots] of [
+            ['entry-popups', [
+              ...Object.entries(metadata.outputs).filter(([, info]) => /components-core-tour-dialog\.component-/.test(info.entryPoint ?? '')).map(([name]) => outputFile(name))
+            ].filter(Boolean)],
+            ['public-dialogs', [...popupModuleGroups.publicDialogs.map(findEntry), ...Object.entries(metadata.outputs).filter(([, info]) => /components-core-explanation-dialog\.component-/.test(info.entryPoint ?? '')).map(([name]) => outputFile(name))].filter(Boolean)],
+            ['workspace-adapters', localAdaptersInStartup ? [] : [findEntry(workspaceAdapters)].filter(Boolean)],
+            ['member-controls', controls]
+          ]) {
+            for (const module of closure(roots, getModuleInfo)) {
+              if (!loadingGroups.has(module)) loadingGroups.set(module, phase);
+            }
+          }
+          for (const module of getModuleIds()) {
+            if (loadingGroups.has(module)) continue;
+            if (home.has(module) && menu.has(module)) loadingGroups.set(module, 'member-shared');
             else if (home.has(module)) loadingGroups.set(module, 'member-home');
             else if (menu.has(module)) loadingGroups.set(module, 'member-shared');
           }
           const available = [
             ['bootstrap', new Set(['bootstrap'])],
             ['landing', new Set(['bootstrap', 'landing'])],
-            ['member-shared', new Set(['bootstrap', 'landing', 'member-shared'])],
-            ['member-home', new Set(['bootstrap', 'landing', 'member-shared', 'member-home'])],
-            ['member-menu', new Set(['bootstrap', 'landing', 'member-shared', 'member-menu'])]
+            ['entry-popups', new Set(['bootstrap', 'landing', 'entry-popups'])],
+            ['public-dialogs', new Set(['bootstrap', 'landing', 'entry-popups', 'public-dialogs'])],
+            ['workspace-adapters', new Set(['bootstrap', 'landing', 'public-dialogs', 'entry-popups', 'workspace-adapters'])],
+            ['member-controls', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls'])],
+            ['member-shared', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared'])],
+            ['member-home', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-home'])],
+            ['member-menu', new Set(['bootstrap', 'landing', 'public-dialogs', 'workspace-adapters', 'entry-popups', 'member-controls', 'member-shared', 'member-menu'])]
           ];
           const visiting = new Set();
+          const aliasOnly = info => info?.ast.body.every(node =>
+            node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration'
+            || node.type === 'ExportNamedDeclaration' && !node.declaration
+            || node.type === 'EmptyStatement');
           function groupAlias(module) {
             if (loadingGroups.has(module)) return loadingGroups.get(module);
             if (visiting.has(module)) return;
@@ -114,10 +148,7 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
             // Empty and export-only entries add no execution. Keep it with the phase
             // that already owns all its dependencies, rather than fetching a
             // separate wrapper on the first user action. Real lazy code stays lazy.
-            if (!info || !info.ast.body.every(node =>
-              node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration'
-              || node.type === 'ExportNamedDeclaration' && !node.declaration
-              || node.type === 'EmptyStatement')) return;
+            if (!aliasOnly(info)) return;
             visiting.add(module);
             const dependencies = info.importedIds.map(groupAlias);
             visiting.delete(module);
@@ -133,7 +164,9 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
               loadingGroups.set(module, 'member-shared');
             }
           }
-          const commonSources = ['/shared/ui/converters/', '/shared/core/base/builders/',
+          // Shared service wrappers use the existing workspace group; explicit
+          // lazy service entry points retain their own loading boundary.
+          const commonSources = ['/shared/ui/converters/', '/shared/core/base/builders/', '/shared/core/base/services/',
             '/shared/core/contracts/', '/shared/core/common/'];
           for (const [name, info] of Object.entries(metadata.outputs)) {
             const module = outputFile(name);
@@ -152,6 +185,12 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
           // cross-popup store/signal reference cannot pull in another surface.
           const phases = new Map(Object.entries(popupModuleGroups).map(([phase, sources]) =>
             [phase, sources.map(findEntry).filter(Boolean)]));
+          // Optional Firebase SDKs share one loading boundary; neither belongs
+          // to the public landing or the automatic guide.
+          phases.set('firebase-runtime', [
+            findEntry('src/app/shared/core/base/services/accounts/firebase-auth.service.ts'),
+            findEntry('node_modules/firebase/messaging/dist/esm/index.esm.js')
+          ].filter(Boolean));
           const lazyRoots = new Set([...getModuleIds()].flatMap(module => getModuleInfo(module).dynamicallyImportedIds));
           const infrastructure = [...loadingGroups].filter(([, group]) => group === 'member-shared').map(([module]) => module);
           for (const dependency of closure(infrastructure, getModuleInfo)) {
@@ -170,7 +209,10 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
             }
           }
           for (const [module, owners] of consumers) {
-            if (owners.size === 1) {
+            // An unresolved export-only entry needs no manual chunk. Let Rollup
+            // merge its namespace into the dependency instead of forcing an
+            // empty JSON/entry wrapper into a separate network request.
+            if (owners.size === 1 && !aliasOnly(getModuleInfo(module))) {
               const [phase] = owners;
               loadingGroups.set(module, `lazy-${path.basename(phase, '.js')}`);
             }
@@ -199,7 +241,8 @@ async function consolidateStartupBundles(outputDir, { localAdaptersInStartup = f
     .map(name => `<link rel="modulepreload" href="${name}">`).join('');
   fs.writeFileSync(indexPath, html.replaceAll(path.basename(main), entry.fileName)
     .replace(/<link\b[^>]*rel=["']modulepreload["'][^>]*>/g, '')
-    .replace(/<script\b[^>]*\bsrc=["'][^"']*["'][^>]*>/i, tag => preloads + tag));
+    .replace(/<script\b[^>]*\bsrc=["']([^"']*)["'][^>]*>/gi,
+      (tag, src) => path.basename(src) === entry.fileName ? preloads + tag : tag));
   const retained = new Set(files.map(file => file.name));
   for (const file of oldFiles) {
     if (!retained.has(path.basename(file))) fs.rmSync(file);

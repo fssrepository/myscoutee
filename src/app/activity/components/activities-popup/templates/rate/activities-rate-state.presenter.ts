@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../../shared/core/base/app-utils';
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/common/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import type { ImageCardData } from '@fssrepository/myscoutee-components';
@@ -119,7 +120,7 @@ export function activitiesRateOwnRatingValue(
 }
 
 function sameActivitiesRatePairUsers(left: ActivityRateDTO, right: ActivityRateDTO): boolean {
-  const leftIds = [left.userId, left.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
-  const rightIds = [right.userId, right.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
+  const leftIds = [left.userId, left.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort(AppUtils.compareCodeUnits);
+  const rightIds = [right.userId, right.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort(AppUtils.compareCodeUnits);
   return leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);
 }

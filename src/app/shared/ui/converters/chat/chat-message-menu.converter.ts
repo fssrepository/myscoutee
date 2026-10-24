@@ -58,7 +58,7 @@ export class ChatMessageMenuConverter {
     items.push({
       id: `chat-message-pin-${message.id}`,
       label: message.pinnedAtIso ? 'Unpin' : 'Pin',
-      icon: message.pinnedAtIso ? 'push_pin' : 'push_pin',
+      icon: 'push_pin',
       palette: message.pinnedAtIso ? 'muted' : 'amber',
       surface: 'tinted',
       context: { menu: 'message-action', message, action: 'pin' }

@@ -1,0 +1,103 @@
+[
+  {
+    "id": "admin-moderation",
+    "label": "moderation.and.support",
+    "icon": "admin_panel_settings",
+    "palette": "orange",
+    "items": [
+      [
+        "adminModeration",
+        "moderation.title",
+        "fact_check",
+        "teal",
+        "moderation.title"
+      ],
+      [
+        "adminReports",
+        "reports",
+        "report",
+        "orange",
+        "open.reports"
+      ],
+      [
+        "adminFeedback",
+        "feedback",
+        "feedback",
+        "purple",
+        "open.application.feedback"
+      ],
+      [
+        "adminChat",
+        "chats",
+        "chat",
+        "blue",
+        "open.admin.chats"
+      ]
+    ]
+  },
+  {
+    "id": "admin-configuration",
+    "label": "configuration",
+    "icon": "tune",
+    "palette": "teal",
+    "items": [
+      [
+        "adminJobs",
+        "jobs",
+        "pending_actions",
+        "blue",
+        "open.jobs"
+      ],
+      [
+        "adminParams",
+        "params",
+        "tune",
+        "purple",
+        "open.parameters"
+      ],
+      [
+        "adminContent",
+        "content",
+        "edit_note",
+        "green",
+        "open.content.editor"
+      ],
+      [
+        "adminArticle",
+        "article",
+        "tips_and_updates",
+        "gold",
+        "open.article.editor"
+      ]
+    ]
+  },
+  {
+    "id": "admin-monitoring",
+    "label": "monitoring",
+    "icon": "monitoring",
+    "palette": "blue",
+    "items": [
+      [
+        "adminStats",
+        "stats",
+        "query_stats",
+        "green",
+        "open.stats"
+      ],
+      [
+        "adminMetrics",
+        "metrics",
+        "monitoring",
+        "cyan",
+        "open.monitoring.metrics"
+      ],
+      [
+        "adminGraph",
+        "graph",
+        "hub",
+        "violet",
+        "open.affinity.graph"
+      ]
+    ]
+  }
+]

@@ -1,4 +1,5 @@
-import { UiDateUtils } from '@fssrepository/myscoutee-components';
+import { UserAffinityBuilder } from '../../../../base/builders/accounts/user-affinity.builder';
+import { UiDateUtils } from '@fssrepository/myscoutee-components/foundation';
 import demoLocations from '../../data/demo-locations.json';
 import { APP_STATIC_DATA } from '../../../../common/app-static-data';
 import { AppUtils } from '../../../../base/app-utils';
@@ -298,7 +299,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
 
 export class SeedUserBuilder {
   // Every demo account starts inside a supported country, without visitor location.
-  private static readonly DEMO_CITIES: Readonly<Record<string, LocationCoordinates>> = demoLocations.cities;
+  private static readonly DEMO_CITIES: Readonly<Record<string, LocationCoordinates & { partitionKey: string }>> = demoLocations.cities;
 
   // These are seed values only. Runtime readers consume repository profileDetails.
   private static readonly DEFAULT_GAME_USER_FACET = {
@@ -333,9 +334,9 @@ export class SeedUserBuilder {
   }
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
-    const normalizedBaseUsers = baseUsers.map((user, index) => this.withStoredChatCounters(
+    const normalizedBaseUsers = baseUsers.map(user => this.withStoredChatCounters(
       this.withResolvedLocationCoordinates(baseUsers === BASE_DEMO_USERS
-        ? { ...user, city: Object.keys(this.DEMO_CITIES)[Math.floor(index / 4) % 4] }
+        ? { ...user, ...this.resolveDemoLocation(user.id) }
         : user)
     ));
     if (baseUsers.length >= totalCount) {
@@ -345,7 +346,6 @@ export class SeedUserBuilder {
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
     const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
     const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
-    const cities = Object.keys(this.DEMO_CITIES);
     const usedPrimaryPortraitUrls = new Set(
       expanded
         .map(user => user.images?.[0]?.trim() ?? '')
@@ -373,8 +373,7 @@ export class SeedUserBuilder {
         name,
         age,
         birthday: birthday.toISOString().slice(0, 10),
-        city: cities[Math.floor(index / 4) % cities.length],
-        locationCoordinates: undefined,
+        ...this.resolveDemoLocation(id),
         initials,
         gender,
         images,
@@ -494,6 +493,17 @@ export class SeedUserBuilder {
     return {};
   }
 
+  static resolveDemoLocation(seedKey: string): Pick<UserRecord, 'city' | 'locationCoordinates' | 'partitionKey'> {
+    const cities = Object.keys(this.DEMO_CITIES);
+    const city = demoLocations.accounts.find(account => account.id === seedKey)?.city
+      ?? cities[AppUtils.hashText(`partition:${seedKey}`) % cities.length];
+    return {
+      city,
+      partitionKey: this.DEMO_CITIES[city].partitionKey,
+      locationCoordinates: this.resolveDemoLocationCoordinates(city, seedKey)
+    };
+  }
+
   static resolveDemoLocationCoordinates(city: string, seedKey: string): LocationCoordinates {
     const base = this.DEMO_CITIES[city] ?? this.DEMO_CITIES['Budapest'];
     const normalizedSeedKey = seedKey.trim() || city.trim() || 'demo-user';
@@ -523,23 +533,7 @@ export class SeedUserBuilder {
       | 'completion'
     >
   ): number {
-    const tokens = this.uniqueAffinityTokens([
-      user.name,
-      user.city,
-      user.physique,
-      ...(user.languages ?? []),
-      user.horoscope,
-      user.gender,
-      user.hostTier,
-      user.traitLabel
-    ]);
-    const heightCm = this.parseHeightCm(user.height) ?? 170;
-    return (
-      this.resolveAffinityTokenScore(tokens, `user:${user.id}`) * 97
-      + Math.max(18, Math.trunc(Number(user.age) || 30)) * 17
-      + heightCm * 11
-      + Math.max(0, Math.trunc(Number(user.completion) || 0)) * 13
-    );
+    return UserAffinityBuilder.resolveUserAffinity(user);
   }
 
   private static withResolvedLocationCoordinates(user: UserRecord): UserRecord {
@@ -613,26 +607,15 @@ export class SeedUserBuilder {
   }
 
   private static uniqueAffinityTokens(values: readonly string[]): string[] {
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
-      if (normalized) {
-        seen.add(normalized);
-      }
-    }
-    return [...seen];
+    return UserAffinityBuilder.uniqueAffinityTokens(values);
   }
 
   private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
-    return tokens.reduce((total, token) => total + ((AppUtils.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);
+    return UserAffinityBuilder.resolveAffinityTokenScore(tokens, seedPrefix);
   }
 
   private static parseHeightCm(value: string): number | null {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed)) {
-      return null;
-    }
-    return Math.max(40, Math.min(250, parsed));
+    return UserAffinityBuilder.parseHeightCm(value);
   }
 
   private static roundCoordinate(value: number): number {

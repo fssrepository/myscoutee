@@ -8,7 +8,8 @@ import {
   Component,
   TemplateRef,
   ViewChild,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   MatIconModule
@@ -152,6 +153,7 @@ interface AdminReportActionsMenuContext {
   ],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: './admin-reports-popup.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [AppMenuDispatcher]
 })
 export class AdminReportsPopupComponent {
@@ -1437,33 +1439,5 @@ export class AdminReportsPopupComponent {
     name: string,
     initials: string,
     gender: string
-  ): UserDto {
-    return {
-      id: id || 'admin',
-      name: name || 'Admin',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: initials || 'AD',
-      gender: gender === 'man' ? 'man' : 'woman',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 100,
-      headline: '',
-      about: '',
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chats: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0
-      }
-    };
-  }
+  ): UserDto { return AppUtils.chatUser(id, name, initials, gender); }
 }

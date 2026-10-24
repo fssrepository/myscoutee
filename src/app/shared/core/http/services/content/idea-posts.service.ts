@@ -1,3 +1,6 @@
+import { LocalIdeaPostsMapper } from '../../../local/source/mappers/content/idea-post.mapper';
+import { HelpCenterContentBuilder } from '../../../base/builders/help/help-center-content.builder';
+import { requestWithAbort } from '../../request-lifecycle';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../common/content-languages.json';
 import { normalizeImageDetails } from '../../../contracts/media/image-gallery.interface';
 import { HttpClient } from '@angular/common/http';
@@ -251,28 +254,7 @@ export class HttpIdeaPostsService {
   }
 
   private countPosts(posts: readonly IdeaPostDto[]): IdeaPostAdminCountsDto {
-    return posts.reduce<IdeaPostAdminCountsDto>((counts, post) => {
-      if (post.trashed) {
-        counts.trashed += 1;
-        return counts;
-      }
-      counts.all += 1;
-      if (post.featured) {
-        counts.featured += 1;
-      }
-      if (post.published) {
-        counts.published += 1;
-      } else {
-        counts.drafts += 1;
-      }
-      return counts;
-    }, {
-      all: 0,
-      featured: 0,
-      published: 0,
-      drafts: 0,
-      trashed: 0
-    });
+    return LocalIdeaPostsMapper.countPosts(posts);
   }
 
   private nonNegativeInteger(value: number | null | undefined, fallback: number): number {
@@ -298,13 +280,12 @@ export class HttpIdeaPostsService {
   }
 
   private excerptFromHtml(value: string): string {
-    const text = `${value ?? ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const text = `${value ?? ''}`.replace(/<[^<>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     return text.length <= 180 ? text : `${text.slice(0, 179).trim()}...`;
   }
 
   private normalizeLang(lang: string | null | undefined): string {
-    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
+    return HelpCenterContentBuilder.normalizeLang(lang);
   }
 
   private requestLang(lang?: string | null): string {
@@ -316,29 +297,15 @@ export class HttpIdeaPostsService {
   }
 
   private browserLanguage(): string {
-    const languages = this.browserLanguages()
-      .map(value => this.normalizeRequestLanguage(value))
-      .filter(Boolean);
-    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+    return HelpCenterContentBuilder.browserLanguage();
   }
 
   private browserLanguages(): string[] {
-    if (typeof navigator === 'undefined') {
-      return [];
-    }
-    return Array.isArray(navigator.languages) && navigator.languages.length > 0
-      ? navigator.languages
-      : [navigator.language];
+    return HelpCenterContentBuilder.browserLanguages();
   }
 
   private normalizeRequestLanguage(lang?: string | null): string {
-    return `${lang ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
+    return HelpCenterContentBuilder.normalizeRequestLanguage(lang);
   }
 
   private contentKey(value: string | null | undefined, id: string): string {
@@ -360,44 +327,7 @@ export class HttpIdeaPostsService {
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      let settled = false;
-      let subscription: { unsubscribe: () => void } | null = null;
-      const cleanup = () => signal?.removeEventListener('abort', onAbort);
-      const onAbort = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        subscription?.unsubscribe();
-        cleanup();
-        reject(this.createAbortError());
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      subscription = request$.subscribe({
-        next: value => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(value);
-        },
-        error: error => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          reject(error);
-        },
-        complete: () => cleanup()
-      });
-    });
+    return requestWithAbort(request$, signal);
   }
 
   private createAbortError(): Error {

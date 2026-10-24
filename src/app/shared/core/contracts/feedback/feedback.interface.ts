@@ -1,3 +1,5 @@
+import { ActivityMemberRole } from '../../common/constants';
+import { AppUtils } from '../../base/app-utils';
 import * as AppConstants from '../../common/constants';
 export type FeedbackBucket = 'pending' | 'feedbacked' | 'removed' | 'received';
 export interface FeedbackEvaluation {
@@ -167,6 +169,65 @@ export interface FeedbackReceivedEventDto {
 export type FeedbackFilterCountDelta = Partial<Record<AppConstants.FeedbackListFilter, number>>;
 
 export class FeedbackPageResultDto {
+
+  static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): ActivityMemberRole {
+    const seed = AppUtils.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
+    if (seed % 11 === 0) {
+      return 'Admin';
+    }
+    if (seed % 4 === 0) {
+      return 'Manager';
+    }
+    return 'Member';
+  }
+
+  static feedbackAttendeesForEvent<T extends {
+    id: string;
+  }>(event: {
+    id: string;
+    acceptedMemberUserIds?: string[];
+    pendingMemberUserIds?: string[];
+  }, hostId: string, users: readonly T[], activeUserId: string): T[] {
+    const attendeeIds = [...new Set([
+      ...(event.acceptedMemberUserIds ?? []),
+      ...(event.pendingMemberUserIds ?? [])
+    ].map(userId => `${userId}`.trim()).filter(Boolean))]
+      .filter(userId => userId !== activeUserId && userId !== hostId);
+    if (attendeeIds.length > 0) {
+      const usersById = new Map(users.map(user => [user.id, user]));
+      const resolved = attendeeIds
+        .map(userId => usersById.get(userId))
+        .filter((user): user is T => Boolean(user));
+      if (resolved.length > 0) {
+        return resolved.slice(0, Math.min(5, resolved.length));
+      }
+    }
+    const candidates = users.filter(user => user.id !== activeUserId && user.id !== hostId);
+    if (candidates.length === 0) {
+      return [];
+    }
+    const seed = AppUtils.hashText(`feedback-attendees:${event.id}`);
+    const desired = Math.min(candidates.length, 3 + (seed % 4));
+    const picked: T[] = [];
+    for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
+      const candidate = candidates[(seed + (index * 3)) % candidates.length];
+      if (!candidate || candidate.id === activeUserId || picked.some(item => item.id === candidate.id)) {
+        continue;
+      }
+      picked.push(candidate);
+    }
+    return picked;
+  }
+
+  static cloneFeedbackAnswersByCardId(answersByCardId: FeedbackStateDto['answersByCardId']): NonNullable<FeedbackStateDto['answersByCardId']> {
+    const next: NonNullable<FeedbackStateDto['answersByCardId']> = {};
+    for (const [cardId, answer] of Object.entries(answersByCardId ?? {})) {
+      const normalizedCardId = cardId.trim();
+      if (normalizedCardId && answer) next[normalizedCardId] = this.cloneSubmittedAnswer(answer, normalizedCardId, true);
+    }
+    return next;
+  }
+
   readonly evaluations: FeedbackEvaluationItem[];
   readonly evaluationCounts: Record<string, number>;
   readonly items: FeedbackDto[];
@@ -459,10 +520,10 @@ export class FeedbackPageResultDto {
     return next;
   }
 
-  private static cloneSubmittedAnswer(answer: SubmittedFeedbackAnswer): SubmittedFeedbackAnswer {
+  static cloneSubmittedAnswer(answer: SubmittedFeedbackAnswer, cardIdFallback = '', trimTags = false): SubmittedFeedbackAnswer {
     return {
       ...answer,
-      cardId: answer.cardId?.trim() ?? '',
+      cardId: answer.cardId?.trim() || cardIdFallback,
       eventId: answer.eventId?.trim() ?? '',
       kind: answer.kind === 'attendee' ? 'attendee' : 'event',
       targetUserId: answer.targetUserId?.trim() || null,
@@ -470,8 +531,8 @@ export class FeedbackPageResultDto {
       primaryValue: answer.primaryValue?.trim() ?? '',
       secondaryValue: answer.secondaryValue?.trim() ?? '',
       eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
-      personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
-      tags: [...(answer.tags ?? [])],
+      personalityTraitIds: trimTags ? (answer.personalityTraitIds ?? []).map(id => id.trim()).filter(Boolean) : [...(answer.personalityTraitIds ?? [])],
+      tags: trimTags ? (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean) : [...(answer.tags ?? [])],
       submittedAtIso: answer.submittedAtIso?.trim() ?? ''
     };
   }

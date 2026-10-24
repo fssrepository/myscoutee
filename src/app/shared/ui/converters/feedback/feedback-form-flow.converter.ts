@@ -245,30 +245,12 @@ export class FeedbackFormFlowConverter {
 
   private static traitPalette(trait: AppTypes.FeedbackTraitOption): AppMenuPalette {
     const lookup = `${trait.id} ${trait.label} ${trait.coreVibe}`.toLowerCase();
-    if (lookup.includes('creative')) {
-      return 'violet';
-    }
-    if (lookup.includes('empath') || lookup.includes('kind') || lookup.includes('nurtur')) {
-      return 'pink';
-    }
-    if (lookup.includes('reliable') || lookup.includes('trust') || lookup.includes('stable')) {
-      return 'green';
-    }
-    if (lookup.includes('adventur') || lookup.includes('energetic') || lookup.includes('bold')) {
-      return 'cyan';
-    }
-    if (lookup.includes('think') || lookup.includes('reflect') || lookup.includes('intellectual')) {
-      return 'blue';
-    }
-    if (lookup.includes('social') || lookup.includes('magnetic') || lookup.includes('talk')) {
-      return 'teal';
-    }
-    if (lookup.includes('playful') || lookup.includes('fun') || lookup.includes('lighthearted')) {
-      return 'orange';
-    }
-    if (lookup.includes('ambitious') || lookup.includes('driven') || lookup.includes('goal')) {
-      return 'sky';
-    }
-    return 'blue';
+    const palettes: Array<[AppMenuPalette, readonly string[]]> = [
+      ['violet', ['creative']], ['pink', ['empath', 'kind', 'nurtur']],
+      ['green', ['reliable', 'trust', 'stable']], ['cyan', ['adventur', 'energetic', 'bold']],
+      ['blue', ['think', 'reflect', 'intellectual']], ['teal', ['social', 'magnetic', 'talk']],
+      ['orange', ['playful', 'fun', 'lighthearted']], ['sky', ['ambitious', 'driven', 'goal']]
+    ];
+    return palettes.find(([, tokens]) => tokens.some(token => lookup.includes(token)))?.[0] ?? 'blue';
   }
 }

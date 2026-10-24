@@ -1,7 +1,8 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { ExplanationGuideService, SmartListComponent, UI_TRANSLATIONS } from '@fssrepository/myscoutee-components';
+import { SmartListComponent, UI_TRANSLATIONS } from '@fssrepository/myscoutee-components';
 import { CommunityCasesPopupComponent } from './community-cases-popup.component';
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';

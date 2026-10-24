@@ -1,3 +1,4 @@
+import { AppUtils } from '../base/app-utils';
 import type {
   DeploymentPrivacyContactDto
 } from '../contracts/platform/deployment-configuration.interface';
@@ -10,8 +11,7 @@ export interface DeploymentPrivacyTokenText {
   deletionEmailSuffix: string;
 }
 
-const DEPLOYMENT_PRIVACY_TOKEN_PATTERN = /{{\s*([^{}]+?)\s*}}/g;
-const PRIVACY_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEPLOYMENT_PRIVACY_TOKEN_PATTERN = /{{([^{}]+)}}/g;
 
 export function resolveDeploymentPrivacyTokens(
   source: string | null | undefined,
@@ -48,7 +48,7 @@ function configuredPrivacyContact(
   if (
     contact?.configured !== true
     || !dataControllerName
-    || !PRIVACY_EMAIL_PATTERN.test(privacyContactEmail)
+    || !AppUtils.isEmail(privacyContactEmail)
   ) {
     return null;
   }

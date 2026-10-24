@@ -1,15 +1,15 @@
+import type { HelpCenterDocumentKind } from '../../../contracts/content/content.interface';
+import type { HelpCenterRevisionDto } from '../../../contracts/content/content.interface';
+import type { HelpCenterSectionDto } from '../../../contracts/content/content.interface';
+import { HelpCenterContentBuilder } from '../../../base/builders/help/help-center-content.builder';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../common/content-languages.json';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../base/app-utils';
-import { APP_STATIC_DATA } from '../../../common/app-static-data';
-import type {
-  GuideDocumentKind as HelpCenterDocumentKind,
-  GuideRevision as HelpCenterRevisionDto,
-  GuideSection as HelpCenterSectionDto
-} from '@fssrepository/myscoutee-components';
+import { CONTENT_LANGUAGES, HELP_CENTER_HEADER_COLORS, EXPLAINABLE_SURFACES, DEFAULT_HELP_CENTER_DESCRIPTION, DEFAULT_PRIVACY_CENTER_DESCRIPTION, DEFAULT_TERMS_CENTER_DESCRIPTION, DEFAULT_EXPLANATION_HOME_DESCRIPTION } from '../../../common/help-center-options';
+
 import type { ContentLanguage, HelpCenterAuditEntryDto, HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/platform/route-delay.service';
 
@@ -214,36 +214,9 @@ export class HttpHelpCenterService {
     };
   }
 
-  private normalizePanelSpan(value: string | null | undefined): HelpCenterSectionDto['panelSpan'] {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
-      return 'span-1';
-    }
-    if (normalized === 'span-2' || normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
-      return 'span-2';
-    }
-    if (normalized === 'span-3' || normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
-      return 'span-3';
-    }
-    return undefined;
-  }
+  private normalizePanelSpan(value: string | null | undefined): HelpCenterSectionDto['panelSpan'] { return HelpCenterContentBuilder.normalizePanelSpan(value); }
 
-  private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] {
-    const result: string[] = [];
-    const seen = new Set<string>();
-    for (const imageUrl of imageUrls ?? []) {
-      const normalized = `${imageUrl ?? ''}`.trim();
-      if (!normalized || seen.has(normalized)) {
-        continue;
-      }
-      seen.add(normalized);
-      result.push(normalized);
-      if (result.length >= limit) {
-        break;
-      }
-    }
-    return result;
-  }
+  private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] { return HelpCenterContentBuilder.normalizeImageUrls(imageUrls, limit); }
 
   private normalizeAudit(value: Partial<HelpCenterAuditEntryDto> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterAuditEntryDto | null {
     const id = `${value?.id ?? ''}`.trim();
@@ -277,7 +250,7 @@ export class HttpHelpCenterService {
       (Array.isArray(value?.approvedOptionalSectionIds) ? value.approvedOptionalSectionIds : [])
         .map(sectionId => `${sectionId ?? ''}`.trim())
         .filter(Boolean)
-    )).sort();
+    )).sort(AppUtils.compareCodeUnits);
     return {
       id,
       userId,
@@ -305,7 +278,7 @@ export class HttpHelpCenterService {
     if (!normalized) {
       return null;
     }
-    return APP_STATIC_DATA.explainableSurfaces.some(surface => surface.enabled && surface.key === normalized)
+    return EXPLAINABLE_SURFACES.some(surface => surface.enabled && surface.key === normalized)
       ? normalized
       : null;
   }
@@ -330,13 +303,13 @@ export class HttpHelpCenterService {
   private defaultDescription(kind: HelpCenterDocumentKind): string {
     switch (kind) {
       case 'privacy':
-        return APP_STATIC_DATA.defaultPrivacyCenterDescription;
+        return DEFAULT_PRIVACY_CENTER_DESCRIPTION;
       case 'terms':
-        return APP_STATIC_DATA.defaultTermsCenterDescription;
+        return DEFAULT_TERMS_CENTER_DESCRIPTION;
       case 'explanation':
-        return APP_STATIC_DATA.defaultExplanationHomeRevision.description;
+        return DEFAULT_EXPLANATION_HOME_DESCRIPTION;
       default:
-        return APP_STATIC_DATA.defaultHelpCenterDescription;
+        return DEFAULT_HELP_CENTER_DESCRIPTION;
     }
   }
 
@@ -353,31 +326,9 @@ export class HttpHelpCenterService {
     return this.browserLanguage();
   }
 
-  private browserLanguage(): string {
-    const languages = this.browserLanguages()
-      .map(value => this.normalizeRequestLanguage(value))
-      .filter(Boolean);
-    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
-  }
+  private browserLanguage(): string { return HelpCenterContentBuilder.browserLanguage(); }
 
-  private browserLanguages(): string[] {
-    if (typeof navigator === 'undefined') {
-      return [];
-    }
-    return Array.isArray(navigator.languages) && navigator.languages.length > 0
-      ? navigator.languages
-      : [navigator.language];
-  }
-
-  private normalizeRequestLanguage(lang?: string | null): string {
-    return `${lang ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
-  }
+  private normalizeRequestLanguage(lang?: string | null): string { return HelpCenterContentBuilder.normalizeRequestLanguage(lang); }
 
   private languageLabel(lang: string | null | undefined, label: string | null | undefined): string {
     const explicit = `${label ?? ''}`.trim();
@@ -390,7 +341,7 @@ export class HttpHelpCenterService {
   private normalizeAvailableLanguages(value: readonly Partial<ContentLanguage>[] | null | undefined): ContentLanguage[] {
     const source = Array.isArray(value) && value.length > 0
       ? value
-      : APP_STATIC_DATA.contentLanguages;
+      : CONTENT_LANGUAGES;
     const seen = new Set<string>();
     return source
       .map(item => {
@@ -407,6 +358,6 @@ export class HttpHelpCenterService {
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevisionDto['headerColor'] {
-    return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
+    return AppUtils.enumValue(value, HELP_CENTER_HEADER_COLORS, 'amber');
   }
 }

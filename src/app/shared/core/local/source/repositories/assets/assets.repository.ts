@@ -1,3 +1,7 @@
+import { copyIdCollection } from '../../../common/record-collection';
+import { appendOwnerIds } from '../../../common/record-collection';
+import { copyOwnerIdIndex } from '../../../common/record-collection';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { Injectable, inject } from '@angular/core';
 
@@ -47,6 +51,22 @@ export interface AssetExploreRecordPageResult {
   providedIn: 'root'
 })
 export class LocalAssetsRepository {
+  private assetMembershipSnapshot(assetId: string) {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return null;
+    }
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+    const record = table.byId[normalizedAssetId];
+    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
+    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
+      return null;
+    }
+    return { record, metrics: this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id) };
+  }
+
   private static readonly VISIBLE_EXPLORE_OWNER_LIMIT = 12;
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private readonly memoryDb = inject(LocalMemoryDb);
@@ -87,43 +107,13 @@ export class LocalAssetsRepository {
   }
 
   peekAssetForMembershipById(assetId: string): AppDTOs.AssetDTO | null {
-    const normalizedAssetId = assetId.trim();
-    if (!normalizedAssetId) {
-      return null;
-    }
-    const state = this.memoryDb.read();
-    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
-    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
-    const record = table.byId[normalizedAssetId];
-    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
-    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
-      return null;
-    }
-    return this.toAssetDto(
-      record,
-      record.ownerUserId,
-      this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
-    );
+    const snapshot = this.assetMembershipSnapshot(assetId);
+    return snapshot ? this.toAssetDto(snapshot.record, snapshot.record.ownerUserId, snapshot.metrics) : null;
   }
 
   peekAssetDetailForMembershipById(assetId: string): AppDTOs.AssetDetailDTO | null {
-    const normalizedAssetId = assetId.trim();
-    if (!normalizedAssetId) {
-      return null;
-    }
-    const state = this.memoryDb.read();
-    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
-    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
-    const record = table.byId[normalizedAssetId];
-    const status = LocalAssetsMapper.normalizeAssetStatus(record?.status);
-    if (!record || status === 'B' || status === 'D' || status === 'I' || status === 'T') {
-      return null;
-    }
-    return this.toAssetDetailDto(
-      record,
-      record.ownerUserId,
-      this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
-    );
+    const snapshot = this.assetMembershipSnapshot(assetId);
+    return snapshot ? this.toAssetDetailDto(snapshot.record, snapshot.record.ownerUserId, snapshot.metrics) : null;
   }
 
   peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
@@ -1095,7 +1085,7 @@ export class LocalAssetsRepository {
     if (!promotedExistingRequest) {
       const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        : `${Date.now()}-${secureRandomUuid()}`;
       next.push({
         id: `${record.id}:manager:${normalizedTargetUserId}:${requestId}`,
         userId: normalizedTargetUserId,
@@ -1466,21 +1456,7 @@ export class LocalAssetsRepository {
     startAtIso: string,
     endAtIso: string
   ): boolean {
-    const requestStart = this.parseLocalDateMs(request.booking?.startAtIso);
-    const requestEnd = this.parseLocalDateMs(request.booking?.endAtIso);
-    const windowStart = this.parseLocalDateMs(startAtIso);
-    const windowEnd = this.parseLocalDateMs(endAtIso);
-    if (requestStart !== null && requestEnd !== null && windowStart !== null && windowEnd !== null) {
-      return requestStart < windowEnd && windowStart < requestEnd;
-    }
-    const requestWindow = [
-      `${request.booking?.eventId ?? ''}`.trim(),
-      `${request.booking?.subEventId ?? ''}`.trim(),
-      `${request.booking?.slotKey ?? ''}`.trim(),
-      `${request.booking?.timeframe ?? ''}`.trim()
-    ].filter(Boolean).join('|');
-    const targetWindow = [startAtIso.trim(), endAtIso.trim()].filter(Boolean).join('|');
-    return Boolean(requestWindow && targetWindow && requestWindow === targetWindow);
+    return PricingBuilder.isPricingWindowOverlap(request, startAtIso, endAtIso, false);
   }
 
   private parseLocalDateMs(value: string | null | undefined): number | null {
@@ -1782,40 +1758,10 @@ export class LocalAssetsRepository {
 
   private normalizeCollection(value: unknown): AssetsRecordCollection {
     const source = value as Partial<AssetsRecordCollection> | null | undefined;
-    const byId = source?.byId && typeof source.byId === 'object'
-      ? { ...(source.byId as Record<string, AssetRecord>) }
-      : {};
-    const ids = Array.isArray(source?.ids)
-      ? source.ids.map(id => String(id))
-      : [];
-    const idsByOwnerUserId: Record<string, string[]> = {};
-    if (source?.idsByOwnerUserId && typeof source.idsByOwnerUserId === 'object') {
-      for (const [ownerUserId, ownerIds] of Object.entries(source.idsByOwnerUserId)) {
-        if (!ownerUserId.trim() || !Array.isArray(ownerIds)) {
-          continue;
-        }
-        idsByOwnerUserId[ownerUserId] = ownerIds
-          .map(id => String(id))
-          .filter(id => Boolean(byId[id]));
-      }
-    }
-    for (const id of ids) {
-      const record = byId[id];
-      const ownerUserId = `${record?.ownerUserId ?? ''}`.trim();
-      if (!ownerUserId) {
-        continue;
-      }
-      const bucket = idsByOwnerUserId[ownerUserId] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      idsByOwnerUserId[ownerUserId] = bucket;
-    }
-    return {
-      byId,
-      ids,
-      idsByOwnerUserId
-    };
+    const { byId, ids } = copyIdCollection(source, true);
+    const index = copyOwnerIdIndex(source?.idsByOwnerUserId, key => key.trim() || null, id => Boolean(byId[id]));
+    const idsByOwnerUserId = appendOwnerIds(byId, ids, index, record => `${record?.ownerUserId ?? ''}`.trim());
+    return { byId, ids, idsByOwnerUserId };
   }
 
   private queryVisibleExploreOwners(activeUserId: string): UserDto[] {

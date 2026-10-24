@@ -1,3 +1,4 @@
+import { UserGameFilterPreferencesDto } from '../../../../contracts/common/activity.interface';
 import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import type { RatingDomain } from '../../../../contracts/affinity/rating-snapshot';
 import type { EventExploreFilterPreferences } from '../../../../contracts/common/activity.interface';
@@ -83,29 +84,8 @@ export interface UserRatesOutboxRecordCollection {
   ids: string[];
 }
 
-export interface UserFilterPreferencesRecord {
-  pageFilters?: Partial<Record<'event-explore', EventExploreFilterPreferences>>;
-  ageMin?: number;
-  ageMax?: number;
-  heightMinCm?: number;
-  heightMaxCm?: number;
-  interests?: string[];
-  values?: string[];
-  physiques?: string[];
-  languages?: string[];
-  genders?: string[];
-  horoscopes?: string[];
-  traitLabels?: string[];
-  smoking?: string[];
-  drinking?: string[];
-  workout?: string[];
-  pets?: string[];
-  familyPlans?: string[];
-  children?: string[];
-  loveStyles?: string[];
-  communicationStyles?: string[];
-  sexualOrientations?: string[];
-  religions?: string[];
+export interface UserFilterPreferencesRecord extends UserGameFilterPreferencesDto {
+pageFilters?: Partial<Record<'event-explore', EventExploreFilterPreferences>>;
 }
 
 export interface UserFilterPreferencesRecordCollection {

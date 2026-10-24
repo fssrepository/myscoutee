@@ -1,12 +1,15 @@
+import { AdminConfigurationBuilder } from '../../../shared/core/base/builders/administration/admin-configuration.builder';
 import {
   CommonModule
 } from '@angular/common';
 import {
   Component,
   OnDestroy,
+  OnInit,
   computed,
   inject,
-  signal
+  signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -61,9 +64,10 @@ interface AdminParamsSaveMenuContext {
   standalone: true,
   imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-params-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-params-popup.component.scss'
 })
-export class AdminParamsPopupComponent implements OnDestroy {
+export class AdminParamsPopupComponent implements OnInit, OnDestroy {
   protected readonly admin = inject(AdminMenuStore);
   protected readonly paramsService = inject(AdminParamsService);
   private readonly i18n = inject(I18nService);
@@ -85,7 +89,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
   });
   private historyLoadGeneration = 0;
 
-  constructor() {
+  ngOnInit(): void {
     void this.load();
   }
 
@@ -365,20 +369,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
   }
 
   protected fieldsByGroup(fields: readonly AdminParamFieldDto[]): { group: string; groupKey: string; fields: AdminParamFieldDto[] }[] {
-    const groups = new Map<string, AdminParamFieldDto[]>();
-    const groupKeys = new Map<string, string>();
-    for (const field of fields) {
-      const group = `${field.group ?? ''}`.trim() || 'General';
-      if (!groupKeys.has(group)) {
-        groupKeys.set(group, `${field.groupKey ?? ''}`.trim());
-      }
-      groups.set(group, [...(groups.get(group) ?? []), field]);
-    }
-    return [...groups.entries()].map(([group, groupFields]) => ({
-      group,
-      groupKey: groupKeys.get(group) ?? '',
-      fields: groupFields
-    }));
+    return AdminConfigurationBuilder.fieldsByGroup(fields);
   }
 
   protected sectionDate(value: string | null | undefined): string {
@@ -404,7 +395,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       return this.textFieldOptionLabel(field);
     }
     const value = Number(field.numberValue);
-    const formatted = Number.isInteger(value) ? `${value}` : value.toFixed(2).replace(/\.?0+$/, '');
+    const formatted = Number.isInteger(value) ? `${value}` : Number(value.toFixed(2)).toString();
     return [formatted, `${field.unit ?? ''}`.trim()].filter(Boolean).join(' ');
   }
 

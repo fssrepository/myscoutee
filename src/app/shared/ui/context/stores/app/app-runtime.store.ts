@@ -27,6 +27,9 @@ function detectInitialConnectivityState(): ConnectivityState {
   providedIn: 'root'
 })
 export class AppRuntimeStore {
+
+  submissionState(loadState: () => LoadState, fallback: string) { const isSubmitting = computed(() => loadState().status === 'loading'); const hasSubmitError = computed(() => ['error', 'timeout'].includes(loadState().status)); const isSubmitSuccess = computed(() => loadState().status === 'success'); return { isSubmitting, hasSubmitError, isSubmitSuccess, isSubmitBusy: computed(() => isSubmitting() || isSubmitSuccess()), showSubmitRing: computed(() => isSubmitting() || hasSubmitError() || isSubmitSuccess()), submitErrorMessage: computed(() => hasSubmitError() ? (loadState().error ?? fallback) : '') }; }
+
   private readonly _loadingState = signal<Record<string, LoadState>>({});
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 

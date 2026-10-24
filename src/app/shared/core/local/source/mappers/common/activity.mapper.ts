@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../../base/app-utils';
 import { ActivityResourceBuilder } from '../../../../base/builders';
@@ -457,7 +458,7 @@ export class LocalActivityResourcesMapper {
   private static newRecordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     const generation = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      : `${Date.now()}-${secureRandomUuid()}`;
     return `${this.recordId(ref)}:${generation}`;
   }
 

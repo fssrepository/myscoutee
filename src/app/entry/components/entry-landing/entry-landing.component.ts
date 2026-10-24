@@ -26,7 +26,7 @@ import { groupTypeMenuItems, groupTypeTrigger } from '../../../shared/ui/convert
 import { LandingGuideSurfaceDirective } from './landing-guide-surface.directive';
 import { DOCUMENT } from '@angular/common';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { afterNextRender, ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, effect, inject } from '@angular/core';
+import { afterNextRender, ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, computed, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
@@ -74,6 +74,7 @@ interface PartnerRoleOverview {
     I18nPipe
   ],
   templateUrl: './entry-landing.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './entry-landing.component.scss'
 })
 export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {

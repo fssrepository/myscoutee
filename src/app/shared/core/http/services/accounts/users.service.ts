@@ -54,6 +54,32 @@ import { UserProfileStore } from '../../../../ui/context/stores/profile/user-pro
   providedIn: 'root'
 })
 export class HttpUsersService implements UserService {
+
+  private async submitUserAction(route: string, request: UserFeedbackSubmitRequestDto | UserReportUserSubmitRequestDto | UserDeleteRequestDto, timeoutMessage: string, fallback: string, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto> {
+    try {
+      const response = await this.routeDelay.withRequestTimeout(route, this.postAbortable<UserSubmitActionResponseDto>(`${this.apiBaseUrl}${route}`, request, signal), timeoutMessage, requestTimeoutMs);
+      if (!response) {
+        return { submitted: true, message: null };
+      }
+      return {
+        submitted: response.submitted !== false,
+        message: typeof response.message === 'string' ? response.message : null
+      };
+    }
+    catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      if (this.isTimeoutError(error, timeoutMessage)) {
+        throw error;
+      }
+      return {
+        submitted: false,
+        message: fallback
+      };
+    }
+  }
+
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly USER_PROFILE_EXT_ROUTE = '/auth/me/profile-ext';
@@ -401,78 +427,12 @@ export class HttpUsersService implements UserService {
     return response;
   }
 
-  async submitUserFeedback(
-    request: UserFeedbackSubmitRequestDto,
-    signal?: AbortSignal,
-    requestTimeoutMs?: number
-  ): Promise<UserSubmitActionResponseDto> {
-    try {
-      const response = await this.routeDelay.withRequestTimeout(
-        HttpUsersService.USER_FEEDBACK_ROUTE,
-        this.postAbortable<UserSubmitActionResponseDto>(
-          `${this.apiBaseUrl}${HttpUsersService.USER_FEEDBACK_ROUTE}`,
-          request,
-          signal
-        ),
-        'Feedback request timeout.',
-        requestTimeoutMs
-      );
-      if (!response) {
-        return { submitted: true, message: null };
-      }
-      return {
-        submitted: response.submitted !== false,
-        message: typeof response.message === 'string' ? response.message : null
-      };
-    } catch (error) {
-      if (this.isAbortError(error)) {
-        throw error;
-      }
-      if (this.isTimeoutError(error, 'Feedback request timeout.')) {
-        throw error;
-      }
-      return {
-        submitted: false,
-        message: 'Unable to send feedback.'
-      };
-    }
+  async submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto> {
+    return this.submitUserAction(HttpUsersService.USER_FEEDBACK_ROUTE, request, 'Feedback request timeout.', 'Unable to send feedback.', signal, requestTimeoutMs);
   }
 
-  async submitReportUser(
-    request: UserReportUserSubmitRequestDto,
-    signal?: AbortSignal,
-    requestTimeoutMs?: number
-  ): Promise<UserSubmitActionResponseDto> {
-    try {
-      const response = await this.routeDelay.withRequestTimeout(
-        HttpUsersService.USER_REPORT_USER_ROUTE,
-        this.postAbortable<UserSubmitActionResponseDto>(
-          `${this.apiBaseUrl}${HttpUsersService.USER_REPORT_USER_ROUTE}`,
-          request,
-          signal
-        ),
-        'Report request timeout.',
-        requestTimeoutMs
-      );
-      if (!response) {
-        return { submitted: true, message: null };
-      }
-      return {
-        submitted: response.submitted !== false,
-        message: typeof response.message === 'string' ? response.message : null
-      };
-    } catch (error) {
-      if (this.isAbortError(error)) {
-        throw error;
-      }
-      if (this.isTimeoutError(error, 'Report request timeout.')) {
-        throw error;
-      }
-      return {
-        submitted: false,
-        message: 'Unable to submit report.'
-      };
-    }
+  async submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto> {
+    return this.submitUserAction(HttpUsersService.USER_REPORT_USER_ROUTE, request, 'Report request timeout.', 'Unable to submit report.', signal, requestTimeoutMs);
   }
 
   async logoutUser(
@@ -517,41 +477,8 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async deleteUser(
-    request: UserDeleteRequestDto,
-    signal?: AbortSignal,
-    requestTimeoutMs?: number
-  ): Promise<UserSubmitActionResponseDto> {
-    try {
-      const response = await this.routeDelay.withRequestTimeout(
-        HttpUsersService.USER_DELETE_ROUTE,
-        this.postAbortable<UserSubmitActionResponseDto>(
-          `${this.apiBaseUrl}${HttpUsersService.USER_DELETE_ROUTE}`,
-          request,
-          signal
-        ),
-        'Delete account request timeout.',
-        requestTimeoutMs
-      );
-      if (!response) {
-        return { submitted: true, message: null };
-      }
-      return {
-        submitted: response.submitted !== false,
-        message: typeof response.message === 'string' ? response.message : null
-      };
-    } catch (error) {
-      if (this.isAbortError(error)) {
-        throw error;
-      }
-      if (this.isTimeoutError(error, 'Delete account request timeout.')) {
-        throw error;
-      }
-      return {
-        submitted: false,
-        message: 'Unable to delete account.'
-      };
-    }
+  async deleteUser(request: UserDeleteRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto> {
+    return this.submitUserAction(HttpUsersService.USER_DELETE_ROUTE, request, 'Delete account request timeout.', 'Unable to delete account.', signal, requestTimeoutMs);
   }
 
   private async cacheAvatarPreview(sessionId: string, imageUrl: string): Promise<void> {
@@ -582,7 +509,7 @@ export class HttpUsersService implements UserService {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => reject(reader.error);
+        reader.onerror = () => reject(reader.error ?? new Error('Failed to read avatar image'));
         reader.readAsDataURL(blob);
       });
       this.sessionService.setFirebaseAvatarPreviewData(sessionId, imageUrl, dataUrl);

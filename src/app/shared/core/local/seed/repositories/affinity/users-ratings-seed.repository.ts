@@ -1,3 +1,4 @@
+import { BaseUserRatesMapper } from '../../../../base/mappers/affinity/rate.mapper';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { USER_RATES_TABLE_NAME } from '../../../source/entity/affinity/rate.entity';
 import { USERS_TABLE_NAME } from '../../../source/entity/accounts/user.entity';
@@ -170,38 +171,14 @@ export class SeedUsersRatingsRepository {
   }
 
   private rebuildUserRatesTableIndex(table: UserRatesRecordCollection): UserRatesRecordCollection {
-    const idsByRelevantUserId: Record<string, string[]> = {};
-    for (const id of table.ids) {
-      const record = table.byId[id];
-      if (!record) {
-        continue;
-      }
-      for (const userId of this.relevantUserRateUserIds(record)) {
-        const bucket = idsByRelevantUserId[userId] ?? [];
-        bucket.push(id);
-        idsByRelevantUserId[userId] = bucket;
-      }
-    }
-    for (const ids of Object.values(idsByRelevantUserId)) {
-      ids.sort((leftId, rightId) => {
-        const left = table.byId[leftId];
-        const right = table.byId[rightId];
-        return this.dynamicRecordDateValue(right) - this.dynamicRecordDateValue(left);
-      });
-    }
-    return {
-      ...table,
-      idsByRelevantUserId
-    };
+    return BaseUserRatesMapper.rebuildUserRatesTableIndex(table);
   }
 
   private relevantUserRateUserIds(record: UserRateRecord): string[] {
-    return [...new Set([record.ownerUserId, record.fromUserId, record.toUserId]
-      .map(value => `${value ?? ''}`.trim())
-      .filter(Boolean))];
+    return BaseUserRatesMapper.relevantUserRateUserIds(record);
   }
 
   private dynamicRecordDateValue(record: UserRateRecord | null | undefined): number {
-    return UiDateUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
+    return BaseUserRatesMapper.dynamicRecordDateValue(record);
   }
 }

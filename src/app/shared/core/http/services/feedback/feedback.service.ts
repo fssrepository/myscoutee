@@ -218,27 +218,6 @@ private async postVoid(route: string, payload: unknown): Promise<void> {
 private cloneFeedbackAnswersByCardId(
     answersByCardId: FeedbackStateDto['answersByCardId']
   ): NonNullable<FeedbackStateDto['answersByCardId']> {
-    const next: NonNullable<FeedbackStateDto['answersByCardId']> = {};
-    for (const [cardId, answer] of Object.entries(answersByCardId ?? {})) {
-      const normalizedCardId = cardId.trim();
-      if (!normalizedCardId || !answer) {
-        continue;
-      }
-      next[normalizedCardId] = {
-        ...answer,
-        cardId: answer.cardId?.trim() || normalizedCardId,
-        eventId: answer.eventId?.trim() ?? '',
-        kind: answer.kind === 'attendee' ? 'attendee' : 'event',
-        targetUserId: answer.targetUserId?.trim() || null,
-        targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
-        primaryValue: answer.primaryValue?.trim() ?? '',
-        secondaryValue: answer.secondaryValue?.trim() ?? '',
-        eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
-        personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
-        tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
-        submittedAtIso: answer.submittedAtIso?.trim() ?? ''
-      };
-    }
-    return next;
+    return FeedbackPageResultDto.cloneFeedbackAnswersByCardId(answersByCardId);
   }
 }

@@ -1,8 +1,8 @@
+import { type HelpCenterRevisionDto } from '../../../core/contracts/content/content.interface';
+import { type HelpCenterSectionDto } from '../../../core/contracts/content/content.interface';
 import { AppUtils } from '../../../core/base/app-utils';
-import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+import { DOCUMENT_VIEWER_HEADER_PALETTES } from '../../../core/common/help-center-options';
 import {
-  type GuideRevision as HelpCenterRevisionDto,
-  type GuideSection as HelpCenterSectionDto,
   type UiConverter,
   type UiListConverter
 } from '@fssrepository/myscoutee-components';
@@ -109,7 +109,7 @@ export class HelpCenterRevisionDocumentViewerConfigConverter {
       versionLabel: options.versionLabel,
       headerPalette: AppUtils.enumValue(
         options.headerPalette ?? revision?.headerColor,
-        APP_STATIC_DATA.documentViewerHeaderPalettes,
+        DOCUMENT_VIEWER_HEADER_PALETTES,
         options.headerPaletteFallback ?? 'amber'
       ),
       showBrand: options.showBrand,

@@ -1,6 +1,7 @@
+import type { HelpCenterRevisionDto } from '../../../contracts/content/content.interface';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type { GuideRevision as HelpCenterRevisionDto } from '@fssrepository/myscoutee-components';
+
 import type { HelpCenterStateDto } from '../../../contracts';
 import { HelpCenterService } from './help-center.service';
 

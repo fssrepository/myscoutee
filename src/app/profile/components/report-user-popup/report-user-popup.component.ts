@@ -4,7 +4,8 @@ import {
   OnDestroy,
   computed,
   effect,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -44,6 +45,7 @@ type ReportUserActionId = 'report-user-cancel' | 'report-user-submit';
   standalone: true,
   imports: [FormsModule, AppMenuComponent, FormFlowComponent, I18nPipe],
   templateUrl: './report-user-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './report-user-popup.component.scss'
 })
 export class ProfileReportUserPopupComponent implements OnDestroy {
@@ -54,6 +56,7 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly submitLoadState = this.runtimeStore.selectLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+  private readonly submissionState = this.runtimeStore.submissionState(this.submitLoadState, 'Unable to submit report.');
   private lastContextKey = '';
   private submitAbortController: AbortController | null = null;
   private submitRequestVersion = 0;
@@ -66,19 +69,12 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
     const context = this.reportUserContext();
     return !!context?.targetUserId?.trim() && !!context?.eventId?.trim();
   });
-  protected readonly isSubmitting = computed(() => this.submitLoadState().status === 'loading');
-  protected readonly hasSubmitError = computed(() => {
-    const status = this.submitLoadState().status;
-    return status === 'error' || status === 'timeout';
-  });
-  protected readonly isSubmitSuccess = computed(() => this.submitLoadState().status === 'success');
-  protected readonly isSubmitBusy = computed(() => this.isSubmitting() || this.isSubmitSuccess());
-  protected readonly showSubmitRing = computed(() =>
-    this.isSubmitting() || this.hasSubmitError() || this.isSubmitSuccess()
-  );
-  protected readonly submitErrorMessage = computed(() =>
-    this.hasSubmitError() ? (this.submitLoadState().error ?? 'Unable to submit report.') : ''
-  );
+  protected readonly isSubmitting = this.submissionState.isSubmitting;
+  protected readonly hasSubmitError = this.submissionState.hasSubmitError;
+  protected readonly isSubmitSuccess = this.submissionState.isSubmitSuccess;
+  protected readonly isSubmitBusy = this.submissionState.isSubmitBusy;
+  protected readonly showSubmitRing = this.submissionState.showSubmitRing;
+  protected readonly submitErrorMessage = this.submissionState.submitErrorMessage;
   protected reportUserForm = this.createInitialForm();
   protected reportUserSubmitMessage = '';
   protected reportUserSubmitted = false;

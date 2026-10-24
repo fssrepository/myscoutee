@@ -607,3 +607,28 @@ export interface AssetTicketValidationDTO {
   reason: AssetTicketValidationReason;
   ticket: TicketScanPayloadDTO | null;
 }
+
+export interface AssetOccupancyPageQuery {
+    userId: string;
+    assetId: string;
+    dateIso?: string | null;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    filter?: AssetAvailabilityFilter | null;
+    order?: AssetAvailabilityOrder | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }
+
+export interface AssetAvailabilityStatQuery {
+    userId: string;
+    assetId: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    filter?: AssetAvailabilityFilter | null;
+    order?: AssetAvailabilityOrder | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }

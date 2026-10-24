@@ -1,3 +1,5 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { ActivityEventDetailDTO } from '../../../shared/core/contracts/common/activity.interface';
 import {
   UiLinkUtils,
   UiDateUtils,
@@ -30,8 +32,7 @@ import {
   type SmartListStateChange,
   type UiListConverter,
   UiPollCoordinator,
-  DialogStore,
-  ExplanationGuideService
+  DialogStore
 } from '@fssrepository/myscoutee-components';
 
 import { CampaignsStore } from '../../../shared/ui/context/stores/activity/campaigns.store';
@@ -694,16 +695,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const draft = activeUserId ? this.eventCheckoutDraftStore.read(activeUserId, row.id) : null;
     const pendingForActiveUser = this.activityCheckoutPendingForActiveUser(activeUserId, dto, record);
     return {
-      menu: 'activity-event-card',
-      id: row.id,
-      status: dto?.status ?? row.status ?? null,
-      ownerUserId: dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? null,
-      adminIds: [...(dto?.adminIds ?? [])],
-      acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
-      activity: dto?.activity ?? row.menuBadgeCount ?? 0,
+      ...ActivityEventInfoCardMenuConverter.eventSubject(row, dto),
       cancelled: dto?.cancelled ?? record?.cancelled,
       cancellationRefundsPending: dto?.cancellationRefundsPending ?? record?.cancellationRefundsPending,
       canCancelForFullRefund: dto?.canCancelForFullRefund ?? record?.canCancelForFullRefund,
@@ -711,14 +703,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       checkoutState: draft?.checkoutState ?? record?.checkoutBasket?.status ?? null,
       watched: dto?.watched ?? record?.watched ?? false,
       sourceLink: dto?.sourceLink ?? record?.sourceLink,
-      organizerFollowed: this.followingStore.state().organizerIds.includes(
-        dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? ''),
-      checkoutMenuAction: this.activityCheckoutMenuAction(
-        draft,
-        record?.checkoutBasket ?? null,
-        pendingForActiveUser,
-        dto?.checkoutResultState ?? null
-      )
+      organizerFollowed: this.followingStore.state().organizerIds.includes(dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? ''),
+      checkoutMenuAction: this.activityCheckoutMenuAction(draft, record?.checkoutBasket ?? null, pendingForActiveUser, dto?.checkoutResultState ?? null)
     };
   }
 
@@ -805,23 +791,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return draft ? this.activityCheckoutBasketResultState({ items: draft.basketItems } as EventCheckoutBasket) : null;
   }
 
-  private activityCheckoutBasketResultState(
-    basket: Pick<EventCheckoutBasket, 'items'> | null | undefined
-  ): EventCheckoutResultState | null {
-    const resultStates = (basket?.items ?? []).map(item => item.resultState ?? 'pending');
-    if (resultStates.length === 0) {
-      return null;
-    }
-    if (resultStates.some(resultState => resultState === 'failed')) {
-      return 'failed';
-    }
-    if (resultStates.every(resultState => resultState === 'deleted')) {
-      return 'deleted';
-    }
-    if (resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
-      return 'succeeded';
-    }
-    return 'pending';
+  private activityCheckoutBasketResultState(basket: Pick<EventCheckoutBasket, 'items'> | null | undefined): EventCheckoutResultState | null {
+    return ActivityEventDetailDTO.checkoutBasketResultState(basket);
   }
 
   private activityEventRowFromMenuSubject(subject: ActivityEventInfoCardMenuSubject): ActivityEventListItem | null {

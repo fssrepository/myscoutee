@@ -1,5 +1,6 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { TestBed } from '@angular/core/testing';
-import { ExplanationGuideService } from '@fssrepository/myscoutee-components';
+
 import { CashReceiptPopupComponent } from './cash-receipt-popup.component';
 import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payments/payment-methods.service';

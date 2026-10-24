@@ -1,3 +1,7 @@
+import type { UserGameMode } from '../../../contracts/common/activity.interface';
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
+import { UserRatesRecordCollection } from '../../../local/source/entity/affinity/rate.entity';
+import { secureRandomUuid } from '../../../common/secure-random';
 import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import type {
   ActivityRateDTO,
@@ -43,7 +47,108 @@ export type UserRateRecordDTO =
   | UserRateActivityRecordDTO;
 
 export class BaseUserRatesMapper {
+
+  static pendingRatedGameCardUserIds(records: readonly UserRateRecord[], raterUserId: string, mode: UserGameMode = 'single'): string[] {
+    const normalizedRaterId = raterUserId.trim();
+    if (!normalizedRaterId) {
+      return [];
+    }
+    const ratedUserIds = new Set<string>();
+    for (const record of records) {
+      if (record.ownerUserId?.trim() !== normalizedRaterId) {
+        continue;
+      }
+      const item = BaseUserRatesMapper.toDto(record);
+      if (!this.shouldExcludePendingItemFromHome(item)) {
+        continue;
+      }
+      if (mode === 'single' && item.mode !== 'individual') {
+        continue;
+      }
+      if (mode !== 'single' && item.mode !== 'pair') {
+        continue;
+      }
+      const primaryUserId = item.userId.trim();
+      const secondaryUserId = item.secondaryUserId?.trim() ?? '';
+      if (primaryUserId && primaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(primaryUserId);
+      }
+      if (secondaryUserId && secondaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(secondaryUserId);
+      }
+    }
+    return [...ratedUserIds];
+  }
+
+  static shouldExcludePendingItemFromHome(item: ActivityRateDTO | null): item is ActivityRateDTO {
+    if (!item) {
+      return false;
+    }
+    if (item.direction === 'met') {
+      return true;
+    }
+    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
+  }
+
+  private static pairDto(record: UserRateRecord, direction: NonNullable<ActivityRateDTO['direction']>, socialContext: ActivityRateDTO['socialContext'], userId: string, secondaryUserId: string): ActivityRateDTO {
+    return {
+      id: record.displayId?.trim() || record.id,
+      campaignId: record.campaignId ?? null,
+      userId,
+      secondaryUserId,
+      mode: 'pair',
+      direction,
+      socialContext,
+      bridgeUserId: record.bridgeUserId,
+      bridgeCount: record.bridgeCount,
+      ratingSnapshot: record.ratingSnapshot,
+      scoreGiven: this.normalizeRateScore(record.scoreGiven),
+      scoreReceived: this.normalizeRateScore(record.scoreReceived),
+      eventName: record.eventName?.trim() || 'Rate',
+      happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+      distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
+      met: record.met === true
+    };
+  }
+
+  static dynamicRecordDateValue(record: UserRateRecord | null | undefined): number {
+    return UiDateUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
+  }
+
+  static relevantUserRateUserIds(record: UserRateRecord): string[] {
+    return [...new Set([record.ownerUserId, record.fromUserId, record.toUserId]
+      .map(value => `${value ?? ''}`.trim())
+      .filter(Boolean))];
+  }
+
+  static rebuildUserRatesTableIndex(table: UserRatesRecordCollection): UserRatesRecordCollection {
+    const idsByRelevantUserId: Record<string, string[]> = {};
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record) {
+        continue;
+      }
+      for (const userId of this.relevantUserRateUserIds(record)) {
+        const bucket = idsByRelevantUserId[userId] ?? [];
+        bucket.push(id);
+        idsByRelevantUserId[userId] = bucket;
+      }
+    }
+    for (const ids of Object.values(idsByRelevantUserId)) {
+      ids.sort((leftId, rightId) => {
+        const left = table.byId[leftId];
+        const right = table.byId[rightId];
+        return this.dynamicRecordDateValue(right) - this.dynamicRecordDateValue(left);
+      });
+    }
+    return {
+      ...table,
+      idsByRelevantUserId
+    };
+  }
+
   static toRecord(ownerUserId: string, item: ActivityRateDTO): UserRateRecord;
+
   static toRecord(input: UserRateRecordDTO): UserRateRecord | null;
   static toRecord(ownerUserIdOrInput: string | UserRateRecordDTO, item?: ActivityRateDTO): UserRateRecord | null {
     if (typeof ownerUserIdOrInput === 'string') {
@@ -231,73 +336,23 @@ export class BaseUserRatesMapper {
       const socialContext = this.resolvePairSocialContext(record);
       if (direction === 'received') {
         if (firstUserId === ownerUserId) {
-          return {
-            id: record.displayId?.trim() || record.id,
-            campaignId: record.campaignId ?? null,
-            userId: secondUserId,
-            secondaryUserId: firstUserId,
-            mode: 'pair',
-            direction,
-            socialContext,
-            bridgeUserId: record.bridgeUserId,
-            bridgeCount: record.bridgeCount,
-            ratingSnapshot: record.ratingSnapshot,
-            scoreGiven: this.normalizeRateScore(record.scoreGiven),
-            scoreReceived: this.normalizeRateScore(record.scoreReceived),
-            eventName: record.eventName?.trim() || 'Rate',
-            happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
-            met: record.met === true
-          };
+          return this.pairDto(record, direction, socialContext, secondUserId, firstUserId);
         }
         if (secondUserId === ownerUserId) {
-          return {
-            id: record.displayId?.trim() || record.id,
-            campaignId: record.campaignId ?? null,
-            userId: firstUserId,
-            secondaryUserId: secondUserId,
-            mode: 'pair',
-            direction,
-            socialContext,
-            bridgeUserId: record.bridgeUserId,
-            bridgeCount: record.bridgeCount,
-            ratingSnapshot: record.ratingSnapshot,
-            scoreGiven: this.normalizeRateScore(record.scoreGiven),
-            scoreReceived: this.normalizeRateScore(record.scoreReceived),
-            eventName: record.eventName?.trim() || 'Rate',
-            happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-            distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
-            met: record.met === true
-          };
+          return this.pairDto(record, direction, socialContext, firstUserId, secondUserId);
         }
-      } else if (firstUserId === ownerUserId || secondUserId === ownerUserId) {
+      }
+      else if (firstUserId === ownerUserId || secondUserId === ownerUserId) {
         return null;
       }
-      return {
-        id: record.displayId?.trim() || record.id,
-            campaignId: record.campaignId ?? null,
-        userId: firstUserId,
-        secondaryUserId: secondUserId,
-        mode: 'pair',
-        direction,
-        socialContext,
-        bridgeUserId: record.bridgeUserId,
-        bridgeCount: record.bridgeCount,
-        ratingSnapshot: record.ratingSnapshot,
-        scoreGiven: this.normalizeRateScore(record.scoreGiven),
-        scoreReceived: this.normalizeRateScore(record.scoreReceived),
-        eventName: record.eventName?.trim() || 'Rate',
-        happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
-        distanceMetersExact: this.normalizeDistanceMetersExact(record.distanceMetersExact),
-        met: record.met === true
-      };
+      return this.pairDto(record, direction, socialContext, firstUserId, secondUserId);
     }
     const counterpartyUserId = record.fromUserId === ownerUserId
       ? record.toUserId
       : record.fromUserId;
     return {
       id: record.displayId?.trim() || record.id,
-            campaignId: record.campaignId ?? null,
+      campaignId: record.campaignId ?? null,
       userId: counterpartyUserId,
       mode: 'individual',
       direction,
@@ -417,7 +472,7 @@ export class BaseUserRatesMapper {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
     }
-    return `rate-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `rate-${Date.now()}-${secureRandomUuid()}`;
   }
 
   private static resolvePairSocialContext(

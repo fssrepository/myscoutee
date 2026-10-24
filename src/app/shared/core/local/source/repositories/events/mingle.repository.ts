@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { completedMinglePeerIds } from '../../mappers/events/mingle.mapper';
 import {groupPriorityEnabled} from '../../../../contracts/groups/group-type';
 import { LocalUserRatesMapper } from '../../mappers/affinity/rate.mapper';
@@ -103,11 +104,11 @@ export class LocalMingleRepository {
       const rates = this.db.read()[USER_RATES_TABLE_NAME];
       const priorityEnabled=groupPriorityEnabled(this.db.read().communityGroups.byId[this.db.read().users.byId[event.creatorUserId??event.userId]?.workspaceGroupId??'']);
       const summaries = Object.values(rates.campaignProjection ?? {}).flat();
-      const summarizedPairs = new Set(summaries.map(rate => [rate.fromUserId, rate.toUserId].sort().join('\n')));
+      const summarizedPairs = new Set(summaries.map(rate => [rate.fromUserId, rate.toUserId].sort(AppUtils.compareCodeUnits).join('\n')));
       const evidence = event.campaignId ? Object.values(rates.byId).filter(rate => rate.campaignId === event.campaignId)
-        : [...Object.values(rates.byId).filter(rate => rate.mode !== 'single' || !summarizedPairs.has([rate.fromUserId, rate.toUserId].sort().join('\n'))), ...summaries];
+        : [...Object.values(rates.byId).filter(rate => rate.mode !== 'single' || !summarizedPairs.has([rate.fromUserId, rate.toUserId].sort(AppUtils.compareCodeUnits).join('\n'))), ...summaries];
       for (const rate of priorityEnabled?evidence:[]) {
-        const key = [rate.fromUserId, rate.toUserId].sort().join('\n');
+        const key = [rate.fromUserId, rate.toUserId].sort(AppUtils.compareCodeUnits).join('\n');
         scores.set(key, Math.max(scores.get(key) ?? 0, LocalUserRatesMapper.affinityWeight(rate)));
       }
       const tables = planMingleTables({
@@ -117,7 +118,7 @@ export class LocalMingleRepository {
         requireGenderBalance: config.requireGenderBalance,
         previousTables: next.rounds.filter(round => round.completedAtIso).flatMap(round => round.tables),
         randomMixing:!priorityEnabled,
-        affinity: (left, right) => scores.get([left, right].sort().join('\n')) ?? 0
+        affinity: (left, right) => scores.get([left, right].sort(AppUtils.compareCodeUnits).join('\n')) ?? 0
       });
       if (!tables.length) return this.fail(config.requireGenderBalance
         ? 'MINGLE_TABLE_ASSIGNMENT_UNAVAILABLE_GENDER_BALANCE' : 'MINGLE_TABLE_ASSIGNMENT_UNAVAILABLE',
@@ -200,7 +201,7 @@ export class LocalMingleRepository {
     return round.tables.map(table => ({ tableNumber: table.tableNumber, memberUserIds:
       [...new Set((members.idsByOwnerKey[`group:${this.groupId(eventId, round.roundNumber, table.tableNumber)}`] ?? [])
         .map(id => members.byId[id]).filter(member => member?.status === 'accepted' && !member.organizerOnly)
-        .map(member => member.userId))].sort()
+        .map(member => member.userId))].sort(AppUtils.compareCodeUnits)
     }));
   }
 

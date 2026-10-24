@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../core/base/app-utils';
 import {Injectable,inject,effect,signal} from '@angular/core';
 import {CaseAppointmentsService} from '../../../../core/base/services/community/case-appointments.service';
 import {GroupWorkspaceContextService} from '../../../../core/base/services/groups/group-workspace-context.service';
@@ -22,7 +23,7 @@ export class CaseAppointmentsStore {
     upcomingSlots:[...upcoming.map(a=>this.slot(a,s.title)),...initial.result.slots].map(slot=>({...slot,slotTemplateId:slot.slotTemplateId??'',title:slot.title??s.title,timeframe:slot.timeframe??''}))},checkoutBasket:basket,
     selectionAdapter:{loadSlots:async q=>{const page=await this.service.slots(c.id,s.id,support.accountId,q);if(gen!==this.generation)throw new DOMException('Closed','AbortError');
       return {...page.result,checkoutBasket:this.basket(userId,c.id,page.appointments.filter(a=>Date.parse(a.startAtIso)>Date.now()))};},
-     saveSlots:async slotIds=>{const signature=[...slotIds].sort().join('|');if(!operationId||signature!==selection){operationId=crypto.randomUUID();selection=signature;}
+     saveSlots:async slotIds=>{const signature=[...slotIds].sort(AppUtils.compareCodeUnits).join('|');if(!operationId||signature!==selection){operationId=crypto.randomUUID();selection=signature;}
       const saved=await this.service.save(c.id,{userId,serviceId:s.id,providerAccountId:support.accountId,slotIds,version:initial.version,operationId});
       if(gen===this.generation)this.changed.set(saved.appointments);}}});
    this.pickerId=state?.id??null;

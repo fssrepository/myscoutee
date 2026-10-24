@@ -1,3 +1,4 @@
+import type { AssetResourceValue } from '../../../../core/base/builders/assets/asset-card.builder';
 import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
 import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
 import { Injectable, Type, computed, signal, inject } from '@angular/core';
@@ -11,15 +12,11 @@ import type * as AppDTOs from '../../../../core/contracts';
 import type * as ContractTypes from '../../../../core/contracts';
 import type { ActivityMemberDTO } from '../../../../core/contracts/common/activity.interface';
 
-export type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
+export type ResourceAssetDTO = AssetResourceValue & {
   description?: string;
   details?: string;
   sourceLink?: string;
-  routes?: string[];
-  topics?: string[];
   policiesEnabled?: boolean;
-  policies?: AppDTOs.EventPolicyItemDTO[];
-  pricing?: AppDTOs.PricingConfig | null;
   locationLabel?: string;
   priceLabel?: string;
   policyCount?: number;

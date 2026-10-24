@@ -1,3 +1,5 @@
+import { AssetAvailabilityStatQuery } from '../../../../contracts/assets/asset.interface';
+import { AssetOccupancyPageQuery } from '../../../../contracts/assets/asset.interface';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from '../platform/route-delay.service';
@@ -124,18 +126,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     return response;
   }
 
-  async loadOccupancyByAssetId(query: {
-    userId: string;
-    assetId: string;
-    dateIso?: string | null;
-    rangeStart?: string | null;
-    rangeEnd?: string | null;
-    filter?: AppDTOs.AssetAvailabilityFilter | null;
-    order?: AppDTOs.AssetAvailabilityOrder | null;
-    page?: number;
-    pageSize: number;
-    cursor?: string | null;
-  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+  async loadOccupancyByAssetId(query: AssetOccupancyPageQuery, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
     options.signal?.throwIfAborted();
     const [, response] = await Promise.all([
       this.waitForRouteDelay(
@@ -152,17 +143,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     return response;
   }
 
-  async loadStatByAssetId(query: {
-    userId: string;
-    assetId: string;
-    rangeStart?: string | null;
-    rangeEnd?: string | null;
-    filter?: AppDTOs.AssetAvailabilityFilter | null;
-    order?: AppDTOs.AssetAvailabilityOrder | null;
-    page?: number;
-    pageSize: number;
-    cursor?: string | null;
-  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+  async loadStatByAssetId(query: AssetAvailabilityStatQuery, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
     options.signal?.throwIfAborted();
     const [, response] = await Promise.all([
       this.waitForRouteDelay(

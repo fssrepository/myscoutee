@@ -100,7 +100,7 @@ export class LocalContactsRepository {
     if (action === 'request') {
       if (!this.queryContactRecordsByUser(actor).some(contact => contact.userId === target)) throw new Error('Save the contact first.');
       if (current && current.status !== 'rejected') return this.chatAccessDto(current, actor);
-      const [leftUserId, rightUserId] = [actor, target].sort();
+      const [leftUserId, rightUserId] = [actor, target].sort(AppUtils.compareCodeUnits);
       next = { id, leftUserId, rightUserId, requestedBy: actor, status: 'pending', requestedAtIso: now, decidedAtIso: null,
         version: (current?.version ?? -1) + 1 };
     } else {
@@ -147,7 +147,7 @@ export class LocalContactsRepository {
   }
 
   private pairId(first: string, second: string): string {
-    const [left, right] = [first, second].sort();
+    const [left, right] = [first, second].sort(AppUtils.compareCodeUnits);
     return `${left.length}:${left}${right}`;
   }
 

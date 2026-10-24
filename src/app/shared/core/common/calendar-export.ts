@@ -1,3 +1,4 @@
+import { AppUtils } from '../base/app-utils';
 import type { ActivityEventDTO } from '../contracts/common/activity.interface';
 
 /** Same private snapshot contract as CalendarExportService (HTTP); local/demo adapter only. */
@@ -16,8 +17,8 @@ export function renderCalendarExport(actorId: string, records: readonly Activity
   }
   if (unique.size === 0) return '';
   for (const event of [...unique.values()].sort((a, b) => instant(a.startAtIso) - instant(b.startAtIso))) {
-    const uid = btoa(Array.from(new TextEncoder().encode(`myscoutee:event:${event.id}`), byte => String.fromCharCode(byte)).join(''))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const uid = AppUtils.trimEndCharacters(btoa(Array.from(new TextEncoder().encode(`myscoutee:event:${event.id}`), byte => String.fromCharCode(byte)).join(''))
+      .replace(/\+/g, '-').replace(/\//g, '_'), "=");
     lines.push('BEGIN:VEVENT', `UID:${uid}@myscoutee`, `DTSTAMP:${stamp(now.getTime())}`,
       `DTSTART:${stamp(instant(event.startAtIso))}`, `DTEND:${stamp(instant(event.endAtIso))}`,
       `SUMMARY:${escapeText(event.title)}`, `LOCATION:${escapeText(event.location)}`, 'STATUS:CONFIRMED',
@@ -30,7 +31,7 @@ export function renderCalendarExport(actorId: string, records: readonly Activity
 
 function instant(value: string): number {
   // A floating browser-local timestamp would disagree with the HTTP export.
-  return /(?:Z|[+-]\d{2}:\d{2})$/i.test(value ?? '') ? Date.parse(value) : NaN;
+  return /(?:Z|[+-]\d{2}:\d{2})$/i.test(value ?? '') ? Date.parse(value) : Number.NaN;
 }
 function stamp(value: number): string { return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z'); }
 function escapeText(value: string): string {

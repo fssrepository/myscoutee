@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 
 import { AppMenuComponent, I18nPipe, type AppMenuItem, type AppMenuItemSelectEvent } from '@fssrepository/myscoutee-components';
 
@@ -9,6 +9,7 @@ import type * as AssetContracts from '../../../shared/core/contracts/assets/asse
   standalone: true,
   imports: [AppMenuComponent, I18nPipe],
   templateUrl: './asset-ticket-scanner-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './asset-ticket-scanner-popup.component.scss'
 })
 export class AssetTicketScannerPopupComponent implements AfterViewInit, OnDestroy {

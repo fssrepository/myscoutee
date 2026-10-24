@@ -33,6 +33,26 @@ describe('IdeaPostsService card captions', () => {
     expect(card.mediaEnd).toMatchObject({ label: 'featured', selectedLabel: 'featured', ariaLabel: 'featured.article' });
   });
 
+  it('reuses the date formatter across card/detail projections without changing the labels', () => {
+    const OriginalFormatter = Intl.DateTimeFormat;
+    const expected = new OriginalFormatter(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+      .format(new Date('2026-09-04T10:00:00.000Z'));
+    const formatter = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function(locales, options) {
+      return new OriginalFormatter(locales, options);
+    });
+    try {
+      const service = ideaPostsServiceWith(vi.fn());
+      const posts = [ideaPost('article-1'), ideaPost('article-2')];
+      for (const card of [...service.publishedIdeaInfoCards(posts), ...service.adminIdeaInfoCards(posts)]) {
+        expect(card.metaRows).toEqual([expected]);
+        expect(card.eagerDetail?.dateLabel).toBe(expected);
+      }
+      expect(formatter).toHaveBeenCalledTimes(1);
+    } finally {
+      formatter.mockRestore();
+    }
+  });
+
   it('translates missing-date captions before placing them beside article data', () => {
     const service = ideaPostsServiceWith(vi.fn());
     const post = { ...ideaPost('article'), submittedAtIso: '', updatedAtIso: '', createdAtIso: '' };

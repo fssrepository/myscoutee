@@ -1,3 +1,5 @@
+import { requestWithAbort } from '../../request-lifecycle';
+import { AppUtils } from '../../../base/app-utils';
 import { UiDateUtils, type ListQuery } from '@fssrepository/myscoutee-components';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
@@ -172,46 +174,7 @@ export class HttpRatesService implements IRatesService {
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      let settled = false;
-      let subscription: { unsubscribe: () => void } | null = null;
-      const cleanup = () => {
-        signal?.removeEventListener('abort', onAbort);
-      };
-      const onAbort = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        subscription?.unsubscribe();
-        cleanup();
-        reject(this.createAbortError());
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      subscription = request$.subscribe({
-        next: value => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(value);
-        },
-        error: error => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          reject(error);
-        },
-        complete: () => cleanup()
-      });
-    });
+    return requestWithAbort(request$, signal);
   }
 
   private throwIfAborted(signal?: AbortSignal): void {
@@ -349,32 +312,7 @@ export class HttpRatesService implements IRatesService {
     return error instanceof Error && error.name === 'AbortError';
   }
 
-  private cloneUser(user: UserDto): UserDto {
-    return {
-      ...user,
-      locationCoordinates: user.locationCoordinates
-        ? {
-            latitude: Number(user.locationCoordinates.latitude),
-            longitude: Number(user.locationCoordinates.longitude)
-          }
-        : undefined,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      activities: {
-        game: user.activities?.game ?? 0,
-        chats: user.activities?.chats ?? 0,
-        invitations: user.activities?.invitations ?? 0,
-        events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0,
-        cars: user.activities?.cars ?? 0,
-        accommodation: user.activities?.accommodation ?? 0,
-        supplies: user.activities?.supplies ?? 0,
-        tickets: user.activities?.tickets ?? 0,
-        contacts: user.activities?.contacts ?? 0,
-        feedback: user.activities?.feedback ?? 0
-      }
-    };
-  }
+  private cloneUser(user: UserDto): UserDto { return AppUtils.cloneUser(user); }
 
   private async syncUserRatesBatch(
     rates: readonly UserRateSyncPayloadDTO[],

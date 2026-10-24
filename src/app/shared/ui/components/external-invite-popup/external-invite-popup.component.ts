@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { Component, effect, inject, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { IntegrationService } from '../../../core/base/services/integrations/integration.service';
 import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
 import { PopupComponent, type PopupModel, CopyLinkComponent, I18nPipe } from '@fssrepository/myscoutee-components';
@@ -18,6 +18,7 @@ import { PopupComponent, type PopupModel, CopyLinkComponent, I18nPipe } from '@f
       </app-popup>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`.invite-link { min-width: 0; padding: .85rem; border: 1px solid #a6d5dd;
     border-radius: 12px; background: #edf9fa; color: #245963; } p { font-size: .85rem; }`]
 })

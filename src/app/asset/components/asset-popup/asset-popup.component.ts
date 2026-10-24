@@ -1,8 +1,8 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   UiLinkUtils,
   clampNumber,
   UiDateUtils,
-  ExplanationGuideService,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   InfoCardComponent,
@@ -39,7 +39,8 @@ import {
   ViewChild,
   effect,
   inject,
-  untracked
+  untracked,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   MatIconModule
@@ -149,9 +150,31 @@ type AssetPopupMenuContext =
   ],
   templateUrl: './asset-popup.component.html',
   styleUrl: './asset-popup.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [AppMenuDispatcher]
 })
 export class AssetPopupComponent {
+  private supplyRequestInventoryText(request: AppDTOs.AssetMemberRequestDTO, badge: boolean): string {
+    const quantityLabel = this.supplyRequestQuantityLabel(request);
+    const total = this.selectedSupplyTotalQuantity();
+    if (total <= 0) {
+      return this.translateTemplate(badge ? 'asset.requests.inventory.badge.no.quantity' : 'asset.requests.inventory.no.quantity', badge ? '{quantity} / no qty' : '{quantity} requested. No quantity configured.', {
+        quantity: quantityLabel
+      });
+    }
+    const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
+    if (remaining < 0) {
+      return this.translateTemplate(badge ? 'asset.requests.inventory.badge.over' : 'asset.requests.inventory.over', badge ? '{quantity} / {count} over' : '{quantity} requested. {count} over the limit for this time.', {
+        quantity: quantityLabel,
+        count: `${Math.abs(remaining)}`
+      });
+    }
+    return this.translateTemplate(badge ? 'asset.requests.inventory.badge.left' : 'asset.requests.inventory.left', badge ? '{quantity} / {count} left' : '{quantity} requested. {count} left for this time.', {
+      quantity: quantityLabel,
+      count: `${Math.max(0, remaining)}`
+    });
+  }
+
   private static readonly TICKET_POLL_INTERVAL_MS = 30_000;
 
   private readonly userProfileStore = inject(UserProfileStore);
@@ -472,19 +495,6 @@ export class AssetPopupComponent {
     }
   }
 
-  protected pendingOwnedAssetDeleteLabel(): string {
-    const pendingLabel = this.assetStore.pendingAssetDeleteLabel();
-    if (pendingLabel) {
-      return pendingLabel;
-    }
-    const pendingCardId = this.assetStore.pendingAssetDeleteCardId();
-    if (!pendingCardId) {
-      return '';
-    }
-    const card = this.assetStore.findAsset(pendingCardId);
-    return card ? `Delete ${card.title}?` : 'Delete this item?';
-  }
-
   protected assetPendingRequestCount(type = this.currentAssetSmartListType()): number {
     const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
       || this.userProfileStore.activeUserId().trim();
@@ -633,8 +643,8 @@ export class AssetPopupComponent {
     if (!context || this.resourcePopupStore.pendingAssignSaveRef()?.busy === true) {
       return false;
     }
-    const currentIds = [...this.currentAssignedAssetIds(context.subEventId, context.type)].sort();
-    const nextIds = [...this.normalizedSelectedAssignAssetIds(context.type)].sort();
+    const currentIds = [...this.currentAssignedAssetIds(context.subEventId, context.type)].sort(AppUtils.compareCodeUnits);
+    const nextIds = [...this.normalizedSelectedAssignAssetIds(context.type)].sort(AppUtils.compareCodeUnits);
     if (currentIds.length !== nextIds.length) {
       return true;
     }
@@ -1514,45 +1524,11 @@ export class AssetPopupComponent {
   }
 
   protected supplyRequestInventoryLabel(request: AppDTOs.AssetMemberRequestDTO): string {
-    const quantityLabel = this.supplyRequestQuantityLabel(request);
-    const total = this.selectedSupplyTotalQuantity();
-    if (total <= 0) {
-      return this.translateTemplate('asset.requests.inventory.no.quantity', '{quantity} requested. No quantity configured.', {
-        quantity: quantityLabel
-      });
-    }
-    const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
-    if (remaining < 0) {
-      return this.translateTemplate('asset.requests.inventory.over', '{quantity} requested. {count} over the limit for this time.', {
-        quantity: quantityLabel,
-        count: `${Math.abs(remaining)}`
-      });
-    }
-    return this.translateTemplate('asset.requests.inventory.left', '{quantity} requested. {count} left for this time.', {
-      quantity: quantityLabel,
-      count: `${Math.max(0, remaining)}`
-    });
+    return this.supplyRequestInventoryText(request, false);
   }
 
   protected supplyRequestInventoryBadgeLabel(request: AppDTOs.AssetMemberRequestDTO): string {
-    const quantityLabel = this.supplyRequestQuantityLabel(request);
-    const total = this.selectedSupplyTotalQuantity();
-    if (total <= 0) {
-      return this.translateTemplate('asset.requests.inventory.badge.no.quantity', '{quantity} / no qty', {
-        quantity: quantityLabel
-      });
-    }
-    const remaining = this.selectedSupplyRemainingQuantityForRequest(request);
-    if (remaining < 0) {
-      return this.translateTemplate('asset.requests.inventory.badge.over', '{quantity} / {count} over', {
-        quantity: quantityLabel,
-        count: `${Math.abs(remaining)}`
-      });
-    }
-    return this.translateTemplate('asset.requests.inventory.badge.left', '{quantity} / {count} left', {
-      quantity: quantityLabel,
-      count: `${Math.max(0, remaining)}`
-    });
+    return this.supplyRequestInventoryText(request, true);
   }
 
   protected supplyRequestInventoryState(request: AppDTOs.AssetMemberRequestDTO): 'available' | 'empty' | 'over' | 'unset' {
@@ -2162,18 +2138,7 @@ export class AssetPopupComponent {
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
-    nextSubEvent.carsAccepted = cars.joined;
-    nextSubEvent.carsPending = cars.pending;
-    nextSubEvent.carsCapacityMin = cars.capacityMin;
-    nextSubEvent.carsCapacityMax = cars.capacityMax;
-    nextSubEvent.accommodationAccepted = accommodation.joined;
-    nextSubEvent.accommodationPending = accommodation.pending;
-    nextSubEvent.accommodationCapacityMin = accommodation.capacityMin;
-    nextSubEvent.accommodationCapacityMax = accommodation.capacityMax;
-    nextSubEvent.suppliesAccepted = supplies.joined;
-    nextSubEvent.suppliesPending = supplies.pending;
-    nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
-    nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    ActivityResourceBuilder.assignCapacityMetrics(nextSubEvent, { cars: cars, accommodation: accommodation, supplies: supplies });
     // The successful replace response is the canonical metric snapshot. Local
     // derivation remains a fallback for non-persisting UI-only updates.
     nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
@@ -2335,19 +2300,7 @@ export class AssetPopupComponent {
   }
 
   private assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
-    const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
-    const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
-    if (!start || !end) {
-      return '';
-    }
-    const sameDay = start.toDateString() === end.toDateString();
-    const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    return sameDay
-      ? `${startDate} ${startTime} - ${endTime}`
-      : `${startDate} ${startTime} - ${endDate} ${endTime}`;
+    return ActivityResourceBuilder.assetRequestTimeframeLabel(startAtIso, endAtIso, ' ');
   }
 
   private async persistAssetRequests(ownerUserId: string, card: AppDTOs.AssetDTO): Promise<void> {
@@ -2357,10 +2310,7 @@ export class AssetPopupComponent {
     }
   }
 
-  private getSubEventAssignedAssetSettings(
-    subEventId: string,
-    type: AppConstants.AssetType
-  ): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
+  private getSubEventAssignedAssetSettings(subEventId: string, type: AppConstants.AssetType): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
     const key = this.assetAssignmentKey(subEventId, type);
     const assignedIds = this.currentAssignedAssetIds(subEventId, type);
     const existing = this.resourcePopupStore.assignedAssetSettingsByKey[key] ?? {};
@@ -2371,13 +2321,8 @@ export class AssetPopupComponent {
         continue;
       }
       const previous = existing[assetId];
-      const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = clampNumber(Math.trunc(previous?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = clampNumber(Math.trunc(previous?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
-        capacityMin,
-        capacityMax,
-        quantity: Math.max(1, Math.trunc(Number(previous?.quantity) || 1)),
+        ...AssetCardBuilder.assignedAssetCapacities(source, previous),
         addedByUserId: previous?.addedByUserId ?? this.userProfileStore.activeUserId().trim(),
         routeEnabled: previous?.routeEnabled ?? this.normalizeAssetRoutes(type, this.assetRoutes(source, previous?.routes)).length > 0,
         routes: this.normalizeAssetRoutes(type, this.assetRoutes(source, previous?.routes))

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import {
@@ -21,6 +21,7 @@ export interface GroupFormModel {
   standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent],
   templateUrl: './event-subevent-group-form-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./event-subevent-group-form-popup.component.scss']
 })
 export class EventSubeventGroupFormPopupComponent {
@@ -37,7 +38,7 @@ export class EventSubeventGroupFormPopupComponent {
   };
 
   @Output() readonly save = new EventEmitter<Event>();
-  @Output() readonly cancel = new EventEmitter<Event>();
+  @Output() readonly cancelled = new EventEmitter<Event>();
   @Output() readonly modelChange = new EventEmitter<GroupFormModel>();
 
   protected groupPopupModel(): PopupModel<unknown> {
@@ -59,7 +60,7 @@ export class EventSubeventGroupFormPopupComponent {
         items: this.saveMenuItems(),
         closeOnSelect: false
       }],
-      onClose: event => this.cancel.emit(event),
+      onClose: event => this.cancelled.emit(event),
       onMenuSelect: event => this.onSaveMenuSelect(event)
     };
   }

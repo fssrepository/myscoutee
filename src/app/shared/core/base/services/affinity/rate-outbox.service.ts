@@ -12,7 +12,7 @@ import {
   BaseUserRatesMapper,
   type UserRateGameCardPairRecordDTO,
   type UserRateGameCardRecordDTO
-} from '../../mappers';
+} from '../../mappers/affinity/rate.mapper';
 import { RateOutboxRepository } from '../../repositories/affinity/rate-outbox.repository';
 import { BaseRouteModeService } from '../platform/base-route-mode.service';
 
@@ -60,35 +60,7 @@ export class RateOutboxService extends BaseRouteModeService {
   }
 
   queryPendingRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
-    const normalizedRaterId = raterUserId.trim();
-    if (!normalizedRaterId) {
-      return [];
-    }
-    const ratedUserIds = new Set<string>();
-    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
-      if (record.ownerUserId?.trim() !== normalizedRaterId) {
-        continue;
-      }
-      const item = BaseUserRatesMapper.toDto(record);
-      if (!this.shouldExcludePendingItemFromHome(item)) {
-        continue;
-      }
-      if (mode === 'single' && item.mode !== 'individual') {
-        continue;
-      }
-      if (mode !== 'single' && item.mode !== 'pair') {
-        continue;
-      }
-      const primaryUserId = item.userId.trim();
-      const secondaryUserId = item.secondaryUserId?.trim() ?? '';
-      if (primaryUserId && primaryUserId !== normalizedRaterId) {
-        ratedUserIds.add(primaryUserId);
-      }
-      if (secondaryUserId && secondaryUserId !== normalizedRaterId) {
-        ratedUserIds.add(secondaryUserId);
-      }
-    }
-    return [...ratedUserIds];
+    return BaseUserRatesMapper.pendingRatedGameCardUserIds(this.rateOutboxRepository.queryPendingUserRateRecords(), raterUserId, mode);
   }
 
   queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {

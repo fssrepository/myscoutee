@@ -3,6 +3,14 @@
 @include ui.form-controls();
 @include ui.interactive-motion();
 
+.experience-form-grid > .subevent-asset-view-field {
+  display: grid;
+  grid-template-rows: min-content;
+  gap: 0;
+  font-weight: 600;
+  color: rgba(26, 44, 69, 0.88);
+}
+
 .subevent-asset-view-content {
   position: relative;
   display: flex;
@@ -554,7 +562,7 @@
     row-gap: 0.72rem;
   }
 
-  .subevent-asset-view-content .subevent-asset-view-grid.experience-form-grid > label,
+  .subevent-asset-view-content .subevent-asset-view-grid.experience-form-grid > :is(label, .subevent-asset-view-field),
   .subevent-asset-view-content .subevent-asset-view-grid .experience-description-field,
   .subevent-asset-view-content .subevent-asset-view-summary-panel {
     grid-column: 1 / -1;

@@ -2,6 +2,8 @@
 export const AUTH_MODES = ['selector', 'firebase'] as const;
 export type AuthMode = typeof AUTH_MODES[number];
 
+export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
+
 // Activity
 export const ACTIVITY_MEMBER_STATUSES = ['pending', 'accepted', 'disqualified', 'removed', 'deleted', 'blocked'] as const;
 export type ActivityMemberStatus = typeof ACTIVITY_MEMBER_STATUSES[number];
@@ -205,3 +207,27 @@ export type DetailPrivacy = typeof DETAIL_PRIVACIES[number];
 // User
 export const USER_GENDERS = ['woman', 'man'] as const;
 export type UserGender = typeof USER_GENDERS[number];
+
+// Defaults used by cached data mappers as well as demo builders.
+export const ASSET_TYPE_LABELS: Record<AssetFilterType, string> = {
+  [ASSET_TYPE_TRANSPORT]: ASSET_TYPE_TRANSPORT,
+  [ASSET_TYPE_ACCOMMODATION]: ASSET_TYPE_ACCOMMODATION,
+  [ASSET_TYPE_SUPPLIES]: ASSET_TYPE_SUPPLIES,
+  [ASSET_FILTER_TICKET]: ASSET_FILTER_TICKET
+};
+export const ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE: Record<AssetType, AssetCategory[]> = {
+  [ASSET_TYPE_TRANSPORT]: [...ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_TRANSPORT]],
+  [ASSET_TYPE_ACCOMMODATION]: [...ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_ACCOMMODATION]],
+  [ASSET_TYPE_SUPPLIES]: [...ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_SUPPLIES]]
+};
+export const ACTIVITY_MEMBER_MET_PLACES = [
+  'City Center Meetup',
+  'Board Game Night',
+  'Coffee Social',
+  'Hiking Group',
+  'Music Event',
+  'Brunch Table'
+];
+export const ACTIVITY_MEMBER_DEFAULTS = {
+  forcedMetWhere: 'Event Explore'
+};

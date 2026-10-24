@@ -245,7 +245,8 @@ export class SessionService {
     }
   }
 
-  async startFirebaseSession(request: FirebaseAuthRequestDto = { provider: 'google' }): Promise<AppSession | null> {
+  async startFirebaseSession(request?: FirebaseAuthRequestDto): Promise<AppSession | null> {
+    request ??= { provider: 'google' };
     if (this.firebaseBusyRef()) {
       return null;
     }
@@ -259,8 +260,9 @@ export class SessionService {
   }
 
   async startAuthSession(
-    request: FirebaseAuthRequestDto = { provider: 'google' }
+    request?: FirebaseAuthRequestDto
   ): Promise<AppSession | null> {
+    request ??= { provider: 'google' };
     if (!this.isOperatorBootstrapCandidate(request)) {
       return this.startFirebaseSession(request);
     }

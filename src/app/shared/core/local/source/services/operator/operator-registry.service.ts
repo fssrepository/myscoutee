@@ -1,3 +1,6 @@
+import { OperatorSettlementBuilder } from '../../../../base/builders/operator/operator-settlement.builder';
+import { AppUtils } from '../../../../base/app-utils';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { LocalRoleNotificationsService } from '../notifications/role-notifications.service';
 import { Injectable, inject } from '@angular/core';
 
@@ -165,7 +168,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         baseUrl: draft.baseUrl,
         registryScope: draft.registryScope,
         registryIdentity: {
-          identityEndpoint: `${draft.baseUrl.replace(/\/+$/, '')}/v1/registry/identity`,
+          identityEndpoint: `${AppUtils.trimEndCharacters(draft.baseUrl, "/")}/v1/registry/identity`,
           protocolVersion: '1',
           registryScope: draft.registryScope
         },
@@ -211,7 +214,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         baseUrl,
         registryScope,
         registryIdentity: {
-          identityEndpoint: `${baseUrl.replace(/\/+$/, '')}/v1/registry/identity`,
+          identityEndpoint: `${AppUtils.trimEndCharacters(baseUrl, "/")}/v1/registry/identity`,
           protocolVersion: '1',
           registryScope
         },
@@ -1284,80 +1287,36 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     throw new Error('operator.revenue.delivery.requeue.unavailable');
   }
 
-  async settlementPage(
-    query: ListQuery<OperatorSettlementFilters>,
-    signal?: AbortSignal
-  ): Promise<OperatorSettlementPageDto> {
+  async settlementPage(query: ListQuery<OperatorSettlementFilters>, signal?: AbortSignal): Promise<OperatorSettlementPageDto> {
     signal?.throwIfAborted();
     const [, response] = await Promise.all([
-      this.waitForOperatorRouteDelay(
-      OPERATOR_REVENUE_SETTLEMENTS_ROUTE,
-      signal
-    ),
+      this.waitForOperatorRouteDelay(OPERATOR_REVENUE_SETTLEMENTS_ROUTE, signal),
       (async (): Promise<OperatorSettlementPageDto> => {
-        const pageSize = Math.max(
-          1,
-          Math.min(100, Math.trunc(Number(query.pageSize) || 10))
-        );
-        const currencyCode =
-          `${query.filters?.currencyCode ?? ''}`.trim().toUpperCase();
-        const fromPeriod = `${query.filters?.fromPeriod ?? ''}`.trim();
-        const throughPeriod = `${query.filters?.throughPeriod ?? ''}`.trim();
-        if (currencyCode && !/^[A-Z]{3}$/.test(currencyCode)) {
-          throw new Error('operator.revenue.settlement.currency.invalid');
-        }
-        if (
-          (fromPeriod && !this.validSettlementPeriod(fromPeriod))
-          || (throughPeriod && !this.validSettlementPeriod(throughPeriod))
-          || (fromPeriod && throughPeriod && fromPeriod > throughPeriod)
-        ) {
-          throw new Error('operator.revenue.settlement.period.invalid');
-        }
-        const cursor = this.decodeSettlementCursor(query.cursor);
+        const { limit: pageSize, currencyCode, fromPeriod, throughPeriod, cursor } = OperatorSettlementBuilder.queryFilters(query);
         const stored = await this.readStored();
         const settlements = stored.settlements ?? [];
-        const generatedAtIso = settlements.reduce(
-          (latest, item) =>
-            item.acceptedAtIso > latest ? item.acceptedAtIso : latest,
-          ''
-        );
-        const superseded = new Set(
-          settlements
-            .map(item => item.supersedesSettlementId?.trim() ?? '')
-            .filter(Boolean)
-        );
+        const generatedAtIso = settlements.reduce((latest, item) => item.acceptedAtIso > latest ? item.acceptedAtIso : latest, '');
+        const superseded = new Set(settlements
+          .map(item => item.supersedesSettlementId?.trim() ?? '')
+          .filter(Boolean));
         const filtered = settlements
-          .filter(item =>
-            (!currencyCode || item.currencyCode === currencyCode)
+          .filter(item => (!currencyCode || item.currencyCode === currencyCode)
             && (!fromPeriod || item.period >= fromPeriod)
             && (!throughPeriod || item.period <= throughPeriod)
-            && (
-              query.filters?.includeSuperseded === true
-              || !superseded.has(item.settlementId)
-            )
-            && (
-              !cursor
+            && (query.filters?.includeSuperseded === true
+              || !superseded.has(item.settlementId))
+            && (!cursor
               || item.period < cursor.afterPeriod
-              || (
-                item.period === cursor.afterPeriod
-                && item.settlementId > cursor.afterSettlementId
-              )
-            )
-          )
-          .sort((left, right) =>
-            right.period.localeCompare(left.period)
-            || left.settlementId.localeCompare(right.settlementId)
-          );
+              || (item.period === cursor.afterPeriod
+                && item.settlementId > cursor.afterSettlementId)))
+          .sort((left, right) => right.period.localeCompare(left.period)
+            || left.settlementId.localeCompare(right.settlementId));
         const items = filtered.slice(0, pageSize);
         const last = items.at(-1) ?? null;
         const nextCursor = filtered.length > items.length && last
-          ? this.encodeSettlementCursor(
-              last.period,
-              last.settlementId
-            )
+          ? this.encodeSettlementCursor(last.period, last.settlementId)
           : null;
-        const pageOffset =
-          Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+        const pageOffset = Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
         return {
           items: structuredClone(items),
           total: pageOffset + items.length + (nextCursor ? 1 : 0),
@@ -1512,7 +1471,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       || !normalized.website
       || !normalized.verificationContactName
       || !normalized.verificationContactRole
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.verificationContactEmail)
+      || !AppUtils.isEmail(normalized.verificationContactEmail)
       || !normalized.authorityAttested
     ) {
       throw new Error('operator.claim.verification.error.required');
@@ -1626,37 +1585,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     afterPeriod: string;
     afterSettlementId: string;
   } | null {
-    const normalized = `${cursor ?? ''}`.trim();
-    if (!normalized) {
-      return null;
-    }
-    if (!normalized.startsWith('operator-settlement:')) {
-      throw new Error('operator.revenue.settlement.cursor.invalid');
-    }
-    try {
-      const parsed = JSON.parse(decodeURIComponent(
-        normalized.slice('operator-settlement:'.length)
-      )) as {
-        afterPeriod?: unknown;
-        afterSettlementId?: unknown;
-      };
-      const afterPeriod = `${parsed.afterPeriod ?? ''}`.trim();
-      const afterSettlementId =
-        `${parsed.afterSettlementId ?? ''}`.trim();
-      if (
-        !this.validSettlementPeriod(afterPeriod)
-        || !/^stl_[0-9a-f]{32}$/.test(afterSettlementId)
-      ) {
-        throw new Error();
-      }
-      return { afterPeriod, afterSettlementId };
-    } catch {
-      throw new Error('operator.revenue.settlement.cursor.invalid');
-    }
+    return OperatorSettlementBuilder.decodeSettlementCursor(cursor);
   }
 
   private validSettlementPeriod(value: string): boolean {
-    return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+    return OperatorSettlementBuilder.validSettlementPeriod(value);
   }
 
   private async waitForOperatorRouteDelay(
@@ -1697,8 +1630,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   private createToken(prefix: string): string {
-    const random = globalThis.crypto?.randomUUID?.().replaceAll('-', '')
-      ?? `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+    const random = secureRandomUuid().replaceAll('-', '');
     return `${prefix}_${random}`;
   }
 

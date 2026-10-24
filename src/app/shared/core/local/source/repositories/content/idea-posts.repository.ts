@@ -1,3 +1,5 @@
+import { LocalIdeaPostsMapper } from '../../mappers/content/idea-post.mapper';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { IDEA_POSTS_TABLE_NAME } from '../../entity/content/content.entity';
 import type { IdeaPostsTable } from '../../entity/content/content.entity';
 import { Injectable, inject } from '@angular/core';
@@ -35,7 +37,7 @@ export class LocalIdeaPostsRepository {
   }
 
   createPostId(): string {
-    return `idea-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `idea-${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 
   savePostSnapshot(record: IdeaPostDto): IdeaPostDto {
@@ -224,28 +226,7 @@ export class LocalIdeaPostsRepository {
   }
 
   private countAdminPosts(posts: readonly IdeaPostDto[]): IdeaPostAdminCountsDto {
-    return posts.reduce<IdeaPostAdminCountsDto>((counts, post) => {
-      if (post.trashed) {
-        counts.trashed += 1;
-        return counts;
-      }
-      counts.all += 1;
-      if (post.featured) {
-        counts.featured += 1;
-      }
-      if (post.published) {
-        counts.published += 1;
-      } else {
-        counts.drafts += 1;
-      }
-      return counts;
-    }, {
-      all: 0,
-      featured: 0,
-      published: 0,
-      drafts: 0,
-      trashed: 0
-    });
+    return LocalIdeaPostsMapper.countPosts(posts);
   }
 
   private normalizeAdminStatus(value: string | null | undefined): string {

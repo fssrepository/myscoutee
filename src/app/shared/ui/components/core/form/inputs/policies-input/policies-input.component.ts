@@ -1,3 +1,4 @@
+import { ActivityEventDetailDTO } from '../../../../../../core/contracts/common/activity.interface';
 import { I18nService } from '../../../../../../core/base/services/localization/i18n.service';
 import {
   AppMenuComponent,
@@ -541,16 +542,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
     };
   }
 
-  private normalizePolicies(items: readonly PolicyInputModel[]): PolicyInputModel[] {
-    return items
-      .map((item, index) => ({
-        id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
-        title: `${item.title ?? ''}`.trim() || `Policy ${index + 1}`,
-        description: `${item.description ?? ''}`.trim(),
-        required: item.required !== false
-      }))
-      .filter(item => item.id || item.title || item.description);
-  }
+  private normalizePolicies(items: readonly PolicyInputModel[]): PolicyInputModel[] { return ActivityEventDetailDTO.normalizePolicies(items); }
 
   private clonePolicies(items: readonly PolicyInputModel[]): PolicyInputModel[] {
     return items.map(item => ({ ...item }));

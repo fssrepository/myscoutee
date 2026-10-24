@@ -1,5 +1,8 @@
 // Constructor modules only. Importing this table does not load a popup.
 export const POPUP_ADAPTER = {
+  DOCUMENT_VIEWER: 'src/app/shared/ui/components/document-viewer/document-viewer.component.ts',
+  APP_SETUP: 'src/app/shared/ui/components/app-setup-popup/app-setup-popup.component.ts',
+  PAYMENT_AUTHORIZATION: 'src/app/shared/ui/components/payment-authorization-popup/payment-authorization-popup.component.ts',
   OPERATOR_ACTION_POPUP: 'src/app/operator/components/operator-action-popup/operator-action-popup.component.ts',
   OPERATOR_REGISTRY_POPUP: 'src/app/operator/components/operator-registry-popup/operator-registry-popup.component.ts',
   ADMIN_MONITORING_POPUP: 'src/app/admin/components/monitoring-popup/admin-monitoring-popup.component.ts',
@@ -47,6 +50,9 @@ export const POPUP_ADAPTER = {
 } as const;
 
 export const POPUP_ADAPTER_LOADERS = {
+  [POPUP_ADAPTER.DOCUMENT_VIEWER]: () => import('../components/document-viewer/document-viewer.component'),
+  [POPUP_ADAPTER.APP_SETUP]: () => import('../components/app-setup-popup/app-setup-popup.component'),
+  [POPUP_ADAPTER.PAYMENT_AUTHORIZATION]: () => import('../components/payment-authorization-popup/payment-authorization-popup.component'),
   [POPUP_ADAPTER.OPERATOR_ACTION_POPUP]: () => import('../../../operator/components/operator-action-popup/operator-action-popup.component'),
   [POPUP_ADAPTER.OPERATOR_REGISTRY_POPUP]: () => import('../../../operator/components/operator-registry-popup/operator-registry-popup.component'),
   [POPUP_ADAPTER.ADMIN_MONITORING_POPUP]: () => import('../../../admin/components/monitoring-popup/admin-monitoring-popup.component'),
@@ -94,6 +100,12 @@ export const POPUP_ADAPTER_LOADERS = {
 };
 
 export type PopupAdapterKey = keyof typeof POPUP_ADAPTER_LOADERS;
+// These public surfaces use the guide's data, without workspace adapters.
+export const PUBLIC_POPUP_ADAPTERS: ReadonlySet<PopupAdapterKey> = new Set([
+  POPUP_ADAPTER.DOCUMENT_VIEWER,
+  POPUP_ADAPTER.APP_SETUP,
+  POPUP_ADAPTER.PAYMENT_AUTHORIZATION,
+]);
 export type PopupAdapterModule<K extends PopupAdapterKey> = Awaited<ReturnType<(typeof POPUP_ADAPTER_LOADERS)[K]>>;
 
 // Outgoing module calls prepared during the visible list's first load.

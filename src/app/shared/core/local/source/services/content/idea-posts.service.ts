@@ -1,3 +1,4 @@
+import { HelpCenterContentBuilder } from '../../../../base/builders/help/help-center-content.builder';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../../common/content-languages.json';
 import { LocalUsersRepository } from "../../repositories/accounts/users.repository";
 import type { IdeaPostsTable } from '../../entity/content/content.entity';
@@ -228,32 +229,19 @@ export class LocalIdeaPostsService {
   }
 
   private normalizeLang(lang: string | null | undefined): string {
-    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
+    return HelpCenterContentBuilder.normalizeLang(lang);
   }
 
   private requestContentLang(lang: string | null | undefined): string {
-    const explicit = this.supportedContentLang(lang);
-    if (explicit) {
-      return explicit;
-    }
-    return this.supportedContentLang(this.browserLanguage()) || 'en';
+    return HelpCenterContentBuilder.requestContentLanguage(lang, APP_STATIC_DATA.contentLanguages.map(language => ({ lang: this.normalizeLang(language.lang) })));
   }
 
   private browserLanguage(): string {
-    const languages = this.browserLanguages()
-      .map(value => this.normalizeRequestLanguage(value))
-      .filter(Boolean);
-    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
+    return HelpCenterContentBuilder.browserLanguage();
   }
 
   private browserLanguages(): string[] {
-    if (typeof navigator === 'undefined') {
-      return [];
-    }
-    return Array.isArray(navigator.languages) && navigator.languages.length > 0
-      ? navigator.languages
-      : [navigator.language];
+    return HelpCenterContentBuilder.browserLanguages();
   }
 
   private supportedContentLang(lang: string | null | undefined): string | null {
@@ -264,14 +252,7 @@ export class LocalIdeaPostsService {
   }
 
   private normalizeRequestLanguage(lang: string | null | undefined): string {
-    const normalized = `${lang ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
-    return normalized;
+    return HelpCenterContentBuilder.normalizeRequestLanguage(lang);
   }
 
   private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {

@@ -1,7 +1,7 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   scheduleFrequencyPalette,
-  ExplanationGuideService,
   PopupComponent,
   type PopupModel,
   SmartListComponent,
@@ -19,7 +19,7 @@ import {
 import { CommunityCaseQuotationsComponent } from './community-case-quotations.component';
 import { CommunityCaseBoardComponent } from './community-case-board.component';
 
-import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
+import { Component, ViewChild, effect, inject, untracked, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { defer, map } from 'rxjs';
 
 import { CommunityCasesStore } from '../../context/stores/community/community-cases.store';
@@ -32,6 +32,7 @@ import { CommunityCaseConverter, type CommunityCaseCalendarCard } from '../../co
 
 @Component({ selector: 'app-community-cases-popup', standalone: true,
   imports: [PopupComponent, SmartListEmptyStateComponent, SmartListComponent, InfoCardComponent, SingleRowComponent, CommunityCaseEditorComponent, CommunityCaseBoardComponent, CommunityCaseQuotationsComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `@if (store.session(); as session) {
     @if (session.list) {
     <app-popup [model]="model()" [zIndex]="14000" data-guide-context="community-cases">

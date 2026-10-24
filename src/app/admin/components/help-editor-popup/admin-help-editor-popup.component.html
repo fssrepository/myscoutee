@@ -30,7 +30,7 @@
                             <div class="help-editor-revision-toggle help-editor-draft-toggle">
                               <span class="help-editor-version-pill help-editor-draft-version-pill">{{ draftVersionLabel() }}</span>
                               <span class="help-editor-revision-copy help-editor-draft-title-wrap">
-                                <input
+                                <input [attr.aria-label]="'admin.help.revision.title.aria' | i18n"
                                   class="help-editor-draft-title-input" data-guide-field="revision-title"
                                   type="text"
                                   name="helpTitle"
@@ -114,7 +114,7 @@
                                   ></app-menu>
                                 </div>
                                 @if (documentKind === 'explanation') {
-                                  <label class="help-editor-inline-field help-editor-context-field">
+                                  <div class="help-editor-inline-field help-editor-context-field">
                                     <span>{{ uiText('Canonical screen') }}</span>
                                     <app-menu
                                       kind="select"
@@ -124,7 +124,7 @@
                                       [closeOnSelect]="true"
                                       (itemSelect)="onContextMenuSelect($event)"
                                     ></app-menu>
-                                  </label>
+                                  </div>
                                 }
                                 <div class="help-editor-description-line">
                                   <label class="help-editor-inline-field help-editor-inline-field-compact">
@@ -267,7 +267,7 @@
                                         ></app-image-carousel>
                                       }
                                       @if (section.mode === 'html') {
-                                        <textarea
+                                        <textarea [attr.aria-label]="'admin.help.section.html.placeholder' | i18n"
                                           class="help-editor-html-textarea" data-guide-field="section-html"
                                           [name]="'sectionHtml' + sectionIndex"
                                           [(ngModel)]="section.contentHtml"

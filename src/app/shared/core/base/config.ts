@@ -1,3 +1,4 @@
+import { AppUtils } from './app-utils';
 export interface RouteConfigEntry {
   routePrefix: string;
   demoDelayMs?: number;
@@ -31,6 +32,10 @@ export interface ResolvedRouteConfig {
   http: boolean;
 }
 
+function demoRoutes(...routePrefixes: string[]): RouteConfigEntry[] {
+  return routePrefixes.map(routePrefix => ({ routePrefix, demoDelayMs: 1500 }));
+}
+
 export const ROUTE_CONFIG: RouteConfig = {
   defaultDemoDelayMs: 1500,
   defaultRequestTimeoutMs: 3000,
@@ -41,34 +46,12 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500,
       requestTimeoutMs: 3000
     },
-    {
-      routePrefix: '/auth/demo-users',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/auth/me',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/auth/demo-users', '/auth/me'),
     {
       routePrefix: '/auth/me/onboarding-draft-autosave',
       intervalMs: 30000
     },
-    {
-      routePrefix: '/auth/me/feedback',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/auth/me/experiences',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/auth/me/preferences',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/auth/me/report-user',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/auth/me/feedback', '/auth/me/experiences', '/auth/me/preferences', '/auth/me/report-user'),
     {
       routePrefix: '/auth/me/realtime/long-poll',
       demoDelayMs: 0,
@@ -81,154 +64,7 @@ export const ROUTE_CONFIG: RouteConfig = {
       intervalMs: 30000,
       demoIntervalMs: 10000
     },
-    {
-      routePrefix: '/auth/me/logout',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/auth/me/delete',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/help',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/help/active',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/privacy',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/privacy/active',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/privacy/consents',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/terms',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/terms/active',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/explanation',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/explanation/active',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/landing/content',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/landing/articles',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/help',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/help/revisions',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/privacy',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/privacy/revisions',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/explanation',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/explanation/revisions',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/ideas',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/reports',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/reports/blocked-users',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/reports/warn',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/reports/block',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/reports/unblock',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/feedback',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/notifications',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/notifications/save',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/notifications/run',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/params',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/params/save',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/params/history',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/params/revert',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/stats',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/affinity-graph',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/admin/monitoring',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/auth/me/logout', '/auth/me/delete', '/help', '/help/active', '/privacy', '/privacy/active', '/privacy/consents', '/terms', '/terms/active', '/explanation', '/explanation/active', '/landing/content', '/landing/articles', '/admin', '/admin/help', '/admin/help/revisions', '/admin/privacy', '/admin/privacy/revisions', '/admin/explanation', '/admin/explanation/revisions', '/admin/ideas', '/admin/reports', '/admin/reports/blocked-users', '/admin/reports/warn', '/admin/reports/block', '/admin/reports/unblock', '/admin/feedback', '/admin/notifications', '/admin/notifications/save', '/admin/notifications/run', '/admin/params', '/admin/params/save', '/admin/params/history', '/admin/params/revert', '/admin/stats', '/admin/affinity-graph', '/admin/monitoring'),
     {
       routePrefix: '/operator/registry',
       demoDelayMs: 1500,
@@ -239,25 +75,11 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500,
       requestTimeoutMs: 30000
     },
-    {
-      routePrefix: '/game-cards/query',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/activities/chats',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/game-cards/query', '/activities/chats'),
     {
       routePrefix: '/admin/content-moderation', demoDelayMs: 1500, intervalMs: 60000, demoIntervalMs: 60000
     },
-    {
-      routePrefix: '/activities/feed',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/activities/events',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/activities/feed', '/activities/events'),
     {
       routePrefix: '/activities/events/explore',
       demoDelayMs: 1500,
@@ -274,48 +96,14 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500,
       requestTimeoutMs: 120000
     },
-    {
-      routePrefix: '/activities/events/checkout',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/feedback',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/activities/events/subevent-resources',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/activities/events/members',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/activities/events/invite-candidates',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/activities/rates',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/activities/events/checkout', '/feedback', '/activities/events/subevent-resources', '/activities/events/members', '/activities/events/invite-candidates', '/activities/rates'),
     {
       routePrefix: '/notifications',
       demoDelayMs: 1500,
       intervalMs: 30000,
       demoIntervalMs: 10000
     },
-    {
-      routePrefix: '/assets',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/assets/availability',
-      demoDelayMs: 1500
-    },
-    {
-      routePrefix: '/assets/tickets',
-      demoDelayMs: 1500
-    },
+    ...demoRoutes('/assets', '/assets/availability', '/assets/tickets'),
     {
       routePrefix: '/media/images/import',
       demoDelayMs: 1500,
@@ -331,10 +119,7 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500,
       requestTimeoutMs: 20000
     },
-    {
-      routePrefix: '/navigator/contacts',
-      demoDelayMs: 1500
-    }
+    ...demoRoutes('/navigator/contacts')
   ]
 };
 
@@ -380,7 +165,7 @@ function normalizeRouteUrl(url: string): string {
   if (!trimmed || trimmed === '/') {
     return '/';
   }
-  return trimmed.startsWith('/') ? trimmed.replace(/\/+$/, '') : `/${trimmed}`.replace(/\/+$/, '');
+  return trimmed.startsWith('/') ? AppUtils.trimEndCharacters(trimmed, "/") : AppUtils.trimEndCharacters(`/${trimmed}`, "/");
 }
 
 function isRoutePrefixMatch(url: string, prefix: string): boolean {

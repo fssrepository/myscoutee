@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -17,7 +18,7 @@ export class HttpDeploymentConfigurationService
   implements DeploymentConfigurationServiceContract {
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+  private readonly apiBaseUrl = AppUtils.trimEndCharacters((environment.apiBaseUrl ?? '/api'), "/");
 
   async loadBranding(): Promise<DeploymentConfigurationDto> {
     const response = await this.routeDelay.withRequestTimeout(

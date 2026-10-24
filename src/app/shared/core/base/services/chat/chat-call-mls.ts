@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import type * as MLS from '@wireapp/core-crypto/browser';
 
 let library: Promise<typeof MLS> | undefined;
@@ -112,8 +113,8 @@ export class ChatCallMls {
   memberIds(): Promise<string[]> { return this.run(async () => (await this.core.getClientIds(this.conversation)).map(client => client.deserialize().userId.toString())); }
   validateMembers(ids: readonly string[]): Promise<void> { return this.run(() => this.assertMembers(ids)); }
   private async assertMembers(ids: readonly string[]): Promise<void> {
-    const current = (await this.core.getClientIds(this.conversation)).map(client => client.deserialize().userId.toString()).sort();
-    if (JSON.stringify(current) !== JSON.stringify([...ids].sort())) throw new Error('MLS roster identity mismatch.');
+    const current = (await this.core.getClientIds(this.conversation)).map(client => client.deserialize().userId.toString()).sort(AppUtils.compareCodeUnits);
+    if (JSON.stringify(current) !== JSON.stringify([...ids].sort(AppUtils.compareCodeUnits))) throw new Error('MLS roster identity mismatch.');
   }
   encrypt(payload: object): Promise<string> {
     return this.run(() => this.core.transaction(async ctx => encodeCallBytes(await ctx.encryptMessage(this.conversation, bytes(JSON.stringify(payload))))));

@@ -103,7 +103,7 @@
       [view]="definitionFormView"
       [model]="definitionFormModelValue"
       (save)="saveDefinitionForm($event)"
-      (cancel)="cancelDefinitionForm($event)"
+      (cancelled)="cancelDefinitionForm($event)"
     ></app-event-subevent-stage-form-popup>
   }
 
@@ -115,7 +115,7 @@
       [allowRoundIncrease]="allowMingleRoundIncrease"
       [minimumPlannedRounds]="minimumMinglePlannedRounds"
       (save)="saveMingleConfiguration($event)"
-      (cancel)="closeMingleConfiguration($event)"
+      (cancelled)="closeMingleConfiguration($event)"
     ></app-event-mingle-configuration-popup>
   }
 </section>

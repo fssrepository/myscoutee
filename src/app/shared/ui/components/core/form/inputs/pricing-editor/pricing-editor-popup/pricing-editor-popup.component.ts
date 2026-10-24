@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -7,29 +7,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-
-import { PricingBuilder } from '../../../../../../../core/base/builders';
-import type * as ContractTypes from '../../../../../../../core/contracts';
-import {
-  I18nPipe,
-  PopupComponent,
-  type PopupAction,
-  type PopupActionEvent,
-  type PopupModel,
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  AppMenuTriggerComponent
-} from '@fssrepository/myscoutee-components';
+import { I18nPipe, PopupComponent, AppMenuDispatcher, AppMenuOutletComponent, AppMenuTriggerComponent } from '@fssrepository/myscoutee-components';
 import { PricingSlotPanelComponent } from '../pricing-slot-panel';
-import {
-  FormFlowPopupStore,
-  type FormFlowPricingEditorPopupState
-} from '../../../flow/form-flow-popup.store';
-
-import {
-  PricingEditorInputComponent,
-  type PricingEditorConfig
-} from '../pricing-editor.component';
+import { PricingEditorInputComponent } from '../pricing-editor.component';
 
 @Component({
   selector: 'app-pricing-editor-popup',
@@ -49,7 +29,7 @@ import {
     PricingSlotPanelComponent,
     I18nPipe
   ],
-  templateUrl: './pricing-editor-popup.component.html',
+  templateUrl: '../pricing-editor.component.html',
   styleUrls: [
     '../pricing-editor.component.scss',
     './pricing-editor-popup.component.scss'
@@ -57,111 +37,9 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [AppMenuDispatcher]
 })
-export class PricingEditorPopupComponent extends PricingEditorInputComponent implements OnChanges {
-  @Input() popup: FormFlowPricingEditorPopupState | null = null;
-
-  protected draftValue: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
-  protected showPricingInfoPanel = true;
-
-  private locallyDirty = false;
-  private originalValue: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
-  private readonly popupStore = inject(FormFlowPopupStore);
-
+export class PricingEditorPopupComponent extends PricingEditorInputComponent {
+  protected override readonly popupPresentation = true;
   constructor() {
     super(inject(ChangeDetectorRef));
-  }
-
-  override ngOnChanges(changes: SimpleChanges): void {
-    if (!changes['popup'] || !this.popup) {
-      super.ngOnChanges(changes);
-      return;
-    }
-    this.config = this.popupEditorConfig(this.popup);
-    this.readOnly = this.popup.readOnly;
-    this.disabled = this.popup.readOnly;
-    super.ngOnChanges({ config: changes['popup'] });
-    this.writeValue(PricingBuilder.clonePricingConfig(this.popup.value as ContractTypes.PricingConfig));
-    this.originalValue = PricingBuilder.clonePricingConfig(this.workingPricing);
-    this.draftValue = PricingBuilder.clonePricingConfig(this.workingPricing);
-    this.locallyDirty = false;
-  }
-
-  protected override afterPricingChange(nextPricing: ContractTypes.PricingConfig): void {
-    this.draftValue = PricingBuilder.clonePricingConfig(nextPricing);
-    this.locallyDirty = this.hasDraftChanges();
-  }
-
-  protected pricingPopupModel(popup: FormFlowPricingEditorPopupState): PopupModel {
-    return {
-      title: popup.title,
-      subtitle: popup.subtitle,
-      ariaLabel: 'pricing.setup.wizard.aria',
-      closeAriaLabel: 'pricing.setup.close.aria',
-      size: 'wide',
-      height: 'full',
-      headerTone: 'accent',
-      bodyLayout: 'fill',
-      backdropTone: 'dim',
-      headerActions: this.pricingPopupHeaderActions(popup),
-      onClose: event => this.close(popup, event),
-      onAction: event => this.onPricingPopupAction(popup, event)
-    };
-  }
-
-  private close(popup: FormFlowPricingEditorPopupState, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.popupStore.requestPricingEditorPopupClose(popup.ownerId, event);
-  }
-
-  private onPricingPopupAction(popup: FormFlowPricingEditorPopupState, event: PopupActionEvent): void {
-    if (event.action.id === 'pricing-info-toggle') {
-      event.sourceEvent.preventDefault();
-      event.sourceEvent.stopPropagation();
-      this.showPricingInfoPanel = !this.showPricingInfoPanel;
-      return;
-    }
-    if (event.action.id !== 'pricing-save') {
-      return;
-    }
-    if (!this.validatePriceBounds(true)) {
-      return;
-    }
-    this.popupStore.requestPricingEditorPopupSave(popup.ownerId, this.draftValue, event.sourceEvent);
-  }
-
-  private pricingPopupHeaderActions(popup: FormFlowPricingEditorPopupState): readonly PopupAction[] {
-    const actions: PopupAction[] = [{
-      id: 'pricing-info-toggle',
-      icon: 'query_stats',
-      ariaLabel: this.showPricingInfoPanel ? 'pricing.summary.hide.aria' : 'pricing.summary.show.aria',
-      palette: 'blue',
-      active: this.showPricingInfoPanel,
-      compactOnMobile: true
-    }];
-    if (popup.readOnly) {
-      return actions;
-    }
-    const canSave = this.canSubmit(popup);
-    actions.push({
-      id: 'pricing-save',
-      icon: 'done',
-      ariaLabel: 'pricing.draft.apply.aria',
-      palette: canSave ? 'success' : 'danger',
-      disabled: !canSave
-    });
-    return actions;
-  }
-
-  private canSubmit(popup: FormFlowPricingEditorPopupState): boolean {
-    return !popup.readOnly && (popup.canSave || this.locallyDirty || this.hasDraftChanges());
-  }
-
-  private hasDraftChanges(): boolean {
-    return JSON.stringify(this.draftValue) !== JSON.stringify(this.originalValue);
-  }
-
-  private popupEditorConfig(popup: FormFlowPricingEditorPopupState): PricingEditorConfig {
-    return popup.config as PricingEditorConfig;
   }
 }

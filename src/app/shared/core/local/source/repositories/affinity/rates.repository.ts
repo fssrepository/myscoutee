@@ -1,3 +1,5 @@
+import { BaseUserRatesMapper } from '../../../../base/mappers/affinity/rate.mapper';
+import { AppUtils } from '../../../../base/app-utils';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { validRatingSnapshot, type RatingDomain } from '../../../../contracts/affinity/rating-snapshot';
 import { LocalNotificationsRepository } from '../notifications/notifications.repository';
@@ -20,7 +22,7 @@ import { LocalMemoryDb } from '../../../../common/app.db';
 import { RateOutboxRepository } from '../../../../base/repositories/affinity/rate-outbox.repository';
 import { compareActivityRateItems } from '../../../../base/activity-rate-order';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../entity/common/activity.entity';
-import { LocalUserRatesMapper } from '../../mappers';
+import { LocalUserRatesMapper } from '../../mappers/affinity/rate.mapper';
 
 @Injectable({
   providedIn: 'root'
@@ -100,35 +102,7 @@ export class LocalRatesRepository {
   }
 
   private queryPendingRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
-    const normalizedRaterId = raterUserId.trim();
-    if (!normalizedRaterId) {
-      return [];
-    }
-    const ratedUserIds = new Set<string>();
-    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
-      if (record.ownerUserId?.trim() !== normalizedRaterId) {
-        continue;
-      }
-      const item = LocalUserRatesMapper.toDto(record);
-      if (!this.shouldExcludePendingItemFromHome(item)) {
-        continue;
-      }
-      if (mode === 'single' && item.mode !== 'individual') {
-        continue;
-      }
-      if (mode !== 'single' && item.mode !== 'pair') {
-        continue;
-      }
-      const primaryUserId = item.userId.trim();
-      const secondaryUserId = item.secondaryUserId?.trim() ?? '';
-      if (primaryUserId && primaryUserId !== normalizedRaterId) {
-        ratedUserIds.add(primaryUserId);
-      }
-      if (secondaryUserId && secondaryUserId !== normalizedRaterId) {
-        ratedUserIds.add(secondaryUserId);
-      }
-    }
-    return [...ratedUserIds];
+    return BaseUserRatesMapper.pendingRatedGameCardUserIds(this.rateOutboxRepository.queryPendingUserRateRecords(), raterUserId, mode);
   }
 
   private queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {
@@ -688,9 +662,9 @@ export class LocalRatesRepository {
   /** Record meeting facts at round completion without inventing either person's rating. */
   projectMetTables(tables: readonly { memberUserIds: readonly string[] }[], eventName: string, happenedAtIso: string): void {
     const pairs = new Map<string, [string, string]>();
-    const pairKey = (left: string, right: string) => [left, right].sort().join('\n');
+    const pairKey = (left: string, right: string) => [left, right].sort(AppUtils.compareCodeUnits).join('\n');
     for (const table of tables) {
-      const members = [...new Set(table.memberUserIds)].sort();
+      const members = [...new Set(table.memberUserIds)].sort(AppUtils.compareCodeUnits);
       for (let left = 0; left < members.length; left++) {
         for (let right = left + 1; right < members.length; right++) {
           pairs.set(pairKey(members[left], members[right]), [members[left], members[right]]);
@@ -782,39 +756,15 @@ export class LocalRatesRepository {
   }
 
   private rebuildUserRatesTableIndex(table: UserRatesRecordCollection): UserRatesRecordCollection {
-    const idsByRelevantUserId: Record<string, string[]> = {};
-    for (const id of table.ids) {
-      const record = table.byId[id];
-      if (!record) {
-        continue;
-      }
-      for (const userId of this.relevantUserRateUserIds(record)) {
-        const bucket = idsByRelevantUserId[userId] ?? [];
-        bucket.push(id);
-        idsByRelevantUserId[userId] = bucket;
-      }
-    }
-    for (const ids of Object.values(idsByRelevantUserId)) {
-      ids.sort((leftId, rightId) => {
-        const left = table.byId[leftId];
-        const right = table.byId[rightId];
-        return this.dynamicRecordDateValue(right) - this.dynamicRecordDateValue(left);
-      });
-    }
-    return {
-      ...table,
-      idsByRelevantUserId
-    };
+    return BaseUserRatesMapper.rebuildUserRatesTableIndex(table);
   }
 
   private relevantUserRateUserIds(record: UserRateRecord): string[] {
-    return [...new Set([record.ownerUserId, record.fromUserId, record.toUserId]
-      .map(value => `${value ?? ''}`.trim())
-      .filter(Boolean))];
+    return BaseUserRatesMapper.relevantUserRateUserIds(record);
   }
 
   private dynamicRecordDateValue(record: UserRateRecord | null | undefined): number {
-    return UiDateUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
+    return BaseUserRatesMapper.dynamicRecordDateValue(record);
   }
 
   async flushPendingUserRatesOutboxBatch(limit = 50): Promise<void> {

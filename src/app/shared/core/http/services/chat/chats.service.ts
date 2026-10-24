@@ -1,3 +1,4 @@
+import { requestWithAbort } from '../../request-lifecycle';
 import { UiDateUtils, type ListQuery } from '@fssrepository/myscoutee-components';
 import {
   HttpClient,
@@ -7,7 +8,6 @@ import {
   Injectable,
   inject
 } from '@angular/core';
-import type { Observable } from 'rxjs';
 
 import {
   environment
@@ -351,7 +351,7 @@ export class HttpChatsService implements IChatsService {
     }
 
     try {
-      const response = await this.requestWithAbort(
+      const response = await requestWithAbort(
         this.http.get<{
           items?: HttpChatDto[] | null;
           total?: number | null;
@@ -407,7 +407,7 @@ export class HttpChatsService implements IChatsService {
       'knownRevision',
       `${Math.max(1, Math.trunc(Number(knownRevision) || 1))}`
     );
-    const response = await this.requestWithAbort(
+    const response = await requestWithAbort(
       this.http.get<ChatHeaderSyncResponseDTO>(
         `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/header-sync`,
         { params }
@@ -1174,7 +1174,7 @@ export class HttpChatsService implements IChatsService {
     if (/^(?:https?:|data:|blob:|indexeddb:)/i.test(url) || url.startsWith('/api/')) {
       resolvedUrl = url;
     } else {
-      const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
+      const baseUrl = AppUtils.trimEndCharacters(this.apiBaseUrl, "/");
       if (url.startsWith('/media/')) {
         resolvedUrl = `${baseUrl}${url}`;
       } else if (url.startsWith('media/')) {
@@ -1516,7 +1516,7 @@ export class HttpChatsService implements IChatsService {
     if (typeof window === 'undefined') {
       return null;
     }
-    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/activities/chats/ws`, window.location.origin);
+    const baseUrl = new URL(`${AppUtils.trimEndCharacters(this.apiBaseUrl, "/")}/activities/chats/ws`, window.location.origin);
     baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     baseUrl.searchParams.set('chatId', chatId);
     const activeUserId = this.activeUserId();
@@ -1550,53 +1550,6 @@ export class HttpChatsService implements IChatsService {
 
   private activeUserParams(): HttpParams {
     return this.withUserId(new HttpParams(), this.activeUserId());
-  }
-
-  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      let settled = false;
-      let subscription: { unsubscribe: () => void } | null = null;
-      const cleanup = () => signal?.removeEventListener('abort', onAbort);
-      const onAbort = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        subscription?.unsubscribe();
-        cleanup();
-        reject(this.createAbortError());
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      subscription = request$.subscribe({
-        next: value => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(value);
-        },
-        error: error => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          reject(error);
-        },
-        complete: () => cleanup()
-      });
-    });
-  }
-
-  private createAbortError(): Error {
-    const error = new Error('Request aborted.');
-    error.name = 'AbortError';
-    return error;
   }
 
   private isAbortError(error: unknown): boolean {

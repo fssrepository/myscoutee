@@ -1,3 +1,4 @@
+import { I18nService } from '../../../../core/base/services/localization/i18n.service';
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { AssetDto } from '../../../../core/contracts';
@@ -98,6 +99,17 @@ export interface AssetEditorCheckoutState {
   providedIn: 'root'
 })
 export class AssetStore {
+  private readonly i18n = inject(I18nService);
+  readonly deleteDialogText = computed(() => {
+    this.i18n.revision();
+    const id = this.pendingAssetDeleteCardIdRef();
+    const card = id ? this.findAsset(id) : null;
+    const message = this.pendingAssetDeleteLabelRef() || (id ? card ? `Delete ${card.title}?` : 'Delete this item?' : '');
+    return { title: this.i18n.translate('confirmation.delete.asset'), message: this.i18n.translate(message),
+      confirmLabel: this.i18n.translate('Delete'), busyConfirmLabel: this.i18n.translate('Deleting...'),
+      cancelLabel: this.i18n.translate('cancel'), closeLabel: this.i18n.translate('close'),
+      errorMessage: this.i18n.translate(this.pendingAssetDeleteErrorRef()) };
+  });
   private readonly workspace = inject(GroupWorkspaceContextService);
   private readonly assetCardsRef = signal<AppDTOs.AssetDTO[]>([]);
   private assetMutationVersion = 0;

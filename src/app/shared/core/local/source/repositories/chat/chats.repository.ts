@@ -72,9 +72,9 @@ export class LocalChatsRepository {
     const targetId = targetUserId.trim();
     this.requireContactTargets(actorId, [targetId], true);
     this.requireDirectChatConsent(actorId, targetId);
-    const memberIds = [actorId, targetId].sort();
-    const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const memberIds = [actorId, targetId].sort(AppUtils.compareCodeUnits);
+    const encoded = AppUtils.trimEndCharacters(btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
+      .replace(/\+/g, '-').replace(/\//g, '_'), "=");
     const id = `c-contact-${encoded}`;
     this.writeContactChat(id, memberIds);
     return this.queryChatItemById(actorId, id)!;
@@ -199,7 +199,7 @@ export class LocalChatsRepository {
     const participantUserIds = [...new Set([
       ...(event?.acceptedMemberUserIds ?? []),
       ...(event?.adminIds ?? [])
-    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))].sort();
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))].sort(AppUtils.compareCodeUnits);
     if (!eventId || participantUserIds.length === 0) {
       throw new Error('A published local event chat requires an event id and accepted participants.');
     }
@@ -1272,37 +1272,8 @@ export class LocalChatsRepository {
     return latestId ? table.byId[latestId] ?? null : null;
   }
 
-  private upsertMessageRecord(
-    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
-    message: ChatMessageRecord
-  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
-    if (!message.recordId) {
-      return table;
-    }
-    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
-    const nextById = {
-      ...table.byId,
-      [message.recordId]: message
-    };
-    const nextIds = table.ids.includes(message.recordId)
-      ? [...table.ids]
-      : [...table.ids, message.recordId];
-    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
-      ? [...table.idsByChatKey[chatKey]]
-      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
-    nextChatIds.sort((leftId, rightId) => {
-      const left = nextById[leftId];
-      const right = nextById[rightId];
-      return left && right ? this.compareMessageRecordsAsc(left, right) : left ? -1 : right ? 1 : 0;
-    });
-    return {
-      byId: nextById,
-      ids: nextIds,
-      idsByChatKey: {
-        ...table.idsByChatKey,
-        [chatKey]: nextChatIds
-      }
-    };
+  private upsertMessageRecord(table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME], message: ChatMessageRecord): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    return LocalChatMessageMapper.upsertMessageRecord(table, message);
   }
 
   private compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {

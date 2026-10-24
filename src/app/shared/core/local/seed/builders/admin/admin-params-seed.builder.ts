@@ -1,3 +1,5 @@
+import { AdminConfigurationBuilder } from '../../../../base/builders/administration/admin-configuration.builder';
+import { AppUtils } from '../../../../base/app-utils';
 import type {
   AdminSeedParamFieldDto,
   AdminSeedParamOptionDto,
@@ -197,23 +199,19 @@ export class AdminParamsSeedBuilder {
   }
 
   private static paramSectionLabelKey(sectionKey: string | null | undefined): string {
-    const normalized = `${sectionKey ?? ''}`.trim();
-    return normalized ? `admin.params.section.${normalized}` : 'admin.params.platform';
+    return AdminConfigurationBuilder.paramSectionLabelKey(sectionKey);
   }
 
   private static paramFieldLabelKey(fieldKey: string | null | undefined): string {
-    const normalized = `${fieldKey ?? ''}`.trim();
-    return normalized ? `admin.params.field.${normalized}` : '';
+    return AdminConfigurationBuilder.paramFieldLabelKey(fieldKey);
   }
 
   private static paramGroupLabelKey(group: string | null | undefined): string {
-    const normalized = this.paramsI18nSegment(group);
-    return normalized ? `admin.params.group.${normalized}` : 'admin.params.group.general';
+    return AdminConfigurationBuilder.paramGroupLabelKey(group);
   }
 
   private static paramStrategyLabelKey(strategy: string | null | undefined): string {
-    const normalized = `${strategy ?? ''}`.trim();
-    return normalized ? `admin.params.strategy.${normalized}` : '';
+    return AdminConfigurationBuilder.paramStrategyLabelKey(strategy);
   }
 
   private static paramOptionsFor(fieldKey: string | null | undefined): AdminSeedParamOptionDto[] {
@@ -233,18 +231,17 @@ export class AdminParamsSeedBuilder {
     if (!normalizedSummary || !normalizedSection) {
       return '';
     }
-    if (/^Updated\s+.+?\s+parameters\.$/i.test(normalizedSummary)) {
+    if (/^Updated .+ parameters\.$/i.test(normalizedSummary.replace(/\s+/g, ' '))) {
       return `admin.params.summary.updated.${normalizedSection}`;
     }
     return '';
   }
 
   private static paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 }

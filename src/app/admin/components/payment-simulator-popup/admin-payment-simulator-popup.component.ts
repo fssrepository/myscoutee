@@ -1,6 +1,6 @@
 import { GroupWorkspaceContextService } from '../../../shared/core/base/services/groups/group-workspace-context.service';
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
@@ -15,6 +15,7 @@ import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-me
   standalone: true,
   imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-payment-simulator-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-payment-simulator-popup.component.scss'
 })
 export class AdminPaymentSimulatorPopupComponent {
@@ -138,7 +139,7 @@ export class AdminPaymentSimulatorPopupComponent {
         return;
       }
       this.simulatorOrigin = new URL(access.url).origin;
-      this.sourceUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(access.url));
+      this.sourceUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(access.url)); // NOSONAR S6268: authenticated admin access URL, HTTP(S)-validated by HttpPaymentSimulatorAdminService.
     } catch (error) {
       if (generation !== this.requestGeneration || this.authorizationSurface() !== authorizationSurface) {
         return;

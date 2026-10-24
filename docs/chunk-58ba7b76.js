@@ -1,1 +1,0 @@
-import {n}from'./chunk-b4e1a383.js';export{i as firebaseMessagingConfigured,r as homeLabel,c as logoCharacterIndex,t as logoUrl,l as paymentProviderId,u as privacyContact,a as productName,s as revision,m as socialLinks}from'./chunk-b4e1a383.js';export{n as default};

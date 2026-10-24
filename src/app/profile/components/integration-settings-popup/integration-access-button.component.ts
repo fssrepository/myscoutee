@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import {
-  ExplanationGuideService,
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuRateConfig,

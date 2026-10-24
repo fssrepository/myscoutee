@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import type { AppMemorySchema } from '../../../common/memory.schema';
 import { GROUP_COUNTER_BUCKETS, groupMembershipBucket } from '../../../../contracts/groups/community-group.interface';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../../entity/events/mingle.entity';
@@ -31,6 +32,58 @@ type LocalGameSocialCardsByMode = Record<LocalGameSocialMode, UserGameSocialCard
   providedIn: 'root'
 })
 export class LocalActivityMembersRepository {
+
+  private changeEventMemberStatus(eventIds: readonly string[], targetUserId: string, expectedStatus: ActivityMemberRecord['status'], nextStatus: ActivityMemberRecord['status'], nowIso: string, statusText: string): ActivityMemberRecord[] {
+    const normalizedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
+    const normalizedTargetUserId = targetUserId.trim();
+    if (normalizedEventIds.size === 0 || !normalizedTargetUserId || expectedStatus === nextStatus) {
+      return [];
+    }
+    const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const affected = currentTable.ids
+      .map(id => currentTable.byId[id])
+      .filter((record): record is ActivityMemberRecord => Boolean(record))
+      .filter(record => record.ownerType === 'event')
+      .filter(record => normalizedEventIds.has(record.ownerId.trim()))
+      .filter(record => record.userId.trim() === normalizedTargetUserId && record.status === expectedStatus)
+      .map(record => this.cloneRecord(record));
+    if (affected.length === 0) {
+      return [];
+    }
+    const affectedIds = new Set(affected.map(record => record.id));
+    const updatedMs = Date.parse(nowIso) || Date.now();
+    this.memoryDb.write(state => {
+      const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const nextById = { ...table.byId };
+      for (const id of affectedIds) {
+        const record = nextById[id];
+        if (!record) {
+          continue;
+        }
+        nextById[id] = {
+          ...record,
+          status: nextStatus,
+          statusText,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso,
+          updatedAtIso: nowIso,
+          updatedMs
+        };
+      }
+      return {
+        ...state,
+        [ACTIVITY_MEMBERS_TABLE_NAME]: {
+          ...table,
+          byId: nextById
+        }
+      };
+    });
+    return affected;
+  }
+
   static withGroupCounterWrite(state: AppMemorySchema, accounts?: ReadonlySet<string>): AppMemorySchema {
     const byId = { ...state.users.byId };
     const counts = new Map<string, Record<string, number>>();
@@ -245,7 +298,7 @@ export class LocalActivityMembersRepository {
       .map(([eventId, group]) => ({
         eventId,
         eventName: group.eventName || eventId,
-        userIds: [...group.userIds].sort()
+        userIds: [...group.userIds].sort(AppUtils.compareCodeUnits)
       }))
       .filter(group => group.userIds.length > 1)
       .sort((left, right) => left.eventId.localeCompare(right.eventId));
@@ -266,8 +319,8 @@ export class LocalActivityMembersRepository {
   private refreshGameSocialCardsCache(activeUserId: string): void {
     const graph = this.queryAcceptedMemberGraph();
     const usersById = new Map(this.localActivityMemberUsers.map(user => [user.id, user] as const));
-    const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
-    const gameUserIds = [...usersById.keys()].sort();
+    const graphUserIds = [...graph.neighborsByUserId.keys()].sort(AppUtils.compareCodeUnits);
+    const gameUserIds = [...usersById.keys()].sort(AppUtils.compareCodeUnits);
     if (!UserProfileState.isPublicGameProfile(usersById.get(activeUserId))) {
       this.gameSocialCardsByUserId.set(activeUserId, { 'friends-in-common': [], 'separated-friends': [], 'outside-network': [] });
       return;
@@ -275,7 +328,7 @@ export class LocalActivityMembersRepository {
     const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
       .filter(userId => userId !== activeUserId)
       .filter(userId => UserProfileState.isInsideNetworkGameProfile(usersById.get(userId)))
-      .sort();
+      .sort(AppUtils.compareCodeUnits);
     const activeNeighborIds = new Set(activeNeighbors);
     const cards: LocalGameSocialCardsByMode = {
       'friends-in-common': [],
@@ -314,7 +367,7 @@ export class LocalActivityMembersRepository {
       const bridgeUserIds = activeNeighbors
         .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
         .filter(bridgeUserId => UserProfileState.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
-        .sort();
+        .sort(AppUtils.compareCodeUnits);
       if (bridgeUserIds.length === 0) {
         continue;
       }
@@ -435,25 +488,11 @@ export class LocalActivityMembersRepository {
     left: UserDto['locationCoordinates'] | undefined,
     right: UserDto['locationCoordinates'] | undefined
   ): number | null {
-    const leftLat = Number(left?.latitude);
-    const leftLon = Number(left?.longitude);
-    const rightLat = Number(right?.latitude);
-    const rightLon = Number(right?.longitude);
-    if (![leftLat, leftLon, rightLat, rightLon].every(Number.isFinite)) {
-      return null;
-    }
-    const earthRadiusMeters = 6371000;
-    const latitudeDelta = this.toRadians(rightLat - leftLat);
-    const longitudeDelta = this.toRadians(rightLon - leftLon);
-    const leftLatitude = this.toRadians(leftLat);
-    const rightLatitude = this.toRadians(rightLat);
-    const haversine = Math.sin(latitudeDelta / 2) ** 2
-      + Math.cos(leftLatitude) * Math.cos(rightLatitude) * (Math.sin(longitudeDelta / 2) ** 2);
-    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+    return AppUtils.distanceMeters(left, right);
   }
 
   private toRadians(value: number): number {
-    return value * Math.PI / 180;
+    return AppUtils.toRadians(value);
   }
 
   private strongestBridgeUserId(
@@ -545,7 +584,7 @@ export class LocalActivityMembersRepository {
       return Math.max(latest, Number.isFinite(Number(record?.updatedMs)) ? Number(record?.updatedMs) : 0);
     }, 0);
     const mingleRevision = Object.values(this.memoryDb.read()[MINGLE_SESSIONS_TABLE_NAME].byId)
-      .map(session => `${session.eventId}:${session.revision}`).sort().join('|');
+      .map(session => `${session.eventId}:${session.revision}`).sort(AppUtils.compareCodeUnits).join('|');
     return `${table.ids.length}:${Object.keys(table.idsByOwnerKey).length}:${latestUpdatedMs}:${mingleRevision}`;
   }
 
@@ -561,118 +600,12 @@ export class LocalActivityMembersRepository {
     this.writeOwnerRecords(normalizedOwner, records, capacityTotal);
   }
 
-  markAcceptedEventMembersRemoved(
-    eventIds: readonly string[],
-    targetUserId: string,
-    nowIso: string
-  ): ActivityMemberRecord[] {
-    const normalizedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
-    const normalizedTargetUserId = targetUserId.trim();
-    if (normalizedEventIds.size === 0 || !normalizedTargetUserId) {
-      return [];
-    }
-    const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const affected = currentTable.ids
-      .map(id => currentTable.byId[id])
-      .filter((record): record is ActivityMemberRecord => Boolean(record))
-      .filter(record => record.ownerType === 'event')
-      .filter(record => normalizedEventIds.has(record.ownerId.trim()))
-      .filter(record => record.userId.trim() === normalizedTargetUserId && record.status === 'accepted')
-      .map(record => this.cloneRecord(record));
-    if (affected.length === 0) {
-      return [];
-    }
-    const affectedIds = new Set(affected.map(record => record.id));
-    const updatedMs = Date.parse(nowIso) || Date.now();
-    this.memoryDb.write(state => {
-      const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
-      const nextById = { ...table.byId };
-      for (const id of affectedIds) {
-        const record = nextById[id];
-        if (!record) {
-          continue;
-        }
-        nextById[id] = {
-          ...record,
-          status: 'removed',
-          statusText: 'Removed from this tournament group.',
-          pendingSource: null,
-          requestKind: null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso,
-          updatedAtIso: nowIso,
-          updatedMs
-        };
-      }
-      return {
-        ...state,
-        [ACTIVITY_MEMBERS_TABLE_NAME]: {
-          ...table,
-          byId: nextById
-        }
-      };
-    });
-    return affected;
+  markAcceptedEventMembersRemoved(eventIds: readonly string[], targetUserId: string, nowIso: string): ActivityMemberRecord[] {
+    return this.changeEventMemberStatus(eventIds, targetUserId, 'accepted', 'removed', nowIso, 'Removed from this tournament group.');
   }
 
-  updateEventMemberStatus(
-    eventIds: readonly string[],
-    targetUserId: string,
-    expectedStatus: ActivityMemberRecord['status'],
-    nextStatus: ActivityMemberRecord['status'],
-    nowIso: string
-  ): ActivityMemberRecord[] {
-    const normalizedEventIds = new Set(eventIds.map(id => id.trim()).filter(Boolean));
-    const normalizedTargetUserId = targetUserId.trim();
-    if (normalizedEventIds.size === 0 || !normalizedTargetUserId || expectedStatus === nextStatus) {
-      return [];
-    }
-    const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const affected = currentTable.ids
-      .map(id => currentTable.byId[id])
-      .filter((record): record is ActivityMemberRecord => Boolean(record))
-      .filter(record => record.ownerType === 'event')
-      .filter(record => normalizedEventIds.has(record.ownerId.trim()))
-      .filter(record => record.userId.trim() === normalizedTargetUserId && record.status === expectedStatus)
-      .map(record => this.cloneRecord(record));
-    if (affected.length === 0) {
-      return [];
-    }
-    const affectedIds = new Set(affected.map(record => record.id));
-    const updatedMs = Date.parse(nowIso) || Date.now();
-    this.memoryDb.write(state => {
-      const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
-      const nextById = { ...table.byId };
-      for (const id of affectedIds) {
-        const record = nextById[id];
-        if (!record) {
-          continue;
-        }
-        nextById[id] = {
-          ...record,
-          status: nextStatus,
-          statusText: nextStatus === 'disqualified'
-            ? 'Disqualified from this tournament group.'
-            : '',
-          pendingSource: null,
-          requestKind: null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso,
-          updatedAtIso: nowIso,
-          updatedMs
-        };
-      }
-      return {
-        ...state,
-        [ACTIVITY_MEMBERS_TABLE_NAME]: {
-          ...table,
-          byId: nextById
-        }
-      };
-    });
-    return affected;
+  updateEventMemberStatus(eventIds: readonly string[], targetUserId: string, expectedStatus: ActivityMemberRecord['status'], nextStatus: ActivityMemberRecord['status'], nowIso: string): ActivityMemberRecord[] {
+    return this.changeEventMemberStatus(eventIds, targetUserId, expectedStatus, nextStatus, nowIso, nextStatus === 'disqualified' ? 'Disqualified from this tournament group.' : '');
   }
 
   normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {

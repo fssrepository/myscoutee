@@ -1,3 +1,6 @@
+import { EventMembershipRemovalOptions } from '../../../../contracts/common/activity.interface';
+import { EventJoinOptions } from '../../../../contracts/common/activity.interface';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { baseGroupId, groupType, isBaseGroupId, groupPriorityEnabled } from '../../../../contracts/groups/group-type';
 import { LocalCommunityGroupsRepository } from '../../repositories/groups/community-groups.repository';
 import { LocalCampaignsService } from '../campaigns/campaigns.service';
@@ -91,6 +94,101 @@ interface LocalEventCounterSnapshot {
   providedIn: 'root'
 })
 export class LocalEventsService extends LocalRouteDelayService implements IEventsService {
+
+  private memberNotificationContext(event: ActivityEventRecord, userId: string) {
+    const memberUserId = userId.trim();
+    const eventId = `${event.id ?? ''}`.trim();
+    if (!memberUserId || !eventId) {
+      return null;
+    }
+    const member = this.usersRepository.queryUserById(memberUserId);
+    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const memberListOpen = event.blindMode !== 'Blind Event';
+    return { memberUserId, eventId, member, memberName, eventTitle, memberListOpen };
+  }
+
+  private localJoinContext(normalizedUserId: string, normalizedSourceId: string) {
+    const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
+    const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
+    const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
+    if (eventBeforeJoin?.cancelled)
+      throw new Error('event.cancelled');
+    const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === normalizedUserId);
+    return { beforeCounters, resolvingInvitation, eventBeforeJoin, alreadyAccepted };
+  }
+
+  private async closedTournamentJoinResult(eventBeforeJoin: ActivityEventRecord | null, normalizedUserId: string, normalizedSourceId: string, beforeCounters: ReturnType<LocalEventsService['localEventCounterSnapshot']>, slotSourceId?: string | null, paymentSessionId?: string | null): Promise<EventParticipationActionResultDTO | null> {
+    const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
+    const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
+    const result = await this.withLocalMutationCounterDelta({
+      sourceId: normalizedSourceId,
+      slotSourceId: slotSourceId?.trim() || null,
+      action: 'join',
+      membershipStatus: 'unchanged',
+      pendingReason: null,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      paymentSessionId: paymentSessionId?.trim() || null,
+      changed: false,
+      reason: 'tournament-registration-closed'
+    }, normalizedUserId, beforeCounters);
+    return result;
+  }
+
+  private async finishLocalJoin(normalizedUserId: string, normalizedSourceId: string, beforeCounters: ReturnType<LocalEventsService['localEventCounterSnapshot']>, resolvingInvitation: boolean, alreadyAccepted: boolean, joinRequestAlreadyPending: boolean, record: ActivityEventRecord | null, result: EventParticipationActionResultDTO | null): Promise<EventParticipationActionResultDTO | null> {
+    if (resolvingInvitation && result) {
+      this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
+      if (result.membershipStatus === 'accepted' && record) {
+        this.appendInvitationAcceptedNotifications(record, normalizedUserId);
+      }
+    }
+    if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
+      this.appendMemberJoinedNotifications(record, normalizedUserId);
+    }
+    if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
+      this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
+    }
+    const resultWithCounterDelta = await this.withLocalMutationCounterDelta(result, normalizedUserId, beforeCounters);
+    await this.eventsRepository.flushToIndexedDb();
+    return resultWithCounterDelta;
+  }
+
+  private appendNotificationsAndSyncCounts(records: NotificationRecord[]): void {
+    const appended = this.notificationsRepository.append(records);
+    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
+      this.usersService.syncRealtimeNotificationCount(recipientUserId, this.notificationsRepository.unreadCount(recipientUserId));
+    });
+  }
+
+  private stageNotificationParticipants(event: ActivityEventRecord, eventId: string, stage: NonNullable<ActivityEventRecord['subEvents']>[number], actorId: string): string[] {
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(eventId, `${stage.id ?? ''}`.trim());
+    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
+      `${event.creatorUserId ?? ''}`.trim(),
+      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
+      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
+    ]).filter(userId => userId && userId !== actorId))];
+    return participants;
+  }
+
+  private stageNotificationContext(event: ActivityEventRecord, result: ActivityEventStageActionResultDTO, actorUserId: string) {
+    const eventId = `${event.id ?? ''}`.trim();
+    const actorId = actorUserId.trim();
+    const stages = event.subEvents ?? [];
+    const stage = stages[result.subEventIndex] ?? null;
+    if (!eventId || !stage) {
+      return null;
+    }
+    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
+    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
+    const actor = this.usersRepository.queryUserById(actorId);
+    return { eventId, actorId, stages, stage, stageTitle, eventTitle, actor };
+  }
+
   private readonly campaigns = inject(LocalCampaignsService);
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
@@ -252,23 +350,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return this.checkoutBasketResultState(basket);
   }
 
-  private checkoutBasketResultState(
-    basket: Pick<EventCheckoutBasket, 'items'> | null | undefined
-  ): EventCheckoutResultState | null {
-    const resultStates = (basket?.items ?? []).map(item => item.resultState ?? 'pending');
-    if (resultStates.length === 0) {
-      return null;
-    }
-    if (resultStates.some(resultState => resultState === 'failed')) {
-      return 'failed';
-    }
-    if (resultStates.every(resultState => resultState === 'deleted')) {
-      return 'deleted';
-    }
-    if (resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
-      return 'succeeded';
-    }
-    return 'pending';
+  private checkoutBasketResultState(basket: Pick<EventCheckoutBasket, 'items'> | null | undefined): EventCheckoutResultState | null {
+    return ActivityEventDetailDTO.checkoutBasketResultState(basket);
   }
 
   async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
@@ -660,41 +743,16 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
   }
 
-  async payEventCheckout(
-    request: EventCheckoutStateChangeRequest,
-    _provider?: string | null
-  ): Promise<EventParticipationActionResultDTO | null> {
+  async payEventCheckout(request: EventCheckoutStateChangeRequest, _provider?: string | null): Promise<EventParticipationActionResultDTO | null> {
     return this.withRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE, async (): Promise<EventParticipationActionResultDTO | null> => {
       const normalizedUserId = request.userId?.trim();
       const normalizedSourceId = request.sourceId?.trim();
       if (!normalizedUserId || !normalizedSourceId) {
         return null;
       }
-      const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
-      const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
-      const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
-      if (eventBeforeJoin?.cancelled) throw new Error('event.cancelled');
-      const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
-        .some(memberUserId => memberUserId.trim() === normalizedUserId);
+      const { beforeCounters, resolvingInvitation, eventBeforeJoin, alreadyAccepted } = this.localJoinContext(normalizedUserId, normalizedSourceId);
       if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
-        const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
-        const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
-        const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
-        const result = await this.withLocalMutationCounterDelta({
-          sourceId: normalizedSourceId,
-          slotSourceId: request.slotSourceId?.trim() || null,
-          action: 'join',
-          membershipStatus: 'unchanged',
-          pendingReason: null,
-          acceptedMembers,
-          pendingMembers,
-          capacityTotal,
-          full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
-          paymentSessionId: request.checkoutSessionId?.trim() || null,
-          changed: false,
-          reason: 'tournament-registration-closed'
-        }, normalizedUserId, beforeCounters);
-        return result;
+        return this.closedTournamentJoinResult(eventBeforeJoin, normalizedUserId, normalizedSourceId, beforeCounters, request.slotSourceId, request.checkoutSessionId);
       }
       const joinRequestAlreadyPending = [
         ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
@@ -703,21 +761,18 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       const previousBasket = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId);
       const requestedItems = request.checkoutRequest?.basketItems ?? previousBasket?.items ?? [];
       const alreadyPaid = alreadyAccepted && requestedItems.length > 0
-        && requestedItems.every(item => previousBasket?.items.some(paid =>
-          paid.status === 'pay' && paid.id === item.id && paid.amount === item.amount
+        && requestedItems.every(item => previousBasket?.items.some(paid => paid.status === 'pay' && paid.id === item.id && paid.amount === item.amount
           && paid.currency === item.currency && paid.quantity === item.quantity));
       if (alreadyPaid && eventBeforeJoin) {
-        return this.withLocalMutationCounterDelta(
-          LocalEventParticipationActionMapper.toResult(eventBeforeJoin, normalizedUserId, {
-            slotSourceId: previousBasket?.slotSourceId ?? null,
-            paymentSessionId: previousBasket?.checkoutSessionId ?? null,
-            pendingReason: null
-          }), normalizedUserId, beforeCounters
-        );
+        return this.withLocalMutationCounterDelta(LocalEventParticipationActionMapper.toResult(eventBeforeJoin, normalizedUserId, {
+          slotSourceId: previousBasket?.slotSourceId ?? null,
+          paymentSessionId: previousBasket?.checkoutSessionId ?? null,
+          pendingReason: null
+        }), normalizedUserId, beforeCounters);
       }
-      const deadline = this.checkoutDeadline(normalizedUserId, normalizedSourceId,
-        requestedItems.map(item => item.slotSourceId ?? request.slotSourceId));
-      if (Date.parse(deadline) <= Date.now()) throw new Error('event.checkout.payment.deadline.passed');
+      const deadline = this.checkoutDeadline(normalizedUserId, normalizedSourceId, requestedItems.map(item => item.slotSourceId ?? request.slotSourceId));
+      if (Date.parse(deadline) <= Date.now())
+        throw new Error('event.checkout.payment.deadline.passed');
       if (request.checkoutRequest) {
         await this.saveCheckoutBasketRecord({
           ...request.checkoutRequest,
@@ -736,25 +791,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       const paymentAmount = Math.round(basket.items.filter(item => item.status !== 'pay')
         .reduce((total, item) => total + item.amount * Math.max(1, Math.trunc(item.quantity || 1)), 0) * 100) / 100;
       const checkoutSessionId = `checkout-${Date.now()}`;
-      const acceptedMembership = this.existingAcceptedCheckoutMembershipRecord(
-        normalizedUserId,
-        normalizedSourceId,
-        slotSourceId
-      );
-      const record = acceptedMembership ?? this.eventsRepository.requestJoin(
-        normalizedUserId,
-        normalizedSourceId,
-        slotSourceId,
-        true,
-        false,
-        false
-      );
+      const acceptedMembership = this.existingAcceptedCheckoutMembershipRecord(normalizedUserId, normalizedSourceId, slotSourceId);
+      const record = acceptedMembership ?? this.eventsRepository.requestJoin(normalizedUserId, normalizedSourceId, slotSourceId, true, false, false);
       const result = record
         ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), {
-            slotSourceId,
-            paymentSessionId: checkoutSessionId,
-            pendingReason: null
-          })
+          slotSourceId,
+          paymentSessionId: checkoutSessionId,
+          pendingReason: null
+        })
         : null;
       if (result?.membershipStatus === 'accepted' && record) {
         this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
@@ -771,39 +815,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         checkoutSessionId
       });
       if (result?.membershipStatus === 'accepted' && paymentAmount > 0) {
-        this.affiliateRepository.recordPayment(
-          normalizedUserId,
-          checkoutSessionId,
-          basket.currency,
-          paymentAmount,
-          0,
-          true,
-          normalizedSourceId,
-          eventBeforeJoin?.creatorUserId,
-          eventBeforeJoin?.startAtIso,
-          eventBeforeJoin?.pricing?.cancellationPolicy,
-          _provider ?? undefined
-        );
+        this.affiliateRepository.recordPayment(normalizedUserId, checkoutSessionId, basket.currency, paymentAmount, 0, true, normalizedSourceId, eventBeforeJoin?.creatorUserId, eventBeforeJoin?.startAtIso, eventBeforeJoin?.pricing?.cancellationPolicy, _provider ?? undefined);
       }
-      if (resolvingInvitation && result) {
-        this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
-        if (result.membershipStatus === 'accepted' && record) {
-          this.appendInvitationAcceptedNotifications(record, normalizedUserId);
-        }
-      }
-      if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
-        this.appendMemberJoinedNotifications(record, normalizedUserId);
-      }
-      if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
-        this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
-      }
-      const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
-        result,
-        normalizedUserId,
-        beforeCounters
-      );
-      await this.eventsRepository.flushToIndexedDb();
-      return resultWithCounterDelta;
+      return this.finishLocalJoin(normalizedUserId, normalizedSourceId, beforeCounters, resolvingInvitation, alreadyAccepted, joinRequestAlreadyPending, record, result);
     });
   }
 
@@ -1308,21 +1322,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
   }
 
-  private appendLocalStageFinalizedNotifications(
-    event: ActivityEventRecord,
-    result: ActivityEventStageActionResultDTO,
-    actorUserId: string
-  ): void {
-    const eventId = `${event.id ?? ''}`.trim();
-    const actorId = actorUserId.trim();
-    const stages = event.subEvents ?? [];
-    const stage = stages[result.subEventIndex] ?? null;
-    if (!eventId || !stage) {
+  private appendLocalStageFinalizedNotifications(event: ActivityEventRecord, result: ActivityEventStageActionResultDTO, actorUserId: string): void {
+    const context = this.stageNotificationContext(event, result, actorUserId);
+    if (!context)
       return;
-    }
-    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
-    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
-    const actor = this.usersRepository.queryUserById(actorId);
+    const { eventId, actorId, stages, stage, stageTitle, eventTitle, actor } = context;
     const finalizedAtMs = Date.now();
     const nextStage = stages[result.subEventIndex + 1] ?? null;
     const finalStage = !nextStage;
@@ -1338,10 +1342,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       sourceType: 'event',
       sourceId: eventId
     };
-    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
-      eventId,
-      `${stage.id ?? ''}`.trim()
-    );
+    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(eventId, `${stage.id ?? ''}`.trim());
     const stageParticipantUserIds = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
       `${event.creatorUserId ?? ''}`.trim(),
       ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
@@ -1372,11 +1373,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
       }
     }));
-
-    const leaderboard = this.eventsRepository.querySubEventLeaderboard(
-      result.sourceId,
-      `${stage.id ?? ''}`.trim()
-    );
+    const leaderboard = this.eventsRepository.querySubEventLeaderboard(result.sourceId, `${stage.id ?? ''}`.trim());
     const leaderboardWinnerUserIds = [...new Set((leaderboard?.groups ?? [])
       .flatMap(group => group.advancingMemberIds ?? [])
       .map(userId => `${userId ?? ''}`.trim())
@@ -1389,59 +1386,37 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       .map(member => `${member?.id ?? ''}`.trim())
       .filter(userId => userId
         && !advancingUserIds.includes(userId)))];
+    const outcomeRecord = (recipientUserId: string, won: boolean): NotificationRecord => ({
+      ...commonRecord,
+      id: (won ? this.localNotificationId('event-tournament-won', resultRevisionIdentity, recipientUserId) : this.localNotificationId('event-tournament-not-won', resultRevisionIdentity, recipientUserId)),
+      recipientUserId,
+      kind: (won ? 'event-tournament-won' : 'event-tournament-not-won'),
+      title: (won ? 'Won the tournament' : 'Did not win the tournament'),
+      message: (won ? `You won in ${stageTitle}.` : `You did not win in ${stageTitle}.`),
+      createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
+      senderUserId: null,
+      senderName: 'MyScoutee System',
+      senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
+      payload: {
+        ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
+        eventId,
+        eventTitle,
+        eventScope: 'tournament-outcome',
+        stageTitle,
+        notification_title_key: (won ? 'notification.event.tournament.won.title' : 'notification.event.tournament.not-won.title'),
+        notification_message_key: (won ? 'notification.event.tournament.won.message' : 'notification.event.tournament.not-won.message'),
+        notification_tone: (won ? 'success' : 'warning'),
+        tournamentComplete: 'true',
+        ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
+      }
+    });
     if (finalStage) {
       const finalistUserIds = new Set(stageParticipantUserIds);
       const winnerUserIds = leaderboardWinnerUserIds.filter(userId => finalistUserIds.has(userId));
       const nonWinnerUserIds = stageParticipantUserIds.filter(userId => !winnerUserIds.includes(userId));
       if (winnerUserIds.length > 0) {
-        records.push(...winnerUserIds.map(recipientUserId => ({
-          ...commonRecord,
-          id: this.localNotificationId('event-tournament-won', resultRevisionIdentity, recipientUserId),
-          recipientUserId,
-          kind: 'event-tournament-won',
-          title: 'Won the tournament',
-          message: `You won in ${stageTitle}.`,
-          createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
-          senderUserId: null,
-          senderName: 'MyScoutee System',
-          senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
-          payload: {
-            ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
-            eventId,
-            eventTitle,
-            eventScope: 'tournament-outcome',
-            stageTitle,
-            notification_title_key: 'notification.event.tournament.won.title',
-            notification_message_key: 'notification.event.tournament.won.message',
-            notification_tone: 'success',
-            tournamentComplete: 'true',
-            ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
-          }
-        })));
-        records.push(...nonWinnerUserIds.map(recipientUserId => ({
-          ...commonRecord,
-          id: this.localNotificationId('event-tournament-not-won', resultRevisionIdentity, recipientUserId),
-          recipientUserId,
-          kind: 'event-tournament-not-won',
-          title: 'Did not win the tournament',
-          message: `You did not win in ${stageTitle}.`,
-          createdAtIso: new Date(finalizedAtMs + 1).toISOString(),
-          senderUserId: null,
-          senderName: 'MyScoutee System',
-          senderAvatarUrl: '/media/public?key=images/system/tournament-room/v1/large.webp',
-          payload: {
-            ...this.localTournamentSystemStagePayload(stages, result.subEventIndex),
-            eventId,
-            eventTitle,
-            eventScope: 'tournament-outcome',
-            stageTitle,
-            notification_title_key: 'notification.event.tournament.not-won.title',
-            notification_message_key: 'notification.event.tournament.not-won.message',
-            notification_tone: 'warning',
-            tournamentComplete: 'true',
-            ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
-          }
-        })));
+        records.push(...winnerUserIds.map(recipientUserId => outcomeRecord(recipientUserId, true)));
+        records.push(...nonWinnerUserIds.map(recipientUserId => outcomeRecord(recipientUserId, false)));
       }
     }
     if (nextStage && advancingUserIds.length > 0) {
@@ -1498,39 +1473,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         }
       })));
     }
-    const appended = this.notificationsRepository.append(records);
-    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
-      this.usersService.syncRealtimeNotificationCount(
-        recipientUserId,
-        this.notificationsRepository.unreadCount(recipientUserId)
-      );
-    });
+    this.appendNotificationsAndSyncCounts(records);
   }
 
-  private appendLocalStageStartedNotifications(
-    event: ActivityEventRecord,
-    result: ActivityEventStageActionResultDTO,
-    actorUserId: string
-  ): void {
-    const eventId = `${event.id ?? ''}`.trim();
-    const actorId = actorUserId.trim();
-    const stages = event.subEvents ?? [];
-    const stage = stages[result.subEventIndex] ?? null;
-    if (!eventId || !stage) {
+  private appendLocalStageStartedNotifications(event: ActivityEventRecord, result: ActivityEventStageActionResultDTO, actorUserId: string): void {
+    const context = this.stageNotificationContext(event, result, actorUserId);
+    if (!context)
       return;
-    }
-    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
-    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
-    const actor = this.usersRepository.queryUserById(actorId);
-    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
-      eventId,
-      `${stage.id ?? ''}`.trim()
-    );
-    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
-      `${event.creatorUserId ?? ''}`.trim(),
-      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
-      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
-    ]).filter(userId => userId && userId !== actorId))];
+    const { eventId, actorId, stages, stage, stageTitle, eventTitle, actor } = context;
+    const participants = this.stageNotificationParticipants(event, eventId, stage, actorId);
     const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
     const records: NotificationRecord[] = participants.map(recipientUserId => ({
       id: this.localNotificationId('event-tournament-started', eventId, recipientUserId),
@@ -1560,48 +1511,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         notification_avatar_icon: 'emoji_events'
       }
     }));
-    const appended = this.notificationsRepository.append(records);
-    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
-      this.usersService.syncRealtimeNotificationCount(
-        recipientUserId,
-        this.notificationsRepository.unreadCount(recipientUserId)
-      );
-    });
+    this.appendNotificationsAndSyncCounts(records);
   }
 
-  private appendLocalStageScoresUnderReviewNotifications(
-    event: ActivityEventRecord,
-    result: ActivityEventStageActionResultDTO,
-    actorUserId: string
-  ): void {
-    const eventId = `${event.id ?? ''}`.trim();
-    const actorId = actorUserId.trim();
-    const stages = event.subEvents ?? [];
-    const stage = stages[result.subEventIndex] ?? null;
-    if (!eventId || !stage) {
+  private appendLocalStageScoresUnderReviewNotifications(event: ActivityEventRecord, result: ActivityEventStageActionResultDTO, actorUserId: string): void {
+    const context = this.stageNotificationContext(event, result, actorUserId);
+    if (!context)
       return;
-    }
-    const stageTitle = `${stage.name ?? 'Tournament stage'}`.trim() || 'Tournament stage';
-    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
-    const actor = this.usersRepository.queryUserById(actorId);
-    const assignedStageUserIds = this.eventsRepository.queryAcceptedTournamentStageMemberUserIds(
-      eventId,
-      `${stage.id ?? ''}`.trim()
-    );
-    const participants = [...new Set((assignedStageUserIds.length > 0 ? assignedStageUserIds : [
-      `${event.creatorUserId ?? ''}`.trim(),
-      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
-      ...(event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
-    ]).filter(userId => userId && userId !== actorId))];
+    const { eventId, actorId, stages, stage, stageTitle, eventTitle, actor } = context;
+    const participants = this.stageNotificationParticipants(event, eventId, stage, actorId);
     const resultRevision = Math.max(1, Math.trunc(Number(result.stageResultRevision) || 0));
     const resultRevisionIdentity = `${eventId}:result-revision:${resultRevision}`;
     const stagePayload = this.localTournamentStagePayload(stages, result.subEventIndex);
     const records: NotificationRecord[] = participants.map(recipientUserId => ({
-      id: this.localNotificationId(
-        'event-stage-scores-under-review',
-        resultRevisionIdentity,
-        recipientUserId
-      ),
+      id: this.localNotificationId('event-stage-scores-under-review', resultRevisionIdentity, recipientUserId),
       recipientUserId,
       kind: 'event-stage-scores-under-review',
       category: 'event',
@@ -1628,13 +1551,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         ...(resultRevision > 1 ? { stageResultRevision: `${resultRevision}` } : {})
       }
     }));
-    const appended = this.notificationsRepository.append(records);
-    [...new Set(appended.map(record => record.recipientUserId))].forEach(recipientUserId => {
-      this.usersService.syncRealtimeNotificationCount(
-        recipientUserId,
-        this.notificationsRepository.unreadCount(recipientUserId)
-      );
-    });
+    this.appendNotificationsAndSyncCounts(records);
   }
 
   private localTournamentStagePayload(
@@ -1747,58 +1664,16 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
   }
 
-  async requestJoin(
-    userId: string,
-    sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      optionalSubEventIds?: string[];
-      assetSelections?: EventCheckoutAssetSelection[];
-      acceptedPolicyIds?: string[];
-      appliedPromoCodes?: string[];
-      paymentSessionId?: string | null;
-      bookingConfirmed?: boolean;
-      pendingReason?: ActivityPendingReason;
-      checkoutState?: EventCheckoutState;
-      basketItems?: EventCheckoutBasketItem[];
-      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
-      lineItems?: EventCheckoutLineItem[];
-      totalAmount?: number | null;
-      currency?: string | null;
-      skipLocalRouteDelay?: boolean;
-    } = {}
-  ): Promise<EventParticipationActionResultDTO | null> {
+  async requestJoin(userId: string, sourceId: string, options: EventJoinOptions = {}): Promise<EventParticipationActionResultDTO | null> {
     return this.withRouteDelay(options.skipLocalRouteDelay === true ? null : LocalEventsService.EVENTS_ROUTE, async (): Promise<EventParticipationActionResultDTO | null> => {
       const normalizedUserId = userId.trim();
       const normalizedSourceId = sourceId.trim();
       if (!normalizedUserId || !normalizedSourceId) {
         return null;
       }
-      const beforeCounters = this.localEventCounterSnapshot(normalizedUserId);
-      const resolvingInvitation = this.isEventInvitation(normalizedUserId, normalizedSourceId);
-      const eventBeforeJoin = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedSourceId);
-      if (eventBeforeJoin?.cancelled) throw new Error('event.cancelled');
-      const alreadyAccepted = (eventBeforeJoin?.acceptedMemberUserIds ?? [])
-        .some(memberUserId => memberUserId.trim() === normalizedUserId);
+      const { beforeCounters, resolvingInvitation, eventBeforeJoin, alreadyAccepted } = this.localJoinContext(normalizedUserId, normalizedSourceId);
       if (!alreadyAccepted && this.eventsRepository.isTournamentAdmissionLocked(normalizedSourceId)) {
-        const acceptedMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.acceptedMembers) || 0));
-        const pendingMembers = Math.max(0, Math.trunc(Number(eventBeforeJoin?.pendingMembers) || 0));
-        const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(eventBeforeJoin?.capacityTotal) || 0));
-        const result = await this.withLocalMutationCounterDelta({
-          sourceId: normalizedSourceId,
-          slotSourceId: options.slotSourceId?.trim() || null,
-          action: 'join',
-          membershipStatus: 'unchanged',
-          pendingReason: null,
-          acceptedMembers,
-          pendingMembers,
-          capacityTotal,
-          full: eventBeforeJoin?.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
-          paymentSessionId: options.paymentSessionId?.trim() || null,
-          changed: false,
-          reason: 'tournament-registration-closed'
-        }, normalizedUserId, beforeCounters);
-        return result;
+        return this.closedTournamentJoinResult(eventBeforeJoin, normalizedUserId, normalizedSourceId, beforeCounters, options.slotSourceId, options.paymentSessionId);
       }
       const joinRequestAlreadyPending = [
         ...(eventBeforeJoin?.pendingMemberUserIds ?? []),
@@ -1824,7 +1699,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
             pendingReason: options.pendingReason
           });
           checkoutPayloadSaved = true;
-        } else {
+        }
+        else {
           await this.updateCheckoutBasketStateRecord({
             userId: normalizedUserId,
             sourceId: normalizedSourceId,
@@ -1838,15 +1714,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         ? this.existingCheckoutMembershipRecord(normalizedUserId, normalizedSourceId, options.slotSourceId ?? null)
         : null;
       if (existingCheckoutMembership) {
-        const result = this.withLocalEventFull(
-          LocalEventParticipationActionMapper.toResult(
-            existingCheckoutMembership,
-            this.resolveDemoActivityUserId(normalizedUserId),
-            options
-          ),
-          normalizedUserId,
-          normalizedSourceId
-        );
+        const result = this.withLocalEventFull(LocalEventParticipationActionMapper.toResult(existingCheckoutMembership, this.resolveDemoActivityUserId(normalizedUserId), options), normalizedUserId, normalizedSourceId);
         if (result.membershipStatus === 'accepted' && options.checkoutState) {
           await this.updateCheckoutBasketStateRecord({
             userId: normalizedUserId,
@@ -1859,28 +1727,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         if (resolvingInvitation) {
           this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
         }
-        const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
-          result,
-          normalizedUserId,
-          beforeCounters
-        );
+        const resultWithCounterDelta = await this.withLocalMutationCounterDelta(result, normalizedUserId, beforeCounters);
         await this.eventsRepository.flushToIndexedDb();
         return resultWithCounterDelta;
       }
-      const record = this.eventsRepository.requestJoin(
-        normalizedUserId,
-        normalizedSourceId,
-        options.slotSourceId ?? null,
-        options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
-        options.pendingReason === 'waitlist',
-        options.pendingReason === 'approval'
-      );
+      const record = this.eventsRepository.requestJoin(normalizedUserId, normalizedSourceId, options.slotSourceId ?? null, options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist', options.pendingReason === 'waitlist', options.pendingReason === 'approval');
       const result = record
-        ? this.withLocalEventFull(
-            LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options),
-            normalizedUserId,
-            normalizedSourceId
-          )
+        ? this.withLocalEventFull(LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options), normalizedUserId, normalizedSourceId)
         : null;
       if (result?.membershipStatus === 'accepted' && record) {
         this.assetTicketsRepository.synchronizeForMemberChange(record.id, normalizedUserId);
@@ -1894,25 +1747,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           checkoutSessionId: options.paymentSessionId ?? null
         });
       }
-      if (resolvingInvitation && result) {
-        this.markEventInvitationNotificationRead(normalizedUserId, normalizedSourceId);
-        if (result.membershipStatus === 'accepted' && record) {
-          this.appendInvitationAcceptedNotifications(record, normalizedUserId);
-        }
-      }
-      if (!resolvingInvitation && !alreadyAccepted && result?.membershipStatus === 'accepted' && record) {
-        this.appendMemberJoinedNotifications(record, normalizedUserId);
-      }
-      if (result?.membershipStatus === 'pending' && !joinRequestAlreadyPending && record) {
-        this.appendJoinRequestAdminNotifications(record, normalizedUserId, false);
-      }
-      const resultWithCounterDelta = await this.withLocalMutationCounterDelta(
-        result,
-        normalizedUserId,
-        beforeCounters
-      );
-      await this.eventsRepository.flushToIndexedDb();
-      return resultWithCounterDelta;
+      return this.finishLocalJoin(normalizedUserId, normalizedSourceId, beforeCounters, resolvingInvitation, alreadyAccepted, joinRequestAlreadyPending, record, result);
     });
   }
 
@@ -1992,13 +1827,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async leaveEvent(
     userId: string,
     sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      removeMembershipOnly?: boolean;
-      checkoutState?: EventCheckoutState | null;
-      checkoutResultState?: EventCheckoutResultState | null;
-      checkoutSessionId?: string | null;
-    } = {}
+    options: EventMembershipRemovalOptions = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const [, response] = await Promise.all([
       this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE),
@@ -2011,13 +1840,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async leaveWithinRequest(
     userId: string,
     sourceId: string,
-    options: {
-      slotSourceId?: string | null;
-      removeMembershipOnly?: boolean;
-      checkoutState?: EventCheckoutState | null;
-      checkoutResultState?: EventCheckoutResultState | null;
-      checkoutSessionId?: string | null;
-    } = {}
+    options: EventMembershipRemovalOptions = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -2759,32 +2582,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return capacity > 0 ? Math.max(0, capacity - accepted) : 0;
   }
 
-  private appendMemberJoinedNotifications(
-    event: ActivityEventRecord,
-    joinedUserId: string
-  ): void {
-    const memberUserId = joinedUserId.trim();
-    const eventId = `${event.id ?? ''}`.trim();
-    if (!memberUserId || !eventId) {
+  private appendMemberJoinedNotifications(event: ActivityEventRecord, joinedUserId: string): void {
+    const context = this.memberNotificationContext(event, joinedUserId);
+    if (!context)
       return;
-    }
-    const member = this.usersRepository.queryUserById(memberUserId);
-    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
-    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
-    const memberListOpen = event.blindMode !== 'Blind Event';
-    const recipientUserIds = [...new Set([
-      `${event.creatorUserId ?? ''}`.trim(),
-      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
-      ...(memberListOpen
-        ? (event.acceptedMemberUserIds ?? []).map(userId => `${userId ?? ''}`.trim())
-        : [])
-    ].filter(userId => userId && userId !== memberUserId))];
+    const { memberUserId, eventId, member, memberName, eventTitle, memberListOpen } = context;
+    const recipientUserIds = [...new Set([String(event.creatorUserId ?? '').trim(), ...(event.adminIds ?? []).map(id => String(id ?? '').trim()), ...(memberListOpen ? (event.acceptedMemberUserIds ?? []).map(id => String(id ?? '').trim()) : [])].filter(id => id && id !== memberUserId))];
     if (recipientUserIds.length === 0) {
       return;
     }
     const createdAtIso = new Date().toISOString();
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
       id: `event-member-joined:${eventId}:${memberUserId}:${occurrenceId}:${recipientUserId}`,
       recipientUserId,
@@ -2815,30 +2623,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     this.notificationsRepository.append(records);
   }
 
-  private appendInvitationAcceptedNotifications(
-    event: ActivityEventRecord,
-    acceptedUserId: string
-  ): void {
-    const memberUserId = acceptedUserId.trim();
-    const eventId = `${event.id ?? ''}`.trim();
-    if (!memberUserId || !eventId) {
+  private appendInvitationAcceptedNotifications(event: ActivityEventRecord, acceptedUserId: string): void {
+    const context = this.memberNotificationContext(event, acceptedUserId);
+    if (!context)
       return;
-    }
-    const member = this.usersRepository.queryUserById(memberUserId);
-    const memberName = `${member?.name ?? memberUserId}`.trim() || memberUserId;
-    const eventTitle = `${event.title ?? eventId}`.trim() || eventId;
-    const memberListOpen = event.blindMode !== 'Blind Event';
-    const recipientUserIds = [...new Set([
-      `${event.creatorUserId ?? ''}`.trim(),
-      ...(event.adminIds ?? []).map(userId => `${userId ?? ''}`.trim()),
-      ...(memberListOpen
-        ? [
-            ...(event.acceptedMemberUserIds ?? []),
-            ...(event.pendingMemberUserIds ?? []),
-            ...(event.invitedMemberUserIds ?? [])
-          ].map(userId => `${userId ?? ''}`.trim())
-        : [])
-    ].filter(userId => userId && userId !== memberUserId))];
+    const { memberUserId, eventId, member, memberName, eventTitle, memberListOpen } = context;
+    const recipientUserIds = [...new Set([String(event.creatorUserId ?? '').trim(), ...(event.adminIds ?? []).map(id => String(id ?? '').trim()), ...(memberListOpen ? [...(event.acceptedMemberUserIds ?? []), ...(event.pendingMemberUserIds ?? []), ...(event.invitedMemberUserIds ?? [])].map(id => String(id ?? '').trim()) : [])].filter(id => id && id !== memberUserId))];
     if (recipientUserIds.length === 0) {
       return;
     }
@@ -2939,8 +2729,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   private localNotificationId(kind: string, sourceId: string, recipientUserId: string): string {
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     return `${kind}:${sourceId}:${recipientUserId}:${occurrenceId}`;
   }
 

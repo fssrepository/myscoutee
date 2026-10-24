@@ -1,3 +1,11 @@
+import type { HelpCenterHeaderColor } from '../../../shared/core/contracts/content/content.interface';
+import type { HelpCenterPresentation } from '../../../shared/core/contracts/content/content.interface';
+import type { HelpCenterSectionPanelSpan } from '../../../shared/core/contracts/content/content.interface';
+import { type HelpCenterDocumentKind } from '../../../shared/core/contracts/content/content.interface';
+import { type HelpCenterGuideFieldDto } from '../../../shared/core/contracts/content/content.interface';
+import { type HelpCenterRevisionDto } from '../../../shared/core/contracts/content/content.interface';
+import { type HelpCenterSectionDto } from '../../../shared/core/contracts/content/content.interface';
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../shared/core/common/content-languages.json';
 import {
@@ -8,7 +16,8 @@ import {
   Component,
   effect,
   inject,
-  signal
+  signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -29,13 +38,6 @@ import {
 } from '../../../shared/core';
 import * as AppConstants from '../../../shared/core/common/constants';
 import {
-  type GuideDocumentKind as HelpCenterDocumentKind,
-  type GuideField as HelpCenterGuideFieldDto,
-  type GuideHeaderColor as HelpCenterHeaderColor,
-  type GuidePresentation as HelpCenterPresentation,
-  type GuideRevision as HelpCenterRevisionDto,
-  type GuideSectionPanelSpan as HelpCenterSectionPanelSpan,
-  type GuideSection as HelpCenterSectionDto,
   ImageCarouselComponent,
   IndicatorComponent,
   AppMenuComponent,
@@ -166,6 +168,7 @@ type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLang
     AppMenuComponent, I18nPipe
   ],
   templateUrl: './admin-help-editor-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-help-editor-popup.component.scss'
 })
 export class AdminHelpEditorPopupComponent {
@@ -907,7 +910,7 @@ export class AdminHelpEditorPopupComponent {
       return contentHtml;
     }
     const seededFigure = `<figure class="explanation-seeded-visual lazy-image-frame-loading"><img class="lazy-image-loading" src="${this.escapeHtmlAttribute(this.lazyImagePlaceholderSrc(imageUrl))}" alt="${this.escapeHtmlAttribute(section.title ?? '')}"></figure>`;
-    return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
+    return `${contentHtml}${seededFigure}`;
   }
 
   protected setDraftSectionPanelSpan(
@@ -1618,15 +1621,14 @@ export class AdminHelpEditorPopupComponent {
   }
 
   private slugify(value: string): string {
-    return value
+    return AppUtils.trimCharacters(value
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/[^a-z0-9]+/g, '-'), "-");
   }
 
   private newLocalId(): string {
-    return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `draft-${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 
   private defaultContentRevisionTitle(): string {

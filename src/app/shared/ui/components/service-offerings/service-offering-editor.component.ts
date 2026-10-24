@@ -1,15 +1,15 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { AppUtils } from '../../../core/base/app-utils';
 import { FeedbackService } from '../../../core/base/services/feedback/feedback.service';
 import type { FeedbackStats } from '../../../core/contracts/feedback/feedback.interface';
 import {
-  ExplanationGuideService,
   PopupComponent,
   type PopupModel,
   FormFlowComponent,
   type FormFlowModel,
   type FormFlowActionEvent
 } from '@fssrepository/myscoutee-components';
-import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
+import { Component, OnChanges, OnDestroy, inject, computed, signal, input, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
@@ -19,7 +19,8 @@ import { SERVICE_CATEGORIES,type ServiceOfferingItem,type SaveServiceOffering } 
 @Component({selector:'app-service-offering-editor',standalone:true,imports:[FormsModule,PopupComponent,FormFlowComponent],template:`
  <app-popup [model]="popup()" [zIndex]="15100" data-guide-context="community-service-editor">
  <app-form-flow data-guide-field="service-details" [model]="flow()" [ngModel]="form()" (ngModelChange)="form.set($event)" (action)="staffAction($event)" [saving]="store.busy()"></app-form-flow>
- </app-popup>`, styles: [`:host { --form-flow-grouped-media-image-height: 100%; --form-flow-grouped-media-image-align: stretch; --form-flow-grouped-media-image-width: 100%; }
+ </app-popup>`, changeDetection: ChangeDetectionStrategy.Eager,
+ styles: [`:host { --form-flow-grouped-media-image-height: 100%; --form-flow-grouped-media-image-align: stretch; --form-flow-grouped-media-image-width: 100%; }
  @media (max-width: 760px) { :host { --form-flow-grouped-media-image-height: clamp(160px, 54vw, 260px); } }`]})
 export class ServiceOfferingEditorComponent implements OnChanges, OnDestroy {
   readonly editor = input.required<{value:ServiceOfferingItem|null;readOnly:boolean}>();

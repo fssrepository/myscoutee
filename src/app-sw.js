@@ -78,8 +78,9 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('message', event => {
+  if (event.origin !== self.location.origin) return;
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    event.waitUntil(self.skipWaiting());
     return;
   }
   if (event.data && event.data.type === 'DEPLOYMENT_BRANDING') {
@@ -190,7 +191,7 @@ async function networkFirst(request, cacheName, timeoutMs) {
     const response = await fetch(request, { cache: 'no-store',
       ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
     if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone()).catch(() => undefined);
     }
     return response;
   } catch {
@@ -242,7 +243,7 @@ async function networkFirstStaticAsset(request) {
   try {
     const response = await fetch(request, { cache: 'no-store' });
     if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone()).catch(() => undefined);
       return response;
     }
     return await matchAppBundleCache(request) || response;
@@ -300,7 +301,7 @@ async function cacheFirst(request, cacheName) {
   try {
     const response = await fetch(request);
     if (response && (response.ok || response.type === 'opaque')) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone()).catch(() => undefined);
     }
     return response;
   } catch {

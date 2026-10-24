@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -128,7 +129,7 @@ export class HttpAdminNotificationsService {
     if (typeof window === 'undefined') {
       return null;
     }
-    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/admin/notifications/ws`, window.location.origin);
+    const baseUrl = new URL(`${AppUtils.trimEndCharacters(this.apiBaseUrl, "/")}/admin/notifications/ws`, window.location.origin);
     baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
     if (normalizedAdminUserId) {

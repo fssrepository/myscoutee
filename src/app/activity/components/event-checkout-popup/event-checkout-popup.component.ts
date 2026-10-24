@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   UiLinkUtils,
@@ -10,7 +11,7 @@ import {
 
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -80,6 +81,7 @@ type CheckoutFooterDecisionState = {
     EventPromoCodePopupComponent
   ],
   templateUrl: './event-checkout-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './event-checkout-popup.component.scss'
 })
 export class EventCheckoutPopupComponent {
@@ -859,7 +861,7 @@ export class EventCheckoutPopupComponent {
             `${row.currency ?? itemCurrency}`.trim(),
             Number.isFinite(row.multiplier) ? `${Math.max(1, Math.trunc(Number(row.multiplier)))}` : ''
           ].join('~'))
-          .sort()
+          .sort(AppUtils.compareCodeUnits)
           .join(',');
         return [
           `${item.id ?? ''}`.trim(),
@@ -878,12 +880,12 @@ export class EventCheckoutPopupComponent {
           pricingRows
         ].join('|');
       })
-      .sort();
+      .sort(AppUtils.compareCodeUnits);
     const totalAmount = items
       .reduce((sum, item) => sum + ((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1))), 0);
     const currency = items.find(item => item.currency?.trim())?.currency?.trim() || fallbackCurrency;
-    const optionalIds = [...this.selectedOptionalSubEventIds].map(item => item.trim()).filter(Boolean).sort();
-    const policyIds = [...this.acceptedPolicyIds].map(item => item.trim()).filter(Boolean).sort();
+    const optionalIds = [...this.selectedOptionalSubEventIds].map(item => item.trim()).filter(Boolean).sort(AppUtils.compareCodeUnits);
+    const policyIds = [...this.acceptedPolicyIds].map(item => item.trim()).filter(Boolean).sort(AppUtils.compareCodeUnits);
     return JSON.stringify({
       pendingReason: pendingReasonOverride === undefined ? this.checkoutActionPendingReason() : pendingReasonOverride,
       slotSourceId: this.selectedSlotSourceId?.trim() || null,
@@ -1528,33 +1530,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private buildRuntimeBasketFromCurrentSelection(): ActivityContracts.EventCheckoutBasket | null {
-    const dialog = this.dialog();
-    if (!dialog) {
+    if (!this.dialog())
       return null;
-    }
-    const items = this.buildBasketItemsFromCurrentSelection();
-    if (items.length === 0) {
-      return null;
-    }
-    const lineItems = this.lineItemsFromBasketItems(items);
-    const totalAmount = this.totalAmountFromLineItems(lineItems);
-    const currency = items.find(item => item.currency)?.currency ?? dialog.record.pricing?.currency ?? 'USD';
-    const state = this.currentCheckoutState(totalAmount);
-    return {
-      userId: dialog.userId,
-      sourceId: dialog.record.id,
-      status: state,
-      items: items.map(item => ({ ...item, status: state })),
-      pricingSummaryRows: this.aggregatePricingSummaryRows(items.flatMap(item => item.pricingSummaryRows ?? []), currency),
-      lineItems,
-      totalAmount,
-      currency,
-      slotSourceId: items[0]?.slotSourceId ?? null,
-      selectedDateKey: items[0]?.selectedDateKey ?? null,
-      checkoutSessionId: this.checkoutSessionId,
-      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null,
-      appliedPromoCodes: [...this.appliedPromoCodes]
-    };
+    return this.buildRuntimeBasketFromItems(this.buildBasketItemsFromCurrentSelection());
   }
 
   private buildRuntimeBasketFromItems(
@@ -1602,10 +1580,7 @@ export class EventCheckoutPopupComponent {
     return Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
   }
 
-  private aggregatePricingSummaryRows(
-    rows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[],
-    fallbackCurrency: string
-  ): ActivityContracts.EventCheckoutPricingSummaryRow[] {
+  private aggregatePricingSummaryRows(rows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[], fallbackCurrency: string): ActivityContracts.EventCheckoutPricingSummaryRow[] {
     const grouped = new Map<string, ActivityContracts.EventCheckoutPricingSummaryRow>();
     for (const row of rows) {
       const label = `${row.label ?? ''}`.trim();
@@ -1616,27 +1591,7 @@ export class EventCheckoutPopupComponent {
       const amount = Number.isFinite(row.amount) ? Number(row.amount) : null;
       const currency = `${row.currency ?? fallbackCurrency ?? 'USD'}`.trim() || 'USD';
       const key = `${row.key || label}::${detail}::${amount ?? 'none'}::${currency}`;
-      const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
-      const existing = grouped.get(key);
-      if (existing) {
-        const nextMultiplier = Math.max(1, Math.trunc(Number(existing.multiplier) || 1)) + multiplier;
-        grouped.set(key, {
-          ...existing,
-          multiplier: nextMultiplier,
-          amount: existing.amount !== null && amount !== null
-            ? Math.round((Number(existing.amount) + (amount * multiplier)) * 100) / 100
-            : existing.amount ?? amount
-        });
-        continue;
-      }
-      grouped.set(key, {
-        key,
-        label,
-        detail: detail || null,
-        amount: amount === null ? null : Math.round(amount * multiplier * 100) / 100,
-        currency,
-        multiplier
-      });
+      PricingBuilder.appendPricingSummaryRow(grouped, row, key, label, detail, amount, currency);
     }
     return [...grouped.values()];
   }
@@ -1749,19 +1704,7 @@ export class EventCheckoutPopupComponent {
     return `${symbol}${(Number(amount) || 0).toFixed(2)}`;
   }
 
-  protected currencySymbol(currency: string): string {
-    switch ((currency || '').trim().toUpperCase()) {
-      case 'EUR':
-        return 'EUR ';
-      case 'GBP':
-        return 'GBP ';
-      case 'USD':
-      case '':
-        return '$';
-      default:
-        return `${currency.trim().toUpperCase()} `;
-    }
-  }
+  protected currencySymbol(currency: string): string { return PricingBuilder.currencySymbol(currency); }
 
   protected continueLabel(): string {
     const dialog = this.dialog();
@@ -3475,23 +3418,7 @@ export class EventCheckoutPopupComponent {
     return hoursUntilStart <= dayWindowHours;
   }
 
-  private applyPricingAction(currentPrice: number, action: ContractTypes.PricingAction): number {
-    const value = Number(action.value) || 0;
-    if (action.kind === 'set_exact_price') {
-      return Math.max(0, value);
-    }
-    if (action.kind === 'increase_amount') {
-      return Math.max(0, currentPrice + value);
-    }
-    if (action.kind === 'decrease_amount') {
-      return Math.max(0, currentPrice - value);
-    }
-    const percent = value / 100;
-    if (action.kind === 'decrease_percent') {
-      return Math.max(0, currentPrice * (1 - percent));
-    }
-    return Math.max(0, currentPrice * (1 + percent));
-  }
+  private applyPricingAction(currentPrice: number, action: ContractTypes.PricingAction): number { return PricingBuilder.applyPricingAction(currentPrice, action); }
 
   private describePricingAction(action: ContractTypes.PricingAction): string {
     const value = Number(action.value) || 0;

@@ -1,7 +1,7 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   HeaderCardComponent,
   ImageCarouselComponent,
   PopupComponent,

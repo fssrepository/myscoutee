@@ -1,16 +1,17 @@
+import { type HelpCenterDocumentKind } from '../../../core/contracts/content/content.interface';
+import { type HelpCenterRevisionDto } from '../../../core/contracts/content/content.interface';
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute } from '@angular/router';
 
 import { AppUtils } from '../../../core/base/app-utils';
-import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
-import { HelpCenterService, I18nService } from '../../../core';
+import { DOCUMENT_VIEWER_HEADER_PALETTES } from '../../../core/common/help-center-options';
+import { HelpCenterService } from '../../../core/base/services/help/help-center.service';
+import { I18nService } from '../../../core/base/services/localization/i18n.service';
 import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
 import { DeploymentConfigurationService } from '../../../core/base/services/platform/deployment-configuration.service';
 import {
-  type GuideDocumentKind as HelpCenterDocumentKind,
-  type GuideRevision as HelpCenterRevisionDto,
   LazyBgImageDirective,
   AccordionComponent,
   type UiAccordionItem,
@@ -52,6 +53,7 @@ import type {
     PopupComponent
   ],
   templateUrl: './document-viewer.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './document-viewer.component.scss'
 })
 export class DocumentViewerComponent implements OnChanges, OnInit {
@@ -339,12 +341,12 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   private currentSelectedSectionIds(): string[] {
-    return Array.from(this.selectedSectionIds).sort();
+    return Array.from(this.selectedSectionIds).sort(AppUtils.compareCodeUnits);
   }
 
   private isSelectionDirty(): boolean {
     const current = this.currentSelectedSectionIds();
-    const initial = Array.from(this.initialSelectedSectionIds).sort();
+    const initial = Array.from(this.initialSelectedSectionIds).sort(AppUtils.compareCodeUnits);
     if (current.length !== initial.length) {
       return true;
     }
@@ -368,7 +370,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   private normalizeHeaderPalette(value: DocumentViewerHeaderPalette | null | undefined): DocumentViewerHeaderPalette {
-    return AppUtils.enumValue(value, APP_STATIC_DATA.documentViewerHeaderPalettes, 'amber');
+    return AppUtils.enumValue(value, DOCUMENT_VIEWER_HEADER_PALETTES, 'amber');
   }
 
   protected activeConfig(): DocumentViewerConfig | null {

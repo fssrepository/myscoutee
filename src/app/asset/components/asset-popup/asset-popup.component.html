@@ -41,13 +41,15 @@
             [useStore]="false"
             [dialog]="{
               visible: !!assetStore.pendingAssetDeleteCardId(),
-              title: 'confirmation.delete.asset',
-              message: pendingOwnedAssetDeleteLabel(),
-              confirmLabel: 'Delete',
-              busyConfirmLabel: 'Deleting...',
+              title: assetStore.deleteDialogText().title,
+              message: assetStore.deleteDialogText().message,
+              confirmLabel: assetStore.deleteDialogText().confirmLabel,
+              busyConfirmLabel: assetStore.deleteDialogText().busyConfirmLabel,
               confirmTone: 'danger',
               busy: assetStore.assetDeletePending(),
-              errorMessage: assetStore.pendingAssetDeleteError(),
+              errorMessage: assetStore.deleteDialogText().errorMessage,
+              cancelLabel: assetStore.deleteDialogText().cancelLabel,
+              closeLabel: assetStore.deleteDialogText().closeLabel,
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"

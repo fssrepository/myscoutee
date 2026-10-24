@@ -1,0 +1,86 @@
+{
+  "start": {
+    "action": "mingle-start",
+    "backendAction": "start",
+    "label": "mingle.action.start",
+    "icon": "play_circle",
+    "palette": "success",
+    "title": "mingle.action.start.question",
+    "description": "mingle.action.start.description",
+    "confirmLabel": "mingle.action.start.confirm",
+    "busyLabel": "mingle.action.starting",
+    "destructive": false
+  },
+  "pause": {
+    "action": "mingle-pause",
+    "backendAction": "pause",
+    "label": "mingle.action.pause",
+    "icon": "pause_circle",
+    "palette": "amber",
+    "title": "mingle.action.pause.title",
+    "description": "mingle.action.pause.description",
+    "confirmLabel": "mingle.action.pause.confirm",
+    "busyLabel": "mingle.action.pausing",
+    "destructive": false
+  },
+  "end": {
+    "action": "mingle-next",
+    "backendAction": "next",
+    "label": "mingle.action.end",
+    "icon": "skip_next",
+    "palette": "blue",
+    "title": "mingle.action.end.question",
+    "description": "mingle.action.end.description",
+    "confirmLabel": "mingle.action.end",
+    "busyLabel": "mingle.action.ending",
+    "destructive": false
+  },
+  "complete": {
+    "action": "mingle-complete",
+    "backendAction": "complete",
+    "label": "mingle.action.complete",
+    "icon": "stop_circle",
+    "palette": "danger",
+    "title": "mingle.action.complete.question",
+    "description": "mingle.action.complete.description",
+    "confirmLabel": "mingle.action.complete.confirm",
+    "busyLabel": "mingle.action.completing",
+    "destructive": true
+  },
+  "resume": {
+    "action": "mingle-resume",
+    "backendAction": "resume",
+    "label": "mingle.action.resume",
+    "icon": "play_circle",
+    "palette": "success",
+    "title": "mingle.action.resume.title",
+    "description": "mingle.action.resume.description",
+    "confirmLabel": "mingle.action.resume.confirm",
+    "busyLabel": "mingle.action.resuming",
+    "destructive": false
+  },
+  "nextNow": {
+    "action": "mingle-next",
+    "backendAction": "next",
+    "label": "mingle.action.next.now",
+    "icon": "skip_next",
+    "palette": "success",
+    "title": "mingle.action.next.question",
+    "description": "mingle.action.next.description",
+    "confirmLabel": "mingle.action.next.confirm",
+    "busyLabel": "mingle.action.starting",
+    "destructive": false
+  },
+  "restart": {
+    "action": "mingle-start",
+    "backendAction": "start",
+    "label": "mingle.action.next",
+    "icon": "play_circle",
+    "palette": "success",
+    "title": "mingle.action.next.question",
+    "description": "mingle.action.next.restart.description",
+    "confirmLabel": "mingle.action.next.confirm",
+    "busyLabel": "mingle.action.starting",
+    "destructive": false
+  }
+}

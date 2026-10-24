@@ -1,3 +1,4 @@
+import { requestWithAbort } from '../../request-lifecycle';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
@@ -141,53 +142,7 @@ export class HttpAdminAffinityGraphService {
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T | undefined> {
-    return new Promise<T | undefined>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      let settled = false;
-      let subscription: { unsubscribe: () => void } | null = null;
-      const cleanup = () => {
-        signal?.removeEventListener('abort', onAbort);
-      };
-      const onAbort = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        subscription?.unsubscribe();
-        cleanup();
-        reject(this.createAbortError());
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      subscription = request$.subscribe({
-        next: value => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(value);
-        },
-        error: error => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          reject(error);
-        },
-        complete: () => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(undefined);
-        }
-      });
-    });
+    return requestWithAbort(request$, signal, () => undefined);
   }
 
   private createAbortError(): Error {

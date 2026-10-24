@@ -1464,24 +1464,7 @@ export class SeedEventsBuilder {
   private static seedSubEventDefinitionTimeline(
     items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined
   ): Array<{ item: ContractTypes.SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
-    const definitions = items ?? [];
-    let previousStartOffsetMinutes = 0;
-    let previousEndOffsetMinutes = 0;
-    let hasPrevious = false;
-    return definitions.map(item => {
-      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
-      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
-      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
-      const startOffsetMinutes = !hasPrevious
-        ? offsetMinutes
-        : timing === 'During'
-          ? previousStartOffsetMinutes + offsetMinutes
-          : previousEndOffsetMinutes + offsetMinutes;
-      previousStartOffsetMinutes = startOffsetMinutes;
-      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
-      hasPrevious = true;
-      return { item, startOffsetMinutes, durationMinutes };
-    });
+    return ActivityEventDetailDTO.subEventDefinitionTimeline(items);
   }
 
   private static seedSubEventDefinitionsDurationMinutes(items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined): number {
@@ -1614,32 +1597,7 @@ export class SeedEventsBuilder {
   }
 
   private static matchesSeedSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
-    if (frequency === 'daily') {
-      return true;
-    }
-    if (frequency === 'weekly') {
-      return date.getDay() === templateStart.getDay();
-    }
-    if (frequency === 'bi-weekly' || frequency === 'biweekly') {
-      if (date.getDay() !== templateStart.getDay()) {
-        return false;
-      }
-      const diffDays = Math.floor((date.getTime() - templateStart.getTime()) / (24 * 60 * 60 * 1000));
-      const diffWeeks = Math.floor(diffDays / 7);
-      return diffWeeks >= 0 && diffWeeks % 2 === 0;
-    }
-    if (frequency === 'monthly') {
-      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
-    }
-    if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
-      if (date.getMonth() !== templateStart.getMonth()) {
-        return false;
-      }
-      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
-    }
-    return false;
+    return ActivityEventDetailDTO.matchesSlotFrequency(date, templateStart, frequency);
   }
 
   private static isGeneratedSeedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
@@ -2700,16 +2658,7 @@ export class SeedEventsBuilder {
     return Math.max(0, Math.trunc(Number(value)));
   }
 
-  private static uniqueAffinityTokens(values: readonly string[]): string[] {
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
-      if (normalized) {
-        seen.add(normalized);
-      }
-    }
-    return [...seen];
-  }
+  private static uniqueAffinityTokens(values: readonly string[]): string[] { return AppUtils.uniqueAffinityTokens(values); }
 
   private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
     return tokens.reduce((total, token) => total + ((AppUtils.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);

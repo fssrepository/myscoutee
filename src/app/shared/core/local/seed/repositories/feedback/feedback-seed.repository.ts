@@ -1,3 +1,4 @@
+import { ActivityMembersBuilder } from '../../../../base/builders/events/activity-members.builder';
 import { FEEDBACK_STATES_TABLE_NAME } from '../../../source/entity/feedback/feedback.entity';
 import type { FeedbackStateRecord } from '../../../source/entity/feedback/feedback.entity';
 import { Injectable, inject } from '@angular/core';
@@ -252,7 +253,7 @@ export class SeedFeedbackRepository {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {
       hash = ((hash << 5) - hash) + value.charCodeAt(index);
-      hash |= 0;
+      hash |= 0; // NOSONAR S7767: intentional signed 32-bit overflow for stable seed IDs; Math.trunc changes the hash.
     }
     return Math.abs(hash);
   }
@@ -262,16 +263,10 @@ export class SeedFeedbackRepository {
   }
 
   private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return false;
-    }
-    return this.normalizeUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
+    return ActivityMembersBuilder.isEventAdminRecord(record, userId);
   }
 
   private normalizeUserIds(userIds: readonly string[] | undefined): string[] {
-    return Array.from(new Set((userIds ?? [])
-      .map(userId => `${userId ?? ''}`.trim())
-      .filter(userId => userId.length > 0)));
+    return ActivityMembersBuilder.normalizeUserIds(userIds);
   }
 }

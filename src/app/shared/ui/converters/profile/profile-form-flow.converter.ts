@@ -1,3 +1,4 @@
+import profileDetailIcons from './profile-detail-icons.json';
 import {
   UiDateUtils,
   type AppMenuItem,
@@ -130,17 +131,7 @@ export class ProfileFormFlowDataConverter {
       profileStatus: this.normalizeProfileStatus(user.profileStatus),
       profileDetails: this.normalizeProfileDetails(user),
       activities: {
-        game: user.activities?.game ?? 0,
-        chats: user.activities?.chats ?? 0,
-        invitations: user.activities?.invitations ?? 0,
-        events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0,
-        cars: user.activities?.cars ?? 0,
-        accommodation: user.activities?.accommodation ?? 0,
-        supplies: user.activities?.supplies ?? 0,
-        tickets: user.activities?.tickets ?? 0,
-        contacts: user.activities?.contacts ?? 0,
-        feedback: user.activities?.feedback ?? 0,
+        ...AppUtils.copyActivityCounts(user.activities),
         event: user.activities?.event ? { ...user.activities.event } : undefined,
         asset: user.activities?.asset ? { ...user.activities.asset } : undefined,
         feedbackCounts: user.activities?.feedbackCounts ? { ...user.activities.feedbackCounts } : undefined,
@@ -308,6 +299,8 @@ export class ProfileFormFlowDataConverter {
     return `${value ?? ''}`.trim().toLowerCase();
   }
 }
+
+const PROFILE_DETAIL_ICONS: Record<string, { matches: Record<string, string>; fallback: string; exact?: boolean }> = profileDetailIcons;
 
 export class ProfileFormFlowConverter {
   static completionPercent(data: ProfileExtDto): number {
@@ -1105,152 +1098,9 @@ export class ProfileFormFlowConverter {
   private static detailOptionIcon(labelKey: string, option: string): string {
     const normalizedLabel = AppUtils.normalizeText(labelKey);
     const normalizedOption = AppUtils.normalizeText(option);
-
-    if (normalizedLabel.includes('drinking')) {
-      if (normalizedOption.includes('never')) {
-        return 'no_drinks';
-      }
-      if (normalizedOption.includes('socially')) {
-        return 'groups';
-      }
-      if (normalizedOption.includes('occasionally')) {
-        return 'event';
-      }
-      return 'nightlife';
-    }
-    if (normalizedLabel.includes('smoking')) {
-      if (normalizedOption.includes('never')) {
-        return 'smoke_free';
-      }
-      if (normalizedOption.includes('trying')) {
-        return 'healing';
-      }
-      if (normalizedOption.includes('socially')) {
-        return 'group';
-      }
-      return 'smoking_rooms';
-    }
-    if (normalizedLabel.includes('workout')) {
-      if (normalizedOption.includes('daily')) {
-        return 'whatshot';
-      }
-      if (normalizedOption.includes('4x')) {
-        return 'fitness_center';
-      }
-      if (normalizedOption.includes('2-3x')) {
-        return 'directions_run';
-      }
-      return 'self_improvement';
-    }
-    if (normalizedLabel.includes('pets')) {
-      if (normalizedOption.includes('dog')) {
-        return 'pets';
-      }
-      if (normalizedOption.includes('cat')) {
-        return 'pets';
-      }
-      if (normalizedOption.includes('all')) {
-        return 'cruelty_free';
-      }
-      return 'block';
-    }
-    if (normalizedLabel.includes('family')) {
-      if (normalizedOption.includes('want')) {
-        return 'child_care';
-      }
-      if (normalizedOption.includes('open')) {
-        return 'family_restroom';
-      }
-      if (normalizedOption.includes('not sure')) {
-        return 'help_outline';
-      }
-      return 'do_not_disturb_alt';
-    }
-    if (normalizedLabel.includes('children')) {
-      if (normalizedOption === 'yes') {
-        return 'child_friendly';
-      }
-      if (normalizedOption === 'no') {
-        return 'do_not_disturb_alt';
-      }
-      return 'privacy_tip';
-    }
-    if (normalizedLabel.includes('love')) {
-      if (normalizedOption.includes('long-term')) {
-        return 'favorite';
-      }
-      if (normalizedOption.includes('slow-burn')) {
-        return 'hourglass_bottom';
-      }
-      if (normalizedOption.includes('open')) {
-        return 'hub';
-      }
-      return 'explore';
-    }
-    if (normalizedLabel.includes('communication')) {
-      if (normalizedOption.includes('direct')) {
-        return 'campaign';
-      }
-      if (normalizedOption.includes('calm')) {
-        return 'record_voice_over';
-      }
-      if (normalizedOption.includes('playful')) {
-        return 'mood';
-      }
-      return 'forum';
-    }
-    if (normalizedLabel.includes('orientation')) {
-      if (normalizedOption.includes('straight')) {
-        return 'person';
-      }
-      if (normalizedOption.includes('bisexual')) {
-        return 'diversity_3';
-      }
-      if (normalizedOption.includes('gay') || normalizedOption.includes('lesbian')) {
-        return 'favorite';
-      }
-      if (normalizedOption.includes('pansexual')) {
-        return 'all_inclusive';
-      }
-      if (normalizedOption.includes('asexual')) {
-        return 'do_not_disturb_on';
-      }
-      return 'privacy_tip';
-    }
-    if (normalizedLabel.includes('gender')) {
-      if (normalizedOption.includes('woman')) {
-        return 'female';
-      }
-      if (normalizedOption.includes('man')) {
-        return 'male';
-      }
-      if (normalizedOption.includes('non-binary')) {
-        return 'transgender';
-      }
-      return 'privacy_tip';
-    }
-    if (normalizedLabel.includes('religion')) {
-      if (normalizedOption.includes('spiritual')) {
-        return 'self_improvement';
-      }
-      if (normalizedOption.includes('christian')) {
-        return 'church';
-      }
-      if (normalizedOption.includes('muslim')) {
-        return 'mosque';
-      }
-      if (normalizedOption.includes('jewish')) {
-        return 'synagogue';
-      }
-      if (normalizedOption.includes('buddhist') || normalizedOption.includes('hindu')) {
-        return 'temple_buddhist';
-      }
-      if (normalizedOption.includes('atheist')) {
-        return 'public_off';
-      }
-      return 'privacy_tip';
-    }
-    return 'radio_button_checked';
+    const entry = Object.entries(PROFILE_DETAIL_ICONS).find(([label]) => normalizedLabel.includes(label))?.[1];
+    if (!entry) return 'radio_button_checked';
+    return Object.entries(entry.matches).find(([token]) => entry.exact ? normalizedOption === token : normalizedOption.includes(token))?.[1] ?? entry.fallback;
   }
 
   private static paletteFromTone(toneClass: string): AppMenuPalette {
@@ -1299,9 +1149,8 @@ export class ProfileFormFlowConverter {
   }
 
   private static idToken(value: string): string {
-    return AppUtils.normalizeText(value)
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'item';
+    return AppUtils.trimCharacters(AppUtils.normalizeText(value)
+      .replace(/[^a-z0-9]+/g, '-'), "-") || 'item';
   }
 }
 

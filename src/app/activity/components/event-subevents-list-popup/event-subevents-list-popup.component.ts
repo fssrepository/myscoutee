@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   InfoCardComponent,
@@ -20,7 +21,6 @@ import {
   type DateInputModel,
   type PopupDateInputChangeEvent,
   type SmartListLoadPage,
-  ExplanationGuideService,
   DialogStore
 } from '@fssrepository/myscoutee-components';
 import {
@@ -1155,20 +1155,7 @@ export class EventSubeventsListPopupComponent {
     return Math.max(0, Math.trunc(Number(value)));
   }
 
-  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
-    const seen = new Set<string>();
-    const labels: string[] = [];
-    for (const part of parts) {
-      const value = `${part ?? ''}`.trim();
-      const key = value.toLocaleLowerCase();
-      if (!value || seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      labels.push(value);
-    }
-    return labels.join(' - ');
-  }
+  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string { return AppUtils.joinDistinctResourcePopupHeaderLabels(parts); }
 
   private openTournamentGroupsPopup(
     context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-dashboard' }>,

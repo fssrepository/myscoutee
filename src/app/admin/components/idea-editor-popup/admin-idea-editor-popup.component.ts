@@ -1,3 +1,4 @@
+import { toggleInfoCardMenu } from '../../../shared/ui/context/info-card-menu';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../shared/core/common/content-languages.json';
 import { ImageDetailsMap, normalizeImageDetails } from '../../../shared/core/contracts/media/image-gallery.interface';
@@ -40,7 +41,8 @@ import {
   ViewChild,
   effect,
   inject,
-  untracked
+  untracked,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -143,6 +145,7 @@ interface IdeaPostLangCache {
   ],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [AppMenuDispatcher]
 })
 export class AdminIdeaEditorPopupComponent {
@@ -1065,22 +1068,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: CardMenuRequestEvent<InfoCardData>): void {
-    const menuId = `admin-idea-card:${request.id}`;
-    if (this.appMenuDispatcher.isOpen(menuId)) {
-      this.appMenuDispatcher.close(menuId);
-      return;
-    }
-    this.appMenuDispatcher.open({
-      id: menuId,
-      kind: 'select',
-      title: this.infoCardMenuTitle(request.card),
-      items: this.infoCardMenuItems(card, request),
-      triggerRect: request.triggerRect,
-      openUp: request.openUp,
-      panelAlign: 'auto',
-      closeOnSelect: true,
-      onClose: request.closeTrigger
-    }, null);
+    toggleInfoCardMenu(this.appMenuDispatcher, `admin-idea-card:${request.id}`, request, () => ({ title: this.infoCardMenuTitle(request.card), items: this.infoCardMenuItems(card, request) }));
   }
 
   protected onIdeaDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -1734,7 +1722,7 @@ export class AdminIdeaEditorPopupComponent {
 
   private htmlToText(value: string): string {
     if (typeof document === 'undefined') {
-      return `${value ?? ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return `${value ?? ''}`.replace(/<[^<>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     }
     const template = document.createElement('template');
     template.innerHTML = value;

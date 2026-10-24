@@ -3,7 +3,8 @@ import {
 } from '@angular/common';
 import {
   Component,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -38,6 +39,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/profile/user
   standalone: true,
   imports: [CommonModule, FormsModule, PopupComponent, FormFlowComponent, AppMenuComponent],
   templateUrl: './admin-chat-review-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-chat-review-popup.component.scss'
 })
 export class AdminChatReviewPopupComponent {

@@ -1,8 +1,9 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { ErrorHandler } from '@angular/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { ChatMessageMenuConverter } from '../../../shared/ui/converters/chat/chat-message-menu.converter';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   AppMenuComponent,
   AppMenuTriggerComponent,
   PopupComponent,
@@ -236,6 +237,7 @@ interface ChatHeaderPollState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventChatPopupComponent implements OnDestroy {
+  private readonly actionErrors = inject(ErrorHandler);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly communityCases = inject(CommunityCasesStore);
@@ -852,69 +854,12 @@ export class EventChatPopupComponent implements OnDestroy {
       revision: Math.max(1, Math.trunc(Number(header.revision) || 1)),
       supportCase: header.supportCase ? { ...header.supportCase } : header.supportCase,
       ownerUserId: header.ownerUserId ?? null,
-      metrics: header.metrics
-        ? {
-            members: header.metrics.members ? { ...header.metrics.members } : null,
-            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
-            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
-            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
-            groupsCount: header.metrics.groupsCount ?? null,
-            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
-          }
-        : header.metrics,
-      navigationContext: header.navigationContext
-        ? {
-            ...header.navigationContext,
-            subEvent: header.navigationContext.subEvent
-              ? { ...header.navigationContext.subEvent }
-              : header.navigationContext.subEvent,
-            group: header.navigationContext.group
-              ? { ...header.navigationContext.group }
-              : header.navigationContext.group
-          }
-        : header.navigationContext
+      metrics: ActivitiesPopupStore.cloneEventChatMetrics(header),
+      navigationContext: ActivitiesPopupStore.cloneEventChatNavigation(header)
     };
   }
 
-  private cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState {
-    return {
-      ...header,
-      chatId: `${header.chatId ?? ''}`.trim(),
-      ownerId: `${header.ownerId ?? ''}`.trim() || null,
-      parentZIndex: Number.isFinite(Number(header.parentZIndex))
-        ? Math.max(0, Math.trunc(Number(header.parentZIndex)))
-        : null,
-      memberIds: [...(header.memberIds ?? [])],
-      members: (header.members ?? []).map(member => ({ ...member })),
-      supportCase: header.supportCase
-        ? {
-            ...header.supportCase,
-            assignee: header.supportCase.assignee ? { ...header.supportCase.assignee } : header.supportCase.assignee
-          }
-        : header.supportCase,
-      metrics: header.metrics
-        ? {
-            members: header.metrics.members ? { ...header.metrics.members } : null,
-            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
-            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
-            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
-            groupsCount: header.metrics.groupsCount ?? null,
-            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
-          }
-        : header.metrics,
-      navigationContext: header.navigationContext
-        ? {
-            ...header.navigationContext,
-            subEvent: header.navigationContext.subEvent
-              ? { ...header.navigationContext.subEvent }
-              : header.navigationContext.subEvent,
-            group: header.navigationContext.group
-              ? { ...header.navigationContext.group }
-              : header.navigationContext.group
-          }
-        : header.navigationContext
-    };
-  }
+  private cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState { return ActivitiesPopupStore.cloneEventChatHeader(header); }
 
   private patchCurrentEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
     const hostedHeader = this.hostedHeaderRef();
@@ -1880,7 +1825,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     event.preventDefault();
-    this.sendMessage();
+    void this.sendMessage().catch(error => this.actionErrors.handleError(error));
   }
 
   protected resizeComposerTextarea(): void {
@@ -3069,7 +3014,7 @@ export class EventChatPopupComponent implements OnDestroy {
           text: value.slice(lastIndex, match.index)
         });
       }
-      const rawUrl = match[0].replace(/[),.;!?]+$/g, '');
+      const rawUrl = AppUtils.trimEndCharacters(match[0], "),.;!?");
       const trailing = match[0].slice(rawUrl.length);
       segments.push({
         id: `link:${match.index}`,
@@ -3403,7 +3348,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return undefined;
     }
     const subtitle = `${attachment.subtitle ?? ''}`.trim();
-    const subtitleParts = subtitle.split(/\s+-\s+/).map(part => part.trim()).filter(Boolean);
+    const subtitleParts = subtitle.split(/(?<=\s)-(?=\s)/).map(part => part.trim()).filter(Boolean);
     return {
       id: assetId,
       type: assetType,
@@ -5493,7 +5438,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const normalizedSubEventName = `${subEventName ?? ''}`.trim().toLocaleLowerCase('en-US');
     const parts = normalizedTitle
-      .split(/\s+[·-]\s+/)
+      .split(/(?<=\s)[·-](?=\s)/)
       .map(part => part.trim())
       .filter(Boolean);
     if (parts.length > 1) {

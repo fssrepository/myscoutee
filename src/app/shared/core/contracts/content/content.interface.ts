@@ -1,12 +1,53 @@
-import type {
-  GuideSection as HelpCenterSectionDto,
-  GuideSectionPanelSpan as HelpCenterSectionPanelSpan,
-  GuideDocumentKind as HelpCenterDocumentKind,
-  GuidePresentation as HelpCenterPresentation,
-  GuideHeaderColor as HelpCenterHeaderColor,
-  GuideRevision as HelpCenterRevisionDto,
-  GuideField as HelpCenterGuideFieldDto
-} from '@fssrepository/myscoutee-components';
+export type HelpCenterSectionPanelSpan = 'span-1' | 'span-2' | 'span-3';
+export type HelpCenterPresentation = 'document' | 'tour';
+export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
+
+export interface HelpCenterSectionDto {
+  id: string;
+  icon: string;
+  title: string;
+  blurb: string;
+  contentHtml: string;
+  imageUrls?: string[];
+  panelSpan?: HelpCenterSectionPanelSpan;
+  optional?: boolean;
+  guideStepId?: string | null;
+  details?: string[];
+  points?: string[];
+}
+
+
+export type HelpCenterDocumentKind = 'help' | 'privacy' | 'terms' | 'explanation';
+
+export interface HelpCenterRevisionDto {
+  isSystem?: boolean;
+  id: string;
+  documentKind?: HelpCenterDocumentKind;
+  contextKey?: string | null;
+  lang: string;
+  languageLabel: string;
+  version: number;
+  title: string;
+  summary: string;
+  description: string;
+  headerColor?: HelpCenterHeaderColor;
+  presentation?: HelpCenterPresentation;
+  sections: HelpCenterSectionDto[];
+  active: boolean;
+  createdAtIso: string;
+  createdByUserId: string;
+  updatedAtIso: string;
+  updatedByUserId: string;
+}
+
+
+export interface HelpCenterGuideFieldDto {
+  id: string;
+  screenKey: string;
+  group: string;
+  i18nKey: string;
+  order: number;
+}
 
 import { ImageDetailsMap } from '../media/image-gallery.interface';
 import type * as UserContracts from '../accounts/user.interface';

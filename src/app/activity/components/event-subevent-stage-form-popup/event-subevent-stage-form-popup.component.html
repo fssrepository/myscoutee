@@ -47,7 +47,7 @@
                   </div>
                 </div>
                 <div class="subevent-position-panel__grid">
-                  <label data-guide-field="stage-placement" class="subevent-position-field subevent-position-field--placement">
+                  <div data-guide-field="stage-placement" class="subevent-position-field subevent-position-field--placement">
                     <span>{{ 'placement' | i18n }}</span>
                     <app-menu
                       class="subevent-stage-insert-placement-menu"
@@ -57,8 +57,8 @@
                       panelAlign="start"
                       (itemSelect)="onStageFormMenuSelect($event)"
                     ></app-menu>
-                  </label>
-                  <label data-guide-field="stage-anchor" class="subevent-position-field subevent-position-field--anchor">
+                  </div>
+                  <div data-guide-field="stage-anchor" class="subevent-position-field subevent-position-field--anchor">
                     <span>{{ 'event.anchor' | i18n }}</span>
                     <app-menu
                       class="subevent-stage-insert-target-menu"
@@ -68,7 +68,7 @@
                       panelAlign="start"
                       (itemSelect)="onStageFormMenuSelect($event)"
                     ></app-menu>
-                  </label>
+                  </div>
                   <label data-guide-field="stage-offset" class="subevent-position-field subevent-position-field--offset">
                     <span>{{ 'offset' | i18n }}</span>
                     <div class="subevent-stage-insert-offset">
@@ -188,7 +188,7 @@
                   </label>
                 </div>
                 <div class="subevent-tournament-rule-row">
-                  <label class="subevent-tournament-field">
+                  <div class="subevent-tournament-field">
                     <span>{{ 'event.editor.subevents.leaderboard.type' | i18n }}</span>
                     <app-menu
                       data-guide-field="stage-ranking" class="subevent-tournament-type-menu"
@@ -198,7 +198,7 @@
                       panelAlign="start"
                       (itemSelect)="onStageFormMenuSelect($event)"
                     ></app-menu>
-                  </label>
+                  </div>
                   <label class="subevent-tournament-field">
                     <span>{{ 'event.editor.subevents.advance.per.group' | i18n }}</span>
                     <input

@@ -1,3 +1,5 @@
+import { AdminConfigurationBuilder } from '../../builders/administration/admin-configuration.builder';
+import { AppUtils } from '../../app-utils';
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
@@ -99,34 +101,11 @@ export class AdminParamsService extends BaseRouteModeService {
   }
 
   private normalizeParamField(field: AdminParamFieldDto): AdminParamFieldDto {
-    const valueType: AdminParamValueType = field.valueType === 'text' ? 'text' : 'number';
-    const numberValue = valueType === 'number'
-      ? (Number.isFinite(Number(field.numberValue)) ? Number(field.numberValue) : 0)
-      : null;
-    return {
-      key: `${field.key ?? ''}`.trim(),
-      label: `${field.label ?? ''}`.trim() || `${field.key ?? ''}`.trim(),
-      labelKey: `${field.labelKey ?? ''}`.trim() || this.paramFieldLabelKey(field.key),
-      group: `${field.group ?? ''}`.trim() || 'General',
-      groupKey: `${field.groupKey ?? ''}`.trim() || this.paramGroupLabelKey(field.group),
-      valueType,
-      numberValue,
-      textValue: valueType === 'text' ? `${field.textValue ?? ''}`.trim() : null,
-      unit: `${field.unit ?? ''}`.trim(),
-      options: (field.options ?? []).map(option => this.normalizeParamOption(option)),
-      strategy: `${field.strategy ?? ''}`.trim(),
-      strategyKey: `${field.strategyKey ?? ''}`.trim() || this.paramStrategyLabelKey(field.strategy),
-      readOnly: field.readOnly === true
-    };
+    return AdminConfigurationBuilder.normalizeParamField(field);
   }
 
   private normalizeParamOption(option: AdminParamOptionDto): AdminParamOptionDto {
-    const value = `${option.value ?? ''}`.trim();
-    return {
-      value,
-      label: `${option.label ?? ''}`.trim() || value,
-      labelKey: `${option.labelKey ?? ''}`.trim() || this.paramStrategyLabelKey(value)
-    };
+    return AdminConfigurationBuilder.normalizeParamOption(option);
   }
 
   private normalizeParamsHistory(history: AdminParamsHistoryDto): AdminParamsHistoryDto {
@@ -154,23 +133,19 @@ export class AdminParamsService extends BaseRouteModeService {
   }
 
   private paramSectionLabelKey(sectionKey: string | null | undefined): string {
-    const normalized = `${sectionKey ?? ''}`.trim();
-    return normalized ? `admin.params.section.${normalized}` : 'admin.params.platform';
+    return AdminConfigurationBuilder.paramSectionLabelKey(sectionKey);
   }
 
   private paramFieldLabelKey(fieldKey: string | null | undefined): string {
-    const normalized = `${fieldKey ?? ''}`.trim();
-    return normalized ? `admin.params.field.${normalized}` : '';
+    return AdminConfigurationBuilder.paramFieldLabelKey(fieldKey);
   }
 
   private paramGroupLabelKey(group: string | null | undefined): string {
-    const normalized = this.paramsI18nSegment(group);
-    return normalized ? `admin.params.group.${normalized}` : 'admin.params.group.general';
+    return AdminConfigurationBuilder.paramGroupLabelKey(group);
   }
 
   private paramStrategyLabelKey(strategy: string | null | undefined): string {
-    const normalized = `${strategy ?? ''}`.trim();
-    return normalized ? `admin.params.strategy.${normalized}` : '';
+    return AdminConfigurationBuilder.paramStrategyLabelKey(strategy);
   }
 
   private paramSummaryKey(summary: string | null | undefined, sectionKey: string | null | undefined): string {
@@ -179,18 +154,17 @@ export class AdminParamsService extends BaseRouteModeService {
     if (!normalizedSummary || !normalizedSection) {
       return '';
     }
-    if (/^Updated\s+.+?\s+parameters\.$/i.test(normalizedSummary)) {
+    if (/^Updated .+ parameters\.$/i.test(normalizedSummary.replace(/\s+/g, ' '))) {
       return `admin.params.summary.updated.${normalizedSection}`;
     }
     return '';
   }
 
   private paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 }

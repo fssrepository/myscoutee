@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, TemplateRef, ViewChild, inject } from '@angular/core';
+import { Component, TemplateRef, ViewChild, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
@@ -60,6 +60,7 @@ interface AdminFeedbackRowMenuContext extends Record<string, unknown> {
   standalone: true,
   imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent, PopupComponent, I18nPipe],
   templateUrl: './admin-feedback-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-feedback-popup.component.scss'
 })
 export class AdminFeedbackPopupComponent {
@@ -469,33 +470,5 @@ export class AdminFeedbackPopupComponent {
     name: string,
     initials: string,
     gender: string
-  ): UserDto {
-    return {
-      id: id || 'admin',
-      name: name || 'Admin',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: initials || 'AD',
-      gender: gender === 'man' ? 'man' : 'woman',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 100,
-      headline: '',
-      about: '',
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chats: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0
-      }
-    };
-  }
+  ): UserDto { return AppUtils.chatUser(id, name, initials, gender); }
 }

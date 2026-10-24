@@ -4,7 +4,8 @@ import {
   Component,
   OnDestroy,
   computed,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -42,6 +43,7 @@ type FeedbackActionId = 'feedback-cancel' | 'feedback-submit';
   standalone: true,
   imports: [FormsModule, AppMenuComponent, FormFlowComponent],
   templateUrl: './feedback-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './feedback-popup.component.scss'
 })
 export class ProfileFeedbackPopupComponent implements OnDestroy {
@@ -52,24 +54,18 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly submitLoadState = this.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+  private readonly submissionState = this.runtimeStore.submissionState(this.submitLoadState, 'Unable to send feedback.');
   private submitAbortController: AbortController | null = null;
   private submitRequestVersion = 0;
 
   protected readonly feedbackCategories = APP_STATIC_DATA.feedbackCategories;
   protected readonly feedbackDetailsMinLength = 8;
-  protected readonly isSubmitting = computed(() => this.submitLoadState().status === 'loading');
-  protected readonly hasSubmitError = computed(() => {
-    const status = this.submitLoadState().status;
-    return status === 'error' || status === 'timeout';
-  });
-  protected readonly isSubmitSuccess = computed(() => this.submitLoadState().status === 'success');
-  protected readonly isSubmitBusy = computed(() => this.isSubmitting() || this.isSubmitSuccess());
-  protected readonly showSubmitRing = computed(() =>
-    this.isSubmitting() || this.hasSubmitError() || this.isSubmitSuccess()
-  );
-  protected readonly submitErrorMessage = computed(() =>
-    this.hasSubmitError() ? (this.submitLoadState().error ?? 'Unable to send feedback.') : ''
-  );
+  protected readonly isSubmitting = this.submissionState.isSubmitting;
+  protected readonly hasSubmitError = this.submissionState.hasSubmitError;
+  protected readonly isSubmitSuccess = this.submissionState.isSubmitSuccess;
+  protected readonly isSubmitBusy = this.submissionState.isSubmitBusy;
+  protected readonly showSubmitRing = this.submissionState.showSubmitRing;
+  protected readonly submitErrorMessage = this.submissionState.submitErrorMessage;
   protected feedbackForm = this.createInitialForm();
   protected feedbackSubmitMessage = '';
   protected feedbackSubmitted = false;

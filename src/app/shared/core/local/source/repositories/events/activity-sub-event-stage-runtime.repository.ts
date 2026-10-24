@@ -1,3 +1,7 @@
+import { updateCollectionRecords } from '../../../common/record-collection';
+import { subEventDeletionSelection } from '../../../common/record-collection';
+import { upsertOwnerCollection } from '../../../common/record-collection';
+import { normalizeOwnerCollection } from '../../../common/record-collection';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../../common/app.db';
@@ -205,40 +209,27 @@ export class LocalActivitySubEventStageRuntimeRepository {
   }
 
   markRecordsDeletedByParentSubEventIds(parentEventId: string, subEventIds: readonly string[]): number {
-    const normalizedParentEventId = `${parentEventId ?? ''}`.trim();
-    const normalizedSubEventIds = new Set(
-      (subEventIds ?? []).map(id => `${id ?? ''}`.trim()).filter(Boolean)
-    );
-    if (!normalizedParentEventId || normalizedSubEventIds.size === 0) {
+    const selection = subEventDeletionSelection(parentEventId, subEventIds);
+    if (!selection)
       return 0;
-    }
-    const nowMs = Date.now();
-    const nowIso = new Date(nowMs).toISOString();
+    const { normalizedParentEventId, normalizedSubEventIds, nowMs, nowIso } = selection;
     let changedCount = 0;
     this.memoryDb.write(currentState => {
       const table = this.normalizeCollection(currentState[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
-      const byId = { ...table.byId };
-      for (const id of table.ids) {
-        const record = byId[id];
-        if (!record
-          || LocalActivitySubEventStageRuntimeMapper.isDeleted(record)
-          || !this.isRuntimeOwnerRecord(record.ownerId, normalizedParentEventId)
-          || !normalizedSubEventIds.has(`${record.subEventId ?? ''}`.trim())) {
-          continue;
-        }
-        byId[id] = {
+      const updated = updateCollectionRecords(table, record => !(LocalActivitySubEventStageRuntimeMapper.isDeleted(record)
+        || !this.isRuntimeOwnerRecord(record.ownerId, normalizedParentEventId)
+        || !normalizedSubEventIds.has(`${record.subEventId ?? ''}`.trim())), record => ({
           ...record,
           status: LocalActivitySubEventStageRuntimeRepository.STATUS_DELETED,
           updatedMs: nowMs,
           updatedAtIso: nowIso
-        };
-        changedCount += 1;
-      }
+        }));
+      changedCount = updated.changedCount;
       return {
         ...currentState,
         [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: {
           ...table,
-          byId
+          byId: updated.byId
         }
       };
     });
@@ -246,65 +237,14 @@ export class LocalActivitySubEventStageRuntimeRepository {
   }
 
   private normalizeCollection(value: unknown): ActivitySubEventStageRuntimeRecordCollection {
-    const source = value as Partial<ActivitySubEventStageRuntimeRecordCollection> | null | undefined;
-    const byId = source?.byId && typeof source.byId === 'object'
-      ? { ...(source.byId as Record<string, ActivitySubEventStageRuntimeRecord>) }
-      : {};
-    const ids = Array.isArray(source?.ids)
-      ? source.ids.map(id => `${id}`)
-      : Object.keys(byId);
-    const idsByOwnerKey = source?.idsByOwnerKey && typeof source.idsByOwnerKey === 'object'
-      ? Object.fromEntries(
-          Object.entries(source.idsByOwnerKey).map(([ownerKey, recordIds]) => [
-            ownerKey,
-            Array.isArray(recordIds) ? recordIds.map(id => `${id}`) : []
-          ])
-        )
-      : {};
-
-    for (const id of ids) {
-      const record = byId[id];
-      const ownerKey = `${record?.ownerKey ?? ''}`.trim();
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = idsByOwnerKey[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      idsByOwnerKey[ownerKey] = bucket;
-    }
-
-    return {
-      byId,
-      ids,
-      idsByOwnerKey
-    };
+    return normalizeOwnerCollection<ActivitySubEventStageRuntimeRecord>(value);
   }
 
   private upsertRecordCollection(
     table: ActivitySubEventStageRuntimeRecordCollection,
     record: ActivitySubEventStageRuntimeRecord
   ): ActivitySubEventStageRuntimeRecordCollection {
-    const byId = {
-      ...table.byId,
-      [record.id]: record
-    };
-    const ids = table.ids.includes(record.id)
-      ? [...table.ids]
-      : [...table.ids, record.id];
-    const idsByOwnerKey = {
-      ...table.idsByOwnerKey
-    };
-    const bucket = idsByOwnerKey[record.ownerKey] ?? [];
-    if (!bucket.includes(record.id)) {
-      idsByOwnerKey[record.ownerKey] = [...bucket, record.id];
-    }
-    return {
-      byId,
-      ids,
-      idsByOwnerKey
-    };
+    return upsertOwnerCollection(table, record);
   }
 
   private isRuntimeOwnerRecord(ownerId: string | null | undefined, parentEventId: string): boolean {

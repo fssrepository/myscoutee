@@ -1,3 +1,5 @@
+import { AssetAvailabilityStatQuery } from '../../../contracts/assets/asset.interface';
+import { AssetOccupancyPageQuery } from '../../../contracts/assets/asset.interface';
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
@@ -83,18 +85,7 @@ export class AssetsService extends BaseRouteModeService {
     });
   }
 
-  async loadOccupancyByAssetId(query: {
-    userId: string;
-    assetId: string;
-    dateIso?: string | null;
-    rangeStart?: string | null;
-    rangeEnd?: string | null;
-    filter?: AppDTOs.AssetAvailabilityFilter | null;
-    order?: AppDTOs.AssetAvailabilityOrder | null;
-    page?: number;
-    pageSize: number;
-    cursor?: string | null;
-  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+  async loadOccupancyByAssetId(query: AssetOccupancyPageQuery, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     const normalizedAssetId = query.assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -113,17 +104,7 @@ export class AssetsService extends BaseRouteModeService {
     }, options);
   }
 
-  async loadStatByAssetId(query: {
-    userId: string;
-    assetId: string;
-    rangeStart?: string | null;
-    rangeEnd?: string | null;
-    filter?: AppDTOs.AssetAvailabilityFilter | null;
-    order?: AppDTOs.AssetAvailabilityOrder | null;
-    page?: number;
-    pageSize: number;
-    cursor?: string | null;
-  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+  async loadStatByAssetId(query: AssetAvailabilityStatQuery, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     const normalizedAssetId = query.assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {

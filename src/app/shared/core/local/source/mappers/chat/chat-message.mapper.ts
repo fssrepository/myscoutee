@@ -1,3 +1,5 @@
+import { UiDateUtils } from '@fssrepository/myscoutee-components';
+import { ChatMessageRecordCollection } from '../../entity/chat/chat.entity';
 import type {
   ChatMessageAttachment,
   ChatMessageDto,
@@ -12,6 +14,42 @@ import type {
 } from '../../entity/chat/chat.entity';
 
 export class LocalChatMessageMapper {
+
+  static upsertMessageRecord(table: ChatMessageRecordCollection, message: ChatMessageRecord): ChatMessageRecordCollection {
+    if (!message.recordId) {
+      return table;
+    }
+    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
+    const nextById = {
+      ...table.byId,
+      [message.recordId]: message
+    };
+    const nextIds = table.ids.includes(message.recordId)
+      ? [...table.ids]
+      : [...table.ids, message.recordId];
+    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
+      ? [...table.idsByChatKey[chatKey]]
+      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
+    nextChatIds.sort((leftId, rightId) => {
+      const left = nextById[leftId];
+      const right = nextById[rightId];
+      return left && right ? this.compareMessageRecordsAsc(left, right) : left ? -1 : right ? 1 : 0;
+    });
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByChatKey: {
+        ...table.idsByChatKey,
+        [chatKey]: nextChatIds
+      }
+    };
+  }
+
+  static compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {
+    return UiDateUtils.toSortableDate(left.sentAtIso) - UiDateUtils.toSortableDate(right.sentAtIso)
+      || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`);
+  }
+
   static toDto(record: ChatMessageRecord): ChatMessageDto {
     return {
       id: record.messageId,

@@ -541,53 +541,12 @@ export class LocalFeedbackMapper {
     return candidates[index] ?? candidates[0];
   }
 
-  private static feedbackAttendeesForEvent(
-    event: ActivityEventDTO,
-    hostId: string,
-    users: readonly UserDto[],
-    activeUserId: string
-  ): UserDto[] {
-    const attendeeIds = [...new Set([
-      ...(event.acceptedMemberUserIds ?? []),
-      ...(event.pendingMemberUserIds ?? [])
-    ].map(userId => `${userId}`.trim()).filter(Boolean))]
-      .filter(userId => userId !== activeUserId && userId !== hostId);
-    if (attendeeIds.length > 0) {
-      const usersById = new Map(users.map(user => [user.id, user]));
-      const resolved = attendeeIds
-        .map(userId => usersById.get(userId))
-        .filter((user): user is UserDto => Boolean(user));
-      if (resolved.length > 0) {
-        return resolved.slice(0, Math.min(5, resolved.length));
-      }
-    }
-
-    const candidates = users.filter(user => user.id !== activeUserId && user.id !== hostId);
-    if (candidates.length === 0) {
-      return [];
-    }
-    const seed = AppUtils.hashText(`feedback-attendees:${event.id}`);
-    const desired = Math.min(candidates.length, 3 + (seed % 4));
-    const picked: UserDto[] = [];
-    for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
-      const candidate = candidates[(seed + (index * 3)) % candidates.length];
-      if (!candidate || candidate.id === activeUserId || picked.some(item => item.id === candidate.id)) {
-        continue;
-      }
-      picked.push(candidate);
-    }
-    return picked;
+  private static feedbackAttendeesForEvent(event: ActivityEventDTO, hostId: string, users: readonly UserDto[], activeUserId: string): UserDto[] {
+    return FeedbackPageResultDto.feedbackAttendeesForEvent(event, hostId, users, activeUserId);
   }
 
   private static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): ActivityMemberRole {
-    const seed = AppUtils.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
-    if (seed % 11 === 0) {
-      return 'Admin';
-    }
-    if (seed % 4 === 0) {
-      return 'Manager';
-    }
-    return 'Member';
+    return FeedbackPageResultDto.feedbackRoleForAttendee(eventId, attendeeUserId);
   }
 
   private static eventStartAtMs(event: ActivityEventDTO): number | null {
@@ -631,20 +590,7 @@ export class LocalFeedbackMapper {
   }
 
   private static cloneSubmittedFeedbackAnswer(answer: SubmittedFeedbackAnswer): SubmittedFeedbackAnswer {
-    return {
-      ...answer,
-      cardId: answer.cardId?.trim() ?? '',
-      eventId: answer.eventId?.trim() ?? '',
-      kind: answer.kind === 'attendee' ? 'attendee' : 'event',
-      targetUserId: answer.targetUserId?.trim() || null,
-      targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
-      primaryValue: answer.primaryValue?.trim() ?? '',
-      secondaryValue: answer.secondaryValue?.trim() ?? '',
-      eventComment: answer.kind === 'event' ? answer.eventComment?.trim() ?? '' : '',
-      personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
-      tags: [...(answer.tags ?? [])],
-      submittedAtIso: answer.submittedAtIso?.trim() ?? ''
-    };
+    return FeedbackPageResultDto.cloneSubmittedAnswer(answer);
   }
 
   private static isoToMs(iso: string | null | undefined): number | null {

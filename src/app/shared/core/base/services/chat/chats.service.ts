@@ -54,8 +54,9 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async loadChatMessagesResult(
     chat: ChatDTO,
-    query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
+    query?: ListQuery
   ): Promise<PageResult<ContractTypes.ChatMessageDto, ChatMessagesLoadContext>> {
+    query ??= { page: 0, pageSize: Number.MAX_SAFE_INTEGER };
     const page = await this.queryChatMessagesPage(chat, query);
     return {
       items: page.items,

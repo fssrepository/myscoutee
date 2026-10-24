@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { LocalCommunityCasesRepository } from '../../repositories/community/community-cases.repository';
 import { activeCaseParticipantIds } from '../../entity/community/community-case.entity';
 import {PricingBuilder} from '../../../../base/builders/payments/pricing.builder';
@@ -68,7 +69,7 @@ export class LocalCaseAppointmentsService extends LocalRouteDelayService impleme
         if(!r.operationId||r.operationId.length>100||r.slotIds.length>50)throw new Error('Invalid selection');
           const {actor,c,s,calendar}=await this.context(r.userId,caseId,r.serviceId,r.providerAccountId);
           if(!c.audienceAccountIds.includes(actor)&&c.ownerAccountId!==actor)throw new Error('Forbidden');
-          const ids=[...new Set(r.slotIds)].sort(),signature=`${actor}:${caseId}:${r.serviceId}:${ids.join('|')}`;
+          const ids=[...new Set(r.slotIds)].sort(AppUtils.compareCodeUnits),signature=`${actor}:${caseId}:${r.serviceId}:${ids.join('|')}`;
           if(calendar.lastOperationId===r.operationId){if(calendar.lastOperationSignature!==signature)throw new Error('Conflict');this.cases.notify(c,actor,'appointments-updated',r.operationId);return this.saved(calendar,actor,caseId,r.serviceId);}
           if(calendar.version!==r.version)throw new Error('case.appointments.changed');
           const now=new Date().toISOString(),rows=new Map(calendar.appointments.map(a=>[a.id,a])),selected:CaseAppointment[]=[];

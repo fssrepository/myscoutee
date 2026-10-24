@@ -1,4 +1,5 @@
-import { Component, OnDestroy, ViewChild, effect, inject } from '@angular/core';
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
+import { Component, OnDestroy, ViewChild, effect, inject, ChangeDetectionStrategy } from '@angular/core';
 import { defer, map } from 'rxjs';
 import { PhotoFeedStore } from '../../context/stores/content/photo-feed.store';
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -16,8 +17,7 @@ import {
   type CardMenuRequestEvent,
   DialogStore,
   type AppMenuItem,
-  ViewportSeenDirective,
-  ExplanationGuideService
+  ViewportSeenDirective
 } from '@fssrepository/myscoutee-components';
 
 import { PhotoFeedConverter } from '../../converters/content/photo-feed.converter';
@@ -34,6 +34,7 @@ import type { ImageEventReference } from '../../../core/contracts/media/image-ga
   selector: 'app-photo-feed-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, AppMenuOutletComponent, PhotoFeedEventPickerComponent, ViewportSeenDirective],
   providers: [AppMenuDispatcher],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-popup [model]="popupModel()">
       <app-smart-list data-guide-field="feed-list" [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"></app-smart-list>

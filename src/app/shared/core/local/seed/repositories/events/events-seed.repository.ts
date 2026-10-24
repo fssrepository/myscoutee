@@ -64,17 +64,16 @@ export class SeedEventsRepository {
     const result = new Map<string, ActivityEventRecord[]>(
       normalizedUserIds.map(userId => [userId, []])
     );
-    if (normalizedUserIds.length === 0) {
-      return result;
-    }
-    const userIdSet = new Set(normalizedUserIds);
-    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
-    for (const id of table.ids) {
-      const record = table.byId[id];
-      if (!record || !userIdSet.has(record.userId)) {
-        continue;
+    if (normalizedUserIds.length > 0) {
+      const userIdSet = new Set(normalizedUserIds);
+      const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+      for (const id of table.ids) {
+        const record = table.byId[id];
+        if (!record || !userIdSet.has(record.userId)) {
+          continue;
+        }
+        result.get(record.userId)?.push(SeedEventsBuilder.cloneRecord(record));
       }
-      result.get(record.userId)?.push(SeedEventsBuilder.cloneRecord(record));
     }
     return result;
   }

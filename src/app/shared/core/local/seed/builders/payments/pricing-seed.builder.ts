@@ -1,3 +1,4 @@
+import { PricingBuilder } from '../../../../base/builders/payments/pricing.builder';
 import type * as ContractTypes from '../../../../contracts';
 import type * as AppConstants from '../../../../common/constants';
 
@@ -127,35 +128,6 @@ export class SeedPricingBuilder {
   static clonePricingConfig(
     pricing: ContractTypes.PricingConfig | null | undefined
   ): ContractTypes.PricingConfig {
-    const normalized = pricing ?? this.createDefaultPricingConfig();
-    return {
-      ...normalized,
-      quantityRules: (normalized.quantityRules ?? []).map(rule => ({
-        ...rule,
-        action: { ...rule.action }
-      })),
-      demandRules: (normalized.demandRules ?? []).map(rule => ({
-        ...rule,
-        action: { ...rule.action },
-        slotIds: [...(rule.slotIds ?? [])]
-      })),
-      timeRules: (normalized.timeRules ?? []).map(rule => ({
-        ...rule,
-        action: { ...rule.action },
-        slotIds: [...(rule.slotIds ?? [])]
-      })),
-      cancellationPolicy: {
-        enabled: normalized.cancellationPolicy?.enabled === true,
-        rules: (normalized.cancellationPolicy?.rules ?? []).map(rule => ({ ...rule }))
-      },
-      slotOverrides: (normalized.slotOverrides ?? []).map(item => ({ ...item })),
-      audience: {
-        ...normalized.audience,
-        promoCodes: (normalized.audience?.promoCodes ?? []).map(code => ({
-          ...code,
-          action: { ...code.action }
-        }))
-      }
-    };
+    return PricingBuilder.clonePricingConfig(pricing);
   }
 }

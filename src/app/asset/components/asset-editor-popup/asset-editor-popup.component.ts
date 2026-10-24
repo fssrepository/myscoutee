@@ -1,7 +1,7 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   type RouteInputConfig,
   UiDateUtils,
-  ExplanationGuideService,
   AppMenuComponent,
   type LocationInputConfig,
   IndicatorComponent,
@@ -26,7 +26,8 @@ import {
   Component,
   OnDestroy,
   effect,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -98,6 +99,7 @@ type AssetEditorFlowValue = AssetFormState & {
     PopupComponent
   ],
   templateUrl: './asset-editor-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './asset-editor-popup.component.scss'
 })
 export class AssetEditorPopupComponent implements OnDestroy {

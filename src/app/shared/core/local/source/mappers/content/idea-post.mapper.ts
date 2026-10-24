@@ -20,6 +20,33 @@ export interface LocalIdeaPostAdminRecordPage extends LocalIdeaPostRecordPage {
 }
 
 export class LocalIdeaPostsMapper {
+
+  static countPosts(posts: readonly IdeaPostDto[]): IdeaPostAdminCountsDto {
+    return posts.reduce<IdeaPostAdminCountsDto>((counts, post) => {
+      if (post.trashed) {
+        counts.trashed += 1;
+        return counts;
+      }
+      counts.all += 1;
+      if (post.featured) {
+        counts.featured += 1;
+      }
+      if (post.published) {
+        counts.published += 1;
+      }
+      else {
+        counts.drafts += 1;
+      }
+      return counts;
+    }, {
+      all: 0,
+      featured: 0,
+      published: 0,
+      drafts: 0,
+      trashed: 0
+    });
+  }
+
   private static readonly IMAGE_LIMIT = 24;
 
   static toDto(record: IdeaPostDto): IdeaPostDto {
@@ -123,7 +150,7 @@ export class LocalIdeaPostsMapper {
 
   private static htmlToText(value: string): string {
     if (typeof document === 'undefined') {
-      return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return value.replace(/<[^<>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     }
     const template = document.createElement('template');
     template.innerHTML = value;

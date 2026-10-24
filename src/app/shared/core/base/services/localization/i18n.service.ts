@@ -1,3 +1,5 @@
+import { AppUtils } from '../../app-utils';
+import { ErrorHandler } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, NgZone, computed, effect, inject, signal } from '@angular/core';
@@ -75,6 +77,7 @@ export class I18nService implements UiTranslations {
     '.profile-name-line'
   ].join(',');
 
+  private readonly loadErrors = inject(ErrorHandler);
   private readonly http = inject(HttpClient);
   private readonly document = inject(DOCUMENT);
   private readonly zone = inject(NgZone);
@@ -114,7 +117,7 @@ export class I18nService implements UiTranslations {
       if (!this.initialized || nextScope === this.activeBundleScope) {
         return;
       }
-      this.startLanguageLoad(nextScope);
+      void this.startLanguageLoad(nextScope).catch(error => this.loadErrors.handleError(error));
     });
   }
 
@@ -644,30 +647,9 @@ export class I18nService implements UiTranslations {
     return browserLanguages.length > 0 ? browserLanguages.join(',') : I18nService.DEFAULT_LANGUAGE;
   }
 
-  private normalizeLanguage(value: string): string {
-    return `${value ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
-  }
+  private normalizeLanguage(value: string): string { return AppUtils.normalizeLanguage(value); }
 
-  private normalizeMessages(value: Record<string, string> | null): Record<string, string> | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const normalized: Record<string, string> = {};
-    Object.entries(value).forEach(([key, translation]) => {
-      const normalizedKey = this.normalizeSourceKey(key);
-      const normalizedTranslation = `${translation ?? ''}`.trim();
-      if (normalizedKey && normalizedTranslation) {
-        normalized[normalizedKey] = normalizedTranslation;
-      }
-    });
-    return normalized;
-  }
+  private normalizeMessages(value: Record<string, string> | null): Record<string, string> | null { return AppUtils.normalizeMessages(value, key => this.normalizeSourceKey(key)); }
 
   private compareVersions(left: string, right: string): number {
     return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
@@ -863,7 +845,7 @@ export class I18nService implements UiTranslations {
       return composite;
     }
 
-    const paramsUpdatedMatch = normalizedSource.match(/^Updated\s+(.+?)\s+parameters\.$/i);
+    const paramsUpdatedMatch = normalizedSource.match(/^Updated (.+?) parameters\.$/i);
     if (paramsUpdatedMatch) {
       const translated = messages['admin.params.summary.updated'];
       if (translated) {
@@ -875,7 +857,7 @@ export class I18nService implements UiTranslations {
       }
     }
 
-    const paramsRevertedMatch = normalizedSource.match(/^Reverted\s+(.+?)\s+parameters\s+to\s+version\s+(\d+)\.$/i);
+    const paramsRevertedMatch = normalizedSource.match(/^Reverted (.+?) parameters to version (\d+)\.$/i);
     if (paramsRevertedMatch) {
       const translated = messages['admin.params.summary.reverted'];
       if (translated) {
@@ -975,7 +957,7 @@ export class I18nService implements UiTranslations {
         : null;
     }
 
-    const percentLabelMatch = normalizedSource.match(/^(.+?)\s+(\d+)%$/);
+    const percentLabelMatch = normalizedSource.match(/^(.+?) (\d+)%$/);
     if (percentLabelMatch) {
       const label = percentLabelMatch[1] ?? '';
       const translatedLabel = this.resolveCoreTranslation(label, messages, sourceKeyByText);
@@ -1016,7 +998,7 @@ export class I18nService implements UiTranslations {
       return translate(exactKey);
     }
 
-    const runningForMatch = normalizedSource.match(/^(.+)\s+Running for\s+(\d+)s\.$/i);
+    const runningForMatch = normalizedSource.match(/^(.+) Running for (\d+)s\.$/i);
     if (runningForMatch) {
       const detail = runningForMatch[1] ?? '';
       return translate('admin.jobs.run.detail.running.for', {
@@ -1389,7 +1371,7 @@ export class I18nService implements UiTranslations {
 
   private replaceCoreText(source: string, translatedCore: string): string {
     const leading = source.match(/^\s*/)?.[0] ?? '';
-    const trailing = source.match(/\s*$/)?.[0] ?? '';
+    const trailing = source.slice(source.trimEnd().length);
     return `${leading}${translatedCore}${trailing}`;
   }
 

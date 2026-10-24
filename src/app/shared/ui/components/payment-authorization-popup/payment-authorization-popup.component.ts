@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, inject } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 
 import { PaymentAuthorizationService } from '../../../core/base/services/payments/payment-authorization.service';
@@ -9,6 +9,7 @@ import { PopupComponent, type PopupModel, I18nPipe } from '@fssrepository/myscou
   standalone: true,
   imports: [I18nPipe, PopupComponent],
   templateUrl: './payment-authorization-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './payment-authorization-popup.component.scss'
 })
 export class PaymentAuthorizationPopupComponent {
@@ -19,7 +20,7 @@ export class PaymentAuthorizationPopupComponent {
   private readonly sanitizer = inject(DomSanitizer);
   protected readonly sourceUrl = computed(() => {
     const url = this.authorization.waitingSurface()?.url;
-    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null; // NOSONAR S6268: only the service's HTTP(S)-validated simulator waiting URL; provider messages verify frame and origin.
   });
 
   protected popupModel(): PopupModel {

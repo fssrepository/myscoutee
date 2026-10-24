@@ -1,6 +1,6 @@
 import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -42,6 +42,7 @@ type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Worksp
     I18nPipe
   ],
   templateUrl: './profile-onboarding-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './profile-onboarding-popup.component.scss'
 })
 export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {

@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from '../platform/route-delay.service';
@@ -35,6 +36,16 @@ interface SupplyContributionRemoval {
   providedIn: 'root'
 })
 export class LocalActivityResourcesService extends LocalRouteDelayService {
+
+  private supplyNotificationContext(state: AppDTOs.ActivitySubEventResourceStateDTO, actorUserId: string | null | undefined) {
+    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
+    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
+    const recipients = [...new Set(this.resourceNotificationMembers(state)
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0 && userId !== actorId))];
+    return { actorId, eventId, recipients };
+  }
+
   private static readonly ROUTE = '/activities/events/subevent-resources';
   private readonly repository = inject(LocalActivityResourcesRepository);
   private readonly stageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
@@ -524,19 +535,11 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     });
   }
 
-  private appendSupplyContributionOpenNotifications(
-    state: AppDTOs.ActivitySubEventResourceStateDTO,
-    actorUserId: string | null | undefined,
-    assetIds: readonly string[]
-  ): void {
+  private appendSupplyContributionOpenNotifications(state: AppDTOs.ActivitySubEventResourceStateDTO, actorUserId: string | null | undefined, assetIds: readonly string[]): void {
     if (assetIds.length === 0) {
       return;
     }
-    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
-    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
-    const recipients = [...new Set(this.resourceNotificationMembers(state)
-      .map(member => member.userId.trim())
-      .filter(userId => userId.length > 0 && userId !== actorId))];
+    const { actorId, eventId, recipients } = this.supplyNotificationContext(state, actorUserId);
     if (recipients.length === 0) {
       return;
     }
@@ -573,19 +576,11 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     this.notificationsRepository.append(notifications);
   }
 
-  private appendSupplyContributionAddedNotifications(
-    state: AppDTOs.ActivitySubEventResourceStateDTO,
-    actorUserId: string | null | undefined,
-    additions: readonly SupplyContributionAddition[]
-  ): void {
+  private appendSupplyContributionAddedNotifications(state: AppDTOs.ActivitySubEventResourceStateDTO, actorUserId: string | null | undefined, additions: readonly SupplyContributionAddition[]): void {
     if (additions.length === 0) {
       return;
     }
-    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
-    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
-    const recipients = [...new Set(this.resourceNotificationMembers(state)
-      .map(member => member.userId.trim())
-      .filter(userId => userId.length > 0 && userId !== actorId))];
+    const { actorId, eventId, recipients } = this.supplyNotificationContext(state, actorUserId);
     if (recipients.length === 0) {
       return;
     }
@@ -624,19 +619,11 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     this.notificationsRepository.append(notifications);
   }
 
-  private appendSupplyContributionRemovedNotifications(
-    state: AppDTOs.ActivitySubEventResourceStateDTO,
-    actorUserId: string | null | undefined,
-    removals: readonly SupplyContributionRemoval[]
-  ): void {
+  private appendSupplyContributionRemovedNotifications(state: AppDTOs.ActivitySubEventResourceStateDTO, actorUserId: string | null | undefined, removals: readonly SupplyContributionRemoval[]): void {
     if (removals.length === 0) {
       return;
     }
-    const actorId = `${actorUserId ?? state.assetOwnerUserId}`.trim();
-    const eventId = ActivityResourceBuilder.authorizationEventId(state.ownerId, state.subEventId);
-    const recipients = [...new Set(this.resourceNotificationMembers(state)
-      .map(member => member.userId.trim())
-      .filter(userId => userId.length > 0 && userId !== actorId))];
+    const { actorId, eventId, recipients } = this.supplyNotificationContext(state, actorUserId);
     if (recipients.length === 0) {
       return;
     }
@@ -688,8 +675,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     const participantUserIds = this.resourceNotificationMembers(state)
       .map(member => member.userId.trim());
     const createdAtIso = new Date().toISOString();
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const notifications: NotificationRecord[] = assetIds.flatMap(assetId => {
       const asset = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
       const assetTitle = `${asset?.title ?? 'Asset'}`.trim() || 'Asset';

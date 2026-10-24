@@ -1,3 +1,18 @@
+@if (popup; as popup) {
+  <app-popup [model]="pricingPopupModel(popup)" [zIndex]="popup.zIndex">
+    <div class="pricing-editor__wizard-body">
+      @if (resolvedConfig.showPreview && showPricingInfoPanel) {
+        <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
+          <ng-container [ngTemplateOutlet]="pricingWizardPreviewCard"></ng-container>
+        </aside>
+      }
+      <div class="pricing-editor__main">
+        <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
+      </div>
+    </div>
+
+  </app-popup>
+} @else if (!popupPresentation) {
 @if (showPricingPanel()) {
 <section
   class="pricing-editor"
@@ -97,6 +112,8 @@
   <ng-container *ngComponentOutlet="popupComponent; inputs: pricingEditorPopupOutletInputs()"></ng-container>
 }
 
+}
+
 <ng-template #pricingEditorSurfaces>
   <section class="pricing-editor__surface">
     <div class="pricing-editor__grid">
@@ -117,10 +134,10 @@
         </div>
       </label>
 
-      <label data-guide-field="pricing-currency" class="pricing-editor__field">
+      <div data-guide-field="pricing-currency" class="pricing-editor__field">
         <span>{{ 'currency' | i18n }}</span>
         <div class="pricing-editor__select-shell">
-          <mat-select
+          <mat-select [attr.aria-label]="'currency' | i18n"
             [(ngModel)]="workingPricing.currency"
             (ngModelChange)="onStringFieldChange()"
             [disabled]="readOnly"
@@ -133,12 +150,12 @@
             }
           </mat-select>
         </div>
-      </label>
+      </div>
 
-      <label data-guide-field="pricing-taxMode" class="pricing-editor__field">
+      <div data-guide-field="pricing-taxMode" class="pricing-editor__field">
         <span>{{ 'tax' | i18n }}</span>
         <div class="pricing-editor__select-shell">
-          <mat-select
+          <mat-select [attr.aria-label]="'tax' | i18n"
             [(ngModel)]="workingPricing.taxMode"
             (ngModelChange)="onStringFieldChange()"
             [disabled]="readOnly"
@@ -151,12 +168,12 @@
             }
           </mat-select>
         </div>
-      </label>
+      </div>
 
-      <label data-guide-field="pricing-chargeType" class="pricing-editor__field">
+      <div data-guide-field="pricing-chargeType" class="pricing-editor__field">
         <span>{{ chargeTypeFieldLabel() | i18n }}</span>
         <div class="pricing-editor__select-shell">
-          <mat-select
+          <mat-select [attr.aria-label]="chargeTypeFieldLabel() | i18n"
             [(ngModel)]="workingPricing.chargeType"
             (ngModelChange)="onStringFieldChange()"
             [disabled]="readOnly"
@@ -169,7 +186,7 @@
             }
           </mat-select>
         </div>
-      </label>
+      </div>
 
       <label class="pricing-editor__field pricing-editor__field--money">
         <span>{{ minimumPriceFieldLabel() | i18n }}</span>
@@ -214,10 +231,10 @@
       }
       </label>
 
-      <label data-guide-field="pricing-rounding" class="pricing-editor__field">
+      <div data-guide-field="pricing-rounding" class="pricing-editor__field">
         <span>{{ 'pricing.rounding' | i18n }}</span>
         <div class="pricing-editor__select-shell">
-          <mat-select
+          <mat-select [attr.aria-label]="'pricing.rounding' | i18n"
             [(ngModel)]="workingPricing.rounding"
             (ngModelChange)="onStringFieldChange()"
             [disabled]="readOnly"
@@ -230,7 +247,7 @@
             }
           </mat-select>
         </div>
-      </label>
+      </div>
     </div>
   </section>
 
@@ -256,12 +273,12 @@
           @for (rule of workingPricing.quantityRules; track trackByRule($index, rule)) {
             <article class="pricing-editor__rule-card">
               <div class="pricing-editor__rule-grid">
-                <label class="pricing-editor__field">
+                <div class="pricing-editor__field">
                   <span>{{ 'if' | i18n }}</span>
                   <div class="pricing-editor__select-shell pricing-editor__select-shell--static">
                     <span>{{ quantityThresholdLabel() | i18n }}</span>
                   </div>
-                </label>
+                </div>
                 <label class="pricing-editor__field">
                   <span>{{ 'quantity' | i18n }}</span>
                   <input
@@ -274,35 +291,7 @@
                     [disabled]="readOnly"
                     />
                 </label>
-                <label class="pricing-editor__field">
-                  <span>{{ 'then' | i18n }}</span>
-                  <div class="pricing-editor__select-shell">
-                    <mat-select
-                      [(ngModel)]="rule.action.kind"
-                      (ngModelChange)="emitPricing()"
-                      [disabled]="readOnly"
-                      [panelWidth]="null"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel"
-                      >
-                      @for (option of actionKindOptions; track option) {
-                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
-                      }
-                    </mat-select>
-                  </div>
-                </label>
-                <label class="pricing-editor__field">
-                  <span>{{ 'value' | i18n }}</span>
-                  <input
-                    type="number"
-                    (input)="normalizeNumberInput($event)"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="rule.action.value"
-                    (ngModelChange)="onQuantityRuleActionValueChange(rule, $event)"
-                    [disabled]="readOnly"
-                    />
-                </label>
+                <ng-container [ngTemplateOutlet]="pricingRuleAction" [ngTemplateOutletContext]="{ rule: rule, timeRule: false }" />
               </div>
               <button
                 type="button"
@@ -351,10 +340,10 @@
                 class="pricing-editor__rule-grid"
                 [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
               >
-                <label class="pricing-editor__field">
+                <div class="pricing-editor__field">
                   <span>{{ 'if' | i18n }}</span>
                   <div class="pricing-editor__select-shell">
-                    <mat-select
+                    <mat-select [attr.aria-label]="'if' | i18n"
                       [(ngModel)]="rule.operator"
                       (ngModelChange)="emitPricing()"
                       [disabled]="readOnly"
@@ -367,7 +356,7 @@
                       }
                     </mat-select>
                   </div>
-                </label>
+                </div>
                 <label class="pricing-editor__field">
                   <span>{{ 'pricing.capacity.percent' | i18n }}</span>
                   <input
@@ -381,37 +370,9 @@
                     [disabled]="readOnly"
                     />
                 </label>
-                <label class="pricing-editor__field">
-                  <span>{{ 'then' | i18n }}</span>
-                  <div class="pricing-editor__select-shell">
-                    <mat-select
-                      [(ngModel)]="rule.action.kind"
-                      (ngModelChange)="emitPricing()"
-                      [disabled]="readOnly"
-                      [panelWidth]="null"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel"
-                      >
-                      @for (option of actionKindOptions; track option) {
-                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
-                      }
-                    </mat-select>
-                  </div>
-                </label>
-                <label class="pricing-editor__field">
-                  <span>{{ 'value' | i18n }}</span>
-                  <input
-                    type="number"
-                    (input)="normalizeNumberInput($event)"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="rule.action.value"
-                    (ngModelChange)="onDemandRuleActionValueChange(rule, $event)"
-                    [disabled]="readOnly"
-                    />
-                </label>
+                <ng-container [ngTemplateOutlet]="pricingRuleAction" [ngTemplateOutletContext]="{ rule: rule, timeRule: false }" />
                 @if (resolvedConfig.allowSlotFeatures) {
-                  <label class="pricing-editor__field">
+                  <div class="pricing-editor__field">
                     <span>{{ 'pricing.applies.to' | i18n }}</span>
                     <app-menu-trigger
                       [menuId]="ruleScopeMenuId('demand', rule)"
@@ -421,7 +382,7 @@
                       [items]="ruleScopeMenuItems('demand', rule)"
                       [closeOnSelect]="false"
                     ></app-menu-trigger>
-                  </label>
+                  </div>
                 }
               </div>
               <button
@@ -473,10 +434,10 @@
                 [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
                 [class.pricing-editor__rule-grid--time-date-desktop]="rule.trigger === 'specific_date'"
               >
-                <label class="pricing-editor__field pricing-editor__field--time-trigger">
+                <div class="pricing-editor__field pricing-editor__field--time-trigger">
                   <span>{{ 'if' | i18n }}</span>
                   <div class="pricing-editor__select-shell">
-                    <mat-select
+                    <mat-select [attr.aria-label]="'if' | i18n"
                       [(ngModel)]="rule.trigger"
                       (ngModelChange)="emitPricing()"
                       [disabled]="readOnly"
@@ -489,7 +450,7 @@
                       }
                     </mat-select>
                   </div>
-                </label>
+                </div>
                 @if (rule.trigger === 'specific_date') {
                   <label class="pricing-editor__field pricing-editor__field--span-full">
                     <span>{{ 'date.range' | i18n }}</span>
@@ -528,37 +489,9 @@
                       />
                   </label>
                 }
-                <label class="pricing-editor__field pricing-editor__field--time-action">
-                  <span>{{ 'then' | i18n }}</span>
-                  <div class="pricing-editor__select-shell">
-                    <mat-select
-                      [(ngModel)]="rule.action.kind"
-                      (ngModelChange)="emitPricing()"
-                      [disabled]="readOnly"
-                      [panelWidth]="null"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel"
-                      >
-                      @for (option of actionKindOptions; track option) {
-                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
-                      }
-                    </mat-select>
-                  </div>
-                </label>
-                <label class="pricing-editor__field pricing-editor__field--time-value">
-                  <span>{{ 'value' | i18n }}</span>
-                  <input
-                    type="number"
-                    (input)="normalizeNumberInput($event)"
-                    min="0"
-                    step="0.01"
-                    [ngModel]="rule.action.value"
-                    (ngModelChange)="onTimeRuleActionValueChange(rule, $event)"
-                    [disabled]="readOnly"
-                    />
-                </label>
+                <ng-container [ngTemplateOutlet]="pricingRuleAction" [ngTemplateOutletContext]="{ rule: rule, timeRule: true }" />
                   @if (resolvedConfig.allowSlotFeatures) {
-                  <label class="pricing-editor__field">
+                  <div class="pricing-editor__field">
                     <span>{{ 'pricing.applies.to' | i18n }}</span>
                     <app-menu-trigger
                       [menuId]="ruleScopeMenuId('time', rule)"
@@ -568,7 +501,7 @@
                       [items]="ruleScopeMenuItems('time', rule)"
                       [closeOnSelect]="false"
                     ></app-menu-trigger>
-                  </label>
+                  </div>
                 }
               </div>
               <button
@@ -615,10 +548,10 @@
           @for (rule of workingPricing.cancellationPolicy.rules; track trackByRule($index, rule)) {
             <article class="pricing-editor__rule-card">
               <div class="pricing-editor__grid pricing-editor__grid--compact">
-                <label class="pricing-editor__field">
+                <div class="pricing-editor__field">
                   <span>{{ 'pricing.notice.window' | i18n }}</span>
                   <div class="pricing-editor__select-shell">
-                    <mat-select
+                    <mat-select [attr.aria-label]="'pricing.notice.window' | i18n"
                       [(ngModel)]="rule.offsetUnit"
                       (ngModelChange)="emitPricing()"
                       [disabled]="readOnly"
@@ -631,7 +564,7 @@
                       }
                     </mat-select>
                   </div>
-                </label>
+                </div>
                 <label class="pricing-editor__field">
                   <span>{{ 'value' | i18n }}</span>
                   <input
@@ -644,10 +577,10 @@
                     [disabled]="readOnly"
                     />
                 </label>
-                <label class="pricing-editor__field">
+                <div class="pricing-editor__field">
                   <span>{{ 'refund' | i18n }}</span>
                   <div class="pricing-editor__select-shell">
-                    <mat-select
+                    <mat-select [attr.aria-label]="'refund' | i18n"
                       [ngModel]="rule.refundKind"
                       (ngModelChange)="onCancellationRuleRefundKindChange(rule, $event)"
                       [disabled]="readOnly"
@@ -660,7 +593,7 @@
                       }
                     </mat-select>
                   </div>
-                </label>
+                </div>
                 <label class="pricing-editor__field">
                   <span>{{ 'pricing.refund.value' | i18n }}</span>
                   @if (cancellationRuleNeedsValue(rule)) {
@@ -783,10 +716,10 @@
               />
           </label>
 
-          <label class="pricing-editor__field">
+          <div class="pricing-editor__field">
             <span>{{ 'pricing.sold.out.label' | i18n }}</span>
             <div class="pricing-editor__select-shell">
-              <mat-select
+              <mat-select [attr.aria-label]="'pricing.sold.out.label' | i18n"
                 [(ngModel)]="workingPricing.audience.soldOutLabel"
                 (ngModelChange)="onStringFieldChange()"
                 [disabled]="readOnly"
@@ -799,7 +732,7 @@
                 }
               </mat-select>
             </div>
-          </label>
+          </div>
         </div>
 
         <div class="pricing-editor__promo-list">
@@ -815,10 +748,10 @@
                   [attr.placeholder]="'pricing.discount.code.placeholder' | i18n"
                   />
               </label>
-              <label class="pricing-editor__field">
+              <div class="pricing-editor__field">
                 <span>{{ 'pricing.effect' | i18n }}</span>
                 <div class="pricing-editor__select-shell">
-                  <mat-select
+                  <mat-select [attr.aria-label]="'pricing.effect' | i18n"
                     [(ngModel)]="promo.action.kind"
                     (ngModelChange)="emitPricing()"
                     [disabled]="readOnly"
@@ -831,7 +764,7 @@
                     }
                   </mat-select>
                 </div>
-              </label>
+              </div>
               <label class="pricing-editor__field">
                 <span>{{ 'value' | i18n }}</span>
                 <input
@@ -906,8 +839,24 @@
         <strong>{{ runtimeTotalLabel(runtimePreview) }}</strong>
       </div>
     } @else {
+      <ng-container [ngTemplateOutlet]="pricingCalculatedPreview" [ngTemplateOutletContext]="{ baseLabel: pricingBaseSummaryLabel() }" />
+    }
+  </div>
+</ng-template>
+
+<ng-template #pricingWizardPreviewCard>
+      <div class="pricing-editor__preview-card">
+        <div class="pricing-editor__preview-head">
+          <span>{{ 'event.editor.pricing.current.review' | i18n }}</span>
+          <mat-icon>query_stats</mat-icon>
+        </div>
+        <ng-container [ngTemplateOutlet]="pricingCalculatedPreview" [ngTemplateOutletContext]="{ baseLabel: 'pricing.base' }" />
+      </div>
+    </ng-template>
+
+<ng-template #pricingCalculatedPreview let-baseLabel="baseLabel">
       <div data-guide-field="pricing-breakdown" class="pricing-editor__preview-line">
-        <span>{{ pricingBaseSummaryLabel() | i18n }}</span>
+        <span>{{ baseLabel | i18n }}</span>
         <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
       </div>
       @if (currentPreview.quantityDelta !== 0) {
@@ -951,6 +900,36 @@
         <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
         <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
       </div>
-    }
-  </div>
+</ng-template>
+
+<ng-template #pricingRuleAction let-rule="rule" let-timeRule="timeRule">
+                <div class="pricing-editor__field" [class.pricing-editor__field--time-action]="timeRule">
+                  <span>{{ 'then' | i18n }}</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select [attr.aria-label]="'then' | i18n"
+                      [(ngModel)]="rule.action.kind"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of actionKindOptions; track option) {
+                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </div>
+                <label class="pricing-editor__field" [class.pricing-editor__field--time-value]="timeRule">
+                  <span>{{ 'value' | i18n }}</span>
+                  <input
+                    type="number"
+                    (input)="normalizeNumberInput($event)"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="rule.action.value"
+                    (ngModelChange)="onRuleActionValueChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
 </ng-template>

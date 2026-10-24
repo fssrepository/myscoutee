@@ -188,6 +188,34 @@ export const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStore {
+
+  static cloneEventChatNavigation(header: EventChatHeaderState) {
+    return header.navigationContext
+      ? {
+        ...header.navigationContext,
+        subEvent: header.navigationContext.subEvent
+          ? { ...header.navigationContext.subEvent }
+          : header.navigationContext.subEvent,
+        group: header.navigationContext.group
+          ? { ...header.navigationContext.group }
+          : header.navigationContext.group
+      }
+      : header.navigationContext;
+  }
+
+  static cloneEventChatMetrics(header: EventChatHeaderState) {
+    return header.metrics
+      ? {
+        members: header.metrics.members ? { ...header.metrics.members } : null,
+        transport: header.metrics.transport ? { ...header.metrics.transport } : null,
+        accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
+        supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
+        groupsCount: header.metrics.groupsCount ?? null,
+        pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
+      }
+      : header.metrics;
+  }
+
   private readonly popupAdapters = inject(PopupAdapterProxyService);
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -488,7 +516,7 @@ export class ActivitiesPopupStore {
       request: normalizedRequest,
       openedAtIso: new Date().toISOString()
     });
-    this._eventChatHeader.set(this.cloneEventChatHeader({
+    this._eventChatHeader.set(ActivitiesPopupStore.cloneEventChatHeader({
       ...header,
       ...normalizedRequest
     }));
@@ -508,7 +536,7 @@ export class ActivitiesPopupStore {
     if (!header) {
       return;
     }
-    this._eventChatHeader.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(header))));
+    this._eventChatHeader.set(ActivitiesPopupStore.cloneEventChatHeader(headerUpdater(ActivitiesPopupStore.cloneEventChatHeader(header))));
   }
 
   openStackedEventChat(request: EventChatPopupRequest, header: EventChatHeaderState): void {
@@ -520,7 +548,7 @@ export class ActivitiesPopupStore {
       request: normalizedRequest,
       openedAtIso: new Date().toISOString()
     });
-    this._stackedEventChatHeader.set(this.cloneEventChatHeader({
+    this._stackedEventChatHeader.set(ActivitiesPopupStore.cloneEventChatHeader({
       ...header,
       ...normalizedRequest
     }));
@@ -554,7 +582,7 @@ export class ActivitiesPopupStore {
     if (!header) {
       return;
     }
-    this._stackedEventChatHeader.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(header))));
+    this._stackedEventChatHeader.set(ActivitiesPopupStore.cloneEventChatHeader(headerUpdater(ActivitiesPopupStore.cloneEventChatHeader(header))));
   }
 
   emitEventChatRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
@@ -739,7 +767,7 @@ export class ActivitiesPopupStore {
     };
   }
 
-  private cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState {
+  static cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState {
     return {
       ...header,
       chatId: `${header.chatId ?? ''}`.trim(),
@@ -751,31 +779,12 @@ export class ActivitiesPopupStore {
       members: (header.members ?? []).map(member => ({ ...member })),
       supportCase: header.supportCase
         ? {
-            ...header.supportCase,
-            assignee: header.supportCase.assignee ? { ...header.supportCase.assignee } : header.supportCase.assignee
-          }
+          ...header.supportCase,
+          assignee: header.supportCase.assignee ? { ...header.supportCase.assignee } : header.supportCase.assignee
+        }
         : header.supportCase,
-      metrics: header.metrics
-        ? {
-            members: header.metrics.members ? { ...header.metrics.members } : null,
-            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
-            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
-            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
-            groupsCount: header.metrics.groupsCount ?? null,
-            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
-          }
-        : header.metrics,
-      navigationContext: header.navigationContext
-        ? {
-            ...header.navigationContext,
-            subEvent: header.navigationContext.subEvent
-              ? { ...header.navigationContext.subEvent }
-              : header.navigationContext.subEvent,
-            group: header.navigationContext.group
-              ? { ...header.navigationContext.group }
-              : header.navigationContext.group
-          }
-        : header.navigationContext
+      metrics: ActivitiesPopupStore.cloneEventChatMetrics(header),
+      navigationContext: ActivitiesPopupStore.cloneEventChatNavigation(header)
     };
   }
 }

@@ -6,7 +6,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   MatIconModule
@@ -46,6 +47,7 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
   standalone: true,
   imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-stats-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-stats-popup.component.scss'
 })
 export class AdminStatsPopupComponent {
@@ -489,7 +491,7 @@ export class AdminStatsPopupComponent {
     }
     const angle = this.graphNodeAngle(index, Math.max(1, total));
     const radius = axis === 0 ? 32 : 30;
-    const center = axis === 0 ? 50 : 50;
+    const center = 50;
     const trig = axis === 0 ? Math.cos(angle) : Math.sin(angle);
     return Math.round(center + trig * radius);
   }

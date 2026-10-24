@@ -1,5 +1,6 @@
+import { ExplanationGuideService } from './explanation-guide.service';
 import { InjectionToken, inject } from '@angular/core';
-import { ExplanationGuideService } from '@fssrepository/myscoutee-components';
+
 import { myScouteeGuideOptions } from '../../../../ui/components/explanation-popup/guide-options';
 import { LandingContentService } from '../content/landing-content.service';
 import { backendUnavailable } from '../../../common/backend-connectivity';

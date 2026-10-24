@@ -1,6 +1,6 @@
+import { requestWithAbort } from '../../request-lifecycle';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../../environments/environment';
 import type {
@@ -49,7 +49,7 @@ export class HttpNotificationsService implements NotificationService {
     }
     const response = await this.routeDelay.withRequestTimeout(
       HttpNotificationsService.ROUTE,
-      this.requestWithAbort(
+      requestWithAbort(
         this.http.get<Partial<NotificationPageResponseDto> | null>(
           `${this.apiBaseUrl}${HttpNotificationsService.ROUTE}`,
           { params }
@@ -87,7 +87,7 @@ export class HttpNotificationsService implements NotificationService {
     }
     const response = await this.routeDelay.withRequestTimeout(
       HttpNotificationsService.ROUTE,
-      this.requestWithAbort(
+      requestWithAbort(
         this.http.post<Partial<NotificationReadResponseDto> | null>(
           `${this.apiBaseUrl}${HttpNotificationsService.ROUTE}/${encodeURIComponent(normalizedNotificationId)}/read`,
           {},
@@ -119,7 +119,7 @@ export class HttpNotificationsService implements NotificationService {
     }
     const response = await this.routeDelay.withRequestTimeout(
       HttpNotificationsService.ROUTE,
-      this.requestWithAbort(
+      requestWithAbort(
         this.http.post<Partial<NotificationSyncResponseDto> | null>(
           `${this.apiBaseUrl}${HttpNotificationsService.ROUTE}/sync`,
           {
@@ -168,7 +168,7 @@ export class HttpNotificationsService implements NotificationService {
     }
     const response = await this.routeDelay.withRequestTimeout(
       HttpNotificationsService.ROUTE,
-      this.requestWithAbort(
+      requestWithAbort(
         this.http.put<Partial<NotificationPreferencesResponseDto> | null>(
           `${this.apiBaseUrl}${HttpNotificationsService.ROUTE}/preferences`,
           { muted: request.muted === true },
@@ -240,52 +240,5 @@ export class HttpNotificationsService implements NotificationService {
     return Number.isFinite(parsed)
       ? Math.max(0, Math.trunc(parsed))
       : Math.max(0, Math.trunc(Number(fallback) || 0));
-  }
-
-  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      let settled = false;
-      let subscription: { unsubscribe: () => void } | null = null;
-      const cleanup = () => signal?.removeEventListener('abort', onAbort);
-      const onAbort = () => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        subscription?.unsubscribe();
-        cleanup();
-        reject(this.createAbortError());
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-      subscription = request$.subscribe({
-        next: value => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          resolve(value);
-        },
-        error: error => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          cleanup();
-          reject(error);
-        },
-        complete: () => cleanup()
-      });
-    });
-  }
-
-  private createAbortError(): Error {
-    const error = new Error('Request aborted.');
-    error.name = 'AbortError';
-    return error;
   }
 }

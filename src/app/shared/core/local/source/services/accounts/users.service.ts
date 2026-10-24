@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { LocalRoleNotificationsService } from '../notifications/role-notifications.service';
 import { SEED_PAYMENT_EXCHANGE_RATES } from '../../../seed/payment-exchange-rates';
 import { LocalCommunityGroupsService } from '../groups/community-groups.service';
@@ -102,7 +103,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
           ...user,
           baseGroupTypes: baseGroups.get(user.id) ?? [],
           locationRequired: selectorRole === 'member'
-            && !this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(user.locationCoordinates)
+            && user.locationRequired === true
         }));
       })()
     ]);
@@ -138,34 +139,16 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
     const overrideCountryCode = this.readDemoCountryCodeOverride();
-    if (!coordinates && !overrideCountryCode) {
-      return {
-        eligible: true,
-        partitionKey: null,
-        message: null,
-        securityGateEnabled: false,
-        locationRequired: false
-      };
-    }
-
-    const partitionKey = coordinates
-      ? this.countryPartitionsRepository.resolvePartitionKeyByCoordinates(coordinates)
-      : this.countryPartitionsRepository.resolvePartitionKeyByCountryCode(overrideCountryCode);
-    if (partitionKey) {
-      return {
-        eligible: true,
-        partitionKey,
-        message: null,
-        securityGateEnabled: true,
-        locationRequired: false
-      };
-    }
-
+    const partitionKey = this.countryPartitionsRepository.resolvePartitionKeyByCountryCode(overrideCountryCode);
+    const validCoordinates = !coordinates || (Number.isFinite(coordinates.latitude)
+      && Number.isFinite(coordinates.longitude) && Math.abs(coordinates.latitude) <= 90
+      && Math.abs(coordinates.longitude) <= 180);
+    const eligible = validCoordinates && (!overrideCountryCode || Boolean(partitionKey));
     return {
-      eligible: false,
-      partitionKey: null,
-      message: LocalUsersService.INELIGIBLE_REGION_MESSAGE,
-      securityGateEnabled: true,
+      eligible,
+      partitionKey,
+      message: eligible ? null : LocalUsersService.INELIGIBLE_REGION_MESSAGE,
+      securityGateEnabled: false,
       locationRequired: false
     };
   }
@@ -344,7 +327,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const payment = (await this.operatorRegistryRepository.read())?.configuration.payment;
     snapshot.paymentCardsAvailable = payment?.credentialConfigured === true
       && payment.availableProviders.some(provider => provider.id === payment.providerId);
-    snapshot.paymentCurrencies = Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort();
+    snapshot.paymentCurrencies = Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort(AppUtils.compareCodeUnits);
     snapshot.paymentExchangeRates = Object.fromEntries(Object.entries(SEED_PAYMENT_EXCHANGE_RATES).map(([currency, rate]) => [currency, 1 / rate]));
     snapshot.paymentSummaryCurrency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${normalizedUserId}`) || 'EUR';
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({
@@ -700,6 +683,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   private upsertUser(user: UserDto): UserDto {
     const normalizedUser = LocalUsersMapper.toRecord(user);
+    if (!normalizedUser.partitionKey && !this.usersRepository.queryUserById(normalizedUser.accountUserId ?? user.id)?.partitionKey) {
+      const partition = this.countryPartitionsRepository.randomPartition();
+      normalizedUser.partitionKey = partition.partitionKey;
+      normalizedUser.city ||= partition.city;
+      normalizedUser.locationCoordinates ??= partition.locationCoordinates;
+    }
     const savedUser = this.usersRepository.upsertUser(normalizedUser);
     return LocalUsersMapper.toDto(savedUser);
   }

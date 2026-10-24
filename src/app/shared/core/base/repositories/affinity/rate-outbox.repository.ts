@@ -14,6 +14,39 @@ import type { UserRatesSyncResult } from '../../../contracts/common/activity.int
   providedIn: 'root'
 })
 export class RateOutboxRepository {
+
+  private updatePendingOutbox(outboxIds: string[], update: (record: UserRateOutboxRecord, nowIso: string) => UserRateOutboxRecord): void {
+    const normalizedIds = outboxIds
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    if (normalizedIds.length === 0) {
+      return;
+    }
+    const lookup = new Set(normalizedIds);
+    this.memoryDb.write(state => {
+      const table = state[USER_RATES_OUTBOX_TABLE_NAME];
+      const byId = { ...table.byId };
+      const nowIso = new Date().toISOString();
+      for (const id of table.ids) {
+        if (!lookup.has(id)) {
+          continue;
+        }
+        const record = byId[id];
+        if (!record) {
+          continue;
+        }
+        byId[id] = update(record, nowIso);
+      }
+      return {
+        ...state,
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId,
+          ids: [...table.ids]
+        }
+      };
+    });
+  }
+
   private readonly localMemoryDb = inject(LocalMemoryDb);
   private readonly httpMemoryDb = inject(HttpMemoryDb);
 
@@ -84,79 +117,23 @@ export class RateOutboxRepository {
   }
 
   markUserRatesOutboxFailed(outboxIds: string[], message?: string): void {
-    const normalizedIds = outboxIds
-      .map(id => id.trim())
-      .filter(id => id.length > 0);
-    if (normalizedIds.length === 0) {
-      return;
-    }
-    const lookup = new Set(normalizedIds);
-    this.memoryDb.write(state => {
-      const table = state[USER_RATES_OUTBOX_TABLE_NAME];
-      const byId = { ...table.byId };
-      const nowIso = new Date().toISOString();
-      for (const id of table.ids) {
-        if (!lookup.has(id)) {
-          continue;
-        }
-        const record = byId[id];
-        if (!record) {
-          continue;
-        }
-        byId[id] = {
-          ...record,
-          status: 'pending',
-          updatedAtIso: nowIso,
-          lastTriedAtIso: nowIso,
-          retryCount: record.retryCount + 1,
-          lastError: message?.trim() || 'Sync failed'
-        };
-      }
-      return {
-        ...state,
-        [USER_RATES_OUTBOX_TABLE_NAME]: {
-          byId,
-          ids: [...table.ids]
-        }
-      };
-    });
+    this.updatePendingOutbox(outboxIds, (record, nowIso) => ({
+      ...record,
+      status: 'pending',
+      updatedAtIso: nowIso,
+      lastTriedAtIso: nowIso,
+      retryCount: record.retryCount + 1,
+      lastError: message?.trim() || 'Sync failed'
+    }));
   }
 
   requeueFailedUserRatesOutbox(outboxIds: string[]): void {
-    const normalizedIds = outboxIds
-      .map(id => id.trim())
-      .filter(id => id.length > 0);
-    if (normalizedIds.length === 0) {
-      return;
-    }
-    const lookup = new Set(normalizedIds);
-    this.memoryDb.write(state => {
-      const table = state[USER_RATES_OUTBOX_TABLE_NAME];
-      const byId = { ...table.byId };
-      const nowIso = new Date().toISOString();
-      for (const id of table.ids) {
-        if (!lookup.has(id)) {
-          continue;
-        }
-        const record = byId[id];
-        if (!record) {
-          continue;
-        }
-        byId[id] = {
-          ...record,
-          status: 'pending',
-          updatedAtIso: nowIso,
-          lastError: null
-        };
-      }
-      return {
-        ...state,
-        [USER_RATES_OUTBOX_TABLE_NAME]: {
-          byId,
-          ids: [...table.ids]
-        }
-      };
-    });
+    this.updatePendingOutbox(outboxIds, (record, nowIso) => ({
+      ...record,
+      status: 'pending',
+      updatedAtIso: nowIso,
+      lastError: null
+    }));
   }
 
   enqueueUserRateOutbox(nextRecord: UserRateRecord): void {

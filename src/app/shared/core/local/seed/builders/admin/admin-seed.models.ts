@@ -1,3 +1,5 @@
+import { AdminReportDto } from '../../../../contracts/administration/admin.interface';
+import { AdminChatMessageDto } from '../../../../contracts/administration/admin.interface';
 import type { AssetType } from '../../../../common/constants';
 
 export interface AdminSeedUserDto {
@@ -75,41 +77,9 @@ export interface AdminSeedHelpTarget {
   targetUrl: string;
 }
 
-export interface AdminSeedChatMessageDto {
-  id: string;
-  sender: string;
-  senderUserId?: string | null;
-  senderInitials?: string | null;
-  senderGender?: 'woman' | 'man' | string | null;
-  text: string;
-  time?: string | null;
-  sentAtIso?: string | null;
-}
+export type AdminSeedChatMessageDto = Pick<AdminChatMessageDto, "id" | "sender" | "senderUserId" | "senderInitials" | "senderGender" | "text" | "time" | "sentAtIso">;
 
-export interface AdminSeedReportDto {
-  id: string;
-  reporterUserId: string;
-  reporterName: string;
-  reporterImageUrl?: string | null;
-  targetUserId: string;
-  handle?: string | null;
-  reason: string;
-  details: string;
-  eventId?: string | null;
-  eventTitle?: string | null;
-  eventStartAtIso?: string | null;
-  memberEntryId?: string | null;
-  sourceType?: string | null;
-  sourceId?: string | null;
-  sourceText?: string | null;
-  chatId?: string | null;
-  messageId?: string | null;
-  assetId?: string | null;
-  assetType?: string | null;
-  chatTitle?: string | null;
-  chatMessages?: AdminSeedChatMessageDto[];
-  createdDate: string;
-}
+export type AdminSeedReportDto = Pick<AdminReportDto, "id" | "reporterUserId" | "reporterName" | "reporterImageUrl" | "targetUserId" | "handle" | "reason" | "details" | "eventId" | "eventTitle" | "eventStartAtIso" | "memberEntryId" | "sourceType" | "sourceId" | "sourceText" | "chatId" | "messageId" | "assetId" | "assetType" | "chatTitle" | "chatMessages" | "createdDate">;
 
 export interface AdminSeedFeedbackDto {
   id: string;

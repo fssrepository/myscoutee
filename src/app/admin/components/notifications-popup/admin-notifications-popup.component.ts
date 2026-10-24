@@ -1,3 +1,5 @@
+import { AdminConfigurationBuilder } from '../../../shared/core/base/builders/administration/admin-configuration.builder';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import {
   CommonModule
 } from '@angular/common';
@@ -1536,20 +1538,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     groupKey: string;
     fields: AdminNotificationRuleParameter[];
   }[] {
-    const groups = new Map<string, AdminNotificationRuleParameter[]>();
-    const groupKeys = new Map<string, string>();
-    for (const field of fields) {
-      const group = `${field.group ?? ''}`.trim() || 'General';
-      if (!groupKeys.has(group)) {
-        groupKeys.set(group, `${field.groupKey ?? ''}`.trim());
-      }
-      groups.set(group, [...(groups.get(group) ?? []), field]);
-    }
-    return [...groups.entries()].map(([group, groupFields]) => ({
-      group,
-      groupKey: groupKeys.get(group) ?? '',
-      fields: groupFields
-    }));
+    return AdminConfigurationBuilder.fieldsByGroup(fields);
   }
 
   protected parameterValueLabel(field: AdminNotificationRuleParameter): string {
@@ -1558,7 +1547,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return (field.options ?? []).find(option => option.value === value)?.label ?? value;
     }
     const value = Number(field.numberValue);
-    const formatted = Number.isInteger(value) ? `${value}` : value.toFixed(2).replace(/\.?0+$/, '');
+    const formatted = Number.isInteger(value) ? `${value}` : Number(value.toFixed(2)).toString();
     return [formatted, `${field.unit ?? ''}`.trim()].filter(Boolean).join(' ');
   }
 
@@ -1648,7 +1637,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           : `${Number.isFinite(Number(field.numberValue)) ? Number(field.numberValue) : 0}`;
         return `${key}:${valueType}:${value}`;
       })
-      .sort()
+      .sort(AppUtils.compareCodeUnits)
       .join('|');
   }
 

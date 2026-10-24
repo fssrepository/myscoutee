@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -6,7 +7,6 @@ import {
   type MingleConfigurationDTO
 } from '../../../shared/core/contracts/common/activity.interface';
 import {
-  ExplanationGuideService,
   I18nPipe,
   PopupComponent,
   type PopupControl,
@@ -51,7 +51,7 @@ export class EventMingleConfigurationPopupComponent implements OnDestroy {
   readonly minimumPlannedRounds = input(1);
 
   readonly save = output<MingleConfigurationDTO>();
-  readonly cancel = output<Event>();
+  readonly cancelled = output<Event>();
 
   protected readonly draft = signal<MingleConfigurationDTO>(this.emptyDraft());
 
@@ -106,7 +106,7 @@ export class EventMingleConfigurationPopupComponent implements OnDestroy {
     bodyLayout: 'default',
     backdropTone: 'dim',
     headerControls: this.popupHeaderControls(),
-    onClose: event => this.cancel.emit(event),
+    onClose: event => this.cancelled.emit(event),
     onMenuSelect: event => this.onPopupMenuSelect(event)
   }));
 

@@ -1,4 +1,6 @@
-import type { GuideRevision as HelpCenterRevisionDto } from '@fssrepository/myscoutee-components';
+import type { HelpCenterRevisionDto } from '../../../../core/contracts/content/content.interface';
+import { AppUtils } from '../../../../core/base/app-utils';
+
 import type { HelpCenterStateDto } from '../../../../core/contracts';
 import type { UserGameFilterPreferencesDto } from '../../../../core/contracts/common/activity.interface';
 import type {
@@ -231,17 +233,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       }
       : undefined,
     activities: {
-      game: user.activities?.game ?? 0,
-      chats: user.activities?.chats ?? 0,
-      invitations: user.activities?.invitations ?? 0,
-      events: user.activities?.events ?? 0,
-      hosting: user.activities?.hosting ?? 0,
-      cars: user.activities?.cars ?? 0,
-      accommodation: user.activities?.accommodation ?? 0,
-      supplies: user.activities?.supplies ?? 0,
-      tickets: user.activities?.tickets ?? 0,
-      contacts: user.activities?.contacts ?? 0,
-      feedback: user.activities?.feedback ?? 0,
+      ...AppUtils.copyActivityCounts(user.activities),
       notifications: user.activities?.notifications ?? 0,
       paymentRefundsPending: user.activities?.paymentRefundsPending ?? 0,
       contactRequestsPending: user.activities?.contactRequestsPending ?? 0,

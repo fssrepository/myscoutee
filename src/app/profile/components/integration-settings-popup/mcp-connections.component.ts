@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { IntegrationSettingsStore } from '../../../shared/ui/context/stores/profile/integration-settings.store';
@@ -17,6 +17,7 @@ import {
   selector: 'app-mcp-connections', standalone: true,
   imports: [IntegrationAccessButtonComponent, CommonModule, CopyLinkComponent, AppMenuComponent, PopupComponent, I18nPipe],
   styleUrl: './integration-settings-popup.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <section class="integration-settings-section">
       <div class="integration-section-heading">

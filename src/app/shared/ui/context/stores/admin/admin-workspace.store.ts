@@ -8,16 +8,10 @@ import {
   signal
 } from '@angular/core';
 
-import {
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  type AdminDashboardDto,
-  type AdminFeedbackDto,
-  type AdminModerationUserPatch,
-  type AdminReportedUserDto,
-  type AdminUserDto,
-  type ProfileExtDto,
-  type UserDto
-} from '../../../../core';
+import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../../../core/base/services/accounts/users.service';
+import type { AdminDashboardDto, AdminFeedbackDto, AdminReportedUserDto, AdminUserDto } from '../../../../core/contracts/administration/admin.interface';
+import type { AdminModerationUserPatch } from '../../../../core/base/services/content/admin-moderation.service';
+import type { ProfileExtDto, UserDto } from '../../../../core/contracts/accounts/user.interface';
 import {
   APP_STORAGE_KEYS
 } from '../../../../core/common/storage-scope';

@@ -1,3 +1,6 @@
+import { ActivityMembersBuilder } from '../../../../base/builders/events/activity-members.builder';
+import { normalizeOwnerCollection } from '../../../common/record-collection';
+import { ActivityResourceBuilder } from '../../../../base/builders/events/activity-resource.builder';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import {
   EVENTS_TABLE_NAME,
@@ -428,17 +431,11 @@ export class SeedActivityResourcesRepository {
   }
 
   private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return false;
-    }
-    return this.normalizeUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
+    return ActivityMembersBuilder.isEventAdminRecord(record, userId);
   }
 
   private normalizeUserIds(userIds: readonly string[] | undefined): string[] {
-    return Array.from(new Set((userIds ?? [])
-      .map(userId => `${userId ?? ''}`.trim())
-      .filter(userId => userId.length > 0)));
+    return ActivityMembersBuilder.normalizeUserIds(userIds);
   }
 
   private isPublishedEventStatus(status: ActivityEventRecord['status'] | null | undefined): boolean {
@@ -690,34 +687,7 @@ export class SeedActivityResourcesRepository {
   }
 
   private normalizeCollection(value: unknown): ActivityResourcesRecordCollection {
-    const source = value as Partial<ActivityResourcesRecordCollection> | null | undefined;
-    const byId = source?.byId && typeof source.byId === 'object'
-      ? { ...(source.byId as Record<string, ActivitySubEventResourceRecord>) }
-      : {};
-    const ids = Array.isArray(source?.ids)
-      ? source.ids.map(id => `${id}`)
-      : Object.keys(byId);
-    const idsByOwnerKey = source?.idsByOwnerKey && typeof source.idsByOwnerKey === 'object'
-      ? Object.fromEntries(
-          Object.entries(source.idsByOwnerKey).map(([ownerKey, recordIds]) => [
-            ownerKey,
-            Array.isArray(recordIds) ? recordIds.map(id => `${id}`) : []
-          ])
-        )
-      : {};
-    for (const id of ids) {
-      const record = byId[id];
-      const ownerKey = `${record?.ownerKey ?? ''}`.trim();
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = idsByOwnerKey[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      idsByOwnerKey[ownerKey] = bucket;
-    }
-    return { byId, ids, idsByOwnerKey };
+    return normalizeOwnerCollection<ActivitySubEventResourceRecord>(value);
   }
 
   private normalizeAssetRequestsCollection(value: unknown): AssetRequestsRecordCollection {
@@ -930,29 +900,7 @@ export class SeedActivityResourcesRepository {
   private cloneSupplyContributionEntriesByAssetId(
     source: ActivitySubEventSupplyContributionsByAssetIdRecord | null | undefined
   ): ActivitySubEventSupplyContributionsByAssetIdRecord {
-    const next: ActivitySubEventSupplyContributionsByAssetIdRecord = {};
-    if (!source || typeof source !== 'object') {
-      return next;
-    }
-    for (const [assetId, rawEntries] of Object.entries(source)) {
-      const normalizedAssetId = `${assetId ?? ''}`.trim();
-      if (!normalizedAssetId || !Array.isArray(rawEntries)) {
-        continue;
-      }
-      const entries = rawEntries
-        .map(entry => ({
-          id: `${entry?.id ?? ''}`.trim(),
-          userId: `${entry?.userId ?? ''}`.trim(),
-          quantity: Math.max(0, Math.trunc(Number(entry?.quantity) || 0)),
-          addedAtIso: `${entry?.addedAtIso ?? ''}`.trim()
-        }))
-        .filter(entry => entry.id.length > 0 && entry.userId.length > 0 && entry.quantity > 0)
-        .sort((left, right) => UiDateUtils.toSortableDate(left.addedAtIso) - UiDateUtils.toSortableDate(right.addedAtIso));
-      if (entries.length > 0) {
-        next[normalizedAssetId] = entries;
-      }
-    }
-    return next;
+    return ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(source);
   }
 
   private cloneFallbackAssetCardsByType(
@@ -990,14 +938,7 @@ export class SeedActivityResourcesRepository {
   }
 
   private assetRequestSyncSignature(request: AssetMemberRequestRecord): string {
-    return JSON.stringify({
-      id: request.id,
-      userId: request.userId ?? '',
-      status: request.status,
-      requestKind: request.requestKind ?? '',
-      bookingQuantity: request.booking?.quantity ?? '',
-      bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])]
-    });
+    return ActivityResourceBuilder.assetRequestSyncSignature(request);
   }
 
   private normalizeRoutes(routes: readonly string[] | undefined | null): string[] {

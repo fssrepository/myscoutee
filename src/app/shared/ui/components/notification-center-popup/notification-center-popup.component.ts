@@ -1,8 +1,8 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   type ListQuery,
   DialogStore,
-  ExplanationGuideService,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger,

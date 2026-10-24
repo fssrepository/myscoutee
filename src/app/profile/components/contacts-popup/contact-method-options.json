@@ -1,0 +1,110 @@
+[
+  {
+    "value": "phone",
+    "label": "phone",
+    "icon": "call",
+    "placeholder": "+421 900 123 456",
+    "helpText": "Opens the phone app on mobile or the default calling handler.",
+    "inputType": "tel",
+    "inputMode": "tel",
+    "autocomplete": "tel",
+    "actionLabel": "chat.call.title",
+    "openBehavior": "same-tab"
+  },
+  {
+    "value": "sms",
+    "label": "sms",
+    "icon": "sms",
+    "placeholder": "+421 900 123 456",
+    "helpText": "Starts a text message with the number filled in.",
+    "inputType": "tel",
+    "inputMode": "tel",
+    "autocomplete": "tel",
+    "actionLabel": "Text",
+    "openBehavior": "same-tab"
+  },
+  {
+    "value": "whatsapp",
+    "label": "whatsapp",
+    "icon": "chat",
+    "placeholder": "+421900123456",
+    "helpText": "Uses the WhatsApp deep link when available.",
+    "inputType": "tel",
+    "inputMode": "tel",
+    "autocomplete": "tel",
+    "actionLabel": "Open WhatsApp",
+    "openBehavior": "new-tab"
+  },
+  {
+    "value": "email",
+    "label": "email",
+    "icon": "mail",
+    "placeholder": "hello@example.com",
+    "helpText": "Opens the default mail app with the address ready.",
+    "inputType": "email",
+    "inputMode": "email",
+    "autocomplete": "email",
+    "actionLabel": "email",
+    "openBehavior": "same-tab"
+  },
+  {
+    "value": "facebook",
+    "label": "facebook",
+    "icon": "thumb_up",
+    "placeholder": "@username or https://facebook.com/username",
+    "helpText": "Opens the Facebook profile in the app or a browser tab.",
+    "inputType": "url",
+    "inputMode": "url",
+    "autocomplete": "url",
+    "actionLabel": "Open Facebook",
+    "openBehavior": "new-tab"
+  },
+  {
+    "value": "instagram",
+    "label": "instagram",
+    "icon": "photo_camera",
+    "placeholder": "@username or https://instagram.com/username",
+    "helpText": "Opens the Instagram profile.",
+    "inputType": "url",
+    "inputMode": "url",
+    "autocomplete": "url",
+    "actionLabel": "Open Instagram",
+    "openBehavior": "new-tab"
+  },
+  {
+    "value": "telegram",
+    "label": "telegram",
+    "icon": "send",
+    "placeholder": "@username or https://t.me/username",
+    "helpText": "Opens the Telegram contact.",
+    "inputType": "url",
+    "inputMode": "url",
+    "autocomplete": "url",
+    "actionLabel": "Open Telegram",
+    "openBehavior": "new-tab"
+  },
+  {
+    "value": "linkedin",
+    "label": "linkedin",
+    "icon": "work",
+    "placeholder": "username or https://linkedin.com/in/username",
+    "helpText": "Opens the LinkedIn profile.",
+    "inputType": "url",
+    "inputMode": "url",
+    "autocomplete": "url",
+    "actionLabel": "Open LinkedIn",
+    "openBehavior": "new-tab"
+  },
+  {
+    "value": "website",
+    "label": "website",
+    "icon": "language",
+    "placeholder": "https://example.com",
+    "helpText": "Opens any profile, portfolio, or custom contact URL.",
+    "inputType": "url",
+    "inputMode": "url",
+    "autocomplete": "url",
+    "actionLabel": "Open Link",
+    "openBehavior": "new-tab"
+  }
+]

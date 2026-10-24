@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   PopupComponent,
   type PopupModel,
   SmartListComponent,
@@ -13,7 +13,7 @@ import {
 } from '@fssrepository/myscoutee-components';
 import { ServiceProviderCalendarComponent } from './service-provider-calendar.component';
 
-import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
+import { Component, ViewChild, effect, inject, untracked, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { defer,map } from 'rxjs';
 
 import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
@@ -23,7 +23,8 @@ import { type ServiceImageCard, ServiceOfferingConverter, SERVICE_STATUS_STYLE, 
 import { ServiceOfferingEditorComponent } from './service-offering-editor.component';
 import { SERVICE_CATEGORIES,type ServiceOfferingItem,type ServiceOfferingFilters,type ServiceCategory,type ServiceStatus,type ServiceAction } from '../../../core/contracts/community/service-offering.interface';
 
-@Component({selector:'app-service-offerings-popup',standalone:true,imports:[ServiceProviderCalendarComponent,PopupComponent,SmartListComponent,InfoCardComponent,SingleCardComponent,ServiceOfferingEditorComponent],template:`
+@Component({selector:'app-service-offerings-popup',standalone:true,imports:[ServiceProviderCalendarComponent,PopupComponent,SmartListComponent,InfoCardComponent,SingleCardComponent,ServiceOfferingEditorComponent],changeDetection: ChangeDetectionStrategy.Eager,
+template:`
  @if(store.session()){
  <app-popup [model]="model()" [zIndex]="14600" data-guide-context="community-services">
  @if(store.session()?.providers){

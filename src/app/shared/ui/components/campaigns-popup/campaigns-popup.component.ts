@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   PopupComponent,
   PopupModel,
   SmartListComponent,
@@ -12,7 +12,7 @@ import {
   type AppMenuItemSelectEvent
 } from '@fssrepository/myscoutee-components';
 
-import { Component, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
+import { Component, ViewChild, effect, inject, untracked, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { defer, map } from 'rxjs';
 
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -26,6 +26,7 @@ import { CampaignHistoryPopupComponent } from '../../../../activity/components/c
 
 @Component({ selector: 'app-campaigns-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, ImageCardComponent, CampaignEditorComponent, CampaignHistoryPopupComponent, I18nPipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     @if (store.session()) {
       <app-popup [model]="model()" [zIndex]="14000">

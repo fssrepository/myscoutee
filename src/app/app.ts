@@ -1,6 +1,6 @@
 import { markLandingDebug } from './shared/core/common/landing-debug';
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ErrorHandler, HostListener, OnDestroy, OnInit, Type, computed, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import {
   NavigationCancel,
   NavigationCancellationCode,
@@ -11,15 +11,17 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { AppSetupPopupComponent } from './shared/ui/components/app-setup-popup/app-setup-popup.component';
 import { PwaService } from './shared/core/base/services/platform/pwa.service';
 import { I18nService } from './shared/core/base/services/localization/i18n.service';
 import { AppLocationService } from './shared/core/base/services/accounts/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
-import { PaymentAuthorizationPopupComponent } from './shared/ui/components/payment-authorization-popup/payment-authorization-popup.component';
 import { SessionService } from './shared/core/base/services/accounts/session.service';
 import { HomeHeaderComponent } from './home/components/home-header/home-header.component';
-import { AppMenuComponent, type AppMenuItem, DialogComponent } from '@fssrepository/myscoutee-components';
+import { AppMenuComponent, type AppMenuItem, DialogComponent, PopupComponent, IndicatorComponent } from '@fssrepository/myscoutee-components';
+import { AppSetupStore } from './shared/ui/context/stores/app/app-setup.store';
+import { PaymentAuthorizationService } from './shared/core/base/services/payments/payment-authorization.service';
+import { PopupAdapterProxyService } from './shared/ui/context/popup-adapter-proxy.service';
+import { POPUP_ADAPTER } from './shared/ui/context/popup-adapter-loaders';
 
 import { OfflineCacheService } from './shared/core/base/services/platform/offline-cache.service';
 
@@ -31,16 +33,24 @@ import { AppUtils } from './shared/core/base/app-utils';
   imports: [
     RouterOutlet,
     NgComponentOutlet,
-    AppSetupPopupComponent,
-    PaymentAuthorizationPopupComponent,
+    PopupComponent,
+    IndicatorComponent,
     HomeHeaderComponent,
     AppMenuComponent,
     DialogComponent
   ],
   templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './app.scss'
 })
-export class App implements OnDestroy {
+export class App implements OnInit, OnDestroy {
+  protected readonly setup = inject(AppSetupStore);
+  protected readonly paymentAuthorization = inject(PaymentAuthorizationService);
+  protected readonly setupPopupComponent = signal<Type<unknown> | null>(null);
+  protected readonly paymentPopupComponent = signal<Type<unknown> | null>(null);
+  private readonly popupAdapters = inject(PopupAdapterProxyService);
+  private readonly popupErrors = inject(ErrorHandler);
+  private readonly popupDestroyRef = inject(DestroyRef);
   private static readonly ROUTE_WARMUP_WATCHDOG_DELAY_MS = 6000;
   private static readonly MOBILE_RESUME_RECOVERY_DELAY_MS = 280;
   private static readonly ACTION_WAVE_TARGET_SELECTOR = [
@@ -102,11 +112,19 @@ export class App implements OnDestroy {
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
 
   constructor() {
+    effect(() => {
+      if (!this.setup.isOpen() || this.setupPopupComponent()) return;
+      void this.popupAdapters.load(POPUP_ADAPTER.APP_SETUP).then(module => {
+        if (!this.popupDestroyRef.destroyed) this.setupPopupComponent.set(module.AppSetupPopupComponent);
+      }).catch(error => this.popupErrors.handleError(error));
+    });
+    effect(() => {
+      if (!this.paymentAuthorization.waitingSurface() || this.paymentPopupComponent()) return;
+      void this.popupAdapters.load(POPUP_ADAPTER.PAYMENT_AUTHORIZATION).then(module => {
+        if (!this.popupDestroyRef.destroyed) this.paymentPopupComponent.set(module.PaymentAuthorizationPopupComponent);
+      }).catch(error => this.popupErrors.handleError(error));
+    });
     const initialRouteUrl = this.resolveInitialRouteUrl();
-    this.i18nService.initialize();
-    this.appLocationService.initialize();
-    void this.deploymentConfiguration.initialize();
-    void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
     // Bootstrap can finish before the initial page is ready. Keep the loading
     // surface until the outlet activates, including a fresh unsigned visit.
@@ -152,6 +170,15 @@ export class App implements OnDestroy {
         this.completeInitialLandingWarmup(0);
       }
     });
+  }
+
+  ngOnInit(): void {
+    this.appLocationService.initialize();
+    void Promise.all([
+      this.i18nService.initialize(),
+      this.deploymentConfiguration.initialize(),
+      this.pwaService.initialize()
+    ]).catch(error => this.popupErrors.handleError(error));
   }
 
   ngOnDestroy(): void {

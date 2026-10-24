@@ -1,5 +1,7 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { UserImpressionsBuilder } from '../../../shared/core/base/builders/accounts/user-impressions.builder';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
-import { clampNumber, ExplanationGuideService, PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
+import { clampNumber, PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
 import {
   CommonModule
 } from '@angular/common';
@@ -10,7 +12,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   MatRippleModule
@@ -94,6 +97,7 @@ interface ProfileImpressionsTraitCardViewModel {
   standalone: true,
   imports: [CommonModule, MatIconModule, MatRippleModule, PopupComponent, I18nPipe],
   templateUrl: './impressions-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './impressions-popup.component.scss'
 })
 export class ProfileImpressionsPopupComponent implements OnDestroy {
@@ -323,29 +327,7 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
   }
 
   private hasImpressionsSectionData(section: UserImpressionsSectionDto | undefined): boolean {
-    if (!section) {
-      return false;
-    }
-    const hasPositiveMetric = [
-      section.averageRating,
-      section.peopleMet,
-      section.totalEvents,
-      section.repeatCount,
-      section.noShowCount
-    ].some(value => Number.isFinite(value) && Number(value) > 0);
-    const hasBadges = [
-      section.vibeBadges,
-      section.personalityBadges,
-      section.categoryBadges
-    ].some(items => (items ?? []).some(item => item.trim().length > 0));
-    const hasTraits = (section.personalityTraits ?? []).some(trait =>
-      `${trait.id ?? trait.label ?? ''}`.trim().length > 0
-      && (
-        (Number.isFinite(trait.percent) && Number(trait.percent) > 0)
-        || (Number.isFinite(trait.evidenceCount) && Number(trait.evidenceCount) > 0)
-      )
-    );
-    return hasPositiveMetric || hasBadges || hasTraits;
+    return UserImpressionsBuilder.hasImpressionsSectionData(section);
   }
 
   protected selectHostTrait(index: number): void {

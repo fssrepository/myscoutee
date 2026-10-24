@@ -1,13 +1,13 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { FeedbackService } from '../../../core/base/services/feedback/feedback.service';
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { EventsService } from '../../../core/base';
 import {
-  ExplanationGuideService,
   IndicatorComponent,
   PopupComponent,
   type PopupModel
@@ -31,6 +31,7 @@ import {
     PopupComponent, I18nPipe
   ],
   templateUrl: './feedback-rated-detail-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './feedback-rated-detail-popup.component.scss'
 })
 export class FeedbackRatedDetailPopupComponent {

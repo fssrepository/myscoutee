@@ -1,3 +1,5 @@
+import { ActivityEventDTO } from '../../../core/contracts/common/activity.interface';
+import type { InfoCardData } from '@fssrepository/myscoutee-components';
 import {
   UiLinkUtils,
   type AppMenuItem,
@@ -46,6 +48,22 @@ export interface ActivityEventInfoCardMenuConverterOptions {
 export type ActivityEventEditorAction = 'edit' | 'manage' | 'view';
 
 export class ActivityEventInfoCardMenuConverter {
+
+  static eventSubject(row: Pick<InfoCardData, 'id' | 'status' | 'ownerUserId' | 'ownerId' | 'menuBadgeCount'>, dto: ActivityEventDTO | null | undefined) {
+    return {
+      menu: 'activity-event-card' as const,
+      id: row.id,
+      status: dto?.status ?? row.status ?? null,
+      ownerUserId: dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? null,
+      adminIds: [...(dto?.adminIds ?? [])],
+      acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      activity: dto?.activity ?? row.menuBadgeCount ?? 0
+    };
+  }
+
   private static readonly availableActions: readonly string[] = [
     'restore',
     'removeWatchlist',

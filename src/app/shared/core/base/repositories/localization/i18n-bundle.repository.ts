@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import { Injectable } from '@angular/core';
 
 import {
@@ -186,30 +187,9 @@ export class I18nBundleRepository {
     }
   }
 
-  private normalizeLanguage(value: string): string {
-    return `${value ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
-  }
+  private normalizeLanguage(value: string): string { return AppUtils.normalizeLanguage(value); }
 
-  private normalizeMessages(value: Record<string, string> | null): Record<string, string> | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const normalized: Record<string, string> = {};
-    Object.entries(value).forEach(([key, translation]) => {
-      const normalizedKey = this.normalizeSourceKey(key);
-      const normalizedTranslation = `${translation ?? ''}`.trim();
-      if (normalizedKey && normalizedTranslation) {
-        normalized[normalizedKey] = normalizedTranslation;
-      }
-    });
-    return normalized;
-  }
+  private normalizeMessages(value: Record<string, string> | null): Record<string, string> | null { return AppUtils.normalizeMessages(value, key => this.normalizeSourceKey(key)); }
 
   private normalizeSourceKey(value: string): string {
     return `${value ?? ''}`.trim().replace(/\s+/g, ' ');

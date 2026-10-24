@@ -1,4 +1,5 @@
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
+import { Component, OnDestroy, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   PopupComponent,
@@ -6,8 +7,7 @@ import {
   FormFlowComponent,
   type FormFlowModel,
   type AppMenuItem,
-  type AppMenuPalette,
-  ExplanationGuideService
+  type AppMenuPalette
 } from '@fssrepository/myscoutee-components';
 
 import { FeedbackStore } from '../../context/stores/feedback/feedback.store';
@@ -18,6 +18,7 @@ import { SERVICE_RATING_CRITERIA } from '../../../core/contracts/affinity/rating
 @Component({
   selector: 'app-feedback-evaluation-popup', standalone: true,
   imports: [FormsModule, PopupComponent, FormFlowComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-popup [model]="model()" [zIndex]="12600">
     <app-form-flow [model]="flow()" [ngModel]="form()" (ngModelChange)="form.set($event)"
       [saving]="busy()" (save)="submit()"></app-form-flow>

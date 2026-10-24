@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   ImageCardComponent,
   PopupComponent,
   SmartListComponent,

@@ -1,3 +1,5 @@
+import { AdminConfigurationBuilder } from '../../../../base/builders/administration/admin-configuration.builder';
+import { AppUtils } from '../../../../base/app-utils';
 import backgroundJobs from '../../data/background-job-definitions.json';
 import communityJobs from '../../data/community-job-definitions.json';
 import workJobKeys from '../../data/work-job-keys.json';
@@ -471,26 +473,7 @@ export class AdminNotificationsSeedBuilder {
   }
 
   private static fixedNotificationIntervalUnit(seconds: number): AdminNotificationIntervalUnit {
-    const value = Math.max(1, Math.trunc(Number(seconds) || 1));
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.years === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.years;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.months === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.months;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.weeks === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.weeks;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.days === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.days;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.hours === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.hours;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.minutes === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.minutes;
-    }
-    return ADMIN_NOTIFICATION_INTERVAL_UNIT.seconds;
+    return AdminConfigurationBuilder.fixedNotificationIntervalUnit(seconds, ADMIN_NOTIFICATION_INTERVAL_SECONDS);
   }
 
   private static intervalExpression(amountValue: number, unit: AdminNotificationIntervalUnit, time: string): string {
@@ -519,26 +502,22 @@ export class AdminNotificationsSeedBuilder {
   }
 
   private static paramFieldLabelKey(fieldKey: string | null | undefined): string {
-    const normalized = `${fieldKey ?? ''}`.trim();
-    return normalized ? `admin.params.field.${normalized}` : '';
+    return AdminConfigurationBuilder.paramFieldLabelKey(fieldKey);
   }
 
   private static paramGroupLabelKey(group: string | null | undefined): string {
-    const normalized = this.paramsI18nSegment(group);
-    return normalized ? `admin.params.group.${normalized}` : 'admin.params.group.general';
+    return AdminConfigurationBuilder.paramGroupLabelKey(group);
   }
 
   private static paramStrategyLabelKey(strategy: string | null | undefined): string {
-    const normalized = `${strategy ?? ''}`.trim();
-    return normalized ? `admin.params.strategy.${normalized}` : '';
+    return AdminConfigurationBuilder.paramStrategyLabelKey(strategy);
   }
 
   private static paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 }

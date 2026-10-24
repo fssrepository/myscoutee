@@ -765,23 +765,7 @@ export class LocalActivityEventsMapper {
   private static subEventDefinitionTimeline(
     items: readonly SubEventDefinitionDTO[]
   ): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
-    let previousStartOffsetMinutes = 0;
-    let previousEndOffsetMinutes = 0;
-    let hasPrevious = false;
-    return ActivityEventDetailDTO.normalizeSubEventDefinitions(items).map(item => {
-      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
-      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
-      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
-      const startOffsetMinutes = !hasPrevious
-        ? offsetMinutes
-        : timing === 'During'
-          ? previousStartOffsetMinutes + offsetMinutes
-          : previousEndOffsetMinutes + offsetMinutes;
-      previousStartOffsetMinutes = startOffsetMinutes;
-      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
-      hasPrevious = true;
-      return { item, startOffsetMinutes, durationMinutes };
-    });
+    return ActivityEventDetailDTO.subEventDefinitionTimeline(ActivityEventDetailDTO.normalizeSubEventDefinitions(items));
   }
 
   private static isTournamentStageDefinition(item: SubEventDefinitionDTO): boolean {
@@ -1022,7 +1006,7 @@ export class LocalActivityEventsMapper {
     return record?.generated === true || record?.eventType === 'slot' || Boolean(record?.parentEventId);
   }
 
-  private static aggregateRuntimeActivity(record: ActivityEventRecord): number {
+  static aggregateRuntimeActivity(record: ActivityEventRecord): number {
     const mode = ActivityEventDetailDTO.normalizeMode(record.mode);
     const subEventPending = (record.subEvents ?? []).reduce((total, item) => {
       if (mode === 'Tournament') {
@@ -1034,10 +1018,7 @@ export class LocalActivityEventsMapper {
         + this.nonNegativeInteger(item.accommodationPending)
         + this.nonNegativeInteger(item.suppliesPending);
     }, 0);
-    return Math.max(
-      this.nonNegativeInteger(record.activity),
-      subEventPending
-    );
+    return Math.max(this.nonNegativeInteger(record.activity), subEventPending);
   }
 
   private static nonNegativeInteger(value: unknown): number {
@@ -1316,16 +1297,7 @@ export class LocalActivityEventDetailsMapper {
     );
   }
 
-  private static uniqueAffinityTokens(values: readonly string[]): string[] {
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
-      if (normalized) {
-        seen.add(normalized);
-      }
-    }
-    return [...seen];
-  }
+  private static uniqueAffinityTokens(values: readonly string[]): string[] { return AppUtils.uniqueAffinityTokens(values); }
 
   private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
     return tokens.reduce((total, token) => total + ((AppUtils.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);
@@ -1370,16 +1342,7 @@ export class LocalActivityEventDetailsMapper {
     return value === 'hosting' || value === 'invitations' ? value : 'events';
   }
 
-  private static normalizeVisibility(value: unknown): AppConstants.EventVisibility {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'private' || normalized.includes('friend')) {
-      return 'Friends only';
-    }
-    if (normalized.includes('invitation')) {
-      return 'Invitation only';
-    }
-    return 'Public';
-  }
+  private static normalizeVisibility(value: unknown): AppConstants.EventVisibility { return ActivityEventDetailDTO.normalizeVisibility(value); }
 
   private static normalizeBlindMode(value: unknown): EventContracts.EventBlindMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
@@ -1392,25 +1355,10 @@ export class LocalActivityEventDetailsMapper {
     if (!start || !end) {
       return startAt || endAt || '';
     }
-
-    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const normalizedFrequency = normalizeScheduleFrequency(frequency);
-    if (normalizedFrequency === 'One-time') {
-      return `${dateLabel} · ${startTime} - ${endTime}`;
-    }
-    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
+    return ActivityEventDetailDTO.formatTimeframeLabel(start, end, frequency);
   }
 
-  private static normalizePolicies(items: readonly EventContracts.EventPolicyDTO[]): EventContracts.EventPolicyDTO[] {
-    return items.map((item, index) => ({
-      id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
-      title: `${item.title ?? ''}`.trim() || `Policy ${index + 1}`,
-      description: `${item.description ?? ''}`.trim(),
-      required: item.required !== false
-    })).filter(item => item.id || item.title || item.description);
-  }
+  private static normalizePolicies(items: readonly EventContracts.EventPolicyDTO[]): EventContracts.EventPolicyDTO[] { return ActivityEventDetailDTO.normalizePolicies(items); }
 
   private static normalizeSubEvents(items: readonly EventContracts.SubEventDTO[]): EventContracts.SubEventDTO[] {
     return items.map((item, index) => {
@@ -1460,25 +1408,7 @@ export class LocalActivityEventDetailsMapper {
     });
   }
 
-  private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {
-    if (!value) {
-      return null;
-    }
-    return {
-      ...value,
-      demandRules: (value.demandRules ?? []).map(rule => ({ ...rule, action: { ...rule.action }, slotIds: [...(rule.slotIds ?? [])] })),
-      timeRules: (value.timeRules ?? []).map(rule => ({ ...rule, action: { ...rule.action }, slotIds: [...(rule.slotIds ?? [])] })),
-      cancellationPolicy: {
-        ...value.cancellationPolicy,
-        rules: (value.cancellationPolicy?.rules ?? []).map(rule => ({ ...rule }))
-      },
-      slotOverrides: (value.slotOverrides ?? []).map(slot => ({ ...slot })),
-      audience: {
-        ...value.audience,
-        promoCodes: (value.audience?.promoCodes ?? []).map(code => ({ ...code, action: { ...code.action } }))
-      }
-    };
-  }
+  private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null { return ActivityEventDetailDTO.clonePricingConfig(value); }
 
   private static normalizeLocation(value: unknown): string {
     return `${value ?? ''}`.trim();
@@ -1496,21 +1426,7 @@ export class LocalActivityEventDetailsMapper {
   }
 
   private static aggregateRuntimeActivity(record: ActivityEventRecord): number {
-    const mode = ActivityEventDetailDTO.normalizeMode(record.mode);
-    const subEventPending = (record.subEvents ?? []).reduce((total, item) => {
-      if (mode === 'Tournament') {
-        return total + this.nonNegativeInteger(item.groupsPending);
-      }
-      return total
-        + (item.optional === true ? this.nonNegativeInteger(item.membersPending) : 0)
-        + this.nonNegativeInteger(item.carsPending)
-        + this.nonNegativeInteger(item.accommodationPending)
-        + this.nonNegativeInteger(item.suppliesPending);
-    }, 0);
-    return Math.max(
-      this.nonNegativeInteger(record.activity),
-      subEventPending
-    );
+    return LocalActivityEventsMapper.aggregateRuntimeActivity(record);
   }
 
   private static uniqueUserIds(userIds: readonly string[]): string[] {
@@ -1529,20 +1445,7 @@ export class LocalActivityEventDetailsMapper {
     return this.normalizeCount(value) ?? undefined;
   }
 
-  private static normalizeLocationCoordinates(value: unknown): ActivityEventRecord['locationCoordinates'] {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const latitude = Number((value as { latitude?: unknown }).latitude);
-    const longitude = Number((value as { longitude?: unknown }).longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return null;
-    }
-    return {
-      latitude,
-      longitude
-    };
-  }
+  private static normalizeLocationCoordinates(value: unknown): ActivityEventRecord['locationCoordinates'] { return AppUtils.normalizeLocationCoordinates(value); }
 
   private static parseDate(value: unknown): Date | null {
     if (value instanceof Date) {
@@ -1572,14 +1475,7 @@ export class LocalActivityEventDetailsMapper {
     return Number.isNaN(parsed.getTime()) ? null : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
   }
 
-  private static toIsoDateTimeLocal(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    const hours = `${value.getHours()}`.padStart(2, '0');
-    const minutes = `${value.getMinutes()}`.padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  }
+  private static toIsoDateTimeLocal(value: Date): string { return ActivityEventDetailDTO.toIsoDateTimeLocal(value); }
 
   private static toIsoDate(value: Date): string {
     const year = value.getFullYear();

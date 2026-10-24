@@ -1,3 +1,5 @@
+import { appendOwnerIds } from '../local/common/record-collection';
+import { copyOwnerIdIndex } from '../local/common/record-collection';
 import { FEEDBACK_EVALUATIONS_TABLE_NAME } from '../local/source/entity/feedback/feedback.entity';
 import { SERVICE_OFFERINGS_TABLE_NAME, SERVICE_PROVIDER_CALENDARS_TABLE_NAME } from '../local/source/entity/community/service-offering.entity';
 import { COMMUNITY_ANNOUNCEMENTS_TABLE_NAME } from '../local/source/entity/community/community-announcement.entity';
@@ -64,6 +66,11 @@ interface NormalizedActivityRateRecordQuery {
   providedIn: 'root'
 })
 export class AppMemoryDb {
+  private normalizeOwnerIndex<T extends { ownerKey?: string }>(rawIndex: unknown, normalizedById: Record<string, T>, normalizedIds: readonly string[]): Record<string, string[]> {
+    const index = copyOwnerIdIndex(rawIndex, key => key.trim() ? key : null, id => Boolean(normalizedById[id]));
+    return appendOwnerIds(normalizedById, normalizedIds, index, record => typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '');
+  }
+
   private static readonly SCHEMA_TABLE_KEYS = [
     FEEDBACK_EVALUATIONS_TABLE_NAME,
     SERVICE_PROVIDER_CALENDARS_TABLE_NAME,
@@ -117,7 +124,7 @@ export class AppMemoryDb {
   readonly tables = this._tables.asReadonly();
 
   constructor() {
-    this.hydrationReady = this.storageEnabled
+    this.hydrationReady = this.storageEnabled // NOSONAR S7059: eager hydration is retained in hydrationReady and awaited by whenReady().
       ? this.hydrateFromIndexedDb()
       : this.completeInactiveHydration();
   }
@@ -278,7 +285,7 @@ export class AppMemoryDb {
         catch (error) { transaction.abort(); reject(error); }
       };
       transaction.oncomplete = () => resolve(next!);
-      transaction.onerror = () => reject(transaction.error);
+      transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
       transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
     });
   }
@@ -1489,34 +1496,7 @@ export class AppMemoryDb {
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivityMembersById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
-    const next: Record<string, string[]> = {};
-
-    const rawIndex = source?.idsByOwnerKey;
-    if (rawIndex && typeof rawIndex === 'object') {
-      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
-        if (!Array.isArray(ids) || !ownerKey.trim()) {
-          continue;
-        }
-        next[ownerKey] = ids
-          .map(id => String(id))
-          .filter(id => Boolean(normalizedById[id]));
-      }
-    }
-
-    for (const id of normalizedIds) {
-      const record = normalizedById[id];
-      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = next[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      next[ownerKey] = bucket;
-    }
-
-    return next;
+    return this.normalizeOwnerIndex(source?.idsByOwnerKey, normalizedById, normalizedIds);
   }
 
   private normalizeAssetRequestsIdsByOwnerKey(
@@ -1524,34 +1504,7 @@ export class AppMemoryDb {
   ): Record<string, string[]> {
     const normalizedById = this.normalizeAssetRequestsById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
-    const next: Record<string, string[]> = {};
-
-    const rawIndex = source?.idsByOwnerKey;
-    if (rawIndex && typeof rawIndex === 'object') {
-      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
-        if (!Array.isArray(ids) || !ownerKey.trim()) {
-          continue;
-        }
-        next[ownerKey] = ids
-          .map(id => String(id))
-          .filter(id => Boolean(normalizedById[id]));
-      }
-    }
-
-    for (const id of normalizedIds) {
-      const record = normalizedById[id];
-      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = next[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      next[ownerKey] = bucket;
-    }
-
-    return next;
+    return this.normalizeOwnerIndex(source?.idsByOwnerKey, normalizedById, normalizedIds);
   }
 
   private normalizeActivityResourcesIdsByOwnerKey(
@@ -1559,34 +1512,7 @@ export class AppMemoryDb {
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivityResourcesById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
-    const next: Record<string, string[]> = {};
-
-    const rawIndex = source?.idsByOwnerKey;
-    if (rawIndex && typeof rawIndex === 'object') {
-      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
-        if (!Array.isArray(ids) || !ownerKey.trim()) {
-          continue;
-        }
-        next[ownerKey] = ids
-          .map(id => String(id))
-          .filter(id => Boolean(normalizedById[id]));
-      }
-    }
-
-    for (const id of normalizedIds) {
-      const record = normalizedById[id];
-      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = next[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      next[ownerKey] = bucket;
-    }
-
-    return next;
+    return this.normalizeOwnerIndex(source?.idsByOwnerKey, normalizedById, normalizedIds);
   }
 
   private normalizeActivitySubEventStageRuntimeIdsByOwnerKey(
@@ -1594,34 +1520,7 @@ export class AppMemoryDb {
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivitySubEventStageRuntimeById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
-    const next: Record<string, string[]> = {};
-
-    const rawIndex = source?.idsByOwnerKey;
-    if (rawIndex && typeof rawIndex === 'object') {
-      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
-        if (!Array.isArray(ids) || !ownerKey.trim()) {
-          continue;
-        }
-        next[ownerKey] = ids
-          .map(id => String(id))
-          .filter(id => Boolean(normalizedById[id]));
-      }
-    }
-
-    for (const id of normalizedIds) {
-      const record = normalizedById[id];
-      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = next[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      next[ownerKey] = bucket;
-    }
-
-    return next;
+    return this.normalizeOwnerIndex(source?.idsByOwnerKey, normalizedById, normalizedIds);
   }
 
   private normalizeActivitySubEventGroupsIdsByOwnerKey(
@@ -1629,34 +1528,7 @@ export class AppMemoryDb {
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivitySubEventGroupsById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
-    const next: Record<string, string[]> = {};
-
-    const rawIndex = source?.idsByOwnerKey;
-    if (rawIndex && typeof rawIndex === 'object') {
-      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
-        if (!Array.isArray(ids) || !ownerKey.trim()) {
-          continue;
-        }
-        next[ownerKey] = ids
-          .map(id => String(id))
-          .filter(id => Boolean(normalizedById[id]));
-      }
-    }
-
-    for (const id of normalizedIds) {
-      const record = normalizedById[id];
-      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = next[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      next[ownerKey] = bucket;
-    }
-
-    return next;
+    return this.normalizeOwnerIndex(source?.idsByOwnerKey, normalizedById, normalizedIds);
   }
 
   private normalizeAssetsIdsByOwnerUserId(

@@ -31,6 +31,43 @@ export interface LocalAssetProjectionOptions {
 }
 
 export class LocalAssetsMapper {
+
+  private static recordOwnership(record: AssetRecord, options: LocalAssetProjectionOptions, viewerUserId: string) {
+    return {
+      visibility: record.visibility,
+      status: this.normalizeAssetStatus(record.status),
+      moderationStatus: record.moderationStatus,
+      ownerUserId: record.ownerUserId,
+      ownerName: record.ownerName,
+      requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
+        const dto = this.cloneRequest(request as AppDTOs.AssetMemberRequestDTO);
+        return {
+          ...dto,
+          menuActions: options.resolveRequestMenuActions?.(record, dto, viewerUserId) ?? dto.menuActions ?? []
+        };
+      }),
+      metrics: this.assetRequestMetrics(options.requestMetrics),
+      menuActions: options.resolveMenuActions?.(record, viewerUserId) ?? [...(record.menuActions ?? [])]
+    };
+  }
+
+  private static recordHeading(record: AssetRecord) {
+    return {
+      id: record.id,
+      type: record.type,
+      title: record.title,
+      subtitle: record.subtitle,
+      category: AssetDefaultsBuilder.normalizeCategory(record.type, record.category),
+      city: record.city,
+      capacityTotal: record.capacityTotal,
+      quantity: AssetCardBuilder.storedQuantityValue({
+        type: record.type,
+        quantity: record.quantity,
+        capacityTotal: record.capacityTotal
+      })
+    };
+  }
+
   static cloneCards(cards: readonly (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO)[]): AppDTOs.AssetDTO[] {
     return AssetCardBuilder.cloneCards(cards);
   }
@@ -42,28 +79,12 @@ export class LocalAssetsMapper {
   }
 
   static normalizeCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null | undefined): AppDTOs.AssetDTO | null {
-    const id = card?.id?.trim() ?? '';
-    if (!id) {
-      return null;
-    }
-    const type = card?.type;
-    if (!AppConstants.isAssetType(type)) {
-      return null;
-    }
+    const heading = AssetCardBuilder.normalizeHeading(card);
+    if (!heading) return null;
+    const { type } = heading;
     const requests = this.normalizeRequests(card?.requests);
     return {
-      id,
-      type,
-      title: card?.title?.trim() ?? '',
-      subtitle: card?.subtitle?.trim() ?? '',
-      category: AssetDefaultsBuilder.normalizeCategory(type, card?.category),
-      city: card?.city?.trim() ?? '',
-      capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card?.capacityTotal ?? 0 }),
-      quantity: AssetCardBuilder.storedQuantityValue({
-        type,
-        quantity: card?.quantity,
-        capacityTotal: card?.capacityTotal ?? 0
-      }),
+      ...heading,
       description: this.assetDescription(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
       imageUrl: card?.imageUrl?.trim() ?? '',
       locationLabel: this.assetLocationLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type),
@@ -76,13 +97,7 @@ export class LocalAssetsMapper {
           : 'Public',
       status: this.normalizeAssetStatus(card?.status),
       moderationStatus: card?.moderationStatus,
-      ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
-      ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
-      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
-      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
-      menuActions: Array.isArray(card?.menuActions)
-        ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
-        : [],
+      ...AssetCardBuilder.normalizeOwnership(card),
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
     };
@@ -90,15 +105,7 @@ export class LocalAssetsMapper {
 
   private static normalizeBorrowWindow(
     window: AppDTOs.AssetBorrowWindowDTO | null | undefined
-  ): AppDTOs.AssetBorrowWindowDTO | null {
-    const eventId = `${window?.eventId ?? ''}`.trim();
-    const subEventId = `${window?.subEventId ?? ''}`.trim();
-    const startAtIso = `${window?.startAtIso ?? ''}`.trim();
-    const endAtIso = `${window?.endAtIso ?? ''}`.trim();
-    return eventId && subEventId && startAtIso && endAtIso
-      ? { eventId, subEventId, startAtIso, endAtIso }
-      : null;
-  }
+  ): AppDTOs.AssetBorrowWindowDTO | null { return AssetCardBuilder.normalizeBorrowWindow(window); }
 
   static fallbackAssetDto(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
     const requests = this.normalizeRequests(card.requests);
@@ -132,49 +139,12 @@ export class LocalAssetsMapper {
   }
 
   static normalizeDetail(card: AppDTOs.AssetDetailDTO | null | undefined): AppDTOs.AssetDetailDTO | null {
-    const id = card?.id?.trim() ?? '';
-    if (!id) {
-      return null;
-    }
-    const type = card?.type;
-    if (!AppConstants.isAssetType(type)) {
-      return null;
-    }
+    const heading = AssetCardBuilder.normalizeHeading(card);
+    if (!heading) return null;
     const requests = this.normalizeRequests(card?.requests);
     return {
-      id,
-      type,
-      title: card?.title?.trim() ?? '',
-      subtitle: card?.subtitle?.trim() ?? '',
-      category: AssetDefaultsBuilder.normalizeCategory(type, card?.category),
-      city: card?.city?.trim() ?? '',
-      capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card?.capacityTotal ?? 0 }),
-      quantity: AssetCardBuilder.storedQuantityValue({
-        type,
-        quantity: card?.quantity,
-        capacityTotal: card?.capacityTotal ?? 0
-      }),
-      details: card?.details?.trim() ?? '',
-      imageUrl: card?.imageUrl?.trim() ?? '',
-      sourceLink: card?.sourceLink?.trim() ?? '',
-      routes: Array.isArray(card?.routes)
-        ? card.routes.map(route => `${route ?? ''}`.trim()).filter(route => route.length > 0)
-        : [],
-      topics: Array.isArray(card?.topics)
-        ? card.topics.map(topic => `${topic ?? ''}`.trim()).filter(topic => topic.length > 0)
-        : [],
-      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
-      policies: Array.isArray(card?.policies)
-        ? card.policies
-          .map(item => ({
-            id: `${item?.id ?? ''}`.trim(),
-            title: `${item?.title ?? ''}`.trim(),
-            description: `${item?.description ?? ''}`.trim(),
-            required: item?.required !== false
-          }))
-          .filter(item => item.id || item.title || item.description)
-        : [],
-      pricing: PricingBuilder.normalizePricingConfig(card?.pricing, { context: 'asset' }),
+      ...heading,
+      ...AssetCardBuilder.normalizeDetailBody(card),
       visibility: card?.visibility === 'Friends only'
         ? 'Friends only'
         : card?.visibility === 'Invitation only'
@@ -182,13 +152,7 @@ export class LocalAssetsMapper {
           : 'Public',
       status: this.normalizeAssetStatus(card?.status),
       moderationStatus: card?.moderationStatus,
-      ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
-      ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
-      ownerAvatarUrl: `${card?.ownerAvatarUrl ?? ''}`.trim() || null,
-      ownerReleasedAtIso: `${card?.ownerReleasedAtIso ?? ''}`.trim() || null,
-      menuActions: Array.isArray(card?.menuActions)
-        ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
-        : [],
+      ...AssetCardBuilder.normalizeOwnership(card),
       borrowWindow: this.normalizeBorrowWindow(card?.borrowWindow),
       requests,
       metrics: this.assetRequestMetrics(card?.metrics)
@@ -210,18 +174,7 @@ export class LocalAssetsMapper {
   static toAssetDto(record: AssetRecord, options: LocalAssetProjectionOptions = {}): AppDTOs.AssetDTO {
     const viewerUserId = options.viewerUserId?.trim() ?? '';
     return {
-      id: record.id,
-      type: record.type,
-      title: record.title,
-      subtitle: record.subtitle,
-      category: AssetDefaultsBuilder.normalizeCategory(record.type, record.category),
-      city: record.city,
-      capacityTotal: record.capacityTotal,
-      quantity: AssetCardBuilder.storedQuantityValue({
-        type: record.type,
-        quantity: record.quantity,
-        capacityTotal: record.capacityTotal
-      }),
+      ...this.recordHeading(record),
       description: record.details,
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,
@@ -231,20 +184,7 @@ export class LocalAssetsMapper {
       priceLabel: this.assetPriceLabelFromRecord(record),
       policiesEnabled: record.policiesEnabled === true,
       policyCount: record.policiesEnabled === true ? (record.policies ?? []).length : 0,
-      visibility: record.visibility,
-      status: this.normalizeAssetStatus(record.status),
-      moderationStatus: record.moderationStatus,
-      ownerUserId: record.ownerUserId,
-      ownerName: record.ownerName,
-      requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
-        const dto = this.cloneRequest(request as AppDTOs.AssetMemberRequestDTO);
-        return {
-          ...dto,
-          menuActions: options.resolveRequestMenuActions?.(record, dto, viewerUserId) ?? dto.menuActions ?? []
-        };
-      }),
-      metrics: this.assetRequestMetrics(options.requestMetrics),
-      menuActions: options.resolveMenuActions?.(record, viewerUserId) ?? [...(record.menuActions ?? [])]
+      ...this.recordOwnership(record, options, viewerUserId)
     };
   }
 
@@ -255,18 +195,7 @@ export class LocalAssetsMapper {
   static toAssetDetailDto(record: AssetRecord, options: LocalAssetProjectionOptions = {}): AppDTOs.AssetDetailDTO {
     const viewerUserId = options.viewerUserId?.trim() ?? '';
     return {
-      id: record.id,
-      type: record.type,
-      title: record.title,
-      subtitle: record.subtitle,
-      category: AssetDefaultsBuilder.normalizeCategory(record.type, record.category),
-      city: record.city,
-      capacityTotal: record.capacityTotal,
-      quantity: AssetCardBuilder.storedQuantityValue({
-        type: record.type,
-        quantity: record.quantity,
-        capacityTotal: record.capacityTotal
-      }),
+      ...this.recordHeading(record),
       details: record.details,
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,
@@ -275,20 +204,7 @@ export class LocalAssetsMapper {
       policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      visibility: record.visibility,
-      status: this.normalizeAssetStatus(record.status),
-      moderationStatus: record.moderationStatus,
-      ownerUserId: record.ownerUserId,
-      ownerName: record.ownerName,
-      requests: record.requests.filter(request => request.recordStatus !== 'D').map(request => {
-        const dto = this.cloneRequest(request as AppDTOs.AssetMemberRequestDTO);
-        return {
-          ...dto,
-          menuActions: options.resolveRequestMenuActions?.(record, dto, viewerUserId) ?? dto.menuActions ?? []
-        };
-      }),
-      metrics: this.assetRequestMetrics(options.requestMetrics),
-      menuActions: options.resolveMenuActions?.(record, viewerUserId) ?? [...(record.menuActions ?? [])]
+      ...this.recordOwnership(record, options, viewerUserId)
     };
   }
 
@@ -640,24 +556,7 @@ export class LocalAssetsMapper {
       ? requests
         .map(request => ({
           ...request,
-          id: `${request?.id ?? ''}`.trim(),
-          userId: `${request?.userId ?? ''}`.trim() || undefined,
-          name: `${request?.name ?? ''}`.trim(),
-          initials: `${request?.initials ?? ''}`.trim(),
-          gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
-          status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
-          note: `${request?.note ?? ''}`.trim(),
-          requestKind: (
-            request?.requestKind === 'manual'
-              ? 'manual'
-              : request?.requestKind === 'invite'
-                ? 'invite'
-                : 'borrow'
-          ) as AppConstants.AssetRequestKind,
-          requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
-          menuActions: Array.isArray(request?.menuActions)
-            ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
-            : [],
+          ...AssetCardBuilder.normalizeRequestIdentity(request),
           booking: request?.booking
             ? {
                 ...request.booking,
@@ -673,51 +572,11 @@ export class LocalAssetsMapper {
     return 'description' in card ? card.description.trim() : card.details.trim();
   }
 
-  private static assetLocationLabel(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type: AppConstants.AssetType): string {
-    if ('locationLabel' in card && card.locationLabel?.trim()) {
-      return card.locationLabel.trim();
-    }
-    if (type !== AppConstants.ASSET_TYPE_ACCOMMODATION || !('routes' in card)) {
-      return card.city?.trim() ?? '';
-    }
-    return (card.routes ?? [])
-      .map(route => `${route ?? ''}`.trim())
-      .find(route => route.length > 0)
-      ?? card.city.trim();
-  }
+  private static assetLocationLabel(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type: AppConstants.AssetType): string { return AssetCardBuilder.assetLocationLabel(card, type); }
 
-  private static assetPriceLabel(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): string | undefined {
-    if ('priceLabel' in card && card.priceLabel?.trim()) {
-      return card.priceLabel.trim();
-    }
-    if (!('pricing' in card) || !card.pricing?.enabled) {
-      return undefined;
-    }
-    const amount = Math.max(0, Number(card.pricing.basePrice) || 0);
-    if (amount <= 0) {
-      return 'Free borrow';
-    }
-    const currency = card.pricing.currency || 'USD';
-    try {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency,
-        maximumFractionDigits: 0
-      }).format(amount);
-    } catch {
-      return `${currency} ${amount.toFixed(0)}`;
-    }
-  }
+  private static assetPriceLabel(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): string | undefined { return AssetCardBuilder.assetPriceLabel(card); }
 
-  private static assetPolicyCount(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): number {
-    if (!AssetCardBuilder.assetPoliciesEnabled(card)) {
-      return 0;
-    }
-    if ('policyCount' in card && Number.isFinite(Number(card.policyCount))) {
-      return Math.max(0, Math.trunc(Number(card.policyCount)));
-    }
-    return 'policies' in card ? (card.policies ?? []).length : 0;
-  }
+  private static assetPolicyCount(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): number { return AssetCardBuilder.assetPolicyCount(card); }
 
   private static assetPriceLabelFromRecord(record: AssetRecord): string | undefined {
     if (!record.pricing?.enabled) {

@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { GroupWorkspaceContextService } from '../../../../base/services/groups/group-workspace-context.service';
 import { Injectable, inject } from '@angular/core';
 
@@ -406,25 +407,11 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     left: UserDto['locationCoordinates'] | undefined,
     right: UserDto['locationCoordinates'] | undefined
   ): number | null {
-    const leftLat = Number(left?.latitude);
-    const leftLon = Number(left?.longitude);
-    const rightLat = Number(right?.latitude);
-    const rightLon = Number(right?.longitude);
-    if (![leftLat, leftLon, rightLat, rightLon].every(Number.isFinite)) {
-      return null;
-    }
-    const earthRadiusMeters = 6371000;
-    const latitudeDelta = this.toRadians(rightLat - leftLat);
-    const longitudeDelta = this.toRadians(rightLon - leftLon);
-    const leftLatitude = this.toRadians(leftLat);
-    const rightLatitude = this.toRadians(rightLat);
-    const haversine = Math.sin(latitudeDelta / 2) ** 2
-      + Math.cos(leftLatitude) * Math.cos(rightLatitude) * (Math.sin(longitudeDelta / 2) ** 2);
-    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+    return AppUtils.distanceMeters(left, right);
   }
 
   private toRadians(value: number): number {
-    return value * Math.PI / 180;
+    return AppUtils.toRadians(value);
   }
 
   private isSocialCardVisible(

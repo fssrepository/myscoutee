@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   PopupComponent,
@@ -13,10 +14,9 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   I18nPipe,
-  ExplanationGuideService,
   type TextCardTone
 } from '@fssrepository/myscoutee-components';
-import { Component, computed, effect, inject, signal, untracked, viewChildren } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked, viewChildren, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { of } from 'rxjs';
 
@@ -74,7 +74,8 @@ interface TaskRow { id: string; icon:string; task: CaseBoardTask; title: string;
         </ng-template>
       </app-popup>
     }
-  }`, styles: [`.case-board-column { min-width:0; min-height:0; display:flex; flex-direction:column; gap:.5rem; }`]
+  }`, changeDetection: ChangeDetectionStrategy.Eager,
+ styles: [`.case-board-column { min-width:0; min-height:0; display:flex; flex-direction:column; gap:.5rem; }`]
 })
 export class CommunityCaseBoardComponent {
   protected readonly store = inject(CommunityCasesStore);

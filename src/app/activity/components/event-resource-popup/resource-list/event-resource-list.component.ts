@@ -6,7 +6,8 @@ import {
   Input,
   Output,
   ViewEncapsulation,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { of } from 'rxjs';
 
@@ -94,6 +95,7 @@ const EMPTY_MODEL: EventResourceListModel = {
   templateUrl: './event-resource-list.component.html',
   styleUrl: './event-resource-list.component.scss',
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [AppMenuDispatcher]
 })
 export class EventResourceListComponent implements DoCheck {

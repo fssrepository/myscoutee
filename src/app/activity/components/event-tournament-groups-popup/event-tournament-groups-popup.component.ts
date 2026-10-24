@@ -1,3 +1,5 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
@@ -21,7 +23,6 @@ import {
 import { of } from 'rxjs';
 
 import {
-  ExplanationGuideService,
   AccordionComponent,
   FormFlowComponent,
   IndicatorComponent,
@@ -1541,20 +1542,7 @@ export class EventTournamentGroupsPopupComponent implements OnDestroy {
     });
   }
 
-  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
-    const seen = new Set<string>();
-    const labels: string[] = [];
-    for (const part of parts) {
-      const value = `${part ?? ''}`.trim();
-      const key = value.toLocaleLowerCase();
-      if (!value || seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      labels.push(value);
-    }
-    return labels.join(' - ');
-  }
+  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string { return AppUtils.joinDistinctResourcePopupHeaderLabels(parts); }
 
   private syncGroupMembersFromPopup(
     stageId: string,

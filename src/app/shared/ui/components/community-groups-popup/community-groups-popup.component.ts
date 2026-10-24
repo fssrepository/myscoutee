@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   PopupComponent,
@@ -9,10 +10,9 @@ import {
   SmartListConfig,
   SmartListLoadPage,
   AppMenuItemSelectEvent,
-  I18nPipe,
-  ExplanationGuideService
+  I18nPipe
 } from '@fssrepository/myscoutee-components';
-import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect, untracked } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, ViewChild, inject, effect, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { defer, map } from 'rxjs';
 
 import { I18nService } from '../../../core/base/services/localization/i18n.service';
@@ -27,6 +27,7 @@ import { ContentModerationStore } from '../../context/stores/content/content-mod
 import { isBaseGroupId } from '../../../core/contracts/groups/group-type';
 @Component({ selector: 'app-community-groups-popup', standalone: true,
   imports: [PopupComponent, SmartListComponent, InfoCardComponent, CommunityGroupEditorComponent, I18nPipe],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-popup [model]="model()" [zIndex]="explore ? 1200 : null">
       <app-smart-list data-guide-field="group-list" [config]="config" [loadPage]="loadPage" [query]="query" [itemTemplate]="cardTemplate"

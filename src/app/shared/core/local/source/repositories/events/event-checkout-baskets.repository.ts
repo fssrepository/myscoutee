@@ -1,3 +1,4 @@
+import { PricingBuilder } from '../../../../base/builders/payments/pricing.builder';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -326,9 +327,7 @@ export class LocalEventCheckoutBasketsRepository {
       .reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
   }
 
-  private aggregatePricingSummaryRows(
-    items: readonly LocalEventCheckoutBasketItemRecord[]
-  ): LocalEventCheckoutPricingSummaryRowRecord[] {
+  private aggregatePricingSummaryRows(items: readonly LocalEventCheckoutBasketItemRecord[]): LocalEventCheckoutPricingSummaryRowRecord[] {
     const grouped = new Map<string, LocalEventCheckoutPricingSummaryRowRecord>();
     for (const item of items) {
       const fallbackCurrency = item.currency?.trim() || 'USD';
@@ -341,27 +340,7 @@ export class LocalEventCheckoutBasketsRepository {
         const amount = Number.isFinite(row.amount) ? Number(row.amount) : null;
         const currency = row.currency?.trim() || fallbackCurrency;
         const key = `${row.key?.trim() || label}::${detail}::${amount === null ? 'none' : amount}::${currency}`;
-        const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
-        const existing = grouped.get(key);
-        if (existing) {
-          const nextMultiplier = Math.max(1, Math.trunc(Number(existing.multiplier) || 1)) + multiplier;
-          grouped.set(key, {
-            ...existing,
-            multiplier: nextMultiplier,
-            amount: existing.amount !== null && amount !== null
-              ? Math.round((Number(existing.amount) + (amount * multiplier)) * 100) / 100
-              : existing.amount ?? amount
-          });
-          continue;
-        }
-        grouped.set(key, {
-          key,
-          label,
-          detail: detail || null,
-          amount: amount === null ? null : Math.round(amount * multiplier * 100) / 100,
-          currency,
-          multiplier
-        });
+        PricingBuilder.appendPricingSummaryRow(grouped, row, key, label, detail, amount, currency);
       }
     }
     return [...grouped.values()];

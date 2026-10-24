@@ -1,6 +1,8 @@
-import { Component, DestroyRef, ElementRef, Input, afterEveryRender, computed, inject, signal, untracked } from '@angular/core';
+import { DialogComponent, type DialogViewConfig } from '@fssrepository/myscoutee-components';
+import { myScouteeTourDialogOptions } from './guide-dialog-options';
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
+import { Component, DestroyRef, ElementRef, Input, afterEveryRender, computed, inject, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import {
-  ExplanationGuideService,
   FloatingLauncherComponent,
   IndicatorComponent,
   type IndicatorTone,
@@ -10,10 +12,9 @@ import {
   type AppMenuTrigger
 } from '@fssrepository/myscoutee-components';
 import { AppSetupStore } from '../../context/stores/app/app-setup.store';
-import { ExplanationPopupComponent } from './explanation-popup.component';
 
 @Component({ selector: 'app-explanation-launcher', standalone: true,
-  imports: [FloatingLauncherComponent, ExplanationPopupComponent, IndicatorComponent, I18nPipe],
+  imports: [FloatingLauncherComponent, DialogComponent, IndicatorComponent, I18nPipe],
   template: `
     @if (guide.popupOpen() && (guide.loading() || !guide.hasVisiblePopup())) {
       <div class="explanation-guide-loading" role="status" aria-busy="true"
@@ -38,9 +39,10 @@ import { ExplanationPopupComponent } from './explanation-popup.component';
         }
       </div>
     }
-    @defer (when guide.popupOpen()) {
-      @if (!guide.loading()) { <app-explanation-popup></app-explanation-popup> }
+    @if (guide.popupOpen() && !guide.loading()) {
+      <app-dialog [useStore]="false" [dialog]="contentDialog()"></app-dialog>
     }`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`.explanation-guide-loading { position: fixed; inset: 0; display: grid; place-items: center;
     background: rgba(10, 18, 37, 0.73); }
     .floating-launcher-rail { position: fixed; right: 1.4rem;
@@ -57,6 +59,15 @@ export class ExplanationLauncherComponent {
   protected readonly setup = inject(AppSetupStore);
   private readonly popups = inject(PopupPresenceStore);
   protected readonly position = signal<AppMenuDragPosition>({ x: 0, y: 0 });
+  private readonly tourOptions = myScouteeTourDialogOptions();
+  private readonly tourActions = {
+    close: () => this.guide.closePopup(), empty: () => this.guide.showNoGuide(),
+    visibleChange: (visible: boolean) => this.guide.setTourVisible(visible),
+    stepChange: (index: number) => this.guide.setStepIndex(index)
+  };
+  protected readonly contentDialog = computed<DialogViewConfig>(() => this.guide.popupMode() === 'tour'
+    ? { mode: 'tour', model: this.guide.dialogModel(), options: this.tourOptions, actions: this.tourActions }
+    : { mode: 'explanation', model: this.guide.explanationModel(), actions: { close: this.tourActions.close } });
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterEveryRender({ read: () => {

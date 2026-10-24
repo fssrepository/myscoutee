@@ -1,3 +1,4 @@
+import { ActivityEventDetailDTO } from '../../../../core/contracts/common/activity.interface';
 import { Injectable, signal } from '@angular/core';
 
 import type {
@@ -210,17 +211,7 @@ export class EventCheckoutDraftStore {
     })).filter(row => row.label);
   }
 
-  private normalizeCheckoutState(value: unknown): EventCheckoutState {
-    return value === 'confirmed'
-      || value === 'waiting'
-      || value === 'approval-pending'
-      || value === 'approved'
-      || value === 'pay'
-      || value === 'cancelled'
-      || value === 'rejected'
-        ? value
-        : 'draft';
-  }
+  private normalizeCheckoutState(value: unknown): EventCheckoutState { return ActivityEventDetailDTO.normalizeCheckoutState(value); }
 
   private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
     return value === 'deleted' || value === 'succeeded' || value === 'failed'

@@ -129,7 +129,7 @@ export class AppLocationService {
         return;
       }
       this.runLocationSyncFlow(activeUserId, activeUser);
-    });
+    }, { injector: this.injector });
   }
 
   private resolveTrackedUser(userId: string): UserDto | null {

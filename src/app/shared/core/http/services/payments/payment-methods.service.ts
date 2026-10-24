@@ -17,6 +17,20 @@ import type {
 
 @Injectable({ providedIn: 'root' })
 export class HttpPaymentMethodsService implements PaymentMethodDataService {
+
+  private normalizeHistory(response: Partial<PaymentHistoryPageDto> | null): PaymentHistoryPageDto {
+    const items = Array.isArray(response?.items) ? response.items : [];
+    return {
+      items,
+      total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
+      nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
+      euroSummary: response?.euroSummary ?? null,
+      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
+      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
+      pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
+    };
+  }
+
   private static readonly ROUTE = '/payment-methods';
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
@@ -85,43 +99,14 @@ export class HttpPaymentMethodsService implements PaymentMethodDataService {
     ), signal);
   }
 
-  async queryHistory(
-    userId: string,
-    paymentMethodId: string,
-    query: ListQuery,
-    signal?: AbortSignal
-  ): Promise<PaymentHistoryPageDto> {
-    const response = await this.withTimeout(this.http.get<Partial<PaymentHistoryPageDto> | null>(
-      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/${encodeURIComponent(paymentMethodId.trim())}/history`,
-      { params: this.pageParams(userId, query) }
-    ), signal);
-    const items = Array.isArray(response?.items) ? response.items : [];
-    return {
-      items,
-      total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
-      nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
-      euroSummary: response?.euroSummary ?? null,
-      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
-      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
-      pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
-    };
+  async queryHistory(userId: string, paymentMethodId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto> {
+    const response = await this.withTimeout(this.http.get<Partial<PaymentHistoryPageDto> | null>(`${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/${encodeURIComponent(paymentMethodId.trim())}/history`, { params: this.pageParams(userId, query) }), signal);
+    return this.normalizeHistory(response);
   }
 
   async queryAllHistory(userId: string, query: ListQuery, signal?: AbortSignal): Promise<PaymentHistoryPageDto> {
-    const response = await this.withTimeout(this.http.get<Partial<PaymentHistoryPageDto> | null>(
-      `${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history`,
-      { params: this.pageParams(userId, query) }
-    ), signal);
-    const items = Array.isArray(response?.items) ? response.items : [];
-    return {
-      items,
-      total: Math.max(0, Math.trunc(Number(response?.total) || items.length)),
-      nextCursor: `${response?.nextCursor ?? ''}`.trim() || null,
-      euroSummary: response?.euroSummary ?? null,
-      spendingTotals: this.normalizeSpendingTotals(response?.spendingTotals),
-      incomeTotals: this.normalizeSpendingTotals(response?.incomeTotals),
-      pendingRefundCount: Math.max(0, Math.trunc(Number(response?.pendingRefundCount) || 0))
-    };
+    const response = await this.withTimeout(this.http.get<Partial<PaymentHistoryPageDto> | null>(`${this.apiBaseUrl}${HttpPaymentMethodsService.ROUTE}/history`, { params: this.pageParams(userId, query) }), signal);
+    return this.normalizeHistory(response);
   }
 
   async requestRefund(userId: string, paymentId: string, signal?: AbortSignal): Promise<PaymentHistoryMutationDto> {

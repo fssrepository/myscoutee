@@ -12,19 +12,28 @@ describe('Pre-registered demo location seed', () => {
     users.push(AdminProfileSeedBuilder.buildDemoAdminUser({ id: 'admin-demo-ava', name: 'Ava', initials: 'AV' }),
       AdminProfileSeedBuilder.buildDemoAdminUser({ id: 'admin-demo-noel', name: 'Noel', initials: 'NS' }),
       SeedOperatorRegistryBuilder.buildDemoOperatorUser());
-    expect(new Set(users.map(user => partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates))))
+    expect(new Set(users.map(user => user.partitionKey)))
       .toEqual(new Set(['country:hu', 'country:de', 'country:es', 'country:gb']));
     for (const user of users) {
       expect(user.locationCoordinates, user.id).toBeDefined();
-      expect(partitions.resolvePartitionKeyByCoordinates(user.locationCoordinates), user.id).not.toBeNull();
+      expect(partitions.queryPartitionByCountryCode(user.partitionKey!.slice(-2))?.partitionKey, user.id).toBe(user.partitionKey);
+      for (const coordinate of Object.values(user.locationCoordinates!)) {
+        expect(coordinate, user.id).toBe(Number(coordinate.toFixed(6)));
+      }
     }
   });
 
-  it('does not turn an explicitly unsupported fixture coordinate into an eligible one', () => {
+  it('keeps every account location and partition unchanged when the seed is rebuilt', () => {
+    const locations = () => SeedUserBuilder.buildExpandedDemoUsers(50).map(user => ({
+      id: user.id, city: user.city, locationCoordinates: user.locationCoordinates, partitionKey: user.partitionKey
+    }));
+    expect(locations()).toEqual(locations());
+  });
+
+  it('preserves explicitly supplied fixture coordinates', () => {
     const [user] = SeedUserBuilder.buildExpandedDemoUsers(1);
     const unsupported = { latitude: 30.2672, longitude: -97.7431 };
     const [control] = SeedUserBuilder.buildExpandedDemoUsers(1, [{ ...user, locationCoordinates: unsupported }]);
     expect(control.locationCoordinates).toEqual(unsupported);
-    expect(partitions.resolvePartitionKeyByCoordinates(control.locationCoordinates)).toBeNull();
   });
 });

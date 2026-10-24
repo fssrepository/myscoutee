@@ -148,34 +148,12 @@ export interface IEventsService {
   requestJoin(
     userId: string,
     sourceId: string,
-    options?: {
-      slotSourceId?: string | null;
-      optionalSubEventIds?: string[];
-      assetSelections?: EventCheckoutAssetSelection[];
-      acceptedPolicyIds?: string[];
-      appliedPromoCodes?: string[];
-      paymentSessionId?: string | null;
-      bookingConfirmed?: boolean;
-      pendingReason?: AppConstants.ActivityPendingReason;
-      checkoutState?: EventCheckoutState;
-      basketItems?: EventCheckoutBasketItem[];
-      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
-      lineItems?: EventCheckoutLineItem[];
-      totalAmount?: number | null;
-      currency?: string | null;
-      skipLocalRouteDelay?: boolean;
-    }
+    options?: EventJoinOptions
   ): Promise<EventParticipationActionResultDTO | null>;
   leaveEvent(
     userId: string,
     sourceId: string,
-    options?: {
-      slotSourceId?: string | null;
-      removeMembershipOnly?: boolean;
-      checkoutState?: EventCheckoutState | null;
-      checkoutResultState?: EventCheckoutResultState | null;
-      checkoutSessionId?: string | null;
-    }
+    options?: EventMembershipRemovalOptions
   ): Promise<EventParticipationActionResultDTO | null>;
 }
 
@@ -683,6 +661,87 @@ export interface MingleConfigurationDTO {
 }
 
 export class ActivityEventDetailDTO {
+
+  static checkoutBasketResultState(basket: Pick<EventCheckoutBasket, 'items'> | null | undefined): EventCheckoutResultState | null {
+    const resultStates = (basket?.items ?? []).map(item => item.resultState ?? 'pending');
+    if (resultStates.length === 0) {
+      return null;
+    }
+    if (resultStates.some(resultState => resultState === 'failed')) {
+      return 'failed';
+    }
+    if (resultStates.every(resultState => resultState === 'deleted')) {
+      return 'deleted';
+    }
+    if (resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
+      return 'succeeded';
+    }
+    return 'pending';
+  }
+
+  static formatTimeframeLabel(start: Date, end: Date, frequency: string): string {
+    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const normalizedFrequency = normalizeScheduleFrequency(frequency);
+    if (normalizedFrequency === 'One-time') {
+      return `${dateLabel} · ${startTime} - ${endTime}`;
+    }
+    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
+  }
+
+  static subEventDefinitionTimeline(
+    items: readonly SubEventDefinitionDTO[] | undefined
+  ): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    const definitions = items ?? [];
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    return definitions.map(item => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      hasPrevious = true;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
+  }
+
+  static matchesSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
+    if (frequency === 'daily') {
+      return true;
+    }
+    if (frequency === 'weekly') {
+      return date.getDay() === templateStart.getDay();
+    }
+    if (frequency === 'bi-weekly' || frequency === 'biweekly') {
+      if (date.getDay() !== templateStart.getDay()) {
+        return false;
+      }
+      const diffDays = Math.floor((date.getTime() - templateStart.getTime()) / (24 * 60 * 60 * 1000));
+      const diffWeeks = Math.floor(diffDays / 7);
+      return diffWeeks >= 0 && diffWeeks % 2 === 0;
+    }
+    if (frequency === 'monthly') {
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
+      if (date.getMonth() !== templateStart.getMonth()) {
+        return false;
+      }
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    return false;
+  }
+
   campaignId: string | null = null;
   id = '';
   userId = '';
@@ -1218,20 +1277,10 @@ export class ActivityEventDetailDTO {
     if (!start || !end) {
       return startAt || endAt || '';
     }
-
-    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const normalizedFrequency = normalizeScheduleFrequency(frequency);
-
-    if (normalizedFrequency === 'One-time') {
-      return `${dateLabel} · ${startTime} - ${endTime}`;
-    }
-
-    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
+    return this.formatTimeframeLabel(start, end, frequency);
   }
 
-  private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {
+  static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {
     if (!value) {
       return null;
     }
@@ -1295,7 +1344,7 @@ export class ActivityEventDetailDTO {
     return `${year}-${month}-${day}`;
   }
 
-  private static toIsoDateTimeLocal(value: Date): string {
+  static toIsoDateTimeLocal(value: Date): string {
     const year = value.getFullYear();
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
     const day = `${value.getDate()}`.padStart(2, '0');
@@ -1828,3 +1877,29 @@ export interface UserRatesSyncResult {
   failedRateIds: string[];
   error: string | null;
 }
+
+export interface EventJoinOptions {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      appliedPromoCodes?: string[];
+      paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
+      pendingReason?: AppConstants.ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
+      skipLocalRouteDelay?: boolean;
+    }
+
+export interface EventMembershipRemovalOptions {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
+    }

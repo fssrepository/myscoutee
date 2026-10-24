@@ -6,7 +6,8 @@ import {
   effect,
   inject,
   signal,
-  untracked
+  untracked,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {
@@ -57,6 +58,7 @@ interface BrowserBarcodeDetectorConstructor {
     AssetTicketScannerPopupComponent
   ],
   templateUrl: './asset-ticket-scan-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './asset-ticket-scan-popup.component.scss'
 })
 export class AssetTicketScanPopupComponent implements OnDestroy {

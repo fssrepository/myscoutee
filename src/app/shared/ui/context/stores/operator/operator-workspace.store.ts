@@ -1,3 +1,5 @@
+import { operatorMessageFromError } from './operator-registry.store';
+import { AppUtils } from '../../../../core/base/app-utils';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { DeploymentConfigurationService } from '../../../../core/base/services/platform/deployment-configuration.service';
@@ -212,9 +214,7 @@ export class OperatorWorkspaceStore {
       && Boolean(draft.registeredAddress.trim())
       && Boolean(draft.verificationContactName.trim())
       && Boolean(draft.verificationContactRole.trim())
-      && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        draft.verificationContactEmail.trim()
-      )
+      && AppUtils.isEmail(draft.verificationContactEmail.trim())
       && this.validPublicWebsite(draft.website)
       && draft.authorityAttested
     );
@@ -356,7 +356,7 @@ export class OperatorWorkspaceStore {
     }
     if (
       draft.mode === 'AUTOMATIC'
-      && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.contactEmail.trim())
+      && !AppUtils.isEmail(draft.contactEmail.trim())
     ) {
       return false;
     }
@@ -1507,28 +1507,7 @@ export class OperatorWorkspaceStore {
   }
 
   private messageFromError(error: unknown): string {
-    if (error && typeof error === 'object') {
-      const source = error as {
-        error?: { message?: unknown; detail?: unknown };
-        message?: unknown;
-        name?: unknown;
-      };
-      const serverMessage = typeof source.error?.message === 'string'
-        ? source.error.message.trim()
-        : typeof source.error?.detail === 'string'
-          ? source.error.detail.trim()
-          : '';
-      if (serverMessage) {
-        return serverMessage;
-      }
-      if (source.name === 'TimeoutError') {
-        return 'operator.request.timeout';
-      }
-      if (typeof source.message === 'string' && source.message.trim()) {
-        return source.message.trim();
-      }
-    }
-    return 'operator.request.failed';
+    return operatorMessageFromError(error, 'operator.request.failed', 'operator.request.timeout');
   }
 
   private emptyClaimDraft(): OperatorClaimRequestDto {

@@ -1,3 +1,4 @@
+import { EventCheckoutPricingSummaryRow } from '../../../contracts/common/activity.interface';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import type * as ContractTypes from '../../../contracts';
 
@@ -29,6 +30,56 @@ export interface AssetBorrowPricingOptions {
 }
 
 export class PricingBuilder {
+
+  static appendPricingSummaryRow(grouped: Map<string, EventCheckoutPricingSummaryRow>, row: EventCheckoutPricingSummaryRow, key: string, label: string, detail: string, amount: number | null, currency: string): void {
+    const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
+    const existing = grouped.get(key);
+    if (existing) {
+      const nextMultiplier = Math.max(1, Math.trunc(Number(existing.multiplier) || 1)) + multiplier;
+      grouped.set(key, {
+        ...existing,
+        multiplier: nextMultiplier,
+        amount: existing.amount !== null && amount !== null
+          ? Math.round((Number(existing.amount) + (amount * multiplier)) * 100) / 100
+          : existing.amount ?? amount
+      });
+      return;
+    }
+    grouped.set(key, {
+      key,
+      label,
+      detail: detail || null,
+      amount: amount === null ? null : Math.round(amount * multiplier * 100) / 100,
+      currency,
+      multiplier
+    });
+  }
+
+  static formatAssetMoney(amount: number, currency = 'USD'): string {
+    switch ((currency || '').trim().toUpperCase()) {
+      case 'EUR':
+        return `EUR ${(Number(amount) || 0).toFixed(2)}`;
+      case 'GBP':
+        return `GBP ${(Number(amount) || 0).toFixed(2)}`;
+      default:
+        return `$${(Number(amount) || 0).toFixed(2)}`;
+    }
+  }
+
+  static currencySymbol(currency: string): string {
+    switch ((currency || '').trim().toUpperCase()) {
+      case 'EUR':
+        return 'EUR ';
+      case 'GBP':
+        return 'GBP ';
+      case 'USD':
+      case '':
+        return '$';
+      default:
+        return `${currency.trim().toUpperCase()} `;
+    }
+  }
+
   static createDefaultPricingConfig(
     context: 'event' | 'asset' | 'subevent' = 'event'
   ): ContractTypes.PricingConfig {
@@ -445,7 +496,7 @@ export class PricingBuilder {
     return hoursUntilStart <= dayWindowHours;
   }
 
-  private static applyPricingAction(currentPrice: number, action: ContractTypes.PricingAction): number {
+  static applyPricingAction(currentPrice: number, action: ContractTypes.PricingAction): number {
     const value = Number(action.value) || 0;
     if (action.kind === 'set_exact_price') {
       return Math.max(0, value);
@@ -525,10 +576,11 @@ export class PricingBuilder {
     return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 0));
   }
 
-  private static isPricingWindowOverlap(
+  static isPricingWindowOverlap(
     request: ContractTypes.AssetMemberRequestDTO,
     startAtIso: string,
-    endAtIso: string
+    endAtIso: string,
+    allowUnspecifiedWindow = true
   ): boolean {
     const requestStart = this.parseLocalDateMs(request.booking?.startAtIso);
     const requestEnd = this.parseLocalDateMs(request.booking?.endAtIso);
@@ -547,7 +599,7 @@ export class PricingBuilder {
     if (requestWindow && targetWindow) {
       return requestWindow === targetWindow;
     }
-    return true;
+    return allowUnspecifiedWindow;
   }
 
   private static parseLocalDateMs(value: string | null | undefined): number | null {

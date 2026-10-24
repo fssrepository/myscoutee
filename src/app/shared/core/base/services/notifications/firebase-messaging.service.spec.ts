@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { getToken, getMessaging, isSupported, onMessage } from 'firebase/messaging';
 import { FirebaseMessagingService } from './firebase-messaging.service';
-import { FirebaseAppService } from '../accounts/firebase-app.service';
+import { FirebaseAppService, type FirebaseConfigFile } from '../accounts/firebase-app.service';
 import { DeviceRegistrationsService } from '../accounts/device-registrations.service';
 import { SessionService, type AppSession } from '../accounts/session.service';
 import { DeploymentConfigurationService } from '../platform/deployment-configuration.service';
@@ -450,6 +450,37 @@ describe('Notification preference and background registration', () => {
     await saving;
     expect(setup.saveSucceeded()).toBe(true);
     expect(localStorage.getItem(APP_STORAGE_KEYS.messagingToken)).toBe('new-token');
+  });
+
+  it('requests readiness permission before loading the optional messaging SDK', async () => {
+    const messaging = TestBed.inject(FirebaseMessagingService);
+    let decide!: (permission: NotificationPermission) => void;
+    const requestPermission = vi.fn(() => new Promise<NotificationPermission>(resolve => { decide = resolve; }));
+    vi.stubGlobal('Notification', { permission: 'default', requestPermission });
+    const loadSdk = vi.spyOn(messaging as unknown as {
+      loadMessagingSdk: () => Promise<unknown>;
+    }, 'loadMessagingSdk');
+    vi.mocked(isSupported).mockResolvedValue(false);
+    const lease = messaging.createBrowserReadinessLease({ vapidKey: 'test-vapid' } as FirebaseConfigFile);
+    const rejected = expect(lease).rejects.toThrow();
+    expect(requestPermission).toHaveBeenCalledOnce();
+    expect(loadSdk).not.toHaveBeenCalled();
+    decide('granted');
+    await rejected;
+    expect(loadSdk).toHaveBeenCalledOnce();
+    expect(isSupported).toHaveBeenCalledOnce();
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it('does not load the messaging SDK when readiness permission is refused', async () => {
+    const messaging = TestBed.inject(FirebaseMessagingService);
+    vi.stubGlobal('Notification', { permission: 'denied' });
+    const loadSdk = vi.spyOn(messaging as unknown as {
+      loadMessagingSdk: () => Promise<unknown>;
+    }, 'loadMessagingSdk');
+    await expect(messaging.createBrowserReadinessLease({ vapidKey: 'test-vapid' } as FirebaseConfigFile)).rejects.toThrow();
+    expect(loadSdk).not.toHaveBeenCalled();
+    expect(isSupported).not.toHaveBeenCalled();
   });
 
   it('asks for native permission in the click gesture and waits before registering', async () => {

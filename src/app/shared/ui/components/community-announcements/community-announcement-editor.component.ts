@@ -1,5 +1,6 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import { DocumentAttachments } from '../core/form/flow/document-attachments';
-import { Component, OnChanges, OnDestroy, inject, computed, signal, input } from '@angular/core';
+import { Component, OnChanges, OnDestroy, inject, computed, signal, input, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   PopupComponent,
@@ -7,8 +8,7 @@ import {
   FormFlowComponent,
   type FormFlowModel,
   type FormFlowActionEvent,
-  type AppMenuModel,
-  ExplanationGuideService
+  type AppMenuModel
 } from '@fssrepository/myscoutee-components';
 
 import { CommunityAnnouncementsStore, type AnnouncementEditor } from '../../context/stores/community/community-announcements.store';
@@ -27,7 +27,8 @@ import { VOTE_CHOICES, type VoteChoice, type SaveAnnouncement } from '../../../c
    <input #files type="file" hidden multiple accept=".pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.odt,.ods" (change)="upload($event)">
    <app-form-flow data-guide-field="announcement-details" [model]="flow()" [ngModel]="form()" (ngModelChange)="form.set($event)" (action)="attachmentAction($event, files)" [saving]="store.busy() || uploading()"></app-form-flow>
 
- </app-popup>`,styles:[`.announcement-document { padding: 0 12px 12px; }
+ </app-popup>`,changeDetection: ChangeDetectionStrategy.Eager,
+styles:[`.announcement-document { padding: 0 12px 12px; }
  .announcement-document h2 { margin: 0 0 16px; font-size: 1.15rem; }
  .announcement-document p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.65; }`]})
 export class CommunityAnnouncementEditorComponent implements OnChanges, OnDestroy {

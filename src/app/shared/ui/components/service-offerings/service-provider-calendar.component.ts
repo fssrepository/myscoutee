@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   SmartListComponent,
@@ -6,10 +7,9 @@ import {
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListItemSelectEvent,
-  ExplanationGuideService,
   type AppMenuItemSelectEvent
 } from '@fssrepository/myscoutee-components';
-import { Component, ViewChild, inject, effect, untracked, input, computed } from '@angular/core';
+import { Component, ViewChild, inject, effect, untracked, input, computed, ChangeDetectionStrategy } from '@angular/core';
 import {defer,map} from 'rxjs';
 
 import {ServiceOfferingsStore} from '../../context/stores/services/service-offerings.store';
@@ -19,7 +19,8 @@ import {CommunityCasesStore} from '../../context/stores/community/community-case
 
 import type {CaseAppointmentCalendarEntry} from '../../../core/contracts/community/case-appointment.interface';
 
-@Component({selector:'app-service-provider-calendar',standalone:true,host:{style:'display: contents'},imports:[SmartListComponent,SingleRowComponent],template:`
+@Component({selector:'app-service-provider-calendar',standalone:true,host:{style:'display: contents'},imports:[SmartListComponent,SingleRowComponent],changeDetection: ChangeDetectionStrategy.Eager,
+template:`
  <app-smart-list #list data-guide-field="provider-calendar" [config]="config" [query]="query()" [loadPage]="load" [itemTemplate]="row" (itemSelect)="select($event)" (menuItemSelect)="action($event)"></app-smart-list>
  <ng-template #row let-row let-openMenu="openMenu"><single-row [row]="row" [useSharedMenu]="true" (menuRequest)="openMenu($event)"></single-row></ng-template>`})
 export class ServiceProviderCalendarComponent {

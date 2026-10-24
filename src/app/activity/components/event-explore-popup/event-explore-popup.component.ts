@@ -1,9 +1,9 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   UiLinkUtils,
   UiDateUtils,
-  ExplanationGuideService,
   AppMenuDispatcher,
   AppMenuComponent,
   AppMenuOutletComponent,
@@ -149,6 +149,29 @@ type EventExploreMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventExplorePopupComponent implements OnDestroy {
+
+  private async restoreCheckoutDraft(entry: CheckoutDraftEntry): Promise<void> {
+    const { draft } = entry;
+    const record = entry.record
+      ?? this.visibleEventExploreRecordById(draft.sourceId)
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
+    if (!record) {
+      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
+      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
+        title: 'checkout.basket.unavailable.title',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    const pendingReason = this.checkoutDraftPendingReason(draft, record);
+    this.openEventExploreCheckout(record, {
+      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
+      pendingReason
+    });
+  }
+
   private readonly i18n = inject(I18nService);
 
   protected readonly followingStore = inject(FollowingStore);
@@ -1228,62 +1251,26 @@ export class EventExplorePopupComponent implements OnDestroy {
     return 'pending';
   }
 
-  protected async continueCheckoutDraft(
-    entry: CheckoutDraftEntry,
-    event?: { stopPropagation?: () => void; preventDefault?: () => void }
-  ): Promise<void> {
+  protected async continueCheckoutDraft(entry: CheckoutDraftEntry, event?: {
+    stopPropagation?: () => void;
+    preventDefault?: () => void;
+  }): Promise<void> {
     this.stopDomEvent(event);
     if (!this.canContinueCheckoutDraft(entry)) {
       return;
     }
-    const { draft } = entry;
-    const record = entry.record
-      ?? this.visibleEventExploreRecordById(draft.sourceId)
-      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
-      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
-    if (!record) {
-      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
-      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
-        title: 'checkout.basket.unavailable.title',
-        confirmTone: 'neutral'
-      });
-      this.cdr.markForCheck();
-      return;
-    }
-    const pendingReason = this.checkoutDraftPendingReason(draft, record);
-    this.openEventExploreCheckout(record, {
-      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
-      pendingReason
-    });
+    return this.restoreCheckoutDraft(entry);
   }
 
-  protected async openCheckoutDraftForm(
-    entry: CheckoutDraftEntry,
-    event?: { stopPropagation?: () => void; preventDefault?: () => void }
-  ): Promise<void> {
+  protected async openCheckoutDraftForm(entry: CheckoutDraftEntry, event?: {
+    stopPropagation?: () => void;
+    preventDefault?: () => void;
+  }): Promise<void> {
     this.stopDomEvent(event);
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
       return;
     }
-    const { draft } = entry;
-    const record = entry.record
-      ?? this.visibleEventExploreRecordById(draft.sourceId)
-      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
-      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
-    if (!record) {
-      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
-      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
-        title: 'checkout.basket.unavailable.title',
-        confirmTone: 'neutral'
-      });
-      this.cdr.markForCheck();
-      return;
-    }
-    const pendingReason = this.checkoutDraftPendingReason(draft, record);
-    this.openEventExploreCheckout(record, {
-      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
-      pendingReason
-    });
+    return this.restoreCheckoutDraft(entry);
   }
 
   private async continueCheckoutDraftBySourceId(sourceId: string): Promise<void> {

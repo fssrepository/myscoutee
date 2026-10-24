@@ -1,7 +1,9 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { ErrorHandler, ChangeDetectionStrategy } from '@angular/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
 import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
-import { ExplanationGuideService, DeploymentBrandComponent } from '@fssrepository/myscoutee-components';
+import { DeploymentBrandComponent } from '@fssrepository/myscoutee-components';
 import { DestroyRef } from '@angular/core';
 import { UserProfileStore } from "../../../shared/ui/context/stores/profile/user-profile.store";
 import {
@@ -63,9 +65,11 @@ import {
 
   ],
   templateUrl: './admin-page.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
+  private readonly initializationErrors = inject(ErrorHandler);
   private readonly popupAdapters = inject(PopupAdapterProxyService);
   protected readonly deploymentBranding =
     inject(DeploymentConfigurationService).branding;
@@ -149,7 +153,11 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
+    void this.initializeWorkspace().catch(error => this.initializationErrors.handleError(error));
+  }
+
+  private async initializeWorkspace(): Promise<void> {
     if (!this.workspace.dashboard()) {
       const session = await this.sessionService.ensureSession();
       if (session) {

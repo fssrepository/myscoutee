@@ -1,5 +1,6 @@
-import type { ExplanationGuideOptions } from '@fssrepository/myscoutee-components';
-import { APP_STATIC_DATA } from '../../../core/common/app-static-data';
+import type { ExplanationGuideOptions } from '../../../core/base/services/help/explanation-guide.service';
+
+import { EXPLAINABLE_SURFACES } from '../../../core/common/help-center-options';
 import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
 
 /** Product surfaces, consent and persistence stay with the application. */
@@ -8,11 +9,11 @@ export function myScouteeGuideOptions(
 ): ExplanationGuideOptions {
   return {
     ...options,
-    isExplainableContext: contextKey => APP_STATIC_DATA.explainableSurfaces
+    isExplainableContext: contextKey => EXPLAINABLE_SURFACES
       .some(surface => surface.enabled && surface.key === contextKey),
     // The one-step introduction points at the launcher above the consent popup.
     contextPriority: contextKey => contextKey === 'landing.guide' ? 2
-      : contextKey === null || APP_STATIC_DATA.explainableSurfaces
+      : contextKey === null || EXPLAINABLE_SURFACES
         .some(surface => surface.key === contextKey && surface.owner === 'popup') ? 1 : 0,
     introduction: {
       contextKey: 'landing.guide',

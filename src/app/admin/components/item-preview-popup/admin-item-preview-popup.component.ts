@@ -1,6 +1,6 @@
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { PopupComponent, type PopupModel } from '@fssrepository/myscoutee-components';
@@ -11,6 +11,7 @@ import { AdminMenuStore } from '../../../shared/ui/context/stores/admin/admin-me
   standalone: true,
   imports: [CommonModule, MatIconModule, PopupComponent, I18nPipe],
   templateUrl: './admin-item-preview-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-item-preview-popup.component.scss'
 })
 export class AdminItemPreviewPopupComponent {

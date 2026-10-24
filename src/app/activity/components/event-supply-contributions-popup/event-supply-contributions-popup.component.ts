@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   clampNumber,
@@ -30,7 +31,8 @@ import {
   DoCheck,
   TemplateRef,
   ViewChild,
-  inject
+  inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   FormsModule
@@ -99,6 +101,7 @@ interface SupplyContributionRemovalRequest {
     SmartListComponent
   ],
   templateUrl: './event-supply-contributions-popup.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./event-supply-contributions-popup.component.scss']
 })
 export class EventSupplyContributionsPopupComponent implements DoCheck {
@@ -527,7 +530,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     }
 
     const nextEntry: AppDTOs.SubEventSupplyContributionEntryDTO = {
-      id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `subevent-supply-row-${Date.now()}-${secureRandomUuid()}`,
       userId: this.activeUser().id,
       quantity: dialog.quantity,
       addedAtIso: UiDateUtils.toIsoDateTime(new Date())
@@ -756,9 +759,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     }
   }
 
-  private syncPopupSubEventMetrics(
-    persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null
-  ): void {
+  private syncPopupSubEventMetrics(persistedState: AppDTOs.ActivitySubEventResourceStateDTO | null = null): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
@@ -767,22 +768,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
-    nextSubEvent.carsAccepted = cars.joined;
-    nextSubEvent.carsPending = cars.pending;
-    nextSubEvent.carsCapacityMin = cars.capacityMin;
-    nextSubEvent.carsCapacityMax = cars.capacityMax;
-    nextSubEvent.accommodationAccepted = accommodation.joined;
-    nextSubEvent.accommodationPending = accommodation.pending;
-    nextSubEvent.accommodationCapacityMin = accommodation.capacityMin;
-    nextSubEvent.accommodationCapacityMax = accommodation.capacityMax;
-    nextSubEvent.suppliesAccepted = supplies.joined;
-    nextSubEvent.suppliesPending = supplies.pending;
-    nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
-    nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
-    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(
-      nextSubEvent,
-      persistedState
-    );
+    ActivityResourceBuilder.assignCapacityMetrics(nextSubEvent, { cars: cars, accommodation: accommodation, supplies: supplies });
+    nextSubEvent = ActivityResourceBuilder.withPersistedResourceMetrics(nextSubEvent, persistedState);
     const supplyPopup = this.resourcePopupStore.supplyPopupRef();
     const persistedSupplies = persistedState?.resourceMetricsByType?.[AppConstants.ASSET_TYPE_SUPPLIES];
     if (supplyPopup && persistedSupplies) {
@@ -793,18 +780,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         capacityTotal: Math.max(0, Math.trunc(Number(persistedSupplies.capacityMax) || 0))
       });
     }
-    const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
-      || context.subEvent.carsPending !== nextSubEvent.carsPending
-      || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin
-      || context.subEvent.carsCapacityMax !== nextSubEvent.carsCapacityMax
-      || context.subEvent.accommodationAccepted !== nextSubEvent.accommodationAccepted
-      || context.subEvent.accommodationPending !== nextSubEvent.accommodationPending
-      || context.subEvent.accommodationCapacityMin !== nextSubEvent.accommodationCapacityMin
-      || context.subEvent.accommodationCapacityMax !== nextSubEvent.accommodationCapacityMax
-      || context.subEvent.suppliesAccepted !== nextSubEvent.suppliesAccepted
-      || context.subEvent.suppliesPending !== nextSubEvent.suppliesPending
-      || context.subEvent.suppliesCapacityMin !== nextSubEvent.suppliesCapacityMin
-      || context.subEvent.suppliesCapacityMax !== nextSubEvent.suppliesCapacityMax;
+    const metricsChanged = ActivityResourceBuilder.capacityMetricsChanged(context.subEvent, nextSubEvent);
     const nextContext = {
       ...context,
       subEvent: nextSubEvent
@@ -1032,40 +1008,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   private createFallbackUser(userId: string): UserDto {
-    return {
-      id: userId.trim(),
-      name: 'User',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: 'U',
-      gender: 'woman',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 0,
-      headline: '',
-      about: '',
-      images: [],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chats: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0
-      }
-    } satisfies UserDto;
+    return AppUtils.createFallbackUser(userId);
   }
 
   private subEventDisplayName(subEvent: ContractTypes.SubEventDTO | null | undefined): string {

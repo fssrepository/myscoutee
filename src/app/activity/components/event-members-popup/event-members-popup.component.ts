@@ -1,6 +1,6 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   ImageCardComponent,
   PopupComponent,
   SmartListComponent,
@@ -156,6 +156,24 @@ interface ActivityMembersListPollState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent implements OnDestroy {
+
+  private async changeAssetManager(entry: ActivityContracts.ActivityMemberDTO, promote: boolean): Promise<void> {
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    const actorUserId = this.activeUserId();
+    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    await this.waitForMemberActionRender();
+    const savedAsset = await (promote ? this.assetsService.makeAssetManager(actorUserId, owner.ownerId, entry.userId) : this.assetsService.revokeAssetManager(actorUserId, owner.ownerId, entry.userId));
+    if (!savedAsset)
+      throw new Error(promote ? 'Unable to promote member.' : 'Unable to revoke Asset Manager.');
+    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, { eventId: this.memberEventId, subEventId: this.memberSubEventId, assetRequestId: this.memberAssetRequestId });
+    const role: ActivityContracts.ActivityMemberDTO['role'] = promote ? 'Manager' : 'Member';
+    const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === role) ? persistedMembers : previousMembers.map(member => member.userId === entry.userId ? { ...member, role, status: 'accepted' as const, ...(promote ? { pendingSource: null, requestKind: null } : {}), managerGrantedByUserId: promote ? actorUserId : null, actionAtIso: UiDateUtils.toIsoDateTime(new Date()) } : member);
+    this.applyCommittedMembers(nextMembers, previousMembers);
+  }
+
   private readonly followingStore = inject(FollowingStore);
   private followedOrganizers = false;
 
@@ -1369,69 +1387,11 @@ export class EventMembersPopupComponent implements OnDestroy {
   }
 
   private async confirmAssetManagerPromotion(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
-    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    const actorUserId = this.activeUserId();
-    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
-      return;
-    }
-    const previousMembers = this.currentOwnerMembers();
-    await this.waitForMemberActionRender();
-    const savedAsset = await this.assetsService.makeAssetManager(actorUserId, owner.ownerId, entry.userId);
-    if (!savedAsset) {
-      throw new Error('Unable to promote member.');
-    }
-
-    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
-      eventId: this.memberEventId,
-      subEventId: this.memberSubEventId,
-      assetRequestId: this.memberAssetRequestId
-    });
-    const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === 'Manager')
-      ? persistedMembers
-      : previousMembers.map(member => member.userId === entry.userId
-        ? {
-            ...member,
-            role: 'Manager' as const,
-            status: 'accepted' as const,
-            pendingSource: null,
-            requestKind: null,
-            managerGrantedByUserId: actorUserId,
-            actionAtIso: UiDateUtils.toIsoDateTime(new Date())
-          }
-        : member);
-    this.applyCommittedMembers(nextMembers, previousMembers);
+    return this.changeAssetManager(entry, true);
   }
 
   private async confirmAssetManagerRevocation(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
-    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    const actorUserId = this.activeUserId();
-    if (!owner || owner.ownerType !== 'asset' || !actorUserId) {
-      return;
-    }
-    const previousMembers = this.currentOwnerMembers();
-    await this.waitForMemberActionRender();
-    const savedAsset = await this.assetsService.revokeAssetManager(actorUserId, owner.ownerId, entry.userId);
-    if (!savedAsset) {
-      throw new Error('Unable to revoke Asset Manager.');
-    }
-
-    const persistedMembers = await this.activityMembersService.queryMembersByOwner(owner, {
-      eventId: this.memberEventId,
-      subEventId: this.memberSubEventId,
-      assetRequestId: this.memberAssetRequestId
-    });
-    const nextMembers = persistedMembers.some(member => member.userId === entry.userId && member.role === 'Member')
-      ? persistedMembers
-      : previousMembers.map(member => member.userId === entry.userId
-        ? {
-            ...member,
-            role: 'Member' as const,
-            status: 'accepted' as const,
-            managerGrantedByUserId: null,
-            actionAtIso: UiDateUtils.toIsoDateTime(new Date())
-          }
-        : member);
-    this.applyCommittedMembers(nextMembers, previousMembers);
+    return this.changeAssetManager(entry, false);
   }
 
   private async confirmLeaveScopedAsset(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {

@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -444,7 +445,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
       return normalizeOperatorRegistryBaseUrl(left, false)
         === normalizeOperatorRegistryBaseUrl(right, false);
     } catch {
-      return left.trim().replace(/\/+$/, '') === right.trim().replace(/\/+$/, '');
+      return AppUtils.trimEndCharacters(left.trim(), "/") === AppUtils.trimEndCharacters(right.trim(), "/");
     }
   }
 

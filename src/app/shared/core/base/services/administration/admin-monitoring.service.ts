@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
@@ -63,18 +64,7 @@ export class AdminMonitoringService extends BaseRouteModeService {
     counts: Record<string, number> | null | undefined,
     categories: readonly AdminMonitoringCategoryDto[]
   ): Record<string, number> {
-    const fallback: Record<string, number> = {
-      all: categories.length
-    };
-    const normalized: Record<string, number> = {};
-    for (const [key, value] of Object.entries(counts ?? fallback)) {
-      const normalizedKey = `${key ?? ''}`.trim();
-      const parsed = Math.trunc(Number(value));
-      if (normalizedKey && Number.isFinite(parsed)) {
-        normalized[normalizedKey] = Math.max(0, parsed);
-      }
-    }
-    return Object.keys(normalized).length ? normalized : fallback;
+    return AppUtils.normalizeFilterCounts(counts, categories.length);
   }
 
   private normalizeMonitoringCategory(category: AdminMonitoringCategoryDto): AdminMonitoringCategoryDto {

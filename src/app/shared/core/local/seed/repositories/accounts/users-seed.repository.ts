@@ -1,3 +1,7 @@
+import { copyIdCollection } from '../../../common/record-collection';
+import { appendOwnerIds } from '../../../common/record-collection';
+import { copyOwnerIdIndex } from '../../../common/record-collection';
+import { AssetCardBuilder } from '../../../../base/builders/assets/asset-card.builder';
 import { EVENTS_TABLE_NAME } from '../../../source/entity/events/event.entity';
 import { FEEDBACK_STATES_TABLE_NAME } from '../../../source/entity/feedback/feedback.entity';
 import { EVENT_TICKETS_TABLE_NAME } from '../../../source/entity/events/event-ticket.entity';
@@ -263,6 +267,10 @@ export class SeedUsersRepository {
       if (existing.locationCoordinates == null && seededUser.locationCoordinates) {
         nextById[userId] = { ...(nextById[userId] ?? existing),
           locationCoordinates: { ...seededUser.locationCoordinates } };
+        changed = true;
+      }
+      if (!existing.partitionKey && seededUser.partitionKey) {
+        nextById[userId] = { ...(nextById[userId] ?? existing), partitionKey: seededUser.partitionKey };
         changed = true;
       }
       if (existing.profileDetails == null && seededUser.profileDetails) {
@@ -747,65 +755,14 @@ export class SeedUsersRepository {
     return normalized === 'UR' || normalized === 'B' || normalized === 'D' || normalized === 'I' || normalized === 'T';
   }
 
-  private normalizeAssetStatus(status: string | null | undefined): string {
-    const normalized = `${status ?? ''}`.trim();
-    switch (normalized) {
-      case 'active':
-        return 'A';
-      case 'under-review':
-      case 'under review':
-        return 'UR';
-      case 'blocked':
-        return 'B';
-      case 'deleted':
-        return 'D';
-      case 'inactive':
-        return 'I';
-      case 'trashed':
-      case 'trash':
-        return 'T';
-      default:
-        return normalized || 'A';
-    }
-  }
+  private normalizeAssetStatus(status: string | null | undefined): string { return AssetCardBuilder.normalizeAssetStatus(status); }
 
   private normalizeAssetsCollection(value: unknown): AssetsRecordCollection {
     const source = value as Partial<AssetsRecordCollection> | null | undefined;
-    const byId = source?.byId && typeof source.byId === 'object'
-      ? { ...(source.byId as Record<string, AssetRecord>) }
-      : {};
-    const ids = Array.isArray(source?.ids)
-      ? source.ids.map(id => String(id))
-      : [];
-    const idsByOwnerUserId: Record<string, string[]> = {};
-    if (source?.idsByOwnerUserId && typeof source.idsByOwnerUserId === 'object') {
-      for (const [ownerUserId, ownerIds] of Object.entries(source.idsByOwnerUserId)) {
-        const normalizedOwnerUserId = ownerUserId.trim();
-        if (!normalizedOwnerUserId || !Array.isArray(ownerIds)) {
-          continue;
-        }
-        idsByOwnerUserId[normalizedOwnerUserId] = ownerIds
-          .map(id => String(id))
-          .filter(id => Boolean(byId[id]));
-      }
-    }
-    for (const id of ids) {
-      const record = byId[id];
-      const ownerUserId = `${record?.ownerUserId ?? ''}`.trim();
-      if (!ownerUserId) {
-        continue;
-      }
-      const bucket = idsByOwnerUserId[ownerUserId] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      idsByOwnerUserId[ownerUserId] = bucket;
-    }
-    return {
-      byId,
-      ids,
-      idsByOwnerUserId
-    };
+    const { byId, ids } = copyIdCollection(source, true);
+    const index = copyOwnerIdIndex(source?.idsByOwnerUserId, key => key.trim() || null, id => Boolean(byId[id]));
+    const idsByOwnerUserId = appendOwnerIds(byId, ids, index, record => `${record?.ownerUserId ?? ''}`.trim());
+    return { byId, ids, idsByOwnerUserId };
   }
 
   private sameActivityCounts(left: UserRecord, right: UserRecord): boolean {

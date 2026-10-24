@@ -1,3 +1,5 @@
+import { AdminConfigurationBuilder } from '../../builders/administration/admin-configuration.builder';
+import { AppUtils } from '../../app-utils';
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { DestroyRef, Injectable, inject } from '@angular/core';
@@ -164,18 +166,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
     counts: Record<string, number> | null | undefined,
     rules: readonly AdminNotificationRule[]
   ): Record<string, number> {
-    const fallback: Record<string, number> = {
-      all: rules.filter(rule => rule.triggerKind === 'scheduled_process').length
-    };
-    const normalized: Record<string, number> = {};
-    for (const [key, value] of Object.entries(counts ?? fallback)) {
-      const normalizedKey = `${key ?? ''}`.trim();
-      const parsed = Math.trunc(Number(value));
-      if (normalizedKey && Number.isFinite(parsed)) {
-        normalized[normalizedKey] = Math.max(0, parsed);
-      }
-    }
-    return Object.keys(normalized).length ? normalized : fallback;
+    return AppUtils.normalizeFilterCounts(counts, rules.filter(rule => rule.triggerKind === 'scheduled_process').length);
   }
 
   private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {
@@ -274,36 +265,13 @@ export class AdminNotificationsService extends BaseRouteModeService {
   }
 
   private normalizeNotificationRuleParameter(field: AdminNotificationRuleParameter): AdminNotificationRuleParameter {
-    const valueType: AdminNotificationRuleParameterValueType = field.valueType === 'text' ? 'text' : 'number';
-    const numberValue = valueType === 'number'
-      ? (Number.isFinite(Number(field.numberValue)) ? Number(field.numberValue) : 0)
-      : null;
-    return {
-      key: `${field.key ?? ''}`.trim(),
-      label: `${field.label ?? ''}`.trim() || `${field.key ?? ''}`.trim(),
-      labelKey: `${field.labelKey ?? ''}`.trim() || this.paramFieldLabelKey(field.key),
-      group: `${field.group ?? ''}`.trim() || 'General',
-      groupKey: `${field.groupKey ?? ''}`.trim() || this.paramGroupLabelKey(field.group),
-      valueType,
-      numberValue,
-      textValue: valueType === 'text' ? `${field.textValue ?? ''}`.trim() : null,
-      unit: `${field.unit ?? ''}`.trim(),
-      options: (field.options ?? []).map(option => this.normalizeNotificationRuleParameterOption(option)),
-      strategy: `${field.strategy ?? ''}`.trim(),
-      strategyKey: `${field.strategyKey ?? ''}`.trim() || this.paramStrategyLabelKey(field.strategy),
-      readOnly: field.readOnly === true
-    };
+    return AdminConfigurationBuilder.normalizeParamField(field);
   }
 
   private normalizeNotificationRuleParameterOption(
     option: AdminNotificationRuleParameterOption
   ): AdminNotificationRuleParameterOption {
-    const value = `${option.value ?? ''}`.trim();
-    return {
-      value,
-      label: `${option.label ?? ''}`.trim() || value,
-      labelKey: `${option.labelKey ?? ''}`.trim() || this.paramStrategyLabelKey(value)
-    };
+    return AdminConfigurationBuilder.normalizeParamOption(option);
   }
 
   private normalizeNotificationRunResult(
@@ -483,26 +451,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
   }
 
   private fixedNotificationIntervalUnit(seconds: number): AdminNotificationIntervalUnit {
-    const value = Math.max(1, Math.trunc(Number(seconds) || 1));
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.years === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.years;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.months === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.months;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.weeks === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.weeks;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.days === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.days;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.hours === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.hours;
-    }
-    if (value % ADMIN_NOTIFICATION_INTERVAL_SECONDS.minutes === 0) {
-      return ADMIN_NOTIFICATION_INTERVAL_UNIT.minutes;
-    }
-    return ADMIN_NOTIFICATION_INTERVAL_UNIT.seconds;
+    return AdminConfigurationBuilder.fixedNotificationIntervalUnit(seconds, ADMIN_NOTIFICATION_INTERVAL_SECONDS);
   }
 
   private intervalExpression(amountValue: number, unit: AdminNotificationIntervalUnit, time: string): string {
@@ -532,26 +481,22 @@ export class AdminNotificationsService extends BaseRouteModeService {
   }
 
   private paramFieldLabelKey(fieldKey: string | null | undefined): string {
-    const normalized = `${fieldKey ?? ''}`.trim();
-    return normalized ? `admin.params.field.${normalized}` : '';
+    return AdminConfigurationBuilder.paramFieldLabelKey(fieldKey);
   }
 
   private paramGroupLabelKey(group: string | null | undefined): string {
-    const normalized = this.paramsI18nSegment(group);
-    return normalized ? `admin.params.group.${normalized}` : 'admin.params.group.general';
+    return AdminConfigurationBuilder.paramGroupLabelKey(group);
   }
 
   private paramStrategyLabelKey(strategy: string | null | undefined): string {
-    const normalized = `${strategy ?? ''}`.trim();
-    return normalized ? `admin.params.strategy.${normalized}` : '';
+    return AdminConfigurationBuilder.paramStrategyLabelKey(strategy);
   }
 
   private paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 

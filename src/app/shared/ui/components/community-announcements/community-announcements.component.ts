@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../core/base/services/help/explanation-guide.service';
 import {
   UiDateUtils,
   PopupComponent,
@@ -8,13 +9,12 @@ import {
   type SmartListConfig,
   type SmartListLoadPage,
   I18nPipe,
-  ExplanationGuideService,
   type UiBranding as DeploymentBrandingDto,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette
 } from '@fssrepository/myscoutee-components';
-import { Component, Input, ViewChild, effect, inject, untracked, computed, signal } from '@angular/core';
+import { Component, Input, ViewChild, effect, inject, untracked, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { defer, map } from 'rxjs';
 import { CommunityAnnouncementsStore } from '../../context/stores/community/community-announcements.store';
@@ -45,7 +45,8 @@ const ANNOUNCEMENT_STATUS_STYLE:Record<AnnouncementStatus,{icon:string;palette:A
   <ng-template #rowTemplate let-row let-openMenu="openMenu"><single-row [row]="row" [useSharedMenu]="true" (menuRequest)="openMenu($event)"></single-row></ng-template>
   @if (!inline || !store.popup()) {
     @if (store.editor(); as editor) { <app-community-announcement-editor [editor]="editor"></app-community-announcement-editor> }
-  }`, styles: [`.community-home { height:100%; display:flex; flex-direction:column; padding:1rem; gap:1rem; } app-smart-list { display:block; min-height:0; flex:1; }`]
+  }`, changeDetection: ChangeDetectionStrategy.Eager,
+ styles: [`.community-home { height:100%; display:flex; flex-direction:column; padding:1rem; gap:1rem; } app-smart-list { display:block; min-height:0; flex:1; }`]
 })
 export class CommunityAnnouncementsComponent {
   @Input() inline = false;

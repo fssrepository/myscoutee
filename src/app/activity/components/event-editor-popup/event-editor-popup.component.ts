@@ -1,3 +1,4 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
 import { SLOTS_INPUT_LABELS } from '../../../shared/ui/components/core/form/flow/slots-input-labels';
 import {
   normalizeScheduleFrequency,
@@ -7,7 +8,6 @@ import {
   type SlotOverrideRequest,
   UiDateUtils,
   DialogStore,
-  ExplanationGuideService,
   AppMenuComponent,
   buildTabbedMenuModel,
   type AppMenuItem,

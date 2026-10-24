@@ -7,7 +7,7 @@ import { compiledDevModules } from './compiled-dev-modules.mjs';
 // browser session, server, or application-data mutation. JSDOM needs test rects.
 assert.ok(process.argv[2], 'Pass the existing dev output directory');
 const { symbol } = compiledDevModules(process.argv[2]);
-const dom = new JSDOM('<!doctype html><body><main data-guide-surface="landing.home"></main><app-explanation-popup></app-explanation-popup>',
+const dom = new JSDOM('<!doctype html><body><main data-guide-surface="landing.home"></main><app-explanation-launcher></app-explanation-launcher>',
   { url: 'http://localhost', pretendToBeVisual: true });
 for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'HTMLButtonElement', 'Event', 'MouseEvent', 'KeyboardEvent',
   'MutationObserver', 'DOMRect', 'getComputedStyle', 'localStorage']) globalThis[key] = dom.window[key];
@@ -19,10 +19,11 @@ globalThis.cancelAnimationFrame = id => frames.delete(id);
 HTMLElement.prototype.scrollIntoView = function () {};
 HTMLElement.prototype.getBoundingClientRect = function () {
   if (this.hidden || this.closest('[hidden]')) return new DOMRect();
+  if (this.matches('.explanation-guide-overlay__card')) return new DOMRect(Number.parseFloat(this.style.left) || 12, Number.parseFloat(this.style.top) || 12, 332, 248);
   return this.matches('button') ? new DOMRect(80, 80, 120, 40) : new DOMRect(0, 0, 700, 600);
 };
-const [bootstrap, Popup, Guide, I18n, Navigation, signal] = await Promise.all(
-  ['bootstrapApplication', 'ExplanationPopupComponent', 'ExplanationGuideService', 'I18nService', 'OverlayNavigationStore', 'signal'].map(symbol));
+const [bootstrap, Popup, Guide, I18n, Navigation, signal, Setup, Translations] = await Promise.all(
+  ['bootstrapApplication', 'ExplanationLauncherComponent', 'ExplanationGuideService', 'I18nService', 'OverlayNavigationStore', 'signal', 'AppSetupStore', 'UI_TRANSLATIONS'].map(symbol));
 const bundles = Object.fromEntries(['en', 'hu'].map(lang => [lang,
   JSON.parse(readFileSync(new URL(`../src/assets/i18n/${lang}.json`, import.meta.url))).messages]));
 const i18n = { revision: signal(0), currentLanguage: signal('en'), translate: (key, fallback) => bundles[i18n.currentLanguage()][key] || fallback || key };
@@ -30,11 +31,13 @@ const navigation = new Map(), navigationCalls = [];
 const transport = [];
 const app = await bootstrap(Popup, { providers: [
   { provide: I18n, useValue: i18n },
+  { provide: Translations, useValue: i18n },
+  { provide: Setup, useValue: { launcherVisible: () => false, guideRequested: () => false } },
   { provide: Navigation, useValue: {
     register(close) { const token = Symbol(); navigation.set(token, close); navigationCalls.push('register'); return token; },
     unregister(token) { navigation.delete(token); navigationCalls.push('unregister'); }, bringToFront() {}
   } },
-  { provide: Guide, useFactory: () => new Guide({ loadState: (context, language) => new Promise((resolve, reject) => transport.push({ context, language, resolve, reject })) }) }
+  { provide: Guide, useFactory: () => new Guide({ isExplainableContext: () => true, loadState: (context, language) => new Promise((resolve, reject) => transport.push({ context, language, resolve, reject })) }) }
 ] });
 const guide = app.injector.get(Guide);
 const main = document.querySelector('main');
@@ -114,11 +117,11 @@ try {
   assert.equal(guide.hasVisiblePopup(), true); assert.equal(navigation.size, 1);
   const tourCard = document.querySelector('.explanation-guide-overlay__card');
   for (const [id, step] of [['next', 1], ['previous', 0], ['next', 1]]) {
-    document.querySelector(`app-explanation-guide-overlay [data-guide-item="${id}"]`).click();
+    document.querySelector(`app-tour-dialog [data-guide-item="${id}"]`).click();
     await position(); assert.equal(guide.stepIndex(), step);
     assert.equal(document.querySelector('.explanation-guide-overlay__card'), tourCard, 'Next/Back retain the mounted card');
   }
-  document.querySelector('app-explanation-guide-overlay [data-guide-item="next"]').click();
+  document.querySelector('app-tour-dialog [data-guide-item="next"]').click();
   await render(); silent('Done closes the valid guide');
   const cached = transport.length;
   guide.openCurrent(); await position(); assert.ok(visuals()); assert.equal(transport.length, cached);

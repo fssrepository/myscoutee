@@ -423,7 +423,7 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   }
 
   private adminDisplayName(name: string): string {
-    return `${name ?? ''}`.trim().replace(/\s+Moderation$/i, '') || 'Admin';
+    return `${name ?? ''}`.trim().replace(/(?<=\s)Moderation$/i, '').trimEnd() || 'Admin';
   }
 
   private initialsFromName(name: string, fallback: string): string {

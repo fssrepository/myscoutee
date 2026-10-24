@@ -1,3 +1,4 @@
+import { FeedbackPageResultDto } from '../../../../contracts/feedback/feedback.interface';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import type { FeedbackStateRecord } from '../../../source/entity/feedback/feedback.entity';
 import type { UserRecord } from '../../../source/entity/accounts/user.entity';
@@ -329,53 +330,12 @@ export class SeedFeedbackBuilder {
     return candidates[index] ?? candidates[0];
   }
 
-  private static feedbackAttendeesForEvent(
-    record: ActivityEventRecord,
-    hostId: string,
-    users: readonly UserRecord[],
-    activeUserId: string
-  ): UserRecord[] {
-    const attendeeIds = [...new Set([
-      ...(record.acceptedMemberUserIds ?? []),
-      ...(record.pendingMemberUserIds ?? [])
-    ].map(userId => `${userId}`.trim()).filter(Boolean))]
-      .filter(userId => userId !== activeUserId && userId !== hostId);
-    if (attendeeIds.length > 0) {
-      const usersById = new Map(users.map(user => [user.id, user]));
-      const resolved = attendeeIds
-        .map(userId => usersById.get(userId))
-        .filter((user): user is UserRecord => Boolean(user));
-      if (resolved.length > 0) {
-        return resolved.slice(0, Math.min(5, resolved.length));
-      }
-    }
-
-    const candidates = users.filter(user => user.id !== activeUserId && user.id !== hostId);
-    if (candidates.length === 0) {
-      return [];
-    }
-    const seed = AppUtils.hashText(`feedback-attendees:${record.id}`);
-    const desired = Math.min(candidates.length, 3 + (seed % 4));
-    const picked: UserRecord[] = [];
-    for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
-      const candidate = candidates[(seed + (index * 3)) % candidates.length];
-      if (!candidate || candidate.id === activeUserId || picked.some(item => item.id === candidate.id)) {
-        continue;
-      }
-      picked.push(candidate);
-    }
-    return picked;
+  private static feedbackAttendeesForEvent(record: ActivityEventRecord, hostId: string, users: readonly UserRecord[], activeUserId: string): UserRecord[] {
+    return FeedbackPageResultDto.feedbackAttendeesForEvent(record, hostId, users, activeUserId);
   }
 
   private static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): ActivityMemberRole {
-    const seed = AppUtils.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
-    if (seed % 11 === 0) {
-      return 'Admin';
-    }
-    if (seed % 4 === 0) {
-      return 'Manager';
-    }
-    return 'Member';
+    return FeedbackPageResultDto.feedbackRoleForAttendee(eventId, attendeeUserId);
   }
 
   private static isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {

@@ -10,6 +10,7 @@ const [ExplanationGuideService, APP_STORAGE_KEYS, signal, runInInjectionContext,
   ['ExplanationGuideService', 'APP_STORAGE_KEYS', 'signal', 'runInInjectionContext', 'Injector', 'DestroyRef'].map(compiled.symbol));
 const fields = JSON.parse(readFileSync(new URL('../src/app/shared/core/local/seed/data/help-center-guide-fields.json', import.meta.url)));
 const revisions = JSON.parse(readFileSync(new URL('../../server/docker/conf/mongodb/demo_db/helpCenterRevisions.json', import.meta.url)));
+const myScouteeGuideOptions = await compiled.symbol('myScouteeGuideOptions');
 const introKey = APP_STORAGE_KEYS.explanationGuideIntroductionSeen;
 const consentKey = APP_STORAGE_KEYS.entryConsent;
 const enabledKey = APP_STORAGE_KEYS.explanationGuideEnabled;
@@ -20,7 +21,7 @@ function fixture(initial = [], load) {
     getItem: key => storage.get(key) ?? null,
     setItem: (key, value) => { storage.set(key, value); writes.push([key, value]); }
   };
-  const i18n = { currentLanguage: signal('hu') };
+  const i18n = { revision: signal(0), currentLanguage: signal('hu'), translate: key => key };
   const scheduler = { add: node => pending.add(node), schedule: node => pending.add(node), remove: node => pending.delete(node) };
   const injector = { get(token, fallback) {
     const name = (token.name ?? '').replace(/^_/, '');
@@ -33,7 +34,7 @@ function fixture(initial = [], load) {
     if (fallback !== undefined) return fallback;
     throw new Error('Missing provider ' + name);
   } };
-  const guide = runInInjectionContext(injector, () => new ExplanationGuideService({ storageKey: enabledKey,
+  const guide = runInInjectionContext(injector, () => new ExplanationGuideService(myScouteeGuideOptions({ storageKey: enabledKey,
     loadState: async (context, language) => {
       loads.push([context, language]);
       return load ? load(context, language) : {
@@ -41,7 +42,7 @@ function fixture(initial = [], load) {
         guideFields: fields[context] ?? []
       };
     }
-  }));
+  })));
   guide.registerContext('landing.home');
   return { guide, storage, loads, writes, i18n, injector,
     async flush() {
@@ -121,8 +122,8 @@ assert.equal(empty.guide.currentContextKey(), 'landing.home'); assert.equal(empt
 assert.equal(empty.storage.has(introKey), false); empty.destroy();
 console.log('PASS late/empty responses neither reopen the intro nor mark unseen content completed');
 
-const [LandingGuideSurfaceDirective, LANDING_EXPLANATION_GUIDE, EntryPageComponent, DocumentViewerComponent, ExplanationPopupComponent] = await Promise.all(
-  ['LandingGuideSurfaceDirective', 'LANDING_EXPLANATION_GUIDE', 'EntryPageComponent', 'DocumentViewerComponent', 'ExplanationPopupComponent'].map(compiled.symbol));
+const [LandingGuideSurfaceDirective, LANDING_EXPLANATION_GUIDE, EntryPageComponent, DocumentViewerComponent] = await Promise.all(
+  ['LandingGuideSurfaceDirective', 'LANDING_EXPLANATION_GUIDE', 'EntryPageComponent', 'DocumentViewerComponent'].map(compiled.symbol));
 const consent = fixture();
 const surface = runInInjectionContext({ get: (token, fallback) => token === LANDING_EXPLANATION_GUIDE
   ? consent.guide : consent.injector.get(token, fallback) }, () => new LandingGuideSurfaceDirective());
@@ -153,11 +154,12 @@ const viewer = Object.create(DocumentViewerComponent.prototype);
 viewer.config = { actions: page.entryPrivacyDocumentActions() };
 const accept = viewer.actionMenuItems().find(item => item.id === 'entry-privacy-accept');
 assert.ok(accept && !accept.disabled);
-const Overlay = ExplanationPopupComponent.ɵcmp.dependencies.find(type => type.name.replace(/^_/, '') === 'ExplanationGuideOverlayComponent');
+const Overlay = await compiled.symbol('TourDialogComponent');
 assert.ok(Overlay);
 const overlay = Object.create(Overlay.prototype);
-Object.assign(overlay, { guide: consent.guide, fieldElements: new Map(), fieldsDirty: true, fieldsRoot: null,
-  steps: signal([]), step: consent.guide.stepIndex });
+Object.assign(overlay, { model: () => consent.guide.dialogModel(), options: () => ({}),
+  actions: () => ({ stepChange: index => consent.guide.setStepIndex(index) }), fieldElements: new Map(), fieldsDirty: true, fieldsRoot: null,
+  steps: signal([]), step: signal(consent.guide.stepIndex()) });
 globalThis.HTMLButtonElement = class {};
 globalThis.getComputedStyle = () => ({ visibility: 'visible' });
 const button = Object.assign(new HTMLButtonElement(), { getAttribute: name => name === 'data-guide-item' ? accept.id : null,

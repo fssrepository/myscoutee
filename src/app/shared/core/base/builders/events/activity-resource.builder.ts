@@ -36,6 +36,45 @@ export interface ActivityRuntimeResourceTargetRef extends ActivityRuntimeResourc
 }
 
 export class ActivityResourceBuilder {
+
+  static capacityMetricsChanged(previous: AppDTOs.SubEventDTO, next: AppDTOs.SubEventDTO): boolean {
+    return previous.carsAccepted !== next.carsAccepted
+      || previous.carsPending !== next.carsPending
+      || previous.carsCapacityMin !== next.carsCapacityMin
+      || previous.carsCapacityMax !== next.carsCapacityMax
+      || previous.accommodationAccepted !== next.accommodationAccepted
+      || previous.accommodationPending !== next.accommodationPending
+      || previous.accommodationCapacityMin !== next.accommodationCapacityMin
+      || previous.accommodationCapacityMax !== next.accommodationCapacityMax
+      || previous.suppliesAccepted !== next.suppliesAccepted
+      || previous.suppliesPending !== next.suppliesPending
+      || previous.suppliesCapacityMin !== next.suppliesCapacityMin
+      || previous.suppliesCapacityMax !== next.suppliesCapacityMax;
+  }
+
+  static reportContextTimeframe(context: {
+    subEvent: {
+      startAt?: string;
+      endAt?: string;
+    };
+  }): string {
+    const start = context.subEvent.startAt?.trim();
+    const end = context.subEvent.endAt?.trim();
+    if (start && end) {
+      return `${start} - ${end}`;
+    }
+    return start || end || '';
+  }
+
+  static assignCapacityMetrics(subEvent: ContractTypes.SubEventDTO, metrics: Record<'cars' | 'accommodation' | 'supplies', { joined: number; pending: number; capacityMin: number; capacityMax: number }>): void {
+    for (const prefix of ['cars', 'accommodation', 'supplies'] as const) {
+      subEvent[`${prefix}Accepted`] = metrics[prefix].joined;
+      subEvent[`${prefix}Pending`] = metrics[prefix].pending;
+      subEvent[`${prefix}CapacityMin`] = metrics[prefix].capacityMin;
+      subEvent[`${prefix}CapacityMax`] = metrics[prefix].capacityMax;
+    }
+  }
+
   static chatResourceDateRange(
     chat: Pick<ContractTypes.ChatDTO, 'contextStartAtIso' | 'contextEndAtIso'>
   ): { startAtIso: string; endAtIso: string } | null {
@@ -706,7 +745,7 @@ export class ActivityResourceBuilder {
     return cleaned.length > 0 ? cleaned : [''];
   }
 
-  static assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
+  static assetRequestTimeframeLabel(startAtIso: string, endAtIso: string, dateTimeSeparator = ' · '): string {
     const start = UiDateUtils.isoLocalDateTimeToDate(startAtIso);
     const end = UiDateUtils.isoLocalDateTimeToDate(endAtIso);
     if (!start || !end) {
@@ -718,7 +757,7 @@ export class ActivityResourceBuilder {
     const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     return sameDay
-      ? `${startDate} · ${startTime} - ${endTime}`
+      ? `${startDate}${dateTimeSeparator}${startTime} - ${endTime}`
       : `${startDate} ${startTime} - ${endDate} ${endTime}`;
   }
 

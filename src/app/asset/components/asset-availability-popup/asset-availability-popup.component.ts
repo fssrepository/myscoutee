@@ -1,6 +1,7 @@
+import { ExplanationGuideService } from '../../../shared/core/base/services/help/explanation-guide.service';
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import {
   UiDateUtils,
-  ExplanationGuideService,
   PopupComponent,
   SingleRowComponent,
   SmartListComponent,
@@ -106,6 +107,28 @@ interface AssetAvailabilityScopedOverride<T> {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AssetAvailabilityPopupComponent {
+  private loadOccupancyPage(request: ReturnType<AssetAvailabilityPopupStore['availabilityPopup']>, query: ListQuery<AssetAvailabilityListFilters>, context?: SmartListLoadContext) {
+    if (!request) {
+        return from([this.emptyPage<AppDTOs.AssetOccupancyRowDTO>()]);
+      }
+    return from(this.assetsService.loadOccupancyByAssetId({
+        userId: request.ownerUserId,
+        assetId: request.assetId,
+        dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
+        rangeStart: query.rangeStart ?? query.filters?.rangeStart ?? request.rangeStart ?? undefined,
+        rangeEnd: query.rangeEnd ?? query.filters?.rangeEnd ?? request.rangeEnd ?? undefined,
+        filter: query.filters?.filter ?? request.filter,
+        order: query.filters?.order ?? this.orderFromDirection(query.direction),
+        page: query.page,
+        pageSize: query.pageSize,
+        cursor: query.cursor ?? null
+      }, { signal: context?.signal })).pipe(map(result => ({
+          items: result.items,
+          total: result.total,
+          nextCursor: result.nextCursor ?? null
+        })));
+  }
+
   protected readonly availabilityPopupZIndex = 12100;
   protected readonly dayListPopupZIndex = 12200;
   private readonly assetsService = inject(AssetsService);
@@ -424,52 +447,10 @@ export class AssetAvailabilityPopupComponent {
   private readonly loadRowsPage = (
     query: ListQuery<AssetAvailabilityListFilters>,
     context?: SmartListLoadContext
-  ): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
-      const request = this.availabilityPopupStore.availabilityPopup();
-      if (!request) {
-        return from([this.emptyPage<AssetAvailabilityListItem>()]);
-      }
-      return from(this.assetsService.loadOccupancyByAssetId({
-        userId: request.ownerUserId,
-        assetId: request.assetId,
-        dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
-        rangeStart: query.rangeStart ?? query.filters?.rangeStart ?? request.rangeStart ?? undefined,
-        rangeEnd: query.rangeEnd ?? query.filters?.rangeEnd ?? request.rangeEnd ?? undefined,
-        filter: query.filters?.filter ?? request.filter,
-        order: query.filters?.order ?? this.orderFromDirection(query.direction),
-        page: query.page,
-        pageSize: query.pageSize,
-        cursor: query.cursor ?? null
-      }, { signal: context?.signal })).pipe(map(result => ({
-          items: result.items,
-          total: result.total,
-          nextCursor: result.nextCursor ?? null
-        })));
-    };
+  ): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => this.loadOccupancyPage(this.availabilityPopupStore.availabilityPopup(), query, context);
 
   protected readonly dayListSmartListLoadPage: SmartListLoadPage<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters> =
-    (query, context): ReturnType<SmartListLoadPage<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters>> => {
-      const request = this.availabilityPopupStore.dayListPopup();
-      if (!request) {
-        return from([this.emptyPage<AppDTOs.AssetOccupancyRowDTO>()]);
-      }
-      return from(this.assetsService.loadOccupancyByAssetId({
-        userId: request.ownerUserId,
-        assetId: request.assetId,
-        dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
-        rangeStart: query.rangeStart ?? query.filters?.rangeStart ?? request.rangeStart ?? undefined,
-        rangeEnd: query.rangeEnd ?? query.filters?.rangeEnd ?? request.rangeEnd ?? undefined,
-        filter: query.filters?.filter ?? request.filter,
-        order: query.filters?.order ?? this.orderFromDirection(query.direction),
-        page: query.page,
-        pageSize: query.pageSize,
-        cursor: query.cursor ?? null
-      }, { signal: context?.signal })).pipe(map(result => ({
-        items: result.items,
-        total: result.total,
-        nextCursor: result.nextCursor ?? null
-        })));
-    };
+    (query, context): ReturnType<SmartListLoadPage<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters>> => this.loadOccupancyPage(this.availabilityPopupStore.dayListPopup(), query, context);
 
   protected isAvailabilityRow(item: AssetAvailabilityListItem): item is AppDTOs.AssetOccupancyRowDTO {
     return 'requestKind' in item;
@@ -1108,20 +1089,7 @@ export class AssetAvailabilityPopupComponent {
     void this.resourcePopupStore.ensureEventResourcePopupLoaded();
   }
 
-  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
-    const seen = new Set<string>();
-    const labels: string[] = [];
-    for (const part of parts) {
-      const value = `${part ?? ''}`.trim();
-      const key = value.toLocaleLowerCase();
-      if (!value || seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      labels.push(value);
-    }
-    return labels.join(' - ');
-  }
+  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string { return AppUtils.joinDistinctResourcePopupHeaderLabels(parts); }
 
   private availabilityResourceType(row: AppDTOs.AssetOccupancyRowDTO): AppConstants.AssetType | null {
     const headerType = `${this.availabilityHeader()?.type ?? this.dayListHeader()?.type ?? ''}`.trim();

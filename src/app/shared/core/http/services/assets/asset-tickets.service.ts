@@ -1,3 +1,5 @@
+import { LocalAssetTicketsMapper } from '../../../local/source/mappers/assets/asset.mapper';
+import { LocalAssetsMapper } from '../../../local/source/mappers/assets/asset.mapper';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -142,22 +144,8 @@ export class HttpAssetTicketsService {
     return this.cloneRows(offlineRows);
   }
 
-  private pageRows(
-    rows: readonly AssetContracts.AssetTicketDTO[],
-    query: AssetContracts.AssetTicketPageQueryDTO
-  ): AssetContracts.AssetTicketPageResultDTO {
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const orderedRows = [...rows].sort((left, right) => this.toSortableDate(left.dateIso) - this.toSortableDate(right.dateIso));
-    const visibleRows = orderedRows.filter(row => this.matchesTicketOrder(row, query.order));
-    if (query.order === 'past') {
-      visibleRows.reverse();
-    }
-    const startIndex = page * pageSize;
-    return {
-      items: this.cloneRows(visibleRows.slice(startIndex, startIndex + pageSize)),
-      total: visibleRows.length
-    };
+  private pageRows(rows: readonly AssetContracts.AssetTicketDTO[], query: AssetContracts.AssetTicketPageQueryDTO): AssetContracts.AssetTicketPageResultDTO {
+    return LocalAssetTicketsMapper.pageRows(rows, query);
   }
 
   private cloneRows(rows: readonly AssetContracts.AssetTicketDTO[]): AssetContracts.AssetTicketDTO[] {

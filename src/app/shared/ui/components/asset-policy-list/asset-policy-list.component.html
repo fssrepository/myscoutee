@@ -1,0 +1,22 @@
+<div class="asset-explore-borrow-policy-list">
+                @for (policy of policies; track policy.id) {
+                  <label class="asset-explore-borrow-policy-card" [class.is-required]="policy.required !== false">
+                    @if (policy.required === false) {
+                      <input
+                        type="checkbox"
+                        [checked]="acceptedPolicyIds.includes(policy.id)"
+                        (change)="policyToggled.emit(policy.id)"
+                      />
+                    }
+                    <div>
+                      <strong>{{ policy.title }}</strong>
+                      @if (policy.description) {
+                        <span>{{ policy.description }}</span>
+                      }
+                    </div>
+                    @if (policy.required !== false) {
+                      <em>{{ 'required' | i18n }}</em>
+                    }
+                  </label>
+                }
+              </div>

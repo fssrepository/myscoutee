@@ -1,9 +1,10 @@
+import { ExplanationGuideService } from '../help/explanation-guide.service';
 import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
-import { ExplanationGuideService, provideUiTranslations } from '@fssrepository/myscoutee-components';
+import { provideUiTranslations } from '@fssrepository/myscoutee-components';
 
 import { environment } from '../../../../../../environments/environment';
 import { version as catalogVersion } from '../../../../../../assets/i18n/en.json';

@@ -1,3 +1,7 @@
+import type { HelpCenterDocumentKind } from '../../../../contracts/content/content.interface';
+import type { HelpCenterRevisionDto } from '../../../../contracts/content/content.interface';
+import type { HelpCenterSectionDto } from '../../../../contracts/content/content.interface';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../../common/content-languages.json';
 import { sanitizeHtml } from '../../../../base/html-sanitizer';
 import type {
@@ -11,11 +15,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../base/app-utils';
 import { APP_STATIC_DATA } from '../../../../common/app-static-data';
-import type {
-  GuideDocumentKind as HelpCenterDocumentKind,
-  GuideRevision as HelpCenterRevisionDto,
-  GuideSection as HelpCenterSectionDto
-} from '@fssrepository/myscoutee-components';
+
 import type { HelpCenterAuditEntryDto, HelpCenterRevisionSaveRequestDto, HelpCenterStateDto, PrivacyConsentDto, PrivacyConsentSaveRequestDto } from '../../../../contracts';
 import { RouteDelayService } from '../../../../base/services/platform/route-delay.service';
 import { HelpCenterContentBuilder } from '../../../../base/builders';
@@ -400,7 +400,7 @@ export class LocalHelpCenterService {
       (Array.isArray(approvedSectionIds) ? approvedSectionIds : [])
         .map(sectionId => `${sectionId ?? ''}`.trim())
         .filter(sectionId => optionalSectionIds.has(sectionId))
-    )).sort();
+    )).sort(AppUtils.compareCodeUnits);
   }
 
   private ensureEditable(table: HelpCenterTable, kind: HelpCenterDocumentKind, context?: string | null, revisionId?: string | null): void {
@@ -490,30 +490,11 @@ export class LocalHelpCenterService {
   private revisionsForKind(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto[] {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey, false);
-    return table.revisionIds
-      .map(id => table.revisionsById[id])
-      .filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision))
-      .map(revision => LocalHelpCenterMapper.toDto(revision))
-      .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language)
-      .filter(revision => kind !== 'explanation' || !context || this.revisionContextKey(revision) === context);
+    return LocalHelpCenterMapper.revisionsForKind(table, kind, language, context, revision => this.revisionContextKey(revision));
   }
 
   private normalizedRevisionsById(table: HelpCenterTable): Record<string, HelpCenterRevisionRecord> {
-    return Object.fromEntries(
-      table.revisionIds
-        .filter(id => Boolean(table.revisionsById[id]))
-        .map(id => {
-          const revision = LocalHelpCenterMapper.toDto(table.revisionsById[id]);
-          const lang = this.revisionLang(revision);
-          return [id, LocalHelpCenterMapper.toRecord({
-            ...revision,
-            documentKind: this.revisionKind(revision),
-            contextKey: this.revisionContextKey(revision),
-            lang,
-            languageLabel: this.languageLabel(lang)
-          })];
-        })
-    ) as Record<string, HelpCenterRevisionRecord>;
+    return LocalHelpCenterMapper.normalizedRevisionsById(table, revision => this.revisionContextKey(revision));
   }
 
   private auditEntry(options: {
@@ -523,18 +504,7 @@ export class LocalHelpCenterService {
     message: string;
   }): HelpCenterAuditEntryDto {
     const documentKind = this.revisionKind(options.revision);
-    return {
-      id: this.newId(`${documentKind}-audit`),
-      documentKind,
-      lang: this.revisionLang(options.revision),
-      languageLabel: this.languageLabel(this.revisionLang(options.revision)),
-      revisionId: options.revision.id,
-      version: options.revision.version,
-      action: options.action,
-      actorUserId: this.normalizeActor(options.actorUserId),
-      createdAtIso: new Date().toISOString(),
-      message: options.message
-    };
+    return LocalHelpCenterMapper.auditEntry(options.revision, options.action, options.message, { id: this.newId(`${documentKind}-audit`), documentKind, lang: this.revisionLang(options.revision), languageLabel: this.languageLabel(this.revisionLang(options.revision)), actorUserId: this.normalizeActor(options.actorUserId) });
   }
 
   private normalizeSections(sections: readonly HelpCenterSectionDto[], kind: HelpCenterDocumentKind): HelpCenterSectionDto[] {
@@ -575,36 +545,9 @@ export class LocalHelpCenterService {
     };
   }
 
-  private normalizePanelSpan(value: string | null | undefined): HelpCenterSectionDto['panelSpan'] {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
-      return 'span-1';
-    }
-    if (normalized === 'span-2' || normalized === 'wide' || normalized === 'double' || normalized === 'two' || normalized === '2') {
-      return 'span-2';
-    }
-    if (normalized === 'span-3' || normalized === 'full' || normalized === 'row' || normalized === 'all' || normalized === '3') {
-      return 'span-3';
-    }
-    return undefined;
-  }
+  private normalizePanelSpan(value: string | null | undefined): HelpCenterSectionDto['panelSpan'] { return HelpCenterContentBuilder.normalizePanelSpan(value); }
 
-  private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] {
-    const result: string[] = [];
-    const seen = new Set<string>();
-    for (const imageUrl of imageUrls ?? []) {
-      const normalized = `${imageUrl ?? ''}`.trim();
-      if (!normalized || seen.has(normalized)) {
-        continue;
-      }
-      seen.add(normalized);
-      result.push(normalized);
-      if (result.length >= limit) {
-        break;
-      }
-    }
-    return result;
-  }
+  private normalizeImageUrls(imageUrls: readonly string[] | null | undefined, limit = 8): string[] { return HelpCenterContentBuilder.normalizeImageUrls(imageUrls, limit); }
 
   private htmlFromLegacySection(section: HelpCenterSectionDto | null | undefined): string {
     const details = Array.isArray(section?.details) ? section.details : [];
@@ -756,59 +699,31 @@ export class LocalHelpCenterService {
   }
 
   private normalizeLang(lang: string | null | undefined): string {
-    const normalized = `${lang ?? ''}`.trim().toLowerCase().split('-')[0];
-    return SUPPORTED_CONTENT_LANGUAGES.some(item => item.lang === normalized) ? normalized : 'en';
+    return HelpCenterContentBuilder.normalizeLang(lang);
   }
 
   private requestContentLang(lang: string | null | undefined): string {
-    const explicit = this.supportedContentLang(lang);
-    if (explicit) {
-      return explicit;
-    }
-    return this.supportedContentLang(this.browserLanguage()) || 'en';
+    return HelpCenterContentBuilder.requestContentLanguage(lang, this.availableLanguages());
   }
 
-  private browserLanguage(): string {
-    const languages = this.browserLanguages()
-      .map(value => this.normalizeRequestLanguage(value))
-      .filter(Boolean);
-    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
-  }
-
-  private browserLanguages(): string[] {
-    if (typeof navigator === 'undefined') {
-      return [];
-    }
-    return Array.isArray(navigator.languages) && navigator.languages.length > 0
-      ? navigator.languages
-      : [navigator.language];
-  }
+  private browserLanguage(): string { return HelpCenterContentBuilder.browserLanguage(); }
 
   private supportedContentLang(lang: string | null | undefined): string | null {
     const requested = this.normalizeRequestLanguage(lang);
     return this.availableLanguages().some(language => language.lang === requested) ? requested : null;
   }
 
-  private normalizeRequestLanguage(lang: string | null | undefined): string {
-    const normalized = `${lang ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
-    return normalized;
-  }
+  private normalizeRequestLanguage(lang: string | null | undefined): string { return HelpCenterContentBuilder.normalizeRequestLanguage(lang); }
 
   private languageLabel(lang: string | null | undefined): string {
-    return SUPPORTED_CONTENT_LANGUAGES.find(item => item.lang === this.normalizeLang(lang))?.label ?? 'English';
+    return HelpCenterContentBuilder.languageLabel(lang);
   }
 
-  private availableLanguages(): Array<{ lang: string; label: string }> {
-    return APP_STATIC_DATA.contentLanguages.map(language => ({
-      lang: this.normalizeLang(language.lang),
-      label: language.label
-    }));
+  private availableLanguages(): Array<{
+    lang: string;
+    label: string;
+  }> {
+    return HelpCenterContentBuilder.availableLanguages(APP_STATIC_DATA.contentLanguages);
   }
 
   private activeRevisionKey(kind: HelpCenterDocumentKind, lang: string, contextKey?: string | null): string {
@@ -834,14 +749,13 @@ export class LocalHelpCenterService {
   }
 
   private slugify(value: string): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/[^a-z0-9]+/g, '-'), "-");
   }
 
   private newId(prefix: string): string {
-    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${prefix}-${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 }

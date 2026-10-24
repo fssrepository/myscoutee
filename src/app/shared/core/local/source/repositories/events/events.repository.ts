@@ -1,3 +1,6 @@
+import { upsertOwnerCollection } from '../../../common/record-collection';
+import { normalizeOwnerCollection } from '../../../common/record-collection';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { type ListQuery as SharedListQuery, clampNumber, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import { isCurrentFollowedEvent } from '../../builders/accounts/following-state.builder';
@@ -88,6 +91,77 @@ interface ActivityEventExploreCursor {
   providedIn: 'root'
 })
 export class LocalEventsRepository {
+  private buildGeneratedSlotRecord(parent: ActivityEventRecord, table: ActivityEventRecordCollection, membersTable: ActivityMembersRecordCollection, template: ContractTypes.EventSlotTemplateDTO, startAt: Date, endAt: Date, definitions: ActivityContracts.SubEventDefinitionDTO[]): ActivityEventRecord {
+    const sourceId = this.buildGeneratedSlotSourceId(parent.id, template.id, startAt);
+    const existing = this.computePreferredEventRecords(table)
+          .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
+          ?? null;
+    const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
+    return {
+          id: sourceId,
+          userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
+          type: 'events',
+          status: parent.status,
+          adminIds: [...slotMembers.adminUserIds],
+          avatar: parent.avatar,
+          title: parent.title,
+          subtitle: parent.subtitle,
+          timeframe: this.buildGeneratedSlotTimeframe(startAt, endAt),
+          inviter: null,
+          unread: 0,
+          activity: 0,
+          trashedAtIso: null,
+          creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
+          creatorName: parent.creatorName,
+          creatorInitials: parent.creatorInitials,
+          creatorGender: parent.creatorGender,
+          creatorCity: parent.creatorCity,
+          visibility: parent.visibility,
+          blindMode: parent.blindMode,
+          startAtIso: startAt.toISOString(),
+          endAtIso: endAt.toISOString(),
+          distanceKm: parent.distanceKm,
+          imageUrl: parent.imageUrl,
+          imageUrls: parent.imageUrls ? [...parent.imageUrls] : undefined,
+          imageDetails: parent.imageDetails,
+          sourceLink: parent.sourceLink,
+          location: parent.location,
+          locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
+          capacityMin: parent.capacityMin,
+          capacityMax: parent.capacityMax,
+          capacityTotal: slotMembers.capacityTotal,
+          full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
+          autoInviter: parent.autoInviter,
+          frequency: parent.frequency,
+          ticketing: parent.ticketing,
+          approvalRequired: parent.approvalRequired === true,
+          paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
+          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
+          slotsEnabled: false,
+          slotTemplates: [],
+          parentEventId: parent.id,
+          slotTemplateId: template.id,
+          generated: true,
+          eventType: 'slot',
+          nextSlot: null,
+          upcomingSlots: [],
+          acceptedMembers: slotMembers.acceptedMembers,
+          pendingMembers: slotMembers.pendingMembers,
+          acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
+          pendingMemberUserIds: slotMembers.pendingMemberUserIds,
+          invitedMemberUserIds: slotMembers.invitedMemberUserIds,
+          pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
+          topics: [...parent.topics],
+          subEventsEnabled: false,
+          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
+          subEvents: [],
+          mode: parent.mode,
+          rating: parent.rating,
+          boost: parent.boost,
+          affinity: parent.affinity
+        };
+  }
+
   feedbackAdminUserIds(eventId: string): string[] {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     return [...new Set(table.ids.map(id => table.byId[id]).filter(event => event?.id.trim() === eventId)
@@ -361,24 +435,17 @@ export class LocalEventsRepository {
     nextStatus: ContractTypes.TournamentStageStatus;
     reason: string;
   } | null {
-    const normalizedAction = `${action ?? ''}`.trim();
-    const normalizedReason = `${reason ?? ''}`.trim();
-    switch (normalizedAction) {
-      case 'start-tournament':
-        return { action: normalizedAction, nextStatus: 'A', reason: normalizedReason || 'tournament-started' };
-      case 'close-stage':
-        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'stage-closed' };
-      case 'finalize-stage':
-        return { action: normalizedAction, nextStatus: 'F', reason: normalizedReason || 'stage-finalized' };
-      case 'reopen-scores':
-        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'scores-reopened' };
-      case 'suspend-tournament':
-        return { action: normalizedAction, nextStatus: 'S', reason: normalizedReason || 'manual-suspension' };
-      case 'resume-tournament':
-        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'manual-resume' };
-      default:
-        return null;
-    }
+    const normalizedAction = String(action ?? '').trim();
+    const targets: Record<string, [
+      ContractTypes.TournamentStageStatus,
+      string
+    ]> = {
+      'start-tournament': ['A', 'tournament-started'], 'close-stage': ['SR', 'stage-closed'],
+      'finalize-stage': ['F', 'stage-finalized'], 'reopen-scores': ['SR', 'scores-reopened'],
+      'suspend-tournament': ['S', 'manual-suspension'], 'resume-tournament': ['SR', 'manual-resume']
+    };
+    const target = Object.hasOwn(targets, normalizedAction) ? targets[normalizedAction] : null;
+    return target ? { action: normalizedAction, nextStatus: target[0], reason: String(reason ?? '').trim() || target[1] } : null;
   }
 
   private canApplyStageAction(action: string, stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
@@ -2043,11 +2110,11 @@ export class LocalEventsRepository {
       if (!homeMemberId || !awayMemberId || homeMemberId === awayMemberId) {
         return this.querySubEventLeaderboard(eventId, subEventId);
       }
-      const pairKey = [homeMemberId, awayMemberId].sort().join(':');
+      const pairKey = [homeMemberId, awayMemberId].sort(AppUtils.compareCodeUnits).join(':');
       const matches = [...(this.localFifaMatchesByGroupKey.get(key) ?? [])];
-      const index = matches.findIndex(match => [match.homeMemberId, match.awayMemberId].sort().join(':') === pairKey);
+      const index = matches.findIndex(match => [match.homeMemberId, match.awayMemberId].sort(AppUtils.compareCodeUnits).join(':') === pairKey);
       const nextMatch: ContractTypes.SubEventLeaderboardFifaMatch = {
-        id: index >= 0 ? matches[index].id : `local-fifa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: index >= 0 ? matches[index].id : `local-fifa-${Date.now()}-${secureRandomUuid()}`,
         stageId: subEventId,
         groupId,
         homeMemberId,
@@ -2072,7 +2139,7 @@ export class LocalEventsRepository {
     }
     const scoreEntries = [...(this.localScoreEntriesByGroupKey.get(key) ?? [])];
     scoreEntries.push({
-      id: `local-score-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `local-score-${Date.now()}-${secureRandomUuid()}`,
       stageId: subEventId,
       groupId,
       memberId,
@@ -3930,70 +3997,18 @@ export class LocalEventsRepository {
   }
 
   private normalizeSubEventGroupsCollection(value: unknown): ActivitySubEventGroupsRecordCollection {
-    const source = value as Partial<ActivitySubEventGroupsRecordCollection> | null | undefined;
-    const byId = source?.byId && typeof source.byId === 'object'
-      ? { ...(source.byId as Record<string, ActivitySubEventGroupRecord>) }
-      : {};
-    const ids = Array.isArray(source?.ids)
-      ? source.ids.map(id => `${id ?? ''}`.trim()).filter(id => Boolean(byId[id]))
-      : Object.keys(byId);
-    const idsByOwnerKey: Record<string, string[]> = {};
-    for (const id of ids) {
-      const ownerKey = `${byId[id]?.ownerKey ?? byId[id]?.ownerId ?? ''}`.trim();
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = idsByOwnerKey[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      idsByOwnerKey[ownerKey] = bucket;
-    }
-    return { byId, ids, idsByOwnerKey };
+    return normalizeOwnerCollection<ActivitySubEventGroupRecord>(value, true);
   }
 
   private upsertSubEventGroupRecordCollection(
     table: ActivitySubEventGroupsRecordCollection,
     record: ActivitySubEventGroupRecord
   ): ActivitySubEventGroupsRecordCollection {
-    const byId = {
-      ...table.byId,
-      [record.id]: { ...record }
-    };
-    const ids = table.ids.includes(record.id) ? [...table.ids] : [...table.ids, record.id];
-    const idsByOwnerKey = { ...table.idsByOwnerKey };
-    const ownerKey = record.ownerKey.trim();
-    if (ownerKey) {
-      const bucket = idsByOwnerKey[ownerKey] ? [...idsByOwnerKey[ownerKey]] : [];
-      if (!bucket.includes(record.id)) {
-        bucket.push(record.id);
-      }
-      idsByOwnerKey[ownerKey] = bucket;
-    }
-    return { byId, ids, idsByOwnerKey };
+    return upsertOwnerCollection(table, record, true);
   }
 
   private normalizeStageRuntimeCollection(value: unknown): ActivitySubEventStageRuntimeRecordCollection {
-    const source = value as Partial<ActivitySubEventStageRuntimeRecordCollection> | null | undefined;
-    const byId = source?.byId && typeof source.byId === 'object'
-      ? { ...(source.byId as Record<string, ActivitySubEventStageRuntimeRecord>) }
-      : {};
-    const ids = Array.isArray(source?.ids)
-      ? source.ids.map(id => `${id ?? ''}`.trim()).filter(id => Boolean(byId[id]))
-      : Object.keys(byId);
-    const idsByOwnerKey: Record<string, string[]> = {};
-    for (const id of ids) {
-      const ownerKey = `${byId[id]?.ownerKey ?? byId[id]?.ownerId ?? ''}`.trim();
-      if (!ownerKey) {
-        continue;
-      }
-      const bucket = idsByOwnerKey[ownerKey] ?? [];
-      if (!bucket.includes(id)) {
-        bucket.push(id);
-      }
-      idsByOwnerKey[ownerKey] = bucket;
-    }
-    return { byId, ids, idsByOwnerKey };
+    return normalizeOwnerCollection<ActivitySubEventStageRuntimeRecord>(value, true);
   }
 
   private upsertStageRuntimeGroupsCountCollection(
@@ -4121,21 +4136,7 @@ export class LocalEventsRepository {
     table: ActivitySubEventStageRuntimeRecordCollection,
     record: ActivitySubEventStageRuntimeRecord
   ): ActivitySubEventStageRuntimeRecordCollection {
-    const byId = {
-      ...table.byId,
-      [record.id]: { ...record }
-    };
-    const ids = table.ids.includes(record.id) ? [...table.ids] : [...table.ids, record.id];
-    const idsByOwnerKey = { ...table.idsByOwnerKey };
-    const ownerKey = record.ownerKey.trim();
-    if (ownerKey) {
-      const bucket = idsByOwnerKey[ownerKey] ? [...idsByOwnerKey[ownerKey]] : [];
-      if (!bucket.includes(record.id)) {
-        bucket.push(record.id);
-      }
-      idsByOwnerKey[ownerKey] = bucket;
-    }
-    return { byId, ids, idsByOwnerKey };
+    return upsertOwnerCollection(table, record, true);
   }
 
   private leaderboardGroupKey(eventId: string, subEventId: string, groupId: string): string {
@@ -4409,24 +4410,7 @@ export class LocalEventsRepository {
   private subEventDefinitionTimeline(
     items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined
   ): Array<{ item: ActivityContracts.SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
-    const definitions = items ?? [];
-    let previousStartOffsetMinutes = 0;
-    let previousEndOffsetMinutes = 0;
-    let hasPrevious = false;
-    return definitions.map(item => {
-      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
-      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
-      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
-      const startOffsetMinutes = !hasPrevious
-        ? offsetMinutes
-        : timing === 'During'
-          ? previousStartOffsetMinutes + offsetMinutes
-          : previousEndOffsetMinutes + offsetMinutes;
-      previousStartOffsetMinutes = startOffsetMinutes;
-      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
-      hasPrevious = true;
-      return { item, startOffsetMinutes, durationMinutes };
-    });
+    return ActivityEventDetailDTO.subEventDefinitionTimeline(items);
   }
 
   private subEventDefinitionsDurationMinutes(items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined): number {
@@ -4569,74 +4553,7 @@ export class LocalEventsRepository {
         if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
           continue;
         }
-        const sourceId = this.buildGeneratedSlotSourceId(parent.id, template.id, startAt);
-        const existing = this.computePreferredEventRecords(table)
-          .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
-          ?? null;
-        const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
-        records.push({
-          id: sourceId,
-          userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
-          type: 'events',
-          status: parent.status,
-          adminIds: [...slotMembers.adminUserIds],
-          avatar: parent.avatar,
-          title: parent.title,
-          subtitle: parent.subtitle,
-          timeframe: this.buildGeneratedSlotTimeframe(startAt, endAt),
-          inviter: null,
-          unread: 0,
-          activity: 0,
-          trashedAtIso: null,
-          creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
-          creatorName: parent.creatorName,
-          creatorInitials: parent.creatorInitials,
-          creatorGender: parent.creatorGender,
-          creatorCity: parent.creatorCity,
-          visibility: parent.visibility,
-          blindMode: parent.blindMode,
-          startAtIso: startAt.toISOString(),
-          endAtIso: endAt.toISOString(),
-          distanceKm: parent.distanceKm,
-          imageUrl: parent.imageUrl,
-          imageUrls: parent.imageUrls ? [...parent.imageUrls] : undefined,
-          imageDetails: parent.imageDetails,
-          sourceLink: parent.sourceLink,
-          location: parent.location,
-          locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
-          capacityMin: parent.capacityMin,
-          capacityMax: parent.capacityMax,
-          capacityTotal: slotMembers.capacityTotal,
-          full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
-          autoInviter: parent.autoInviter,
-          frequency: parent.frequency,
-          ticketing: parent.ticketing,
-          approvalRequired: parent.approvalRequired === true,
-          paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
-          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
-          slotsEnabled: false,
-          slotTemplates: [],
-          parentEventId: parent.id,
-          slotTemplateId: template.id,
-          generated: true,
-          eventType: 'slot',
-          nextSlot: null,
-          upcomingSlots: [],
-          acceptedMembers: slotMembers.acceptedMembers,
-          pendingMembers: slotMembers.pendingMembers,
-          acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
-          pendingMemberUserIds: slotMembers.pendingMemberUserIds,
-          invitedMemberUserIds: slotMembers.invitedMemberUserIds,
-          pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
-          topics: [...parent.topics],
-          subEventsEnabled: false,
-          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
-          subEvents: [],
-          mode: parent.mode,
-          rating: parent.rating,
-          boost: parent.boost,
-          affinity: parent.affinity
-        });
+        records.push(this.buildGeneratedSlotRecord(parent, table, membersTable, template, startAt, endAt, definitions));
       }
     }
     for (const template of templates) {
@@ -4661,74 +4578,7 @@ export class LocalEventsRepository {
       if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
         continue;
       }
-      const sourceId = this.buildGeneratedSlotSourceId(parent.id, template.id, startAt);
-      const existing = this.computePreferredEventRecords(table)
-        .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
-        ?? null;
-      const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
-      records.push({
-        id: sourceId,
-        userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
-        type: 'events',
-        status: parent.status,
-        adminIds: [...slotMembers.adminUserIds],
-        avatar: parent.avatar,
-        title: parent.title,
-        subtitle: parent.subtitle,
-        timeframe: this.buildGeneratedSlotTimeframe(startAt, endAt),
-        inviter: null,
-        unread: 0,
-        activity: 0,
-        trashedAtIso: null,
-        creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
-        creatorName: parent.creatorName,
-        creatorInitials: parent.creatorInitials,
-        creatorGender: parent.creatorGender,
-        creatorCity: parent.creatorCity,
-        visibility: parent.visibility,
-        blindMode: parent.blindMode,
-        startAtIso: startAt.toISOString(),
-        endAtIso: endAt.toISOString(),
-        distanceKm: parent.distanceKm,
-        imageUrl: parent.imageUrl,
-          imageUrls: parent.imageUrls ? [...parent.imageUrls] : undefined,
-          imageDetails: parent.imageDetails,
-        sourceLink: parent.sourceLink,
-        location: parent.location,
-        locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
-        capacityMin: parent.capacityMin,
-        capacityMax: parent.capacityMax,
-        capacityTotal: slotMembers.capacityTotal,
-        full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
-        autoInviter: parent.autoInviter,
-        frequency: parent.frequency,
-        ticketing: parent.ticketing,
-        approvalRequired: parent.approvalRequired === true,
-          paymentDeadlineHours: parent.paymentDeadlineHours ?? 4,
-          paymentDeadlineEnabled: parent.paymentDeadlineEnabled ?? true,
-        slotsEnabled: false,
-        slotTemplates: [],
-        parentEventId: parent.id,
-        slotTemplateId: template.id,
-        generated: true,
-        eventType: 'slot',
-        nextSlot: null,
-        upcomingSlots: [],
-        acceptedMembers: slotMembers.acceptedMembers,
-        pendingMembers: slotMembers.pendingMembers,
-        acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
-        pendingMemberUserIds: slotMembers.pendingMemberUserIds,
-        invitedMemberUserIds: slotMembers.invitedMemberUserIds,
-        pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
-        topics: [...parent.topics],
-        subEventsEnabled: false,
-        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
-        subEvents: [],
-        mode: parent.mode,
-        rating: parent.rating,
-        boost: parent.boost,
-        affinity: parent.affinity
-      });
+      records.push(this.buildGeneratedSlotRecord(parent, table, membersTable, template, startAt, endAt, definitions));
     }
     return records;
   }
@@ -4961,32 +4811,7 @@ export class LocalEventsRepository {
   }
 
   private matchesSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
-    if (frequency === 'daily') {
-      return true;
-    }
-    if (frequency === 'weekly') {
-      return date.getDay() === templateStart.getDay();
-    }
-    if (frequency === 'bi-weekly' || frequency === 'biweekly') {
-      if (date.getDay() !== templateStart.getDay()) {
-        return false;
-      }
-      const diffDays = Math.floor((date.getTime() - templateStart.getTime()) / (24 * 60 * 60 * 1000));
-      const diffWeeks = Math.floor(diffDays / 7);
-      return diffWeeks >= 0 && diffWeeks % 2 === 0;
-    }
-    if (frequency === 'monthly') {
-      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
-    }
-    if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
-      if (date.getMonth() !== templateStart.getMonth()) {
-        return false;
-      }
-      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
-    }
-    return false;
+    return ActivityEventDetailDTO.matchesSlotFrequency(date, templateStart, frequency);
   }
 
   private parseEventDate(value: string | null | undefined): Date | null {
@@ -5013,18 +4838,5 @@ export class LocalEventsRepository {
     return this.slotOverrideDateKey(new Date(occurrenceStart.getTime() - templateOffsetMs).toISOString());
   }
 
-  private normalizeLocationCoordinates(value: unknown): ActivityEventRecord['locationCoordinates'] {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const latitude = Number((value as { latitude?: unknown }).latitude);
-    const longitude = Number((value as { longitude?: unknown }).longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      return null;
-    }
-    return {
-      latitude,
-      longitude
-    };
-  }
+  private normalizeLocationCoordinates(value: unknown): ActivityEventRecord['locationCoordinates'] { return AppUtils.normalizeLocationCoordinates(value); }
 }
