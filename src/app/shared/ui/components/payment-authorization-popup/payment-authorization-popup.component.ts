@@ -19,7 +19,7 @@ export class PaymentAuthorizationPopupComponent {
   private readonly sanitizer = inject(DomSanitizer);
   protected readonly sourceUrl = computed(() => {
     const url = this.authorization.waitingSurface()?.url;
-    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null; // NOSONAR S6268: only the service's HTTP(S)-validated simulator waiting URL; provider messages verify frame and origin.
   });
 
   protected popupModel(): PopupModel {

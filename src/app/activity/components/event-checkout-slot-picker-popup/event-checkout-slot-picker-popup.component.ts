@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   UiDateUtils,
@@ -1010,10 +1011,10 @@ export class EventCheckoutSlotPickerPopupComponent {
         const optionals = [...new Set(selection.optionalSubEventIds)]
           .map(item => item.trim())
           .filter(Boolean)
-          .sort();
+          .sort(AppUtils.compareCodeUnits);
         return `${selection.slot.id}::${optionals.join(',')}`;
       })
-      .sort()
+      .sort(AppUtils.compareCodeUnits)
       .join('|');
   }
 
@@ -1319,7 +1320,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         return candidate;
       }
     }
-    return [...availableDateKeys].sort()[0] ?? this.todayKey();
+    return [...availableDateKeys].sort(AppUtils.compareCodeUnits)[0] ?? this.todayKey();
   }
 
   private buildMonthListQuery(): Partial<ListQuery<SlotPickerMonthFilters>> {

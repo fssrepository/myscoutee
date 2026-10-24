@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   clampNumber,
@@ -527,7 +528,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     }
 
     const nextEntry: AppDTOs.SubEventSupplyContributionEntryDTO = {
-      id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `subevent-supply-row-${Date.now()}-${secureRandomUuid()}`,
       userId: this.activeUser().id,
       quantity: dialog.quantity,
       addedAtIso: UiDateUtils.toIsoDateTime(new Date())

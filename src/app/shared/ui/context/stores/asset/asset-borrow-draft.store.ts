@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../core/base/app-utils';
 import { Injectable, signal } from '@angular/core';
 
 import { APP_STORAGE_KEYS } from '../../../../core/common/storage-scope';
@@ -32,7 +33,7 @@ export function assetBorrowSelectionSignature(
     [...new Set(selection.acceptedPolicyIds ?? [])]
       .map(item => `${item ?? ''}`.trim())
       .filter(Boolean)
-      .sort()
+      .sort(AppUtils.compareCodeUnits)
   ]);
 }
 

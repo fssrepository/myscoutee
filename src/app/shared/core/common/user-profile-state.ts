@@ -12,7 +12,7 @@ export class UserProfileState {
     ) {
       return false;
     }
-    const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort();
+    const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort(AppUtils.compareCodeUnits);
     const seed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
     return (seed % 100) < 32;
   }
@@ -122,7 +122,7 @@ export class UserProfileState {
       return Number.NEGATIVE_INFINITY;
     }
     const normalizedActiveUserId = activeUser?.id?.trim() ?? '';
-    const [firstId, secondId] = [normalizedActiveUserId, normalizedCandidateId].sort();
+    const [firstId, secondId] = [normalizedActiveUserId, normalizedCandidateId].sort(AppUtils.compareCodeUnits);
     const pairSeed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
     const cityBonus = activeUser?.city?.trim() && activeUser.city === candidate.city ? 220 : 0;
     const genderBonus = activeUser?.gender && activeUser.gender === candidate.gender ? 40 : 0;

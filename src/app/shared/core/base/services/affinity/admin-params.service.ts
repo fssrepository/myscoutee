@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import { HTTP_ADAPTER, LOCAL_ADAPTER, type AdapterInstance } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { Injectable, inject } from '@angular/core';
@@ -179,18 +180,17 @@ export class AdminParamsService extends BaseRouteModeService {
     if (!normalizedSummary || !normalizedSection) {
       return '';
     }
-    if (/^Updated\s+.+?\s+parameters\.$/i.test(normalizedSummary)) {
+    if (/^Updated .+ parameters\.$/i.test(normalizedSummary.replace(/\s+/g, ' '))) {
       return `admin.params.summary.updated.${normalizedSection}`;
     }
     return '';
   }
 
   private paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 }

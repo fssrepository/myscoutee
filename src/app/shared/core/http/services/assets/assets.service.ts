@@ -17,7 +17,7 @@ export class HttpAssetsService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedAssetsByUserId: Record<string, AppDTOs.AssetDTO[]> = {};
-  private readonly inflightAssetsByUserId: Record<string, Promise<AppDTOs.AssetDTO[]>> = {};
+  private readonly inflightAssetsByUserId: Partial<Record<string, Promise<AppDTOs.AssetDTO[]>>> = {};
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     const normalizedUserId = userId.trim();

@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../common/secure-random';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -196,7 +197,7 @@ export class UserExperiencesService extends BaseRouteModeService {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return `exp-${crypto.randomUUID()}`;
     }
-    return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `exp-${Date.now()}-${secureRandomUuid()}`;
   }
 
   private cloneEntries(entries: readonly ExperienceEntry[]): ExperienceEntry[] {

@@ -1,6 +1,6 @@
 import { markLandingDebug } from './shared/core/common/landing-debug';
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, DestroyRef, ErrorHandler, HostListener, OnDestroy, Type, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ErrorHandler, HostListener, OnDestroy, OnInit, Type, computed, effect, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
   NavigationCancellationCode,
@@ -42,7 +42,7 @@ import { AppUtils } from './shared/core/base/app-utils';
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class App implements OnDestroy {
+export class App implements OnInit, OnDestroy {
   protected readonly setup = inject(AppSetupStore);
   protected readonly paymentAuthorization = inject(PaymentAuthorizationService);
   protected readonly setupPopupComponent = signal<Type<unknown> | null>(null);
@@ -124,10 +124,6 @@ export class App implements OnDestroy {
       }).catch(error => this.popupErrors.handleError(error));
     });
     const initialRouteUrl = this.resolveInitialRouteUrl();
-    this.i18nService.initialize();
-    this.appLocationService.initialize();
-    void this.deploymentConfiguration.initialize();
-    void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
     // Bootstrap can finish before the initial page is ready. Keep the loading
     // surface until the outlet activates, including a fresh unsigned visit.
@@ -173,6 +169,15 @@ export class App implements OnDestroy {
         this.completeInitialLandingWarmup(0);
       }
     });
+  }
+
+  ngOnInit(): void {
+    this.appLocationService.initialize();
+    void Promise.all([
+      this.i18nService.initialize(),
+      this.deploymentConfiguration.initialize(),
+      this.pwaService.initialize()
+    ]).catch(error => this.popupErrors.handleError(error));
   }
 
   ngOnDestroy(): void {

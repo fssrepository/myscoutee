@@ -1,3 +1,4 @@
+import { ErrorHandler } from '@angular/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { ChatMessageMenuConverter } from '../../../shared/ui/converters/chat/chat-message-menu.converter';
 import {
@@ -236,6 +237,7 @@ interface ChatHeaderPollState {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventChatPopupComponent implements OnDestroy {
+  private readonly actionErrors = inject(ErrorHandler);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly communityCases = inject(CommunityCasesStore);
@@ -1880,7 +1882,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     event.preventDefault();
-    this.sendMessage();
+    void this.sendMessage().catch(error => this.actionErrors.handleError(error));
   }
 
   protected resizeComposerTextarea(): void {
@@ -3069,7 +3071,7 @@ export class EventChatPopupComponent implements OnDestroy {
           text: value.slice(lastIndex, match.index)
         });
       }
-      const rawUrl = match[0].replace(/[),.;!?]+$/g, '');
+      const rawUrl = AppUtils.trimEndCharacters(match[0], "),.;!?");
       const trailing = match[0].slice(rawUrl.length);
       segments.push({
         id: `link:${match.index}`,
@@ -3403,7 +3405,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return undefined;
     }
     const subtitle = `${attachment.subtitle ?? ''}`.trim();
-    const subtitleParts = subtitle.split(/\s+-\s+/).map(part => part.trim()).filter(Boolean);
+    const subtitleParts = subtitle.split(/(?<=\s)-(?=\s)/).map(part => part.trim()).filter(Boolean);
     return {
       id: assetId,
       type: assetType,
@@ -5493,7 +5495,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const normalizedSubEventName = `${subEventName ?? ''}`.trim().toLocaleLowerCase('en-US');
     const parts = normalizedTitle
-      .split(/\s+[·-]\s+/)
+      .split(/(?<=\s)[·-](?=\s)/)
       .map(part => part.trim())
       .filter(Boolean);
     if (parts.length > 1) {

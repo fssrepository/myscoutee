@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../core/base/app-utils';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
@@ -504,7 +505,7 @@ function sameRegistryUrl(left: string, right: string): boolean {
     return normalizeOperatorRegistryBaseUrl(left, false)
       === normalizeOperatorRegistryBaseUrl(right, false);
   } catch {
-    return left.trim().replace(/\/+$/, '') === right.trim().replace(/\/+$/, '');
+    return AppUtils.trimEndCharacters(left.trim(), "/") === AppUtils.trimEndCharacters(right.trim(), "/");
   }
 }
 

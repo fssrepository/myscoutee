@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -15,7 +16,7 @@ const OPERATOR_BOOTSTRAP_AUTH_ROUTE = '/auth/operator-bootstrap';
 })
 export class HttpOperatorBootstrapAuthService {
   private readonly http = inject(HttpClient);
-  private readonly apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+  private readonly apiBaseUrl = AppUtils.trimEndCharacters((environment.apiBaseUrl ?? '/api'), "/");
 
   async signIn(
     request: OperatorBootstrapAuthRequestDto

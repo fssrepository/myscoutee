@@ -115,7 +115,7 @@
             <div class="idea-editor-html-head">
               <span>{{ 'article.html' | i18n }}</span>
             </div>
-            <textarea
+            <textarea [attr.aria-label]="'article.html' | i18n"
               class="idea-editor-html-textarea"
               name="ideaContentHtml" data-guide-field="article-html"
               [(ngModel)]="editDraft.contentHtml"

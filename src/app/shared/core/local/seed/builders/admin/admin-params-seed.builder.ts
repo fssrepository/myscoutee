@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import type {
   AdminSeedParamFieldDto,
   AdminSeedParamOptionDto,
@@ -233,18 +234,17 @@ export class AdminParamsSeedBuilder {
     if (!normalizedSummary || !normalizedSection) {
       return '';
     }
-    if (/^Updated\s+.+?\s+parameters\.$/i.test(normalizedSummary)) {
+    if (/^Updated .+ parameters\.$/i.test(normalizedSummary.replace(/\s+/g, ' '))) {
       return `admin.params.summary.updated.${normalizedSection}`;
     }
     return '';
   }
 
   private static paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 }

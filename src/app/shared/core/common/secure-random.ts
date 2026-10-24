@@ -1,3 +1,19 @@
+export function secureRandomInt(exclusiveMaximum: number): number {
+  if (!Number.isInteger(exclusiveMaximum) || exclusiveMaximum < 1 || exclusiveMaximum > 0x100000000) {
+    throw new RangeError('Random integer bound must be between 1 and 2^32');
+  }
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.getRandomValues !== 'function') {
+    throw new Error('Secure random generator is unavailable');
+  }
+  const limit = 0x100000000 - (0x100000000 % exclusiveMaximum);
+  const sample = new Uint32Array(1);
+  do {
+    cryptoApi.getRandomValues(sample);
+  } while (sample[0] >= limit);
+  return sample[0] % exclusiveMaximum;
+}
+
 export function secureRandomUuid(): string {
   const cryptoApi = globalThis.crypto;
   if (typeof cryptoApi?.randomUUID === 'function') {

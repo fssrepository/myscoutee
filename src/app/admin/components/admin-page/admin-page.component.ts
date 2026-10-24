@@ -1,3 +1,4 @@
+import { ErrorHandler } from '@angular/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import { POPUP_ADAPTER } from '../../../shared/ui/context/popup-adapter-loaders';
 import { PopupAdapterProxyService } from '../../../shared/ui/context/popup-adapter-proxy.service';
@@ -66,6 +67,7 @@ import {
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
+  private readonly initializationErrors = inject(ErrorHandler);
   private readonly popupAdapters = inject(PopupAdapterProxyService);
   protected readonly deploymentBranding =
     inject(DeploymentConfigurationService).branding;
@@ -149,7 +151,11 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
+    void this.initializeWorkspace().catch(error => this.initializationErrors.handleError(error));
+  }
+
+  private async initializeWorkspace(): Promise<void> {
     if (!this.workspace.dashboard()) {
       const session = await this.sessionService.ensureSession();
       if (session) {

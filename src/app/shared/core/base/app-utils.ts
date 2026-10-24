@@ -77,6 +77,32 @@ const ASCII_EMOJI_TOKEN_REGEX = new RegExp(
 );
 
 export class AppUtils {
+  static trimEndCharacters(value: string, characters: string): string {
+    let end = value.length;
+    while (end > 0 && characters.includes(value[end - 1])) end--;
+    return value.slice(0, end);
+  }
+
+  static trimCharacters(value: string, characters: string): string {
+    const trimmedEnd = this.trimEndCharacters(value, characters);
+    let start = 0;
+    while (start < trimmedEnd.length && characters.includes(trimmedEnd[start])) start++;
+    return trimmedEnd.slice(start);
+  }
+
+  static isEmail(value: string): boolean {
+    const separator = value.indexOf('@');
+    const domainDot = value.lastIndexOf('.');
+    return separator > 0 && separator === value.lastIndexOf('@')
+      && domainDot > separator + 1 && domainDot < value.length - 1
+      && !/\s/.test(value);
+  }
+
+  // Canonical keys and signatures use UTF-16 order, independent of the user's locale.
+  static compareCodeUnits(left: string, right: string): number {
+    return left < right ? -1 : left > right ? 1 : 0;
+  }
+
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {
     const output: Record<string, T[]> = {};
     for (const [key, value] of Object.entries(input)) {

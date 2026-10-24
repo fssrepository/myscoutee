@@ -147,7 +147,7 @@ export class ActivityChatSingleRowConverter {
     }
     const title = `${dto.title ?? ''}`.trim();
     return title
-      .replace(/\s*[·-]\s*group channel\s*$/i, '')
+      .replace(/[·-]\s*group channel$/i, '')
       .trim() || 'Group';
   }
 

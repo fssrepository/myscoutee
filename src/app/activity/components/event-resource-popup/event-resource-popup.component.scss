@@ -2090,7 +2090,7 @@
     row-gap: 0.72rem;
   }
 
-  .event-resource-popup-shell .subevent-asset-view-grid.experience-form-grid > label,
+  .event-resource-popup-shell .subevent-asset-view-grid.experience-form-grid > :is(label, .subevent-asset-view-field),
   .event-resource-popup-shell .subevent-asset-view-grid .experience-description-field,
   .event-resource-popup-shell .subevent-asset-view-summary-panel {
     grid-column: 1 / -1;

@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import SUPPORTED_CONTENT_LANGUAGES from '../../../../common/content-languages.json';
 import { sanitizeHtml } from '../../../../base/html-sanitizer';
 import type {
@@ -400,7 +401,7 @@ export class LocalHelpCenterService {
       (Array.isArray(approvedSectionIds) ? approvedSectionIds : [])
         .map(sectionId => `${sectionId ?? ''}`.trim())
         .filter(sectionId => optionalSectionIds.has(sectionId))
-    )).sort();
+    )).sort(AppUtils.compareCodeUnits);
   }
 
   private ensureEditable(table: HelpCenterTable, kind: HelpCenterDocumentKind, context?: string | null, revisionId?: string | null): void {
@@ -834,14 +835,13 @@ export class LocalHelpCenterService {
   }
 
   private slugify(value: string): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/[^a-z0-9]+/g, '-'), "-");
   }
 
   private newId(prefix: string): string {
-    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${prefix}-${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 }

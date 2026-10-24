@@ -1,3 +1,5 @@
+import { ErrorHandler } from '@angular/core';
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import {
   clampNumber,
   UiDateUtils,
@@ -150,6 +152,7 @@ interface ResourceAssignmentRemovalRequest {
   styleUrls: ['./event-resource-popup.component.scss']
 })
 export class EventResourcePopupComponent {
+  private readonly actionErrors = inject(ErrorHandler);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
 
@@ -294,7 +297,7 @@ export class EventResourcePopupComponent {
         this.toggleAssignedAssetJoinPolicy(request.policyId);
         return;
       case 'assignedAssetJoinConfirm':
-        this.confirmAssignedAssetJoin(request.event);
+        void this.confirmAssignedAssetJoin(request.event).catch(error => this.actionErrors.handleError(error));
         return;
     }
   }
@@ -479,7 +482,7 @@ export class EventResourcePopupComponent {
 
   protected openAssetViewMembers(view: ResourceAssetViewState, event: Event): void {
     event.stopPropagation();
-    this.openAssetMembersPopup(view.card, event);
+    void this.openAssetMembersPopup(view.card, event).catch(error => this.actionErrors.handleError(error));
   }
 
   protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
@@ -3939,7 +3942,7 @@ export class EventResourcePopupComponent {
   private newManualAssignmentRequestId(subEventId: string, assetId: string): string {
     const generation = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      : `${Date.now()}-${secureRandomUuid()}`;
     return `manual:${subEventId}:${assetId}:${generation}`;
   }
 

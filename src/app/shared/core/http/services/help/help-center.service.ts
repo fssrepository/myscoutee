@@ -277,7 +277,7 @@ export class HttpHelpCenterService {
       (Array.isArray(value?.approvedOptionalSectionIds) ? value.approvedOptionalSectionIds : [])
         .map(sectionId => `${sectionId ?? ''}`.trim())
         .filter(Boolean)
-    )).sort();
+    )).sort(AppUtils.compareCodeUnits);
     return {
       id,
       userId,

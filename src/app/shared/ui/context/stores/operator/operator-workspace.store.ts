@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../core/base/app-utils';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
 import { DeploymentConfigurationService } from '../../../../core/base/services/platform/deployment-configuration.service';
@@ -212,9 +213,7 @@ export class OperatorWorkspaceStore {
       && Boolean(draft.registeredAddress.trim())
       && Boolean(draft.verificationContactName.trim())
       && Boolean(draft.verificationContactRole.trim())
-      && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        draft.verificationContactEmail.trim()
-      )
+      && AppUtils.isEmail(draft.verificationContactEmail.trim())
       && this.validPublicWebsite(draft.website)
       && draft.authorityAttested
     );
@@ -356,7 +355,7 @@ export class OperatorWorkspaceStore {
     }
     if (
       draft.mode === 'AUTOMATIC'
-      && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.contactEmail.trim())
+      && !AppUtils.isEmail(draft.contactEmail.trim())
     ) {
       return false;
     }

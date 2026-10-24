@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { type ListQuery as SharedListQuery, clampNumber, UiDateUtils } from '@fssrepository/myscoutee-components';
 
 import { isCurrentFollowedEvent } from '../../builders/accounts/following-state.builder';
@@ -2043,11 +2044,11 @@ export class LocalEventsRepository {
       if (!homeMemberId || !awayMemberId || homeMemberId === awayMemberId) {
         return this.querySubEventLeaderboard(eventId, subEventId);
       }
-      const pairKey = [homeMemberId, awayMemberId].sort().join(':');
+      const pairKey = [homeMemberId, awayMemberId].sort(AppUtils.compareCodeUnits).join(':');
       const matches = [...(this.localFifaMatchesByGroupKey.get(key) ?? [])];
-      const index = matches.findIndex(match => [match.homeMemberId, match.awayMemberId].sort().join(':') === pairKey);
+      const index = matches.findIndex(match => [match.homeMemberId, match.awayMemberId].sort(AppUtils.compareCodeUnits).join(':') === pairKey);
       const nextMatch: ContractTypes.SubEventLeaderboardFifaMatch = {
-        id: index >= 0 ? matches[index].id : `local-fifa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: index >= 0 ? matches[index].id : `local-fifa-${Date.now()}-${secureRandomUuid()}`,
         stageId: subEventId,
         groupId,
         homeMemberId,
@@ -2072,7 +2073,7 @@ export class LocalEventsRepository {
     }
     const scoreEntries = [...(this.localScoreEntriesByGroupKey.get(key) ?? [])];
     scoreEntries.push({
-      id: `local-score-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `local-score-${Date.now()}-${secureRandomUuid()}`,
       stageId: subEventId,
       groupId,
       memberId,

@@ -1,4 +1,25 @@
-import { secureRandomUuid } from './secure-random';
+import { secureRandomInt, secureRandomUuid } from './secure-random';
+
+describe('secureRandomInt', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('rejects samples outside the evenly divisible range before selecting a shuffle index', () => {
+    const getRandomValues = vi.fn()
+      .mockImplementationOnce((sample: Uint32Array) => { sample[0] = 0xffffffff; return sample; })
+      .mockImplementationOnce((sample: Uint32Array) => { sample[0] = 7; return sample; });
+    vi.stubGlobal('crypto', { getRandomValues });
+    expect(secureRandomInt(3)).toBe(1);
+    expect(getRandomValues).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects invalid bounds and missing cryptographic randomness', () => {
+    for (const bound of [0, -1, 1.5, Infinity, 0x100000001]) {
+      expect(() => secureRandomInt(bound)).toThrow(RangeError);
+    }
+    vi.stubGlobal('crypto', undefined);
+    expect(() => secureRandomInt(2)).toThrow('Secure random generator is unavailable');
+  });
+});
 
 describe('secureRandomUuid', () => {
   afterEach(() => vi.unstubAllGlobals());

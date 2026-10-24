@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { SHARE_TOKENS_TABLE_NAME, type ShareTokenRecord } from '../../entity/content/sharing.entity';
 import { Injectable, inject } from '@angular/core';
 
@@ -29,7 +30,7 @@ export class LocalShareTokensRepository {
     }
     const now = new Date();
     const expiresAt = new Date(now.getTime() + LocalShareTokensRepository.TOKEN_TTL_MS);
-    const tokenId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tokenId = secureRandomUuid();
     const token = `myscoutee:token:${tokenId}`;
     const record: ShareTokenRecord = {
       token,

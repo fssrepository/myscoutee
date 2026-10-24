@@ -1,3 +1,5 @@
+import { AppUtils } from '../../../../base/app-utils';
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { LocalRoleNotificationsService } from '../notifications/role-notifications.service';
 import { Injectable, inject } from '@angular/core';
 
@@ -165,7 +167,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         baseUrl: draft.baseUrl,
         registryScope: draft.registryScope,
         registryIdentity: {
-          identityEndpoint: `${draft.baseUrl.replace(/\/+$/, '')}/v1/registry/identity`,
+          identityEndpoint: `${AppUtils.trimEndCharacters(draft.baseUrl, "/")}/v1/registry/identity`,
           protocolVersion: '1',
           registryScope: draft.registryScope
         },
@@ -211,7 +213,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         baseUrl,
         registryScope,
         registryIdentity: {
-          identityEndpoint: `${baseUrl.replace(/\/+$/, '')}/v1/registry/identity`,
+          identityEndpoint: `${AppUtils.trimEndCharacters(baseUrl, "/")}/v1/registry/identity`,
           protocolVersion: '1',
           registryScope
         },
@@ -1512,7 +1514,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       || !normalized.website
       || !normalized.verificationContactName
       || !normalized.verificationContactRole
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.verificationContactEmail)
+      || !AppUtils.isEmail(normalized.verificationContactEmail)
       || !normalized.authorityAttested
     ) {
       throw new Error('operator.claim.verification.error.required');
@@ -1697,8 +1699,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   private createToken(prefix: string): string {
-    const random = globalThis.crypto?.randomUUID?.().replaceAll('-', '')
-      ?? `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+    const random = secureRandomUuid().replaceAll('-', '');
     return `${prefix}_${random}`;
   }
 

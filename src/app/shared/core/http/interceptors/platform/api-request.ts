@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { environment } from '../../../../../../environments/environment';
 
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
@@ -18,17 +19,17 @@ export function isOperatorBootstrapLoginRequest(url: string): boolean {
   if (!isApiRequest(url)) {
     return false;
   }
-  const normalizedApiBase = apiBaseUrl.replace(/\/+$/, '');
+  const normalizedApiBase = AppUtils.trimEndCharacters(apiBaseUrl, "/");
   if (url === `${normalizedApiBase}/auth/operator-bootstrap`) {
     return true;
   }
   if (typeof document === 'undefined') {
     return false;
   }
-  const absoluteApiBaseUrl = new URL(
+  const absoluteApiBaseUrl = AppUtils.trimEndCharacters(new URL(
     normalizedApiBase,
     document.baseURI
-  ).toString().replace(/\/+$/, '');
+  ).toString(), "/");
   return url === `${absoluteApiBaseUrl}/auth/operator-bootstrap`;
 }
 
@@ -36,7 +37,7 @@ export function isAdminRequest(url: string): boolean {
   if (!isApiRequest(url)) {
     return false;
   }
-  const normalizedApiBase = apiBaseUrl.replace(/\/+$/, '');
+  const normalizedApiBase = AppUtils.trimEndCharacters(apiBaseUrl, "/");
   if (url.startsWith(`${normalizedApiBase}/admin/`)) {
     return true;
   }
@@ -46,6 +47,6 @@ export function isAdminRequest(url: string): boolean {
   if (typeof document === 'undefined') {
     return false;
   }
-  const absoluteApiBaseUrl = new URL(normalizedApiBase, document.baseURI).toString().replace(/\/+$/, '');
+  const absoluteApiBaseUrl = AppUtils.trimEndCharacters(new URL(normalizedApiBase, document.baseURI).toString(), "/");
   return url === `${absoluteApiBaseUrl}/admin` || url.startsWith(`${absoluteApiBaseUrl}/admin/`);
 }

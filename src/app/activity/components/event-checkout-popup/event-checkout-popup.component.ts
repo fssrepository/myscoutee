@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import {
   UiLinkUtils,
@@ -859,7 +860,7 @@ export class EventCheckoutPopupComponent {
             `${row.currency ?? itemCurrency}`.trim(),
             Number.isFinite(row.multiplier) ? `${Math.max(1, Math.trunc(Number(row.multiplier)))}` : ''
           ].join('~'))
-          .sort()
+          .sort(AppUtils.compareCodeUnits)
           .join(',');
         return [
           `${item.id ?? ''}`.trim(),
@@ -878,12 +879,12 @@ export class EventCheckoutPopupComponent {
           pricingRows
         ].join('|');
       })
-      .sort();
+      .sort(AppUtils.compareCodeUnits);
     const totalAmount = items
       .reduce((sum, item) => sum + ((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1))), 0);
     const currency = items.find(item => item.currency?.trim())?.currency?.trim() || fallbackCurrency;
-    const optionalIds = [...this.selectedOptionalSubEventIds].map(item => item.trim()).filter(Boolean).sort();
-    const policyIds = [...this.acceptedPolicyIds].map(item => item.trim()).filter(Boolean).sort();
+    const optionalIds = [...this.selectedOptionalSubEventIds].map(item => item.trim()).filter(Boolean).sort(AppUtils.compareCodeUnits);
+    const policyIds = [...this.acceptedPolicyIds].map(item => item.trim()).filter(Boolean).sort(AppUtils.compareCodeUnits);
     return JSON.stringify({
       pendingReason: pendingReasonOverride === undefined ? this.checkoutActionPendingReason() : pendingReasonOverride,
       slotSourceId: this.selectedSlotSourceId?.trim() || null,

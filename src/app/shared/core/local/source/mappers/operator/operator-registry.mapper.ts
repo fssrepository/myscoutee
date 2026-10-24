@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import type { ListQuery } from '@fssrepository/myscoutee-components';
 import { OperatorConfigurationMapper } from '../../../../base/mappers/operator/operator-configuration.mapper';
 import type {
@@ -396,7 +397,7 @@ export class LocalOperatorRegistryMapper {
       baseUrl: draft.baseUrl,
       simulation: true,
       registryIdentity: {
-        identityEndpoint: `${draft.baseUrl.replace(/\/+$/, '')}/v1/registry/identity`,
+        identityEndpoint: `${AppUtils.trimEndCharacters(draft.baseUrl, "/")}/v1/registry/identity`,
         protocolVersion: '1',
         registryScope: draft.registryScope
       }

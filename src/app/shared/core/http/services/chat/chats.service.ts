@@ -1174,7 +1174,7 @@ export class HttpChatsService implements IChatsService {
     if (/^(?:https?:|data:|blob:|indexeddb:)/i.test(url) || url.startsWith('/api/')) {
       resolvedUrl = url;
     } else {
-      const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
+      const baseUrl = AppUtils.trimEndCharacters(this.apiBaseUrl, "/");
       if (url.startsWith('/media/')) {
         resolvedUrl = `${baseUrl}${url}`;
       } else if (url.startsWith('media/')) {
@@ -1516,7 +1516,7 @@ export class HttpChatsService implements IChatsService {
     if (typeof window === 'undefined') {
       return null;
     }
-    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/activities/chats/ws`, window.location.origin);
+    const baseUrl = new URL(`${AppUtils.trimEndCharacters(this.apiBaseUrl, "/")}/activities/chats/ws`, window.location.origin);
     baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     baseUrl.searchParams.set('chatId', chatId);
     const activeUserId = this.activeUserId();

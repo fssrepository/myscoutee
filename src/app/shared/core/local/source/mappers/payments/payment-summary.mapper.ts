@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import type { PaymentEuroSummaryDto } from '../../../../contracts/payments/payment-method.interface';
 import { SEED_PAYMENT_EXCHANGE_RATES } from '../../../seed/payment-exchange-rates';
 
@@ -8,7 +9,7 @@ export class LocalPaymentSummaryMapper {
     const saved = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${userId}`) || 'EUR';
     const currency = Object.hasOwn(SEED_PAYMENT_EXCHANGE_RATES, saved) ? saved : 'EUR';
     const result: PaymentEuroSummaryDto = {
-      currency, currencies: Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort(),
+      currency, currencies: Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort(AppUtils.compareCodeUnits),
       outgoing: 0, incoming: 0, gross: 0, refunded: 0, net: 0, missingRates: 0
     };
     for (const row of rows) {

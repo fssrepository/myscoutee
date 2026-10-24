@@ -91,7 +91,7 @@
                           <th>{{ 'member' | i18n }}</th>
                           <th>{{ 'event.tournament.score.label' | i18n }}</th>
                           <th>{{ 'updates' | i18n }}</th>
-                          <th aria-hidden="true"></th>
+                          <th [attr.aria-label]="'admin.jobs.table.actions' | i18n"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -129,7 +129,7 @@
                           <th>W-D-L</th>
                           <th>{{ 'event.tournament.goals.abbreviation' | i18n }}</th>
                           <th>{{ 'event.tournament.goalDifference.abbreviation' | i18n }}</th>
-                          <th aria-hidden="true"></th>
+                          <th [attr.aria-label]="'admin.jobs.table.actions' | i18n"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -234,7 +234,7 @@
       [saving]="isMutating"
       (modelChange)="onGroupFormModelChange($event)"
       (save)="saveGroupForm($event)"
-      (cancel)="closeGroupForm($event)"
+      (cancelled)="closeGroupForm($event)"
     ></app-event-subevent-group-form-popup>
 
     @if (showEntryForm) {

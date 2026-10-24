@@ -1,3 +1,4 @@
+import { secureRandomInt } from '../../../../common/secure-random';
 import { Injectable } from '@angular/core';
 
 import type { CountryPartition } from '../../entity/platform/country-partition.entity';
@@ -34,7 +35,7 @@ export class LocalCountryPartitionsRepository {
   }
 
   randomPartition(): CountryPartition {
-    const partition = DEMO_COUNTRY_PARTITIONS[Math.floor(Math.random() * DEMO_COUNTRY_PARTITIONS.length)];
+    const partition = DEMO_COUNTRY_PARTITIONS[secureRandomInt(DEMO_COUNTRY_PARTITIONS.length)];
     return { ...partition, locationCoordinates: { ...partition.locationCoordinates } };
   }
 

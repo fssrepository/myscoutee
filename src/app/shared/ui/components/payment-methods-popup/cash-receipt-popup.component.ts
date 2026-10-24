@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, EventEmitter, Input, Output, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivityInvitePopupStore } from '../../context/stores/activity/activity-invite-popup.store';
 import { PaymentMethodsService } from '../../../core/base/services/payments/payment-methods.service';
@@ -26,7 +26,7 @@ import type { CashReceiptRequestDto, PaymentHistoryMutationDto } from '../../../
     </app-popup>
   `
 })
-export class CashReceiptPopupComponent {
+export class CashReceiptPopupComponent implements OnInit, OnDestroy {
   @Input({ required: true }) userId = '';
   @Input() currency = 'EUR';
   @Output() readonly recorded = new EventEmitter<PaymentHistoryMutationDto>();

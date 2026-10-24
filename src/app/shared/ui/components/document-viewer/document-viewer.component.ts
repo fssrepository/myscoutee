@@ -340,12 +340,12 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   private currentSelectedSectionIds(): string[] {
-    return Array.from(this.selectedSectionIds).sort();
+    return Array.from(this.selectedSectionIds).sort(AppUtils.compareCodeUnits);
   }
 
   private isSelectionDirty(): boolean {
     const current = this.currentSelectedSectionIds();
-    const initial = Array.from(this.initialSelectedSectionIds).sort();
+    const initial = Array.from(this.initialSelectedSectionIds).sort(AppUtils.compareCodeUnits);
     if (current.length !== initial.length) {
       return true;
     }

@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { Injectable, inject } from '@angular/core';
 
@@ -1095,7 +1096,7 @@ export class LocalAssetsRepository {
     if (!promotedExistingRequest) {
       const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        : `${Date.now()}-${secureRandomUuid()}`;
       next.push({
         id: `${record.id}:manager:${normalizedTargetUserId}:${requestId}`,
         userId: normalizedTargetUserId,

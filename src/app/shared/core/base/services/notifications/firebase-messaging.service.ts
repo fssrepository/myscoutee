@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../common/secure-random';
 import {
   DestroyRef,
   Injectable,
@@ -126,7 +127,7 @@ export class FirebaseMessagingService {
       window.addEventListener('focus', refresh);
       document.addEventListener('visibilitychange', refresh);
       let permissionStatus: PermissionStatus | null = null;
-      void navigator.permissions?.query({ name: 'notifications' }).then(status => {
+      void navigator.permissions?.query({ name: 'notifications' }).then(status => { // NOSONAR S7059: lifetime permission observer, with rejection handling and destroy cleanup.
         if (this.destroyRef.destroyed) return;
         permissionStatus = status;
         status.addEventListener('change', refresh);
@@ -577,7 +578,7 @@ export class FirebaseMessagingService {
     }
     const next = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
-      : `web-${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+      : `web-${Date.now()}-${secureRandomUuid()}`;
     localStorage.setItem(FirebaseMessagingService.DEVICE_ID_STORAGE_KEY, next);
     return next;
   }

@@ -194,7 +194,7 @@ export class LocalAdminParamsService extends LocalRouteDelayService {
     if (!normalizedSummary || !normalizedSection) {
       return '';
     }
-    if (/^Updated\s+.+?\s+parameters\.$/i.test(normalizedSummary)) {
+    if (/^Updated .+ parameters\.$/i.test(normalizedSummary.replace(/\s+/g, ' '))) {
       return `admin.params.summary.updated.${normalizedSection}`;
     }
     return '';

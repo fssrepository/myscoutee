@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../../../core/common/secure-random';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   UiDateUtils,
@@ -1077,7 +1078,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return `exp-${crypto.randomUUID()}`;
     }
-    return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return `exp-${Date.now()}-${secureRandomUuid()}`;
   }
 
   private menuItemId(prefix: string, value: string): string {

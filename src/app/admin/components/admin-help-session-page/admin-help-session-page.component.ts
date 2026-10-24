@@ -1,3 +1,4 @@
+import { ErrorHandler } from '@angular/core';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   NgComponentOutlet
@@ -39,6 +40,7 @@ import { MemberMenuStore } from '../../../shared/ui/context/stores/app/member-me
   styleUrl: './admin-help-session-page.component.scss'
 })
 export class AdminHelpSessionPageComponent implements OnInit {
+  private readonly initializationErrors = inject(ErrorHandler);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
@@ -50,7 +52,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
   protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
   protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
+    void this.initializeSharedView().catch(error => this.initializationErrors.handleError(error));
+  }
+
+  private async initializeSharedView(): Promise<void> {
     await this.openSharedUserView();
   }
 

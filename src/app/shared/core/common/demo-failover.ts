@@ -36,7 +36,7 @@ export function demoSeedUserIds(): Promise<Map<string, string>> {
   // This maps public demo identities; it is not authentication or a signature.
   return idsPromise ??= Promise.all(Array.from({ length: 50 }, async (_, index) => {
     const id = `u${index + 1}`;
-    const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(`users:${id}`));
+    const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(`users:${id}`)); // NOSONAR S4790: compatibility mapping of public demo IDs, never authentication or integrity.
     const httpId = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 24);
     return [httpId, id] as const;
   })).then(entries => new Map(entries));

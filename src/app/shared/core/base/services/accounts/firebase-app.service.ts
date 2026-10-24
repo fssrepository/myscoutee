@@ -1,3 +1,5 @@
+import { AppUtils } from '../../app-utils';
+import { secureRandomUuid } from '../../../common/secure-random';
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import {
   deleteApp,
@@ -128,7 +130,7 @@ export class FirebaseAppService {
     ) {
       return null;
     }
-    const apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+    const apiBaseUrl = AppUtils.trimEndCharacters((environment.apiBaseUrl ?? '/api'), "/");
     const configUrl = new URL(
       `${apiBaseUrl}${FirebaseAppService.FIREBASE_CONFIG_PATH}`,
       document.baseURI
@@ -311,7 +313,7 @@ export class FirebaseAppService {
         typeof crypto !== 'undefined'
         && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`;
+          : `${Date.now()}-${secureRandomUuid()}`;
       localStorage.setItem(
         APP_STORAGE_KEYS.firebaseConfigurationInvalidation,
         nonce

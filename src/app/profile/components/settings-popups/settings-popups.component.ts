@@ -280,7 +280,7 @@ export class ProfileSettingsPopupsComponent {
       const optionalSectionIds = this.optionalPrivacySectionIds(revision.sections);
       const approvedOptionalSectionIds = Array.from(new Set(selectedSectionIds))
         .filter(sectionId => optionalSectionIds.has(sectionId))
-        .sort();
+        .sort(AppUtils.compareCodeUnits);
       const consent = await this.privacyPolicy.saveConsent({
         userId,
         revisionId: revision.id,

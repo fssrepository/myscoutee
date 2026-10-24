@@ -46,7 +46,7 @@
             </button>
           </div>
           <div class="pricing-slot-panel__card-grid">
-            <label class="pricing-slot-panel__field">
+            <div class="pricing-slot-panel__field">
               <span>{{ 'pricing.slot.label' | i18n }}</span>
               <app-menu-trigger
                 [menuId]="slotMenuId(override)"
@@ -55,7 +55,7 @@
                 [trigger]="slotMenuTrigger(override)"
                 [items]="slotMenuItems(override, $index)"
               ></app-menu-trigger>
-            </label>
+            </div>
             <label class="pricing-slot-panel__field">
               <span>{{ 'pricing.slot.price.label' | i18n }}</span>
               <div class="pricing-slot-panel__money-field">

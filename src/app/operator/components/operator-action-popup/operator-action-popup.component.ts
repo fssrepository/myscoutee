@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { OperatorEmailConfigurationComponent } from '../operator-email-configuration/operator-email-configuration.component';
 import {
   ChangeDetectionStrategy,
@@ -1820,7 +1821,7 @@ export class OperatorActionPopupComponent {
   }
 
   private validClaimEmail(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+    return AppUtils.isEmail(value.trim());
   }
 
   private validClaimWebsite(value: string): boolean {

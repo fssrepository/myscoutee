@@ -1299,9 +1299,8 @@ export class ProfileFormFlowConverter {
   }
 
   private static idToken(value: string): string {
-    return AppUtils.normalizeText(value)
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'item';
+    return AppUtils.trimCharacters(AppUtils.normalizeText(value)
+      .replace(/[^a-z0-9]+/g, '-'), "-") || 'item';
   }
 }
 

@@ -123,7 +123,7 @@ export class LocalIdeaPostsMapper {
 
   private static htmlToText(value: string): string {
     if (typeof document === 'undefined') {
-      return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return value.replace(/<[^<>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     }
     const template = document.createElement('template');
     template.innerHTML = value;

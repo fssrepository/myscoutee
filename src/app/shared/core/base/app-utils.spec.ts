@@ -1,5 +1,31 @@
 import { AppUtils } from './app-utils';
 
+describe('AppUtils canonical ordering', () => {
+  it('keeps mixed case, punctuation and Unicode identifiers in the persisted key order', () => {
+    expect(['z', 'A', 'a', 'ä', '_', '10', '2'].sort(AppUtils.compareCodeUnits))
+      .toEqual(['10', '2', 'A', '_', 'a', 'z', 'ä']);
+  });
+});
+
+describe('AppUtils input normalization', () => {
+  it('removes only the configured edge characters and preserves internal separators', () => {
+    expect(AppUtils.trimCharacters('---public--guide---', '-')).toBe('public--guide');
+    expect(AppUtils.trimEndCharacters('https://example.test/path///', '/')).toBe('https://example.test/path');
+    expect(AppUtils.trimEndCharacters('url).!a', ').!')).toBe('url).!a');
+    expect(AppUtils.trimCharacters('-'.repeat(100_000), '-')).toBe('');
+  });
+
+  it.each(['member@example.test', 'a+b@sub.example.test', 'a@b..test'])('accepts the existing email syntax: %s', value => {
+    expect(AppUtils.isEmail(value)).toBe(true);
+  });
+
+  it('rejects invalid syntax and a long domain without a dot', () => {
+    for (const value of ['@example.test', 'a@.test', 'a@example.', 'a@@example.test', 'a b@example.test', 'a@' + 'b'.repeat(100_000)]) {
+      expect(AppUtils.isEmail(value)).toBe(false);
+    }
+  });
+});
+
 describe('AppUtils media image variants', () => {
   it.each(['private', 'public/demo', 'public/branding'])('uses the small variant within the %s namespace', namespace => {
     const path = namespace === 'private' ? '/api/media/private' : '/media/public';

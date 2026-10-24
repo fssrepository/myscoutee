@@ -230,11 +230,10 @@ export class NotificationSingleRowConverter implements UiConverter<
   }
 
   private notificationKey(kind: string, field: 'title' | 'message'): string {
-    const normalizedKind = `${kind ?? ''}`
+    const normalizedKind = AppUtils.trimCharacters(`${kind ?? ''}`
       .trim()
       .toLocaleLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/[^a-z0-9]+/g, '-'), "-");
     return normalizedKind ? `notification.kind.${normalizedKind}.${field}` : '';
   }
 

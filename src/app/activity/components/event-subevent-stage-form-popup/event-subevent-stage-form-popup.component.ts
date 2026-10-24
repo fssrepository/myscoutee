@@ -137,7 +137,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   };
 
   @Output() readonly save = new EventEmitter<EventSubeventStageFormSubmit>();
-  @Output() readonly cancel = new EventEmitter<Event>();
+  @Output() readonly cancelled = new EventEmitter<Event>();
 
   @ViewChild('nameInput') private nameInput?: ElementRef<HTMLInputElement>;
   @ViewChild('descriptionInput') private descriptionInput?: ElementRef<HTMLTextAreaElement>;
@@ -182,7 +182,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       bodyLayout: 'fill',
       backdropTone: 'dim',
       headerControls: this.stagePopupHeaderControls(),
-      onClose: event => this.cancel.emit(event),
+      onClose: event => this.cancelled.emit(event),
       onMenuSelect: event => this.onStagePopupMenuSelect(event)
     };
   }

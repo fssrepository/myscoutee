@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import type {
   DeploymentPrivacyContactDto,
   DeploymentSocialLinkDto
@@ -50,7 +51,7 @@ export class OperatorConfigurationMapper {
     if (
       privacyContactEmail.length > this.PRIVACY_CONTACT_EMAIL_MAX_LENGTH
       || /[\u0000-\u001f\u007f-\u009f]/.test(privacyContactEmail)
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(privacyContactEmail)
+      || !AppUtils.isEmail(privacyContactEmail)
     ) {
       return 'operator.configuration.privacy.email.invalid';
     }
@@ -85,7 +86,7 @@ export class OperatorConfigurationMapper {
     }
     return emails.some(email =>
       email.length > this.ADMIN_EMAIL_MAX_LENGTH
-      || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email)
+      || (!AppUtils.isEmail(email) || /[,;]/.test(email))
     )
       ? 'operator.configuration.admin.email.invalid'
       : null;
@@ -219,7 +220,7 @@ export class OperatorConfigurationMapper {
       ) {
         return '';
       }
-      return url.toString().replace(/\/+$/, '');
+      return AppUtils.trimEndCharacters(url.toString(), "/");
     } catch {
       return '';
     }
@@ -275,7 +276,7 @@ export class OperatorConfigurationMapper {
     }
     return (
       merchantAccount.length > this.PAYMENT_MERCHANT_ACCOUNT_MAX_LENGTH
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(merchantAccount)
+      || !AppUtils.isEmail(merchantAccount)
     )
       ? 'operator.configuration.payment.merchant.account.invalid'
       : null;

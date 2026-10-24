@@ -1,3 +1,4 @@
+import { AppUtils } from './app-utils';
 import type { ActivityRateDTO } from '../contracts/common/activity.interface';
 import type { UserRateRecord } from '../local/source/entity/affinity/rate.entity';
 
@@ -6,7 +7,7 @@ export function projectCampaignRateRecords(records: readonly UserRateRecord[]): 
   const pairs = new Map<string, UserRateRecord[]>();
   for (const record of records) {
     if (record.mode !== 'single' || !record.ownerUserId) continue;
-    const ids = [record.fromUserId, record.toUserId].sort();
+    const ids = [record.fromUserId, record.toUserId].sort(AppUtils.compareCodeUnits);
     if (!ids[0] || !ids[1] || ids[0] === ids[1]) continue;
     const key = ids.join('\n');
     const rows = pairs.get(key) ?? []; rows.push(record); pairs.set(key, rows);
@@ -16,7 +17,7 @@ export function projectCampaignRateRecords(records: readonly UserRateRecord[]): 
     if (!rows.some(row => row.campaignId)) continue;
     rows.sort((a, b) => b.updatedAtIso.localeCompare(a.updatedAtIso));
     const latest = rows[0];
-    const [left, right] = [latest.fromUserId, latest.toUserId].sort();
+    const [left, right] = [latest.fromUserId, latest.toUserId].sort(AppUtils.compareCodeUnits);
     const average = (actor: string) => {
       const values = new Map<string, number>();
       for (const row of rows) if (row.ownerUserId === actor && (row.scoreGiven ?? row.rate) > 0)

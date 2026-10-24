@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { baseGroupId, groupType, isBaseGroupId, groupPriorityEnabled } from '../../../../contracts/groups/group-type';
 import { LocalCommunityGroupsRepository } from '../../repositories/groups/community-groups.repository';
 import { LocalCampaignsService } from '../campaigns/campaigns.service';
@@ -2783,8 +2784,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return;
     }
     const createdAtIso = new Date().toISOString();
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const records: NotificationRecord[] = recipientUserIds.map(recipientUserId => ({
       id: `event-member-joined:${eventId}:${memberUserId}:${occurrenceId}:${recipientUserId}`,
       recipientUserId,
@@ -2939,8 +2939,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   private localNotificationId(kind: string, sourceId: string, recipientUserId: string): string {
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     return `${kind}:${sourceId}:${recipientUserId}:${occurrenceId}`;
   }
 

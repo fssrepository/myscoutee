@@ -342,6 +342,20 @@ export class OperatorRevenueViewComponent {
     this.selectedTimeline.set(point);
   }
 
+  protected timelineSelectionIndex(points: readonly OperatorRevenueTimelinePointDto[]): number {
+    const index = points.findIndex(point => point.dateKey === this.selectedTimeline()?.dateKey);
+    return index < 0 ? Math.max(0, points.length - 1) : index;
+  }
+
+  protected moveTimelineSelection(event: KeyboardEvent, points: readonly OperatorRevenueTimelinePointDto[]): void {
+    if (!points.length || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const current = this.timelineSelectionIndex(points);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? points.length - 1
+      : Math.max(0, Math.min(points.length - 1, current + (event.key === 'ArrowLeft' ? -1 : 1)));
+    this.selectedTimeline.set(points[next]);
+    event.preventDefault();
+  }
+
   protected startTimelineDrag(
     event: PointerEvent,
     points: readonly OperatorRevenueTimelinePointDto[]

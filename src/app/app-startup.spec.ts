@@ -15,6 +15,7 @@ import { I18nService } from './shared/core/base/services/localization/i18n.servi
 import { AppLocationService } from './shared/core/base/services/accounts/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 import { DemoBootstrapSelectorStore } from './shared/ui/context/stores/app/demo-bootstrap-selector.store';
+import { AppSetupStore } from './shared/ui/context/stores/app/app-setup.store';
 
 @Component({ selector: 'router-outlet', template: '' })
 class TestOutlet { @Output() activate = new EventEmitter<void>(); }
@@ -50,6 +51,7 @@ describe('application startup loading handoff', () => {
       { provide: SessionService, useValue: { currentSession } },
       { provide: OfflineCacheService, useValue: { readUser } },
       { provide: AppLocationService, useValue: { initialize: vi.fn() } },
+      { provide: AppSetupStore, useValue: { isOpen: signal(false) } },
       { provide: DeploymentConfigurationService, useValue: {
         initialize: vi.fn(), branding: signal({ productName: 'MyScoutee', logoUrl: '' })
       } }

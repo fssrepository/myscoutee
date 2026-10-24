@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from '../platform/route-delay.service';
@@ -688,8 +689,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     const participantUserIds = this.resourceNotificationMembers(state)
       .map(member => member.userId.trim());
     const createdAtIso = new Date().toISOString();
-    const occurrenceId = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const occurrenceId = secureRandomUuid();
     const notifications: NotificationRecord[] = assetIds.flatMap(assetId => {
       const asset = this.assetsRepository.peekAssetDetailForMembershipById(assetId);
       const assetTitle = `${asset?.title ?? 'Asset'}`.trim() || 'Asset';

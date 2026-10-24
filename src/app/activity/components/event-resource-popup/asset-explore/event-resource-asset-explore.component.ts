@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../shared/core/common/secure-random';
 import { I18nPipe } from '@fssrepository/myscoutee-components';
 import {
   clampNumber,
@@ -2685,8 +2686,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       capacityTotal: Math.max(0, card.capacityTotal),
       accepted: card.type === AppConstants.ASSET_TYPE_SUPPLIES
         ? this.subEventSupplyProvidedCount(card.id, subEventId)
-        : this.assetAcceptedCount(card, subEventId, managerUserId),
-      pending: this.assetPendingCount(card, subEventId, managerUserId),
+        : this.assetAcceptedCount(card, subEventId),
+      pending: this.assetPendingCount(card, subEventId),
       isMembers: false
     };
   }
@@ -2880,7 +2881,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             ...currentState.supplyContributionEntriesByAssetId,
             [card.id]: [
               {
-                id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                id: `subevent-supply-row-${Date.now()}-${secureRandomUuid()}`,
                 userId: activeUserId,
                 quantity: EventResourceAssetExploreComponent.BORROW_QUANTITY,
                 addedAtIso: UiDateUtils.toIsoDateTime(new Date())
@@ -3165,8 +3166,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private newBorrowRequestId(userId: string, assetId: string, subEventId: string): string {
-    const generation = globalThis.crypto?.randomUUID?.()
-      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const generation = secureRandomUuid();
     return `borrow:${userId}:${assetId}:${subEventId}:${generation}`;
   }
 
@@ -3178,7 +3178,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId);
   }
 
-  private assetRequestsForView(card: ResourceAssetDTO, subEventId: string, managerUserId: string | null = null): AppDTOs.AssetMemberRequestDTO[] {
+  private assetRequestsForView(card: ResourceAssetDTO, subEventId: string): AppDTOs.AssetMemberRequestDTO[] {
     const requests = card.requests
       .filter(request => this.isSubEventScopedAssetRequest(request, subEventId))
       .map(request => ({
@@ -3190,20 +3190,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             }
           : null
       }));
-    const normalizedManagerUserId = `${managerUserId ?? ''}`.trim();
-    if (!normalizedManagerUserId) {
-      return requests;
-    }
     return requests;
   }
 
-  private assetPendingCount(card: ResourceAssetDTO, subEventId?: string, managerUserId: string | null = null): number {
-    const requests = subEventId ? this.assetRequestsForView(card, subEventId, managerUserId) : card.requests;
+  private assetPendingCount(card: ResourceAssetDTO, subEventId?: string): number {
+    const requests = subEventId ? this.assetRequestsForView(card, subEventId) : card.requests;
     return requests.filter(request => request.status === 'pending').length;
   }
 
-  private assetAcceptedCount(card: ResourceAssetDTO, subEventId?: string, managerUserId: string | null = null): number {
-    const requests = subEventId ? this.assetRequestsForView(card, subEventId, managerUserId) : card.requests;
+  private assetAcceptedCount(card: ResourceAssetDTO, subEventId?: string): number {
+    const requests = subEventId ? this.assetRequestsForView(card, subEventId) : card.requests;
     return requests.filter(request => request.status === 'accepted').length;
   }
 

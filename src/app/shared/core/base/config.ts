@@ -1,3 +1,4 @@
+import { AppUtils } from './app-utils';
 export interface RouteConfigEntry {
   routePrefix: string;
   demoDelayMs?: number;
@@ -380,7 +381,7 @@ function normalizeRouteUrl(url: string): string {
   if (!trimmed || trimmed === '/') {
     return '/';
   }
-  return trimmed.startsWith('/') ? trimmed.replace(/\/+$/, '') : `/${trimmed}`.replace(/\/+$/, '');
+  return trimmed.startsWith('/') ? AppUtils.trimEndCharacters(trimmed, "/") : AppUtils.trimEndCharacters(`/${trimmed}`, "/");
 }
 
 function isRoutePrefixMatch(url: string, prefix: string): boolean {

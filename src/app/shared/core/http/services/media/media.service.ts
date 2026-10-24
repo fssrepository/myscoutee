@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
@@ -218,7 +219,7 @@ export class HttpMediaService {
     if (/^(?:https?:|data:|blob:|indexeddb:)/i.test(url) || url.startsWith('/api/')) {
       return url;
     }
-    const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
+    const baseUrl = AppUtils.trimEndCharacters(this.apiBaseUrl, "/");
     if (url.startsWith('/media/')) {
       return `${baseUrl}${url}`;
     }

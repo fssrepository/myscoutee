@@ -138,7 +138,7 @@ export class AdminPaymentSimulatorPopupComponent {
         return;
       }
       this.simulatorOrigin = new URL(access.url).origin;
-      this.sourceUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(access.url));
+      this.sourceUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(access.url)); // NOSONAR S6268: authenticated admin access URL, HTTP(S)-validated by HttpPaymentSimulatorAdminService.
     } catch (error) {
       if (generation !== this.requestGeneration || this.authorizationSurface() !== authorizationSurface) {
         return;

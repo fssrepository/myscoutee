@@ -489,7 +489,7 @@ export class AdminStatsPopupComponent {
     }
     const angle = this.graphNodeAngle(index, Math.max(1, total));
     const radius = axis === 0 ? 32 : 30;
-    const center = axis === 0 ? 50 : 50;
+    const center = 50;
     const trig = axis === 0 ? Math.cos(angle) : Math.sin(angle);
     return Math.round(center + trig * radius);
   }

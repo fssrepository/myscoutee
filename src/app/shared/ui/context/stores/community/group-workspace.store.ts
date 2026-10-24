@@ -161,7 +161,7 @@ export class GroupWorkspaceStore {
   }
   palette(id: string): AppMenuPalette {
     const palettes: AppMenuPalette[] = ['violet', 'orange', 'blue', 'rose', 'cyan', 'gold'];
-    const ids = this.workspaces().map(w => w.groupId).sort();
+    const ids = this.workspaces().map(w => w.groupId).sort(AppUtils.compareCodeUnits);
     return palettes[Math.max(0, ids.indexOf(id)) % palettes.length];
   }
   trigger(workspace: GroupWorkspace | null): Pick<AppMenuItem, 'label' | 'icon' | 'palette' | 'imageFallback' | 'imageShape'> {

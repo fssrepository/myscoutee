@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { finishLandingDebug, markLandingDebug } from '../../../shared/core/common/landing-debug';
 import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
 import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
@@ -1164,8 +1165,9 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   private openOnboardingGate(
     user: UserDto,
     redirectUrl: string,
-    copy: { title: string; message?: string } = { title: 'profile.setup' }
+    copy?: { title: string; message?: string }
   ): void {
+    copy ??= { title: 'profile.setup' };
     this.ngZone.run(() => {
       this.pendingRedirectAfterOnboarding = redirectUrl;
       this.onboardingUser = user;
@@ -1237,7 +1239,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
     }
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    return `${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 
   private emptyActivities(): UserDto['activities'] {
@@ -1551,7 +1553,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     const optionalSectionIds = this.optionalPrivacySectionIds(revision.sections);
     const approvedSectionIds = Array.from(new Set(selectedSectionIds))
       .filter(sectionId => optionalSectionIds.has(sectionId))
-      .sort();
+      .sort(AppUtils.compareCodeUnits);
     this.privacyPolicy.saveEntryOptionalApprovals(revision, approvedSectionIds);
     this.entryApprovedPrivacySectionIds = new Set(approvedSectionIds);
     this.entryOptionalApprovalsLoadedForRevision = this.privacyPolicy.revisionKey(revision);

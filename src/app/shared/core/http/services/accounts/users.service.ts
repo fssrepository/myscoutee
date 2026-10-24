@@ -582,7 +582,7 @@ export class HttpUsersService implements UserService {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => reject(reader.error);
+        reader.onerror = () => reject(reader.error ?? new Error('Failed to read avatar image'));
         reader.readAsDataURL(blob);
       });
       this.sessionService.setFirebaseAvatarPreviewData(sessionId, imageUrl, dataUrl);

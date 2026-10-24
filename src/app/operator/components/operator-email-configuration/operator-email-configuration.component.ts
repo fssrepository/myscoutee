@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -59,7 +60,8 @@ export class OperatorEmailConfigurationComponent implements OnInit, OnDestroy {
   protected readonly saved = signal(false);
   protected credential = '';
   private destroyed = false;
-  async ngOnInit() {
+  ngOnInit(): void { void this.loadConfiguration(); }
+  private async loadConfiguration(): Promise<void> {
     this.busy.set(true);
     try { const draft = await this.service.load(); if (!this.destroyed) { this.draft.set(draft); this.persisted.set(draft); } }
     catch { this.error.set(true); } finally { this.busy.set(false); }
@@ -81,7 +83,7 @@ export class OperatorEmailConfigurationComponent implements OnInit, OnDestroy {
     const changed = draft.enabled !== before.enabled || draft.providerId !== before.providerId
       || fromEmail !== before.fromEmail || fromName !== before.fromName || !!credential;
     const validProvider = draft.availableProviders.some(provider => provider.id === draft.providerId);
-    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail);
+    const validEmail = AppUtils.isEmail(fromEmail);
     return !changed || (fromEmail.length > 0 && !validEmail) || fromEmail.length > 254
       || fromName.length > 100 || credential.length > 4096 || /[\r\n]/.test(credential)
       || (draft.enabled && (!validProvider || !validEmail || (!draft.credentialConfigured && !credential)));

@@ -298,7 +298,7 @@ export class HttpIdeaPostsService {
   }
 
   private excerptFromHtml(value: string): string {
-    const text = `${value ?? ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const text = `${value ?? ''}`.replace(/<[^<>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     return text.length <= 180 ? text : `${text.slice(0, 179).trim()}...`;
   }
 

@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../base/app-utils';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -357,7 +358,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   private readonly i18n = inject(I18nService);
   private readonly sessionService = inject(SessionService);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+  private readonly apiBaseUrl = AppUtils.trimEndCharacters((environment.apiBaseUrl ?? '/api'), "/");
   private readonly endpoint = `${this.apiBaseUrl}${OPERATOR_REGISTRY_ROUTE}`;
   private readonly operatorEndpoint = `${this.apiBaseUrl}${OPERATOR_NETWORK_ROUTE}`;
   private latestUpdateAnnouncement: RemoteOperatorAnnouncement | null = null;
@@ -1725,7 +1726,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       || !payload.verificationContactRole
       || payload.verificationContactRole.length > 120
       || payload.verificationContactEmail.length > 254
-      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
+      || !AppUtils.isEmail(payload.verificationContactEmail)
       || !payload.authorityAttested
     ) {
       throw new Error('operator.claim.verification.error.required');

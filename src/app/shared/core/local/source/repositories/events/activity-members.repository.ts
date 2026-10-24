@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import type { AppMemorySchema } from '../../../common/memory.schema';
 import { GROUP_COUNTER_BUCKETS, groupMembershipBucket } from '../../../../contracts/groups/community-group.interface';
 import { MINGLE_SESSIONS_TABLE_NAME } from '../../entity/events/mingle.entity';
@@ -245,7 +246,7 @@ export class LocalActivityMembersRepository {
       .map(([eventId, group]) => ({
         eventId,
         eventName: group.eventName || eventId,
-        userIds: [...group.userIds].sort()
+        userIds: [...group.userIds].sort(AppUtils.compareCodeUnits)
       }))
       .filter(group => group.userIds.length > 1)
       .sort((left, right) => left.eventId.localeCompare(right.eventId));
@@ -266,8 +267,8 @@ export class LocalActivityMembersRepository {
   private refreshGameSocialCardsCache(activeUserId: string): void {
     const graph = this.queryAcceptedMemberGraph();
     const usersById = new Map(this.localActivityMemberUsers.map(user => [user.id, user] as const));
-    const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
-    const gameUserIds = [...usersById.keys()].sort();
+    const graphUserIds = [...graph.neighborsByUserId.keys()].sort(AppUtils.compareCodeUnits);
+    const gameUserIds = [...usersById.keys()].sort(AppUtils.compareCodeUnits);
     if (!UserProfileState.isPublicGameProfile(usersById.get(activeUserId))) {
       this.gameSocialCardsByUserId.set(activeUserId, { 'friends-in-common': [], 'separated-friends': [], 'outside-network': [] });
       return;
@@ -275,7 +276,7 @@ export class LocalActivityMembersRepository {
     const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
       .filter(userId => userId !== activeUserId)
       .filter(userId => UserProfileState.isInsideNetworkGameProfile(usersById.get(userId)))
-      .sort();
+      .sort(AppUtils.compareCodeUnits);
     const activeNeighborIds = new Set(activeNeighbors);
     const cards: LocalGameSocialCardsByMode = {
       'friends-in-common': [],
@@ -314,7 +315,7 @@ export class LocalActivityMembersRepository {
       const bridgeUserIds = activeNeighbors
         .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
         .filter(bridgeUserId => UserProfileState.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
-        .sort();
+        .sort(AppUtils.compareCodeUnits);
       if (bridgeUserIds.length === 0) {
         continue;
       }
@@ -545,7 +546,7 @@ export class LocalActivityMembersRepository {
       return Math.max(latest, Number.isFinite(Number(record?.updatedMs)) ? Number(record?.updatedMs) : 0);
     }, 0);
     const mingleRevision = Object.values(this.memoryDb.read()[MINGLE_SESSIONS_TABLE_NAME].byId)
-      .map(session => `${session.eventId}:${session.revision}`).sort().join('|');
+      .map(session => `${session.eventId}:${session.revision}`).sort(AppUtils.compareCodeUnits).join('|');
     return `${table.ids.length}:${Object.keys(table.idsByOwnerKey).length}:${latestUpdatedMs}:${mingleRevision}`;
   }
 

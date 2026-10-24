@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { LocalRoleNotificationsService } from '../notifications/role-notifications.service';
 import { SEED_PAYMENT_EXCHANGE_RATES } from '../../../seed/payment-exchange-rates';
 import { LocalCommunityGroupsService } from '../groups/community-groups.service';
@@ -326,7 +327,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const payment = (await this.operatorRegistryRepository.read())?.configuration.payment;
     snapshot.paymentCardsAvailable = payment?.credentialConfigured === true
       && payment.availableProviders.some(provider => provider.id === payment.providerId);
-    snapshot.paymentCurrencies = Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort();
+    snapshot.paymentCurrencies = Object.keys(SEED_PAYMENT_EXCHANGE_RATES).sort(AppUtils.compareCodeUnits);
     snapshot.paymentExchangeRates = Object.fromEntries(Object.entries(SEED_PAYMENT_EXCHANGE_RATES).map(([currency, rate]) => [currency, 1 / rate]));
     snapshot.paymentSummaryCurrency = globalThis.localStorage?.getItem(`myscoutee.summary-currency.${normalizedUserId}`) || 'EUR';
     const offlineTicketSnapshot = await this.assetTicketsRepository.queryTicketPage({

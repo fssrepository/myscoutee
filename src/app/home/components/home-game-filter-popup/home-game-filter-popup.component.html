@@ -16,12 +16,12 @@
               </div>
               <div class="game-filter-slider-wrap">
                 <mat-slider [min]="minAgeBound" [max]="maxAgeBound" [step]="1">
-                  <input
+                  <input [attr.aria-label]="('age.range' | i18n) + ' min'"
                     matSliderStartThumb
                     [ngModel]="filterDraft.ageMin"
                     (ngModelChange)="onAgeMinChange($event)"
                     />
-                  <input
+                  <input [attr.aria-label]="('age.range' | i18n) + ' max'"
                     matSliderEndThumb
                     [ngModel]="filterDraft.ageMax"
                     (ngModelChange)="onAgeMaxChange($event)"
@@ -34,12 +34,12 @@
               </div>
               <div class="game-filter-slider-wrap">
                 <mat-slider [min]="minHeightBoundCm" [max]="maxHeightBoundCm" [step]="1">
-                  <input
+                  <input [attr.aria-label]="('height.range.cm' | i18n) + ' min'"
                     matSliderStartThumb
                     [ngModel]="filterDraft.heightMinCm"
                     (ngModelChange)="onHeightMinChange($event)"
                     />
-                  <input
+                  <input [attr.aria-label]="('height.range.cm' | i18n) + ' max'"
                     matSliderEndThumb
                     [ngModel]="filterDraft.heightMaxCm"
                     (ngModelChange)="onHeightMaxChange($event)"
@@ -47,7 +47,7 @@
                 </mat-slider>
               </div>
               @for (kind of basicsFilterMenuKinds; track kind) {
-                <label class="game-filter-menu-field">
+                <div class="game-filter-menu-field">
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
@@ -59,7 +59,7 @@
                     [model]="filterMenuModel(kind)"
                     (itemSelect)="onGameFilterMenuSelect($event)"
                   ></app-menu>
-                </label>
+                </div>
               }
             </section>
             <section class="game-filter-group game-filter-group-beliefs">
@@ -67,7 +67,7 @@
                 <h3>{{ 'beliefs' | i18n }}</h3>
               </div>
               @for (kind of beliefsFilterMenuKinds; track kind) {
-                <label class="game-filter-menu-field">
+                <div class="game-filter-menu-field">
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
@@ -79,7 +79,7 @@
                     [model]="filterMenuModel(kind)"
                     (itemSelect)="onGameFilterMenuSelect($event)"
                   ></app-menu>
-                </label>
+                </div>
               }
             </section>
           </div>
@@ -89,7 +89,7 @@
                 <h3>{{ 'lifestyle' | i18n }}</h3>
               </div>
               @for (kind of lifestyleFilterMenuKinds; track kind) {
-                <label class="game-filter-menu-field">
+                <div class="game-filter-menu-field">
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
@@ -101,7 +101,7 @@
                     [model]="filterMenuModel(kind)"
                     (itemSelect)="onGameFilterMenuSelect($event)"
                   ></app-menu>
-                </label>
+                </div>
               }
             </section>
           </div>
@@ -111,7 +111,7 @@
                 <h3>{{ 'relationships' | i18n }}</h3>
               </div>
               @for (kind of relationshipFilterMenuKinds; track kind) {
-                <label class="game-filter-menu-field">
+                <div class="game-filter-menu-field">
                   <span>{{ filterMenuTitle(kind) | i18n }}</span>
                   <app-menu
                     class="game-filter-menu"
@@ -123,7 +123,7 @@
                     [model]="filterMenuModel(kind)"
                     (itemSelect)="onGameFilterMenuSelect($event)"
                   ></app-menu>
-                </label>
+                </div>
               }
             </section>
           </div>

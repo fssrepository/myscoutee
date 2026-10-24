@@ -802,7 +802,6 @@
   opacity: 1;
 }
 .asset-occupancy-badge {
-  position: absolute;
   top: 0.38rem;
   right: 0.38rem;
   min-width: 36px;
@@ -896,7 +895,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 4px;
-  width: 100%;
 }
 .image-stack-hit-area {
   position: absolute;

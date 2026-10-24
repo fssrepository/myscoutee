@@ -72,9 +72,9 @@ export class LocalChatsRepository {
     const targetId = targetUserId.trim();
     this.requireContactTargets(actorId, [targetId], true);
     this.requireDirectChatConsent(actorId, targetId);
-    const memberIds = [actorId, targetId].sort();
-    const encoded = btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const memberIds = [actorId, targetId].sort(AppUtils.compareCodeUnits);
+    const encoded = AppUtils.trimEndCharacters(btoa(String.fromCharCode(...new TextEncoder().encode(memberIds.join('\n'))))
+      .replace(/\+/g, '-').replace(/\//g, '_'), "=");
     const id = `c-contact-${encoded}`;
     this.writeContactChat(id, memberIds);
     return this.queryChatItemById(actorId, id)!;
@@ -199,7 +199,7 @@ export class LocalChatsRepository {
     const participantUserIds = [...new Set([
       ...(event?.acceptedMemberUserIds ?? []),
       ...(event?.adminIds ?? [])
-    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))].sort();
+    ].map(userId => `${userId ?? ''}`.trim()).filter(Boolean))].sort(AppUtils.compareCodeUnits);
     if (!eventId || participantUserIds.length === 0) {
       throw new Error('A published local event chat requires an event id and accepted participants.');
     }

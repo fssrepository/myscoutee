@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { Injectable, inject } from '@angular/core';
 
 import type {
@@ -505,10 +506,9 @@ export class LocalNotificationsRepository {
   private encodeCursor(payload: NotificationCursorPayload): string {
     const encoded = encodeURIComponent(JSON.stringify(payload));
     try {
-      return globalThis.btoa(encoded)
+      return AppUtils.trimEndCharacters(globalThis.btoa(encoded)
         .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/g, '');
+        .replace(/\//g, '_'), "=");
     } catch {
       return encoded;
     }

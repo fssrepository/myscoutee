@@ -633,8 +633,8 @@ export class AssetPopupComponent {
     if (!context || this.resourcePopupStore.pendingAssignSaveRef()?.busy === true) {
       return false;
     }
-    const currentIds = [...this.currentAssignedAssetIds(context.subEventId, context.type)].sort();
-    const nextIds = [...this.normalizedSelectedAssignAssetIds(context.type)].sort();
+    const currentIds = [...this.currentAssignedAssetIds(context.subEventId, context.type)].sort(AppUtils.compareCodeUnits);
+    const nextIds = [...this.normalizedSelectedAssignAssetIds(context.type)].sort(AppUtils.compareCodeUnits);
     if (currentIds.length !== nextIds.length) {
       return true;
     }

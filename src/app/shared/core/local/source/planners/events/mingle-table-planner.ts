@@ -1,3 +1,5 @@
+import { secureRandomInt } from '../../../../common/secure-random';
+import { AppUtils } from '../../../../base/app-utils';
 import type { LocalMingleTable } from '../../entity/events/mingle.entity';
 
 /** Local counterpart of EventGeneratorByMingle: repeats, balance, affinity, size, table index. */
@@ -11,14 +13,14 @@ export function planMingleTables(input: {
   previousTables: readonly LocalMingleTable[];
   affinity: (left: string, right: string) => number;
 }): LocalMingleTable[] {
-  let members = [...new Set(input.userIds.map(id => id.trim()).filter(Boolean))].sort();
+  let members = [...new Set(input.userIds.map(id => id.trim()).filter(Boolean))].sort(AppUtils.compareCodeUnits);
   if (!members.length) return [];
   const size = Math.max(2, Math.min(20, input.groupSize));
   const genders = new Map(members.flatMap(id => {
     const gender = input.genders.get(id)?.trim().toLowerCase();
     return gender ? [[id, gender] as const] : [];
   }));
-  const categories = [...new Set(genders.values())].sort();
+  const categories = [...new Set(genders.values())].sort(AppUtils.compareCodeUnits);
   let quotas: Map<string, number>[] = [];
   if (input.requireGenderBalance) {
     if (categories.length !== 2) return [];
@@ -33,7 +35,7 @@ export function planMingleTables(input: {
     if (secondExtra > second.length - count * base) return [];
     const slice = (values: string[], take: number) => Array.from({ length: take },
       (_, index) => values[((Math.max(1, input.roundNumber) - 1) * take + index) % values.length]);
-    members = [...slice(first, count * base + firstExtra), ...slice(second, count * base + secondExtra)].sort();
+    members = [...slice(first, count * base + firstExtra), ...slice(second, count * base + secondExtra)].sort(AppUtils.compareCodeUnits);
     quotas = Array.from({ length: count }, (_, index) => new Map([
       [categories[0], base + Number(index < firstExtra)],
       [categories[1], base + Number(index >= firstExtra && index < firstExtra + secondExtra)]
@@ -51,7 +53,7 @@ export function planMingleTables(input: {
   const tables: string[][] = Array.from({ length: Math.ceil(members.length / size) }, () => []);
   const total = (id: string) => [...(repeats.get(id)?.values() ?? [])].reduce((sum, n) => sum + n, 0);
   const shuffled=[...members];
-  if(input.randomMixing)for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+  if(input.randomMixing)for(let i=shuffled.length-1;i>0;i--){const j=secureRandomInt(i+1);[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
   const order=new Map(shuffled.map((id,index)=>[id,index]));
   members.sort((a,b)=>total(b)-total(a)||(input.randomMixing?order.get(a)!-order.get(b)!:(a<b?-1:a>b?1:0)));
   for (const member of members) {
@@ -80,6 +82,6 @@ export function planMingleTables(input: {
   const singleton = tables.find(table => table.length === 1);
   const donor = tables.filter(table => table.length > 2).sort((a, b) => b.length - a.length)[0];
   if (singleton && donor) singleton.push(donor.pop()!);
-  return tables.map((members, index) => ({ tableNumber: index + 1, memberUserIds: members.sort() }))
+  return tables.map((members, index) => ({ tableNumber: index + 1, memberUserIds: members.sort(AppUtils.compareCodeUnits) }))
     .filter(table => table.memberUserIds.length);
 }

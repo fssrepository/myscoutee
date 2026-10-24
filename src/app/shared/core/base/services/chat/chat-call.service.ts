@@ -1,3 +1,4 @@
+import { AppUtils } from '../../app-utils';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type { ChatDTO } from '../../../contracts/chat/chat.interface';
 import type { ChatCallEvent, ChatCallParticipant, ChatCallStunNode } from '../../../contracts/chat/chat-call.interface';
@@ -405,7 +406,7 @@ export class ChatCallService {
   private async startPeers(): Promise<void> {
     const mls = this.mls, generation = this.generation;
     if (!mls || !await mls.exists()) return;
-    const current = (await mls.memberIds()).sort(), desired = this.participants().map(p => p.clientId).sort();
+    const current = (await mls.memberIds()).sort(AppUtils.compareCodeUnits), desired = this.participants().map(p => p.clientId).sort(AppUtils.compareCodeUnits);
     if (JSON.stringify(current) !== JSON.stringify(desired)) { this.verificationCode.set(''); return; }
     const code = await mls.verificationCode();
     if (generation !== this.generation) return;

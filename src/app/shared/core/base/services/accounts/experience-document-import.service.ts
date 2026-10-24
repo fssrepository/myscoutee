@@ -221,9 +221,8 @@ export class ExperienceDocumentImportService {
     }
     return this.decodeXmlEntities(
       normalized
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+\n/g, '\n')
-        .replace(/\n\s+/g, '\n')
+        .replace(/<[^<>]+>/g, ' ')
+        .replace(/\s+/g, whitespace => whitespace.includes('\n') ? '\n' : whitespace)
         .replace(/[ \t]{2,}/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
     );
@@ -355,30 +354,73 @@ export class ExperienceDocumentImportService {
 
   private extractPdfTextFragments(stream: string, fontMaps: ReadonlyMap<string, PdfFontMap>): string[] {
     const fragments: string[] = [];
-    const textSections = stream.match(/BT[\s\S]*?ET/g) ?? [];
-    const operatorPattern = /\/(F\d+)\s+[\d.]+\s+Tf|(\[(?:.|\n)*?\]|<[\dA-Fa-f\s]+>|\((?:\\.|[^\\()])*\))\s*(TJ|Tj|['"])/g;
-
-    for (const section of textSections) {
-      let currentFont = '';
-      let match: RegExpExecArray | null;
-
-      while ((match = operatorPattern.exec(section)) !== null) {
-        if (match[1]) {
-          currentFont = match[1];
-          continue;
-        }
-        const operand = match[2];
-        if (!operand) {
-          continue;
-        }
-        const decoded = this.decodePdfTextOperand(operand, currentFont, fontMaps);
-        if (decoded.trim()) {
-          fragments.push(decoded);
-        }
+    const operands: string[] = [];
+    let inText = false;
+    let currentFont = '';
+    for (const token of this.pdfTokens(stream)) {
+      if (token === 'BT' || token === 'ET') {
+        inText = token === 'BT';
+        currentFont = '';
+        operands.length = 0;
+        continue;
       }
-      operatorPattern.lastIndex = 0;
+      if (!inText) continue;
+      if (token === 'Tf') {
+        const font = operands.at(-2) ?? '';
+        if (/^\/F\d+$/.test(font)) currentFont = font.slice(1);
+      } else if (['TJ', 'Tj', "'", '"'].includes(token)) {
+        const decoded = this.decodePdfTextOperand(operands.at(-1) ?? '', currentFont, fontMaps);
+        if (decoded.trim()) fragments.push(decoded);
+      } else if (!/^[A-Za-z*]+$/.test(token)) {
+        operands.push(token);
+        if (operands.length > 3) operands.shift();
+        continue;
+      }
+      operands.length = 0;
     }
     return fragments;
+  }
+
+  private *pdfTokens(source: string): Generator<string> {
+    let cursor = 0;
+    while (cursor < source.length) {
+      const character = source[cursor];
+      if (/\s/.test(character)) { cursor++; continue; }
+      if (character === '%') {
+        const end = source.indexOf('\n', cursor);
+        cursor = end < 0 ? source.length : end + 1;
+        continue;
+      }
+      const start = cursor++;
+      if (character === '(' || character === '[') {
+        cursor = this.pdfDelimitedEnd(source, start);
+      } else if (character === '<' && source[cursor] !== '<') {
+        const end = source.indexOf('>', cursor);
+        cursor = end < 0 ? source.length : end + 1;
+      } else {
+        while (cursor < source.length && !/\s/.test(source[cursor]) && !'[]()<>{}/%'.includes(source[cursor])) cursor++;
+      }
+      yield source.slice(start, cursor);
+    }
+  }
+
+  private pdfDelimitedEnd(source: string, start: number): number {
+    const opener = source[start];
+    const closer = opener === '(' ? ')' : ']';
+    let depth = 1;
+    let cursor = start + 1;
+    while (cursor < source.length) {
+      const character = source[cursor];
+      if (opener === '(' && character === '\\') { cursor += 2; continue; }
+      if (opener === '[' && character === '(') {
+        cursor = this.pdfDelimitedEnd(source, cursor);
+        continue;
+      }
+      if (character === opener) depth++;
+      else if (character === closer && --depth === 0) return cursor + 1;
+      cursor++;
+    }
+    return source.length;
   }
 
   private extractPdfFontMaps(raw: string, streams: readonly PdfObjectStream[]): Map<string, PdfFontMap> {
@@ -563,17 +605,31 @@ export class ExperienceDocumentImportService {
     return object.offset + startIndex;
   }
 
+  private *pdfMappingBlocks(source: string, kind: 'bfchar' | 'bfrange'): Generator<string> {
+    const begin = `begin${kind}`;
+    const end = `end${kind}`;
+    let cursor = 0;
+    while (cursor < source.length) {
+      const start = source.indexOf(begin, cursor);
+      if (start < 0) return;
+      const finish = source.indexOf(end, start + begin.length);
+      if (finish < 0) return;
+      yield source.slice(start + begin.length, finish);
+      cursor = finish + end.length;
+    }
+  }
+
   private parsePdfToUnicodeMap(cmap: string): PdfFontMap {
     const glyphByCode = new Map<string, string>();
 
-    for (const block of cmap.matchAll(/\d+\s+beginbfchar([\s\S]*?)endbfchar/g)) {
-      for (const pair of block[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
+    for (const block of this.pdfMappingBlocks(cmap, 'bfchar')) {
+      for (const pair of block.matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
         glyphByCode.set(pair[1].toUpperCase(), this.decodePdfUnicodeHex(pair[2]));
       }
     }
 
-    for (const block of cmap.matchAll(/\d+\s+beginbfrange([\s\S]*?)endbfrange/g)) {
-      for (const range of block[1].matchAll(
+    for (const block of this.pdfMappingBlocks(cmap, 'bfrange')) {
+      for (const range of block.matchAll(
         /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g
       )) {
         const startCode = Number.parseInt(range[1], 16);
@@ -763,8 +819,8 @@ export class ExperienceDocumentImportService {
 
   private extractLegacyDocText(buffer: ArrayBuffer): string {
     return this.decodeTextBuffer(buffer, 'windows-1252')
-      .replace(/\u0000/g, '')
-      .replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u017F]/g, ' ')
+      .split(String.fromCodePoint(0)).join('')
+      .replace(/[^\t\n\r\x20-\x7E\u00A0-\u017F]/g, ' ')
       .replace(/[ \t]{2,}/g, ' ')
       .replace(/\n{3,}/g, '\n\n');
   }
@@ -935,7 +991,7 @@ export class ExperienceDocumentImportService {
   private normalizeExtractedText(value: string): string {
     return value
       .replace(/\r/g, '\n')
-      .replace(/\u0000+/g, ' ')
+      .split(String.fromCodePoint(0)).join(' ')
       .replace(/\u00A0/g, ' ')
       .replace(/[•▪◦●■]/g, '\n')
       .replace(/\t/g, ' ')

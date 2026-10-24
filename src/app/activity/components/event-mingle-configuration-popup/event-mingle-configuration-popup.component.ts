@@ -51,7 +51,7 @@ export class EventMingleConfigurationPopupComponent implements OnDestroy {
   readonly minimumPlannedRounds = input(1);
 
   readonly save = output<MingleConfigurationDTO>();
-  readonly cancel = output<Event>();
+  readonly cancelled = output<Event>();
 
   protected readonly draft = signal<MingleConfigurationDTO>(this.emptyDraft());
 
@@ -106,7 +106,7 @@ export class EventMingleConfigurationPopupComponent implements OnDestroy {
     bodyLayout: 'default',
     backdropTone: 'dim',
     headerControls: this.popupHeaderControls(),
-    onClose: event => this.cancel.emit(event),
+    onClose: event => this.cancelled.emit(event),
     onMenuSelect: event => this.onPopupMenuSelect(event)
   }));
 

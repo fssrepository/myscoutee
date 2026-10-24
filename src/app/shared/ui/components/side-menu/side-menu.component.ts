@@ -1,3 +1,4 @@
+import { ErrorHandler } from '@angular/core';
 import { FeedbackStore } from '../../context/stores/feedback/feedback.store';
 import { EventCheckoutSlotPickerStore } from '../../context/stores/event/event-checkout-slot-picker.store';
 import { ServiceOfferingsStore } from '../../context/stores/services/service-offerings.store';
@@ -261,6 +262,7 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
+  private readonly actionErrors = inject(ErrorHandler);
   protected readonly moderationStore = inject(ContentModerationStore);
   private readonly moderationService = inject(ContentModerationService);
   private readonly adminNotificationsService = inject(AdminNotificationsService);
@@ -1786,7 +1788,7 @@ export class SideMenuComponent implements OnDestroy {
   protected openChatShortcut(event?: Event): void {
     event?.stopPropagation();
     if (this.isBlockedUser()) {
-      this.openBlockedUserSupportChat();
+      void this.openBlockedUserSupportChat().catch(error => this.actionErrors.handleError(error));
       return;
     }
     this.openActivitiesShortcut('chats');

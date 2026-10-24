@@ -37,7 +37,7 @@ export class EventSubeventGroupFormPopupComponent {
   };
 
   @Output() readonly save = new EventEmitter<Event>();
-  @Output() readonly cancel = new EventEmitter<Event>();
+  @Output() readonly cancelled = new EventEmitter<Event>();
   @Output() readonly modelChange = new EventEmitter<GroupFormModel>();
 
   protected groupPopupModel(): PopupModel<unknown> {
@@ -59,7 +59,7 @@ export class EventSubeventGroupFormPopupComponent {
         items: this.saveMenuItems(),
         closeOnSelect: false
       }],
-      onClose: event => this.cancel.emit(event),
+      onClose: event => this.cancelled.emit(event),
       onMenuSelect: event => this.onSaveMenuSelect(event)
     };
   }

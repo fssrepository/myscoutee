@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { AppUtils } from '../../../../base/app-utils';
 import { environment } from '../../../../../../../environments/environment';
@@ -204,7 +205,7 @@ export class SeedUserRatesBuilder {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
     }
-    return `rate-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `rate-${Date.now()}-${secureRandomUuid()}`;
   }
 
   private static selectPairSecondaryUserId<TUser extends RateUserRef>(

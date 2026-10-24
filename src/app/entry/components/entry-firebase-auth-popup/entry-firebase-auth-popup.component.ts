@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../shared/core/base/app-utils';
 import { LandingGuideSurfaceDirective } from '../entry-landing/landing-guide-surface.directive';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -208,6 +209,6 @@ export class EntryFirebaseAuthPopupComponent {
   }
 
   private isValidEmail(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    return AppUtils.isEmail(value);
   }
 }

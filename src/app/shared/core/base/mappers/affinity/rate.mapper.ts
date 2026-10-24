@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../common/secure-random';
 import type { RatingSnapshot } from '@fssrepository/myscoutee-components';
 import type {
   ActivityRateDTO,
@@ -417,7 +418,7 @@ export class BaseUserRatesMapper {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
     }
-    return `rate-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `rate-${Date.now()}-${secureRandomUuid()}`;
   }
 
   private static resolvePairSocialContext(

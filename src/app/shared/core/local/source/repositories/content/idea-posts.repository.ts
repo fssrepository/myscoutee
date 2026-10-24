@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../../../../common/secure-random';
 import { IDEA_POSTS_TABLE_NAME } from '../../entity/content/content.entity';
 import type { IdeaPostsTable } from '../../entity/content/content.entity';
 import { Injectable, inject } from '@angular/core';
@@ -35,7 +36,7 @@ export class LocalIdeaPostsRepository {
   }
 
   createPostId(): string {
-    return `idea-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `idea-${Date.now().toString(36)}-${secureRandomUuid()}`;
   }
 
   savePostSnapshot(record: IdeaPostDto): IdeaPostDto {

@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import { UiDateUtils } from '@fssrepository/myscoutee-components';
 import { validRatingSnapshot, type RatingDomain } from '../../../../contracts/affinity/rating-snapshot';
 import { LocalNotificationsRepository } from '../notifications/notifications.repository';
@@ -688,9 +689,9 @@ export class LocalRatesRepository {
   /** Record meeting facts at round completion without inventing either person's rating. */
   projectMetTables(tables: readonly { memberUserIds: readonly string[] }[], eventName: string, happenedAtIso: string): void {
     const pairs = new Map<string, [string, string]>();
-    const pairKey = (left: string, right: string) => [left, right].sort().join('\n');
+    const pairKey = (left: string, right: string) => [left, right].sort(AppUtils.compareCodeUnits).join('\n');
     for (const table of tables) {
-      const members = [...new Set(table.memberUserIds)].sort();
+      const members = [...new Set(table.memberUserIds)].sort(AppUtils.compareCodeUnits);
       for (let left = 0; left < members.length; left++) {
         for (let right = left + 1; right < members.length; right++) {
           pairs.set(pairKey(members[left], members[right]), [members[left], members[right]]);

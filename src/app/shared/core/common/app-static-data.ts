@@ -1,3 +1,4 @@
+import { AppUtils } from '../base/app-utils';
 import { ASSET_TYPE_LABELS, ASSET_DEFAULT_CATEGORY_OPTIONS_BY_TYPE as ASSET_CATEGORY_OPTIONS_BY_TYPE, ACTIVITY_MEMBER_MET_PLACES, ACTIVITY_MEMBER_DEFAULTS } from './constants';
 import { DEFAULT_HELP_CENTER_DESCRIPTION_HU, DEFAULT_TERMS_CENTER_DESCRIPTION_HU, DEFAULT_EXPLANATION_HOME_DESCRIPTION_HU } from './help-center-options';
 import SUPPORTED_CONTENT_LANGUAGES from './content-languages.json';
@@ -2631,7 +2632,7 @@ function withSeededExplanationImageHtml(contentHtml: string | null | undefined, 
   if (/<img[\s>]/i.test(withoutExistingSeededFigure)) {
     return withoutExistingSeededFigure;
   }
-  return `${withoutExistingSeededFigure}${withoutExistingSeededFigure ? '' : ''}${nextFigure}`;
+  return `${withoutExistingSeededFigure}${nextFigure}`;
 }
 
 function lazyImagePlaceholderSrc(imageUrl: string): string {
@@ -2639,11 +2640,10 @@ function lazyImagePlaceholderSrc(imageUrl: string): string {
 }
 
 function seededExplanationPathSegment(value: string | null | undefined): string {
-  return `${value ?? ''}`
+  return AppUtils.trimCharacters(`${value ?? ''}`
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'default';
+    .replace(/[^a-z0-9]+/g, '-'), "-") || 'default';
 }
 
 function contentLangForSeed(lang: string | null | undefined): string {

@@ -4,6 +4,7 @@ import {
 import {
   Component,
   OnDestroy,
+  OnInit,
   computed,
   inject,
   signal
@@ -63,7 +64,7 @@ interface AdminParamsSaveMenuContext {
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })
-export class AdminParamsPopupComponent implements OnDestroy {
+export class AdminParamsPopupComponent implements OnInit, OnDestroy {
   protected readonly admin = inject(AdminMenuStore);
   protected readonly paramsService = inject(AdminParamsService);
   private readonly i18n = inject(I18nService);
@@ -85,7 +86,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
   });
   private historyLoadGeneration = 0;
 
-  constructor() {
+  ngOnInit(): void {
     void this.load();
   }
 
@@ -404,7 +405,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
       return this.textFieldOptionLabel(field);
     }
     const value = Number(field.numberValue);
-    const formatted = Number.isInteger(value) ? `${value}` : value.toFixed(2).replace(/\.?0+$/, '');
+    const formatted = Number.isInteger(value) ? `${value}` : Number(value.toFixed(2)).toString();
     return [formatted, `${field.unit ?? ''}`.trim()].filter(Boolean).join(' ');
   }
 

@@ -125,7 +125,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     const params = new URLSearchParams({
       v: Date.now().toString()
     });
-    this.graphUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(
+    this.graphUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl( // NOSONAR S6268: fixed bundled asset path; the only parameter is a URL-encoded timestamp.
       `assets/admin/affinity-graph/index.html?${params.toString()}`
     ));
   }

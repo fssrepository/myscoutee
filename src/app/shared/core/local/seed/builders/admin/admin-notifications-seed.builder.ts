@@ -1,3 +1,4 @@
+import { AppUtils } from '../../../../base/app-utils';
 import backgroundJobs from '../../data/background-job-definitions.json';
 import communityJobs from '../../data/community-job-definitions.json';
 import workJobKeys from '../../data/work-job-keys.json';
@@ -534,11 +535,10 @@ export class AdminNotificationsSeedBuilder {
   }
 
   private static paramsI18nSegment(value: string | null | undefined): string {
-    return `${value ?? ''}`
+    return AppUtils.trimCharacters(`${value ?? ''}`
       .trim()
       .replace(/([a-z0-9])([A-Z])/g, '$1.$2')
-      .replace(/[^a-zA-Z0-9]+/g, '.')
-      .replace(/^\.+|\.+$/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '.'), ".")
       .toLocaleLowerCase('en-US');
   }
 }

@@ -252,7 +252,7 @@ export class SeedFeedbackRepository {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {
       hash = ((hash << 5) - hash) + value.charCodeAt(index);
-      hash |= 0;
+      hash |= 0; // NOSONAR S7767: intentional signed 32-bit overflow for stable seed IDs; Math.trunc changes the hash.
     }
     return Math.abs(hash);
   }
