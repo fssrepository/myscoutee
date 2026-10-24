@@ -1432,11 +1432,8 @@ export class OperatorWorkspaceStore {
     if (session?.kind === 'demo') {
       return `demo:${session.userId.trim()}`;
     }
-    if (session?.kind === 'firebase') {
-      return `firebase:${session.profile.id.trim()}`;
-    }
-    if (session?.kind === 'operator-bootstrap') {
-      return `operator-bootstrap:${session.email.trim()}`;
+    if (session?.kind === 'authenticated') {
+      return `authenticated:${session.profile.id.trim()}`;
     }
     return 'none';
   }
@@ -1529,8 +1526,7 @@ export class OperatorWorkspaceStore {
     const session = this.sessionService.currentSession();
     if (
       !profile
-      && session?.kind !== 'firebase'
-      && session?.kind !== 'operator-bootstrap'
+      && session?.kind !== 'authenticated'
     ) {
       return;
     }
@@ -1539,14 +1535,12 @@ export class OperatorWorkspaceStore {
       verificationContactName:
         current.verificationContactName
         || profile?.name?.trim()
-        || (session?.kind === 'firebase' ? session.profile.name.trim() : ''),
+        || (session?.kind === 'authenticated' ? session.profile.name.trim() : ''),
       verificationContactEmail:
         current.verificationContactEmail
-        || (session?.kind === 'firebase'
+        || (session?.kind === 'authenticated'
           ? session.profile.email.trim()
-          : session?.kind === 'operator-bootstrap'
-            ? session.email.trim()
-            : '')
+          : '')
     }));
   }
 

@@ -18,6 +18,12 @@ server accounts, provider connections and shared persistent data.
 > [Lorem Picsum](https://picsum.photos/) and [Random User](https://randomuser.me/documentation).
 > Local and server demos use generated WebP images served from MinIO.
 
+The [Pages workflow](.github/workflows/pages.yml) installs locked dependencies,
+runs `npm run build:github` and publishes `docs/`. Font binaries come from
+`@fssrepository/myscoutee-components@1.5.0` during the build and are served locally
+by the deployed site; they are not committed to `docs/media/`.
+GitHub Pages uses **GitHub Actions** as its publishing source.
+
 ---
 
 ## 📥 Downloads

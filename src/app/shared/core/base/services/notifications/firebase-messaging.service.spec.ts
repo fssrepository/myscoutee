@@ -39,7 +39,7 @@ describe('Notification preference and background registration', () => {
     vi.resetAllMocks();
     messagingConfigured.set(true);
     activeUserId.set('user-1');
-    session.set({ kind: 'firebase', sessionId: 'session-1', profile: {
+    session.set({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'session-1', profile: {
       id: 'firebase-auth-uid', name: 'Member', email: 'member@example.test', initials: 'M'
     } });
     locationMissing.set(false);

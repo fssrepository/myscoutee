@@ -15,7 +15,7 @@ import type {
 @Injectable({
   providedIn: 'root'
 })
-export class FirebaseSessionRegistryService {
+export class HttpSessionRegistryService {
   static readonly SESSION_ID_HEADER = 'X-App-Session-Id';
 
   private readonly http = new HttpClient(inject(HttpBackend));
@@ -32,9 +32,16 @@ export class FirebaseSessionRegistryService {
       {
         headers: new HttpHeaders({
           Authorization: `Bearer ${token}`,
-          [FirebaseSessionRegistryService.SESSION_ID_HEADER]: sessionId
+          [HttpSessionRegistryService.SESSION_ID_HEADER]: sessionId
         })
       }
+    ));
+  }
+
+  registerPasswordLogin(sessionId: string, request: UserSessionLoginRequestDto): Promise<UserSessionLoginResponseDto> {
+    return firstValueFrom(this.http.post<UserSessionLoginResponseDto>(
+      `${this.apiBaseUrl}/auth/session/login`, request,
+      { headers: new HttpHeaders({ [HttpSessionRegistryService.SESSION_ID_HEADER]: sessionId }) }
     ));
   }
 
@@ -48,7 +55,7 @@ export class FirebaseSessionRegistryService {
       request,
       {
         headers: new HttpHeaders({
-          [FirebaseSessionRegistryService.SESSION_ID_HEADER]: sessionId,
+          [HttpSessionRegistryService.SESSION_ID_HEADER]: sessionId,
           'X-App-Session-Kind': 'demo',
           'X-Demo-User-Id': userId
         })
@@ -62,7 +69,7 @@ export class FirebaseSessionRegistryService {
       { userId },
       {
         headers: new HttpHeaders({
-          [FirebaseSessionRegistryService.SESSION_ID_HEADER]: sessionId,
+          [HttpSessionRegistryService.SESSION_ID_HEADER]: sessionId,
           'X-App-Session-Kind': 'demo',
           'X-Demo-User-Id': userId
         })
@@ -70,14 +77,14 @@ export class FirebaseSessionRegistryService {
     ));
   }
 
-  revokeFirebaseSession(sessionId: string, userId: string, token: string): Promise<void> {
+  revokeSession(sessionId: string, userId: string, token: string): Promise<void> {
     return firstValueFrom(this.http.post<void>(
       `${this.apiBaseUrl}/auth/me/logout`,
       { userId },
       {
         headers: new HttpHeaders({
           Authorization: `Bearer ${token}`,
-          [FirebaseSessionRegistryService.SESSION_ID_HEADER]: sessionId
+          [HttpSessionRegistryService.SESSION_ID_HEADER]: sessionId
         })
       }
     ));

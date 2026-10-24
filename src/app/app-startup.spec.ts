@@ -127,7 +127,7 @@ describe('application startup loading handoff', () => {
   it('does not start the application logo loader when Firebase login completes on the landing page', () => {
     const fixture = create();
     fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'new-session-user' } });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'new-session-user' } });
     window.dispatchEvent(new Event('focus'));
     events.next(new NavigationStart(2, '/game'));
     vi.advanceTimersByTime(300);
@@ -137,7 +137,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('keeps the avatar timeline when the lazy menu takes over after initial navigation', () => {
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'cached-user' } });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'cached-user' } });
     const fixture = create('/game');
     const app = fixture.componentInstance as unknown as { avatarLoadStartedAt: number };
     const startedAt = app.avatarLoadStartedAt;
@@ -206,7 +206,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('keeps the loader across the root redirect while the destination is still loading', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
     const fixture = create();
     events.next(new NavigationStart(1, '/'));
     events.next(new NavigationCancel(1, '/', 'Redirect', NavigationCancellationCode.Redirect));
@@ -214,20 +214,20 @@ describe('application startup loading handoff', () => {
     fixture.detectChanges();
     vi.advanceTimersByTime(8000);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.app-route-warmup')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup, .game-startup')).not.toBeNull();
   });
 
   it('does not uncover the empty shell on focus during initial navigation', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
     const fixture = create();
     window.dispatchEvent(new Event('focus'));
     vi.advanceTimersByTime(300);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.app-route-warmup')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup, .game-startup')).not.toBeNull();
   });
 
   it('hands off immediately when the protected outlet activates', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
     const fixture = create();
     fixture.debugElement.query(By.directive(TestOutlet)).componentInstance.activate.emit();
     fixture.detectChanges();
@@ -242,16 +242,16 @@ describe('application startup loading handoff', () => {
   });
 
   it('keeps loading when a pending navigation is superseded', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
     const fixture = create();
     events.next(new NavigationCancel(1, '/', 'Superseded', NavigationCancellationCode.SupersededByNewNavigation));
     events.next(new NavigationStart(2, '/entry'));
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.app-route-warmup')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.app-route-warmup, .game-startup')).not.toBeNull();
   });
 
   it('releases the overlay on navigation failure instead of leaving it stuck', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
     const fixture = create();
     events.next(new NavigationError(1, '/', new Error('Chunk failed')));
     fixture.detectChanges();
@@ -259,7 +259,7 @@ describe('application startup loading handoff', () => {
   });
 
   it.each(['/', '/game'])('shows the shared header and avatar loader before guards finish on %s', url => {
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'cached-user' } });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'cached-user' } });
     const fixture = create(url);
     expect(fixture.nativeElement.querySelector('.app-route-warmup')).toBeNull();
     expect(fixture.nativeElement.querySelector('.game-startup')).not.toBeNull();
@@ -278,7 +278,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('removes the retained loading avatar when the validation redirect to entry commits', () => {
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'expired-user' } });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'expired-user' } });
     const fixture = create('/game');
     events.next(new NavigationCancel(1, '/game', 'Redirect', NavigationCancellationCode.Redirect));
     events.next(new NavigationStart(2, '/entry'));
@@ -306,7 +306,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('never displays another cached identity in the loading avatar', () => {
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'member' } });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'member' } });
     readUser.mockReturnValue({ user: { id: 'other', images: ['/other-photo.webp'] } });
     const fixture = create('/game');
     expect(fixture.nativeElement.querySelector('.game-startup-avatar img')).toBeNull();
@@ -314,7 +314,7 @@ describe('application startup loading handoff', () => {
 
   it('uses the session-bound app photo when Firebase and profile IDs differ', () => {
     const preview = 'data:image/webp;base64,UklGRg==';
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'firebase-uid', imageUrl: '/google-monogram.png' },
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'firebase-uid', imageUrl: '/google-monogram.png' },
       avatarImageUrl: '/api/media/private?key=private%2Fimages%2Fowner%2Fprofile%2Fupload%2Flarge.webp', avatarImageDataUrl: preview });
     const fixture = create('/game');
     const image = fixture.nativeElement.querySelector('.game-startup-avatar img');
@@ -323,7 +323,7 @@ describe('application startup loading handoff', () => {
   });
 
   it('does not request a private preview URL before media authentication is restored', () => {
-    currentSession.mockReturnValue({ kind: 'firebase', profile: { id: 'member' },
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'member' },
       avatarImageUrl: '/api/media/private?key=private/images/owner/profile/upload/large.webp' });
     readUser.mockReturnValue({ user: { id: 'member', images: ['/api/media/private?key=private/images/owner/profile/upload/large.webp'] } });
     const fixture = create('/game');
@@ -331,14 +331,15 @@ describe('application startup loading handoff', () => {
     expect(fixture.nativeElement.querySelector('.game-startup-avatar button').disabled).toBe(true);
   });
 
-  it('does not render member startup controls for an operator session', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
-    const fixture = create();
+  it('does not render member startup controls on the operator route', () => {
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
+    router.url = '/operator';
+    const fixture = create('/operator');
     expect(fixture.nativeElement.querySelector('.game-startup')).toBeNull();
   });
 
   it('cleans up pending startup timers when destroyed', () => {
-    currentSession.mockReturnValue({ kind: 'operator-bootstrap' });
+    currentSession.mockReturnValue({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'operator', name: 'Operator', email: 'operator@example.test', initials: 'O' } });
     const fixture = create();
     const subscription = (fixture.componentInstance as unknown as {
       routerEventsSubscription: Subscription;

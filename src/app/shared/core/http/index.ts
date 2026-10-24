@@ -24,7 +24,6 @@ export { HttpDeploymentConfigurationService } from './services/platform/deployme
 export { HttpMediaService } from './services/media/media.service';
 export { HttpNotificationsService } from './services/notifications/notifications.service';
 export { HttpPaymentMethodsService } from './services/payments/payment-methods.service';
-export { HttpOperatorBootstrapAuthService } from './services/operator/operator-bootstrap-auth.service';
 export { HttpOperatorRegistryService } from './services/operator/operator-registry.service';
 export { HttpContactsService } from './services/accounts/contacts.service';
 export { HttpRatesService } from './services/affinity/rates.service';

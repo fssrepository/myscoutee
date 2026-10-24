@@ -1,52 +1,21 @@
-import { AppUtils } from '../../../base/app-utils';
 import { environment } from '../../../../../../environments/environment';
 
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
-
-// Shared request classification for the existing authentication/access chain.
+function apiUrls(url: string): [URL, URL] | null {
+  try {
+    const origin = typeof document === 'undefined' ? 'http://localhost/' : document.baseURI;
+    return [new URL(url, origin), new URL(apiBaseUrl, origin)];
+  } catch { return null; }
+}
 export function isApiRequest(url: string): boolean {
-  if (url.startsWith(apiBaseUrl)) {
-    return true;
-  }
-  if (typeof document === 'undefined') {
-    return false;
-  }
-  const absoluteApiBaseUrl = new URL(apiBaseUrl, document.baseURI).toString();
-  return url.startsWith(absoluteApiBaseUrl);
+  const pair = apiUrls(url);
+  if (!pair) return false;
+  const [request, api] = pair;
+  const base = api.pathname.replace(/\/+$/, '');
+  return request.origin === api.origin && (request.pathname === base || request.pathname.startsWith(`${base}/`));
 }
-
-export function isOperatorBootstrapLoginRequest(url: string): boolean {
-  if (!isApiRequest(url)) {
-    return false;
-  }
-  const normalizedApiBase = AppUtils.trimEndCharacters(apiBaseUrl, "/");
-  if (url === `${normalizedApiBase}/auth/operator-bootstrap`) {
-    return true;
-  }
-  if (typeof document === 'undefined') {
-    return false;
-  }
-  const absoluteApiBaseUrl = AppUtils.trimEndCharacters(new URL(
-    normalizedApiBase,
-    document.baseURI
-  ).toString(), "/");
-  return url === `${absoluteApiBaseUrl}/auth/operator-bootstrap`;
-}
-
-export function isAdminRequest(url: string): boolean {
-  if (!isApiRequest(url)) {
-    return false;
-  }
-  const normalizedApiBase = AppUtils.trimEndCharacters(apiBaseUrl, "/");
-  if (url.startsWith(`${normalizedApiBase}/admin/`)) {
-    return true;
-  }
-  if (url === `${normalizedApiBase}/admin`) {
-    return true;
-  }
-  if (typeof document === 'undefined') {
-    return false;
-  }
-  const absoluteApiBaseUrl = AppUtils.trimEndCharacters(new URL(normalizedApiBase, document.baseURI).toString(), "/");
-  return url === `${absoluteApiBaseUrl}/admin` || url.startsWith(`${absoluteApiBaseUrl}/admin/`);
+export function isSessionLoginRequest(url: string): boolean {
+  const pair = apiUrls(url);
+  return !!pair && isApiRequest(url)
+    && pair[0].pathname === `${pair[1].pathname.replace(/\/+$/, '')}/auth/session/login`;
 }

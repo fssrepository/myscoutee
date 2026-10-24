@@ -1,4 +1,4 @@
-import { isApiRequest, isOperatorBootstrapLoginRequest } from '../platform/api-request';
+import { isApiRequest, isSessionLoginRequest } from '../platform/api-request';
 import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { SessionService } from '../../../base/services/accounts/session.service';
@@ -35,7 +35,7 @@ export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
   if (
     !isApiRequest(req.url)
     || req.headers.has(DEMO_SESSION_HEADER)
-    || isOperatorBootstrapLoginRequest(req.url)
+    || isSessionLoginRequest(req.url)
   ) {
     return next(req);
   }

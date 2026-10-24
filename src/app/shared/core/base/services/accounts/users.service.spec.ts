@@ -1,3 +1,4 @@
+import { HTTP_ADAPTER } from '../../adapter-loaders';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { SessionService, type AppSession } from './session.service';
@@ -8,7 +9,7 @@ import { AppLocationService } from './app-location.service';
 
 // Exercise the real session identity and avatar-preview update through the profile loader.
 describe('Profile loads within a Firebase session', () => {
-  const account: AppSession = { kind: 'firebase', sessionId: 'login-a', profile: {
+  const account: AppSession = { kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'login-a', profile: {
     id: 'member', name: 'Member', initials: 'M', email: 'member@example.test'
   } } as AppSession;
   const profile = { id: 'member', profileStatus: 'active', activities: {} };
@@ -105,7 +106,7 @@ describe('Profile loads within a Firebase session', () => {
     const { session, adapter, service } = fixture();
     const old = session.currentSession();
     adapter.queryUserById.mockImplementation(async () => {
-      session.setFirebaseAvatarPreview('login-a', 'https://example.test/avatar.jpg');
+      session.setSessionAvatarPreview('login-a', 'https://example.test/avatar.jpg');
       return { user: profile };
     });
     expect(await service.loadUserById()).toEqual(profile);
@@ -118,7 +119,7 @@ describe('Profile loads within a Firebase session', () => {
     const coordinates = { latitude: 47, longitude: 19 };
     service.location.pendingLoginCoordinates.mockReturnValue(coordinates);
     adapter.loadProfileExtById.mockImplementation(async () => {
-      session.setFirebaseAvatarPreview('login-a', 'https://example.test/avatar.jpg');
+      session.setSessionAvatarPreview('login-a', 'https://example.test/avatar.jpg');
       return { profileExt: { profile, experienceEntries: [] } };
     });
     expect(await service.loadProfileExtById()).not.toBeNull();
@@ -190,5 +191,34 @@ describe('Group-profile polling keeps account counters separate', () => {
     const f = fixture(); const pending = f.service.pollUserRealtimeSnapshot('group-profile');
     (kind === 'account' ? f.accountId : f.activeId).set('other'); f.complete(); await pending;
     expect(f.activity.applyRealtimeCounterOverrides).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Location eligibility before account adapters are loaded', () => {
+  it('loads the HTTP account adapter on demand and forwards coordinates', async () => {
+    const coordinates = { latitude: 47.5, longitude: 19 };
+    const result = { eligible: true };
+    const checkLocationEligibility = vi.fn().mockResolvedValue(result);
+    const get = vi.fn().mockResolvedValue({ checkLocationEligibility });
+    const service = Object.assign(Object.create(UsersService.prototype), {
+      isLocalRouteEnabled: () => false, transportAdapters: { get }
+    }) as UsersService;
+    expect(await service.checkLocationEligibility(coordinates)).toBe(result);
+    expect(get).toHaveBeenCalledExactlyOnceWith(HTTP_ADAPTER.USERS);
+    expect(checkLocationEligibility).toHaveBeenCalledExactlyOnceWith(coordinates);
+  });
+
+  it('keeps local eligibility on the local adapter without loading HTTP code', async () => {
+    const result = { eligible: false };
+    const checkLocationEligibility = vi.fn().mockResolvedValue(result);
+    const get = vi.fn();
+    const service = Object.assign(Object.create(UsersService.prototype), {
+      isLocalRouteEnabled: () => true, transportAdapters: { get },
+      localUsersService: { checkLocationEligibility }
+    }) as UsersService;
+    expect(await service.checkLocationEligibility()).toBe(result);
+    expect(get).not.toHaveBeenCalled();
+    expect(checkLocationEligibility).toHaveBeenCalledExactlyOnceWith(undefined);
   });
 });

@@ -97,8 +97,7 @@ describe('HttpOperatorRegistryService', () => {
 
   it('posts only the normalized inspection contract and does not send a demo identity for Firebase', async () => {
     currentSession = {
-      kind: 'firebase',
-      profile: {
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: {
         id: 'operator-real',
         name: 'Real Operator',
         email: 'operator@example.com',

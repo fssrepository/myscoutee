@@ -202,7 +202,7 @@ describe('Setup automatic installation offer', () => {
     return { store, currentSession };
   }
 
-  it.each(['demo', 'firebase', 'operator-bootstrap'])('does not open automatically for a %s session before or after profile loading', kind => {
+  it.each(['demo', 'authenticated'])('does not open automatically for a %s session before or after profile loading', kind => {
     const { store } = setup({ kind });
     store.pwa.installPromptVisible.set(true);
     TestBed.tick();

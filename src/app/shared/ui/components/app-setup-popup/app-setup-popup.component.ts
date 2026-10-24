@@ -28,7 +28,7 @@ export class AppSetupPopupComponent {
   readonly helpOpen = signal(false);
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
   readonly browserActions: AppMenuItem[] = [{ id: 'open-browser', icon: 'open_in_browser',
-    layout: 'pill', label: 'app.setup.open.browser', palette: 'ink' }];
+    layout: 'action', label: 'app.setup.open.browser', palette: 'blue' }];
   readonly privacyActions = computed<AppMenuItem[]>(() => [{ id: 'privacy', icon: 'policy',
     layout: 'pill', label: 'privacy', palette: this.store.privacyMissing() ? 'blue' : 'green',
     counter: this.store.privacyMissing() ? 1 : null, counterTone: 'alert', disabled: this.store.actionPending() }]);

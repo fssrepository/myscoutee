@@ -99,7 +99,7 @@ describe('Granted location background synchronization', () => {
         activeUserId: () => 'member',
         setUserProfile: vi.fn((user: typeof profile) => { profile = user; })
       },
-      sessionService: { currentSession: () => ({ kind: 'firebase', profile: { id: 'member' } }) },
+      sessionService: { currentSession: () => ({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'member' } }) },
       resolveTrackedUser: () => profile,
       isLocalUserRouteEnabled: () => false,
       requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
@@ -176,7 +176,7 @@ describe('Granted location background synchronization', () => {
 
   it('saves the active server profile when its ID differs from the Firebase identity', async () => {
     const { service, save, profile } = fixture();
-    service.sessionService.currentSession = () => ({ kind: 'firebase', profile: { id: 'firebase-provider-uid' } });
+    service.sessionService.currentSession = () => ({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'firebase-provider-uid' } });
     const coordinates = { latitude: 47, longitude: 19 };
     expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'member', locationCoordinates: coordinates }));

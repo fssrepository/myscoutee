@@ -44,8 +44,7 @@ describe('RouteDelayService', () => {
     environment.activitiesDataSource = 'local';
     environment.firebaseLoginEnabled = true;
     currentSession = {
-      kind: 'firebase',
-      sessionId: 'real-session',
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'real-session',
       profile: {
         id: 'real-user',
         name: 'Real User',

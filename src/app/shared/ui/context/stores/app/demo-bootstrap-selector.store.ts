@@ -1,5 +1,7 @@
 import { POPUP_ADAPTER } from '../../popup-adapter-loaders';
 import { PopupAdapterProxyService } from '../../popup-adapter-proxy.service';
+import { preloadAdapterMode } from '../../../../core/base/adapter-loaders';
+import { environment } from '../../../../../../environments/environment';
 import {
   Injectable,
   Type,
@@ -111,7 +113,10 @@ export class DemoBootstrapSelectorStore {
     if (this.demoBootstrapSelectorComponentRef()) {
       return;
     }
-    const module = await this.popupAdapters.load(POPUP_ADAPTER.DEMO_BOOTSTRAP_SELECTOR);
+    const [module] = await Promise.all([
+      this.popupAdapters.load(POPUP_ADAPTER.DEMO_BOOTSTRAP_SELECTOR),
+      preloadAdapterMode(environment.activitiesDataSource)
+    ]);
     this.demoBootstrapSelectorComponentRef.set(module.DemoBootstrapSelectorComponent);
   }
 }

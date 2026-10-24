@@ -106,7 +106,7 @@ export class AssetStore {
     const card = id ? this.findAsset(id) : null;
     const message = this.pendingAssetDeleteLabelRef() || (id ? card ? `Delete ${card.title}?` : 'Delete this item?' : '');
     return { title: this.i18n.translate('confirmation.delete.asset'), message: this.i18n.translate(message),
-      confirmLabel: this.i18n.translate('Delete'), busyConfirmLabel: this.i18n.translate('Deleting...'),
+      confirmLabel: this.i18n.translate('delete'), busyConfirmLabel: this.i18n.translate('delete.busy'),
       cancelLabel: this.i18n.translate('cancel'), closeLabel: this.i18n.translate('close'),
       errorMessage: this.i18n.translate(this.pendingAssetDeleteErrorRef()) };
   });

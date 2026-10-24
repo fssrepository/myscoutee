@@ -104,7 +104,7 @@ export class UserProfileStore {
     if (session?.kind === 'demo' && session.userId.trim().length > 0) {
       return session.userId.trim();
     }
-    if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
+    if (session?.kind === 'authenticated' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
     return getCachedUsers()[0]?.id ?? '';

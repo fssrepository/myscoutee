@@ -15,7 +15,7 @@ let local = false;
 let checking = false;
 let started = false;
 let statusEvents: EventSource | null = null;
-let streamReady = false;
+let streamReady: boolean | null = null;
 let streamDeadline: ReturnType<typeof setTimeout> | undefined;
 let writes = 0;
 let idsPromise: Promise<Map<string, string>> | null = null;
@@ -47,7 +47,7 @@ function eligibleSession(): DemoSession | null {
   return readSession(HTTP_SESSION);
 }
 
-async function backendReachable(): Promise<boolean> {
+async function backendReachable(): Promise<boolean | null> {
   if (statusEvents) return streamReady;
   try {
     const url = new URL(`${API_BASE.replace(/\/$/, '')}/runtime-status`, document.baseURI);
@@ -99,7 +99,7 @@ function safeToSwitch(): boolean {
   const path = location.pathname.replace(/\/$/, '');
   return (path === '/game' || isLandingPage())
     && document.visibilityState === 'visible' && writes === 0
-    && !document.querySelector('.ui-popup, .firebase-auth-overlay')
+    && !document.querySelector('.ui-popup, .firebase-auth-overlay, .explanation-guide-overlay, .explanation-guide-loading')
     && !document.activeElement?.matches('input,textarea,[contenteditable="true"]');
 }
 
@@ -210,7 +210,7 @@ export async function checkDemoFailover(): Promise<void> {
       if (pair?.http !== session.userId || readSession(LOCAL_SESSION)?.userId !== pair.local) return;
     }
     const reachable = await backendReachable();
-    if (!local && !reachable && safeToSwitch() && eligibleSession()?.userId === session.userId) {
+    if (!local && reachable === false && safeToSwitch() && eligibleSession()?.userId === session.userId) {
       location.reload();
     }
   } finally { checking = false; }
@@ -224,17 +224,18 @@ export function startDemoFailover(): void {
   const connect = (): void => {
     const events = new EventSource(url.href);
     statusEvents = events;
-    const setReady = (ready: boolean): void => {
+    const setReady = (ready: boolean | null): void => {
       const changed = streamReady !== ready;
       streamReady = ready;
-      reportBackendReadiness(ready);
-      if (changed) void checkDemoFailover();
+      reportBackendReadiness(ready === true);
+      // Stream reconnects are not evidence that the backend went down.
+      if (changed && ready !== null) void checkDemoFailover();
     };
     const armDeadline = (): void => {
       clearTimeout(streamDeadline);
       streamDeadline = setTimeout(() => {
         events.close();
-        setReady(false);
+        setReady(null);
         connect();
       }, 45000);
     };
@@ -243,12 +244,12 @@ export function startDemoFailover(): void {
         const value = JSON.parse(event.data);
         if (typeof value.ready !== 'boolean' || typeof value.known !== 'boolean') throw new Error('Invalid runtime status');
         armDeadline();
-        setReady(value.known && value.ready);
-      } catch { setReady(false); }
+        setReady(value.known ? value.ready : null);
+      } catch { setReady(null); }
     };
     events.addEventListener('status', receive as EventListener);
     events.addEventListener('ping', receive as EventListener);
-    events.onerror = () => setReady(false);
+    events.onerror = () => setReady(null);
     armDeadline();
   };
   connect();

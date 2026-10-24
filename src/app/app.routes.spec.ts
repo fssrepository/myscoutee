@@ -26,7 +26,7 @@ function guardRoutes(source: Route[]): Route[] {
 
 describe('startup authentication routing', () => {
   const firebaseSession: AppSession = {
-    kind: 'firebase', sessionId: 'test-session',
+    kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'test-session',
     profile: { id: 'user-1', name: 'Test', email: 'test@example.com', initials: 'T' }
   };
   let storedSession: AppSession | null;
