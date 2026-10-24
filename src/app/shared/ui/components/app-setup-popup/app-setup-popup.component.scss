@@ -58,11 +58,12 @@ app-menu { max-width: 100%; }
 
 .app-setup-browser {
   padding: 0.8rem;
-  border: 2px solid #1e40af;
+  border: 2px solid #edbd6b;
   border-radius: 12px;
-  background: #eff6ff;
-  color: #172554;
-  p { font-weight: 600; }
+  background: linear-gradient(135deg, #fff5cf, #fff0f6);
+  color: #513a50;
+  h3 { color: #713cb0; }
+  p { font-weight: 500; }
 }
 
 .app-setup-privacy { border-top: 1px solid #dce3ed; padding-top: 0.8rem; margin-top: 0.3rem; }

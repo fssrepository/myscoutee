@@ -7,6 +7,7 @@ import {
 } from 'firebase/app';
 
 import { SessionService } from './session.service';
+import { DeploymentConfigurationService } from '../platform/deployment-configuration.service';
 import {
   FirebaseAppService,
   type FirebaseConfigFile
@@ -21,6 +22,9 @@ vi.mock('firebase/app', () => ({
 describe('FirebaseAppService reconciliation', () => {
   const fetchMock = vi.fn();
   const setFirebaseRuntimeAvailable = vi.fn();
+  const initializeDeployment = vi.fn();
+  const reloadDeployment = vi.fn();
+  const firebaseMessagingConfigured = vi.fn();
 
   beforeEach(() => {
     vi.mocked(deleteApp).mockReset();
@@ -35,15 +39,26 @@ describe('FirebaseAppService reconciliation', () => {
     }) as FirebaseApp);
     fetchMock.mockReset();
     setFirebaseRuntimeAvailable.mockReset();
+    initializeDeployment.mockReset().mockResolvedValue(undefined);
+    reloadDeployment.mockReset().mockResolvedValue(undefined);
+    firebaseMessagingConfigured.mockReset().mockReturnValue(true);
     vi.stubGlobal('fetch', fetchMock);
     TestBed.configureTestingModule({
       providers: [
         FirebaseAppService,
         {
+          provide: DeploymentConfigurationService,
+          useValue: {
+            initialize: initializeDeployment,
+            reload: reloadDeployment,
+            firebaseMessagingConfigured
+          }
+        },
+        {
           provide: SessionService,
           useValue: {
             currentSession: () => ({
-              kind: 'firebase'
+              kind: 'authenticated'
             }),
             setFirebaseRuntimeAvailable
           }
@@ -55,6 +70,47 @@ describe('FirebaseAppService reconciliation', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.unstubAllGlobals();
+  });
+
+  it('waits for startup configuration and skips the Firebase request when unconfigured', async () => {
+    const configuration = deferred<void>();
+    initializeDeployment.mockReturnValueOnce(configuration.promise);
+    firebaseMessagingConfigured.mockReturnValue(false);
+    const service = TestBed.inject(FirebaseAppService);
+
+    const runtime = service.ensureFirebaseRuntime();
+    expect(fetchMock).not.toHaveBeenCalled();
+    configuration.resolve();
+
+    expect(await runtime).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(initializeApp).not.toHaveBeenCalled();
+    expect(service.configurationUnavailable).toBe(false);
+    expect(setFirebaseRuntimeAvailable).toHaveBeenLastCalledWith(false);
+  });
+
+  it('reloads public configuration on activation and removal of Firebase configuration', async () => {
+    firebaseMessagingConfigured.mockReturnValue(false);
+    const service = TestBed.inject(FirebaseAppService);
+    expect(await service.ensureFirebaseRuntime()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    reloadDeployment.mockImplementationOnce(async () => {
+      firebaseMessagingConfigured.mockReturnValue(true);
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse(firebaseConfiguration(1)));
+    const app = await service.refreshFirebaseApp();
+    expect(app).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    reloadDeployment.mockImplementationOnce(async () => {
+      firebaseMessagingConfigured.mockReturnValue(false);
+    });
+    expect(await service.refreshFirebaseApp()).toBeNull();
+    expect(deleteApp).toHaveBeenCalledWith(app);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(reloadDeployment).toHaveBeenCalledTimes(2);
+    expect(setFirebaseRuntimeAvailable).toHaveBeenLastCalledWith(false);
   });
 
   it('makes ensure wait for an in-flight refresh instead of returning the old app', async () => {

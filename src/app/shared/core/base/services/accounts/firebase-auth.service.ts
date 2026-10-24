@@ -22,7 +22,7 @@ import type { FirebaseApp } from 'firebase/app';
 import { FirebaseError } from 'firebase/app';
 
 import type {
-  FirebaseAuthProfileDto,
+  AccountAuthProfileDto,
   FirebaseAuthRequestDto,
   FirebaseEmailAuthMode
 } from '../../../contracts/accounts/user.interface';
@@ -31,7 +31,7 @@ import { isFirebaseLoginEnabled } from '../../../common/firebase-login-mode';
 import { FirebaseAppService } from './firebase-app.service';
 
 export interface FirebaseAuthSignInResult {
-  profile: FirebaseAuthProfileDto | null;
+  profile: AccountAuthProfileDto | null;
   emailVerificationSent?: boolean;
   email?: string;
   errorMessage?: string;
@@ -57,7 +57,7 @@ export class FirebaseAuthService {
     return isFirebaseLoginEnabled();
   }
 
-  async signInWithGoogle(): Promise<FirebaseAuthProfileDto | null> {
+  async signInWithGoogle(): Promise<AccountAuthProfileDto | null> {
     return (await this.signIn({ provider: 'google' })).profile;
   }
 
@@ -137,7 +137,7 @@ export class FirebaseAuthService {
     }
   }
 
-  async restoreSessionProfile(): Promise<FirebaseAuthProfileDto | null> {
+  async restoreSessionProfile(): Promise<AccountAuthProfileDto | null> {
     if (!this.enabled) {
       return null;
     }
@@ -269,7 +269,7 @@ export class FirebaseAuthService {
     localStorage.removeItem(FirebaseAuthService.FIREBASE_AUTH_PROFILE_KEY);
   }
 
-  private toFirebaseAuthProfile(user: User): FirebaseAuthProfileDto {
+  private toFirebaseAuthProfile(user: User): AccountAuthProfileDto {
     const fallbackName = user.displayName?.trim() || user.email?.trim() || 'Firebase User';
     return {
       id: user.uid,

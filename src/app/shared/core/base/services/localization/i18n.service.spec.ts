@@ -149,6 +149,41 @@ describe('I18nService', () => {
     expect(localAssetRequestCount()).toBe(0);
   });
 
+  it.each(['real', 'demo'] as const)('processes the cached %s English catalog once across startup and unchanged validation', async scope => {
+    if (scope === 'demo') session.set({ kind: 'demo', userId: 'demo-user' });
+    vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['en-US']);
+    const cached = { lang: 'en', version: catalogVersion, data: { greeting: `${scope} Hello` }, storedAt: 1 };
+    bundleRepository.firstStoredBundle.mockImplementation(async () => structuredClone(cached));
+    bundleRepository.readStoredBundle.mockImplementation(async (requestedScope, lang) => {
+      expect(requestedScope).toBe(scope);
+      return lang === 'en' ? structuredClone(cached) : null;
+    });
+    const response = new Subject<unknown>();
+    get.mockImplementation((_url, options) => {
+      expect(options.params.get('lang')).toBe('en');
+      expect(options.params.get('version')).toBe(catalogVersion);
+      return response;
+    });
+    const service = TestBed.inject(I18nService);
+    const buildIndex = vi.spyOn(service as any, 'buildSourceKeyIndex');
+    const initialized = service.initialize();
+    try {
+      await vi.waitFor(() => expect(apiRequestCount()).toBe(1));
+      await initialized;
+      expect(service.translate('greeting')).toBe(`${scope} Hello`);
+      const validating = service.revalidate();
+      response.next({ lang: 'en', version: catalogVersion, data: null });
+      response.complete();
+      await validating;
+      expect(service.translate('greeting')).toBe(`${scope} Hello`);
+      expect(buildIndex).toHaveBeenCalledOnce();
+      expect(bundleRepository.writeStoredBundle).not.toHaveBeenCalled();
+      expect(apiRequestCount()).toBe(1);
+    } finally {
+      response.complete();
+    }
+  });
+
   it('keeps English when it precedes Hungarian in the browser preferences', async () => {
     vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue(['en-US', 'hu-HU']);
     const service = TestBed.inject(I18nService);
@@ -241,6 +276,32 @@ describe('I18nService', () => {
     expect(service.translate('network.offline')).toBe('Nincs hálózat');
     expect(apiRequestCount()).toBe(1);
     expect(localAssetRequestCount()).toBe(0);
+  });
+
+  it('keeps the first source alias across whitespace and case variants', () => {
+    const service = TestBed.inject(I18nService);
+    const index = (service as any).buildSourceKeyIndex({
+      ' first.key ': ' Hello   world ',
+      second: 'hello world',
+      third: 'HELLO WORLD',
+      blank: '  '
+    });
+    expect(index).toEqual({
+      'Hello world': 'first.key',
+      'hello world': 'first.key',
+      'HELLO WORLD': 'first.key'
+    });
+  });
+
+  it('resolves source text aliases in explicit language translations', () => {
+    const service = TestBed.inject(I18nService);
+    (service as any).applySourceBundle({ 'action.save': 'Save changes' });
+    (service as any).applyBundle('hu', 'test', { 'action.save': 'Módosítások mentése' });
+
+    expect(service.translateForLanguage(' Save   changes ', 'hu')).toBe('Módosítások mentése');
+    expect(service.translateForLanguage('Save changes', 'en')).toBe('Save changes');
+    expect(service.translateForLanguage('action.save', 'hu')).toBe('Módosítások mentése');
+    expect(service.translateForLanguage('Unknown label', 'hu', 'Fallback')).toBe('Fallback');
   });
 
   it('translates composite labels from the English source bundle', async () => {

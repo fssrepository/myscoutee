@@ -2,6 +2,7 @@ import { LazyBgImageDirective } from '@fssrepository/myscoutee-components';
 import { I18nService } from './shared/core/base/services/localization/i18n.service';
 import { LandingContentService } from './shared/core/base/services/content/landing-content.service';
 import { SessionService } from './shared/core/base/services/accounts/session.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../environments/environment';
@@ -108,6 +109,8 @@ describe('application startup requests', () => {
   const initialize = vi.fn();
   const loadOnce = vi.fn();
   const currentSession = vi.fn();
+  const ensureSession = vi.fn();
+  const initializeConfiguration = vi.fn();
 
   beforeEach(() => {
     originalMode = environment.activitiesDataSource;
@@ -120,11 +123,14 @@ describe('application startup requests', () => {
     initialize.mockReset().mockReturnValue(new Promise<void>(resolve => finishTranslations = resolve));
     loadOnce.mockReset().mockReturnValue(new Promise(resolve => finishContent = resolve));
     currentSession.mockReset().mockReturnValue(null);
+    ensureSession.mockReset().mockResolvedValue(null);
+    initializeConfiguration.mockReset().mockReturnValue(new Promise(() => {}));
     vi.spyOn(LazyBgImageDirective, 'preloadImageUrl').mockResolvedValue(true);
     TestBed.configureTestingModule({ providers: [
       { provide: I18nService, useValue: { initialize } },
       { provide: LandingContentService, useValue: { loadOnce } },
-      { provide: SessionService, useValue: { currentSession } }
+      { provide: DeploymentConfigurationService, useValue: { initialize: initializeConfiguration } },
+      { provide: SessionService, useValue: { currentSession, ensureSession } }
     ] });
   });
 
@@ -146,6 +152,33 @@ describe('application startup requests', () => {
     expect(LazyBgImageDirective.preloadImageUrl).toHaveBeenCalledTimes(1);
     expect(ready).toBe(false);
     finishTranslations();
+    await startup;
+    expect(ready).toBe(true);
+  });
+
+  it('starts deployment configuration before translations finish without blocking startup on it', async () => {
+    const startup = TestBed.runInInjectionContext(initializeApplication);
+    expect(initializeConfiguration).toHaveBeenCalledTimes(1);
+    finishTranslations();
+    await startup;
+  });
+
+  it('keeps deployment initialization errors from rejecting translated startup', async () => {
+    initializeConfiguration.mockRejectedValueOnce(new Error('invalid branding'));
+    const startup = TestBed.runInInjectionContext(initializeApplication);
+    finishTranslations();
+    await expect(startup).resolves.toBeUndefined();
+  });
+
+  it('waits for the retained encrypted account before completing startup', async () => {
+    let finishSession!: () => void;
+    ensureSession.mockReturnValue(new Promise<void>(resolve => finishSession = resolve));
+    let ready = false;
+    const startup = TestBed.runInInjectionContext(initializeApplication).then(() => ready = true);
+    finishTranslations();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(ready).toBe(false);
+    finishSession();
     await startup;
     expect(ready).toBe(true);
   });

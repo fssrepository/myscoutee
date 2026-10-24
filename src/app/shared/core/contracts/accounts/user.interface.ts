@@ -8,7 +8,7 @@ export interface LocationCoordinates {
   longitude: number;
 }
 
-export interface FirebaseAuthProfileDto {
+export interface AccountAuthProfileDto {
   id: string;
   name: string;
   email: string;
@@ -29,9 +29,19 @@ export interface FirebaseAuthRequestDto {
 export interface UserSessionLoginRequestDto {
   attemptId: string;
   provider?: string;
+  email?: string;
+  password?: string;
+}
+
+export interface AccountSessionDto {
+  sessionId: string;
+  accessToken: string;
+  expiresAt: string;
+  profile: AccountAuthProfileDto;
 }
 
 export interface UserSessionLoginResponseDto {
+  session?: AccountSessionDto | null;
   accepted: boolean;
   existingSession: boolean;
   outcome: 'ACCEPTED' | 'BLOCKED_LIMIT' | string;
@@ -41,17 +51,6 @@ export interface UserSessionLoginResponseDto {
   message?: string | null;
 }
 
-export interface OperatorBootstrapAuthRequestDto {
-  email: string;
-  password: string;
-}
-
-export interface OperatorBootstrapAuthResponseDto {
-  tokenType: 'OperatorBootstrap';
-  accessToken: string;
-  email: string;
-  expiresAt: string;
-}
 
 export interface EntryConsentStateDto {
   version: string;

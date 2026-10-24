@@ -44,7 +44,7 @@ describe('External event invitation workspace', () => {
       hydrationRequestVersion: 0,
       isAdminWorkspaceRoute: () => false,
       activeUserLoadState: () => ({status: 'loading'}),
-      sessionService: {currentSession: () => ({kind: 'firebase'})},
+      sessionService: {currentSession: () => ({kind: 'authenticated'})},
       syncHydratedUser: (user: {id: string}) => setActiveUserId(user.id),
       helpCenterService: {preload: vi.fn()},
     });

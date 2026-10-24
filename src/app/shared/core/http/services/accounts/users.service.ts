@@ -190,10 +190,10 @@ export class HttpUsersService implements UserService {
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
-      }, previewSession?.kind === 'firebase' ? previewSession.profile.id : undefined);
-      if (previewSession?.kind === 'firebase') {
+      }, previewSession?.kind === 'authenticated' ? previewSession.profile.id : undefined);
+      if (previewSession?.kind === 'authenticated') {
         const imageUrl = me.images?.find(image => image.trim().length > 0)?.trim() ?? '';
-        this.sessionService.setFirebaseAvatarPreview(
+        this.sessionService.setSessionAvatarPreview(
           previewSession.sessionId,
           imageUrl
         );
@@ -202,6 +202,7 @@ export class HttpUsersService implements UserService {
       return result;
     } catch (error) {
       const status = (error as { status?: number } | null)?.status;
+      if (status === 401 || status === 403) throw error;
       if ([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User details request timeout.')) {
         const cached = this.offlineCache.readUser(normalizedUserId || this.sessionService.activeUserId());
         if (cached) return cached;
@@ -254,6 +255,7 @@ export class HttpUsersService implements UserService {
     } catch (error) {
       if (groupId !== undefined || location || this.requiresServerProfileAuthority()) throw error;
       const status = (error as { status?: number } | null)?.status;
+      if (status === 401 || status === 403) throw error;
       const cacheUserId = normalizedUserId || this.sessionService.activeUserId();
       if (([0, 502, 503, 504].includes(status ?? -1) || this.isTimeoutError(error, 'User profile request timeout.'))
         && this.offlineCache.readUser(cacheUserId)?.user) {
@@ -483,7 +485,7 @@ export class HttpUsersService implements UserService {
 
   private async cacheAvatarPreview(sessionId: string, imageUrl: string): Promise<void> {
     const session = this.sessionService.currentSession();
-    if (!imageUrl || session?.kind !== 'firebase' || session.sessionId !== sessionId
+    if (!imageUrl || session?.kind !== 'authenticated' || session.sessionId !== sessionId
       || session.avatarImageUrl !== imageUrl || session.avatarImageDataUrl) {
       return;
     }
@@ -512,7 +514,7 @@ export class HttpUsersService implements UserService {
         reader.onerror = () => reject(reader.error ?? new Error('Failed to read avatar image'));
         reader.readAsDataURL(blob);
       });
-      this.sessionService.setFirebaseAvatarPreviewData(sessionId, imageUrl, dataUrl);
+      this.sessionService.setSessionAvatarPreviewData(sessionId, imageUrl, dataUrl);
     } catch {
       // An optional local preview must not change the authenticated profile result.
     } finally {
@@ -560,8 +562,7 @@ export class HttpUsersService implements UserService {
 
   private requiresServerProfileAuthority(): boolean {
     const kind = this.sessionService.currentSession()?.kind;
-    return kind === 'operator-bootstrap'
-      || (kind === 'demo' && !this.isBrowserOffline());
+    return kind === 'demo' && !this.isBrowserOffline();
   }
 
   private isBrowserOffline(): boolean {
@@ -581,7 +582,7 @@ export class HttpUsersService implements UserService {
       };
     }
 
-    const sessionUser = this.buildFirebaseSessionUser();
+    const sessionUser = this.buildAccountSessionUser();
     return sessionUser
       ? {
           user: sessionUser
@@ -589,9 +590,9 @@ export class HttpUsersService implements UserService {
       : null;
   }
 
-  private buildFirebaseSessionUser(): UserDto | null {
+  private buildAccountSessionUser(): UserDto | null {
     const session = this.sessionService.currentSession();
-    if (session?.kind !== 'firebase') {
+    if (session?.kind !== 'authenticated') {
       return null;
     }
 

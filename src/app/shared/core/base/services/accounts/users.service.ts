@@ -160,7 +160,10 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
-    return this.userService.checkLocationEligibility(coordinates);
+    const service = this.isLocalRouteEnabled('/auth/me')
+      ? this.localUsersService
+      : await this.transportAdapters.get(HTTP_ADAPTER.USERS);
+    return service.checkLocationEligibility(coordinates);
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
@@ -256,7 +259,7 @@ export class UsersService extends BaseRouteModeService {
 
     this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'loading');
     const accountId = this.session.activeUserId();
-    const location = this.session.currentSession()?.kind === 'firebase'
+    const location = this.session.currentSession()?.kind === 'authenticated'
       ? await this.location.pendingLoginCoordinates(accountId) : null;
 
     try {

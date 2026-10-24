@@ -36,7 +36,7 @@ describe('sessionModeInterceptor bootstrap isolation', () => {
 
   it('does not mark a fresh operator bootstrap login as a demo request', async () => {
     const response = await interceptHeader(
-      new HttpRequest('POST', '/api/auth/operator-bootstrap', {})
+      new HttpRequest('POST', '/api/auth/session/login', {})
     );
 
     expect(response.body).toBeNull();
@@ -140,7 +140,7 @@ describe('sessionModeInterceptor registration boundaries', () => {
     return body;
   }
 
-  it.each(['firebase', 'operator-bootstrap'])('does not reroute an existing %s session, even for a demo-looking owner', async kind => {
+  it.each(['authenticated'])('does not reroute an existing %s session, even for a demo-looking owner', async kind => {
     activeSession = { kind, profile: { id: 'real-member' }, sessionId: 'real-session' };
     for (const request of [
       new HttpRequest('POST', '/api/media/images', draftImage()),
@@ -161,7 +161,7 @@ describe('sessionModeInterceptor registration boundaries', () => {
 
   it.each([
     '/api/media/audio', '/api/media/images/import', '/api/auth/me/profile',
-    '/api/auth/operator-bootstrap', '/api/admin/users', '/api/assets',
+    '/api/auth/session/login', '/api/admin/users', '/api/assets',
     'https://external.example/api/media/images'
   ])('does not mark other routes as anonymous registration: %s', async url => {
     expect((await interceptHeader(new HttpRequest('POST', url, draftImage()))).body).toBeNull();

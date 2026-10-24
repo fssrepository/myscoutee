@@ -196,7 +196,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       this.openAdminSelector();
       return;
     }
-    const session = await this.sessionService.startFirebaseSession();
+    const session = await this.sessionService.startAuthSession();
     if (!session) {
       return;
     }
@@ -273,7 +273,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
   private handleAdminAccessDenied(): void {
     const session = this.sessionService.currentSession();
-    this.workspace.handleAdminAccessDeniedState(session?.kind === 'firebase' ? session.profile.id.trim() : '');
+    this.workspace.handleAdminAccessDeniedState(session?.kind === 'authenticated' ? session.profile.id.trim() : '');
   }
 
   private async refreshAdminMenuCountersFromUserRecord(adminUserId: string): Promise<void> {

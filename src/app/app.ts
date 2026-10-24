@@ -94,11 +94,11 @@ export class App implements OnInit, OnDestroy {
   protected avatarLoadStartedAt = 0;
   protected readonly loadingAvatarItems = computed<readonly AppMenuItem[]>(() => {
     const session = this.sessionService.currentSession();
-    const userId = session?.kind === 'firebase' ? session.profile.id : session?.kind === 'demo' ? session.userId : '';
+    const userId = session?.kind === 'authenticated' ? session.profile.id : session?.kind === 'demo' ? session.userId : '';
     const cached = userId ? this.offlineCache.readUser(userId)?.user : null;
     // A saved login is not a restored media cookie. Before the guard completes,
     // use image bytes from this session instead of requesting a private URL.
-    const imageUrl = session?.kind === 'firebase'
+    const imageUrl = session?.kind === 'authenticated'
       ? session.avatarImageDataUrl
       : cached?.id === userId ? AppUtils.firstImageUrl(cached.images) : '';
     // Display-only preview; cached identity never enables actions or skips guards.
@@ -291,9 +291,10 @@ export class App implements OnInit, OnDestroy {
     const path = url.split(/[?#]/)[0].replace(/\/$/, '') || '/';
     const session = this.sessionService.currentSession();
     this.gameStartupVisible = (this.initialLandingWarmupPending || avatarLoading)
-      && Boolean(session && session.kind !== 'operator-bootstrap')
+      && Boolean(session)
       && (path === '/' || path === '/game' || path === '/home');
     if (this.gameStartupVisible) this.avatarLoadStartedAt ||= Date.now();
+    this.changeDetectorRef.markForCheck();
   }
 
   private completeWarmupIfNavigationSettled(): void {

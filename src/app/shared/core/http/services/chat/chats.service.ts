@@ -1530,15 +1530,15 @@ export class HttpChatsService implements IChatsService {
         baseUrl.searchParams.set('sessionId', session.sessionId);
       }
     }
-    if (session?.kind === 'firebase') {
-      const token = await this.sessionService.getFirebaseIdToken();
+    if (session?.kind === 'authenticated') {
+      const token = await this.sessionService.getAccessToken();
       if (!token) {
         return null;
       }
       baseUrl.searchParams.set('token', token);
       baseUrl.searchParams.set(
         'sessionId',
-        this.sessionService.currentFirebaseSessionId()
+        this.sessionService.currentSessionId()
       );
     }
     return baseUrl.toString();

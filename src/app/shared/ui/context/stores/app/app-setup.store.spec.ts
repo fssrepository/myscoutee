@@ -39,7 +39,7 @@ describe('Setup launcher counts available device choices', () => {
     expect(query).not.toHaveBeenCalled();
     const entry = Object.assign(Object.create(EntryPageComponent.prototype), {
       entryNetworkUnavailable: false, entryAuthUnavailable: false, loginEligibilityBusy: false,
-      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', firebaseProfile: () => null },
+      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', accountProfile: () => null },
       synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
       ensureEntryConsent: vi.fn().mockResolvedValue(true), isLoginBlockedByLandingBundle: () => false,
       landingGuide: { closePopup: vi.fn() }, appSetupStore: store,

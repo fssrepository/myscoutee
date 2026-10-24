@@ -1,6 +1,7 @@
 import { Injector, runInInjectionContext } from '@angular/core';
 import { PwaService } from './pwa.service';
 import { environment } from '../../../../../../environments/environment';
+import { version as packageVersion } from '../../../../../../../package.json';
 
 describe('Browser opening without a browser-brand allowlist', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -219,18 +220,126 @@ describe('PWA automatic frontend release checks', () => {
     return runInInjectionContext(Injector.create({ providers: [] }), () => new PwaService());
   }
 
-  it('shares startup version metadata with the label and still fetches a later deployment', async () => {
-    const fetchVersion = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({version:'1.4.4',buildId:'current-build'})))
-      .mockResolvedValueOnce(new Response(JSON.stringify({version:'1.4.4',buildId:'next-build'})));
+  function workerForBuild(buildId: string): ServiceWorker {
+    vi.stubGlobal('MessageChannel', class {
+      port1 = { onmessage: null as null | ((event: { data: unknown }) => void), close: vi.fn() };
+      port2 = {
+        postMessage: (data: unknown) => this.port1.onmessage?.({ data }),
+        close: vi.fn()
+      };
+    });
+    return { postMessage: vi.fn((_message, ports) => ports[0].postMessage({ buildId })) } as unknown as ServiceWorker;
+  }
+
+  it('reads the stamped version without requesting metadata', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'myscoutee-app-version';
+    meta.content = '9.8.7-preview';
+    document.head.appendChild(meta);
+    const fetchVersion = vi.fn();
+    vi.stubGlobal('fetch', fetchVersion);
+    try {
+      const service = fixture();
+      (service as any).loadAppVersionLabel();
+      expect(service.appVersionLabel()).toBe('v9.8.7-preview');
+      expect(fetchVersion).not.toHaveBeenCalled();
+    } finally { meta.remove(); }
+  });
+
+  it('uses the compiled package version for unstamped development pages', () => {
+    const fetchVersion = vi.fn();
     vi.stubGlobal('fetch', fetchVersion);
     const service = fixture();
-    await (service as any).loadAppVersionLabel();
-    expect(service.appVersionLabel()).toBe('v1.4.4');
-    expect(await (service as any).fetchLatestBuildId()).toBe('current-build');
-    expect(fetchVersion).toHaveBeenCalledTimes(1);
-    expect(await (service as any).fetchLatestBuildId()).toBe('next-build');
-    expect(fetchVersion).toHaveBeenCalledTimes(2);
+    (service as any).loadAppVersionLabel();
+    expect(service.appVersionLabel()).toBe(`v${packageVersion}`);
+    expect(fetchVersion).not.toHaveBeenCalled();
+  });
+
+  it('initializes a current production page without fetching app-version.json', async () => {
+    environment.production = true;
+    const fetchVersion = vi.fn();
+    vi.stubGlobal('fetch', fetchVersion);
+    const registration = Object.assign(new EventTarget(), {
+      update: vi.fn(async () => undefined), waiting: null, installing: null
+    });
+    vi.stubGlobal('navigator', { serviceWorker: {
+      register: vi.fn(async () => registration)
+    } });
+    const service = fixture();
+    vi.spyOn(service as any, 'shouldEnableServiceWorker').mockReturnValue(true);
+    vi.spyOn(service, 'isStandalone').mockReturnValue(false);
+    vi.spyOn(service as any, 'readDocumentBuildId').mockReturnValue('current-build');
+
+    await service.initialize();
+
+    expect(service.appVersionLabel()).toBe(`v${packageVersion}`);
+    expect(registration.update).toHaveBeenCalledOnce();
+    expect(fetchVersion).not.toHaveBeenCalled();
+  });
+
+  it.each(['next-build', 'older-build'])('activates %s using its worker identity without an HTTP version request', async buildId => {
+    environment.production = true;
+    const fetchVersion = vi.fn();
+    vi.stubGlobal('fetch', fetchVersion);
+    const service = fixture();
+    const worker = workerForBuild(buildId);
+    const registration = { update: vi.fn(async () => undefined) } as unknown as ServiceWorkerRegistration;
+    vi.spyOn(service as any, 'readDocumentBuildId').mockReturnValue('current-build');
+    vi.spyOn(service as any, 'waitForWaitingWorker').mockResolvedValue(worker);
+    const activate = vi.spyOn(service as any, 'activateWaitingWorker').mockResolvedValue(undefined);
+    const reload = vi.spyOn(service as any, 'reloadPage').mockImplementation(() => {});
+
+    await (service as any).requestBundleUpdateCheck(registration);
+
+    expect(worker.postMessage).toHaveBeenCalledWith({ type: 'GET_BUILD_ID' }, expect.any(Array));
+    expect(activate).toHaveBeenCalledWith(worker);
+    expect(reload).toHaveBeenCalledOnce();
+    expect(fetchVersion).not.toHaveBeenCalled();
+  });
+
+  it('activates the worker for the displayed build without fetching metadata or reloading', async () => {
+    environment.production = true;
+    const fetchVersion = vi.fn();
+    vi.stubGlobal('fetch', fetchVersion);
+    const service = fixture();
+    const worker = workerForBuild('current-build');
+    const registration = { update: vi.fn(async () => undefined) } as unknown as ServiceWorkerRegistration;
+    vi.spyOn(service as any, 'readDocumentBuildId').mockReturnValue('current-build');
+    vi.spyOn(service as any, 'waitForWaitingWorker').mockResolvedValue(worker);
+    const activate = vi.spyOn(service as any, 'activateWaitingWorker').mockResolvedValue(undefined);
+    const reload = vi.spyOn(service as any, 'reloadPage').mockImplementation(() => {});
+
+    await (service as any).requestBundleUpdateCheck(registration);
+
+    expect(activate).toHaveBeenCalledWith(worker);
+    expect(reload).not.toHaveBeenCalled();
+    expect(fetchVersion).not.toHaveBeenCalled();
+  });
+
+  it('retains rollback detection for an older worker that cannot reply with its build identity', async () => {
+    vi.useFakeTimers();
+    try {
+      environment.production = true;
+      const fetchVersion = vi.fn().mockResolvedValue(new Response(JSON.stringify({ buildId: 'legacy-build' })));
+      vi.stubGlobal('fetch', fetchVersion);
+      workerForBuild('unused');
+      const service = fixture();
+      const worker = { postMessage: vi.fn() } as unknown as ServiceWorker;
+      const registration = { update: vi.fn(async () => undefined) } as unknown as ServiceWorkerRegistration;
+      vi.spyOn(service as any, 'readDocumentBuildId').mockReturnValue('current-build');
+      vi.spyOn(service as any, 'waitForWaitingWorker').mockResolvedValue(worker);
+      vi.spyOn(service as any, 'activateWaitingWorker').mockResolvedValue(undefined);
+      const reload = vi.spyOn(service as any, 'reloadPage').mockImplementation(() => {});
+
+      const check = (service as any).requestBundleUpdateCheck(registration);
+      await vi.advanceTimersByTimeAsync(1_000);
+      await check;
+
+      expect(fetchVersion).toHaveBeenCalledExactlyOnceWith(new URL('app-version.json', document.baseURI).toString(), {
+        cache: 'no-store', headers: { 'Cache-Control': 'no-cache' }
+      });
+      expect(reload).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
   });
 
   it('checks on registration and whenever a visible browser or WebView returns to the foreground', async () => {

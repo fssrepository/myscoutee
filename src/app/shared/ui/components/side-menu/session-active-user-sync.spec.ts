@@ -55,11 +55,9 @@ describe('installSessionActiveUserSync', () => {
     expect(activeUserId()).toBe('');
   });
 
-  it('keeps the canonical backend profile id for an operator bootstrap session', () => {
+  it('synchronizes an operator account using the common canonical identity', () => {
     const session = signal<AppSession | null>({
-      kind: 'operator-bootstrap',
-      email: 'operator@example.test',
-      expiresAt: '2099-07-29T12:00:00Z'
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'persisted-operator-id', name: 'Operator', email: 'operator@example.test', initials: 'O' },
     });
     const activeUserId = signal('persisted-operator-id');
 
@@ -81,8 +79,7 @@ describe('installSessionActiveUserSync', () => {
 
 function firebaseSession(id: string): AppSession {
   return {
-    kind: 'firebase',
-    sessionId: `session-${id}`,
+    kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: `session-${id}`,
     profile: {
       id,
       name: 'Firebase User',

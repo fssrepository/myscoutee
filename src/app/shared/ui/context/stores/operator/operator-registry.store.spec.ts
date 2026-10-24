@@ -390,8 +390,7 @@ describe('OperatorRegistryStore registration', () => {
     await store.loadStatus();
 
     session.set({
-      kind: 'firebase',
-      sessionId: 'firebase-operator-session',
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'firebase-operator-session',
       profile: {
         id: 'firebase-operator',
         name: 'Firebase Operator',
@@ -421,15 +420,11 @@ describe('OperatorRegistryStore registration', () => {
       }));
   });
 
-  it('binds bootstrap state to the dedicated operator email identity', () => {
+  it('binds account state to the canonical profile identity', () => {
     expect(operatorRegistryStoreContextKey('http', {
-      kind: 'operator-bootstrap',
-      email: 'first@example.test',
-      expiresAt: '2099-07-29T12:00:00Z'
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'first-session', profile: { id: 'first', name: 'First', email: 'first@example.test', initials: 'F' },
     })).not.toBe(operatorRegistryStoreContextKey('http', {
-      kind: 'operator-bootstrap',
-      email: 'second@example.test',
-      expiresAt: '2099-07-29T12:00:00Z'
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'second-session', profile: { id: 'second', name: 'Second', email: 'second@example.test', initials: 'S' },
     }));
   });
 });

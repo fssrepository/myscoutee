@@ -12,6 +12,7 @@ import {
 import { environment } from '../../../../../../environments/environment';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
 import { SessionService } from './session.service';
+import { DeploymentConfigurationService } from '../platform/deployment-configuration.service';
 
 export interface FirebaseConfigFile {
   revision: number;
@@ -55,6 +56,7 @@ export class FirebaseAppService {
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly sessionService = inject(SessionService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private runtime: (FirebaseAppRuntime & { fingerprint: string }) | null = null;
   private readonly activeRuntimeRef = signal<FirebaseAppRuntime | null>(null);
   private reconciliationPromise: Promise<FirebaseAppRuntime | null> | null = null;
@@ -130,6 +132,12 @@ export class FirebaseAppService {
     ) {
       return null;
     }
+    await this.deploymentConfiguration.initialize();
+    // Activation requires messaging credentials as well as authentication.
+    // Reuse the public startup configuration before requesting Firebase details.
+    if (!this.deploymentConfiguration.firebaseMessagingConfigured()) {
+      return null;
+    }
     const apiBaseUrl = AppUtils.trimEndCharacters((environment.apiBaseUrl ?? '/api'), "/");
     const configUrl = new URL(
       `${apiBaseUrl}${FirebaseAppService.FIREBASE_CONFIG_PATH}`,
@@ -185,8 +193,8 @@ export class FirebaseAppService {
     }
     let reconciliation: Promise<FirebaseAppRuntime | null>;
     const start = previous
-      ? previous.then(() => this.reconcileFirebaseRuntime())
-      : this.reconcileFirebaseRuntime();
+      ? previous.then(() => this.reconcileFirebaseRuntime(forceAfterCurrent))
+      : this.reconcileFirebaseRuntime(forceAfterCurrent);
     reconciliation = start
       .catch(async () => {
         await this.clearOwnedFirebaseApp();
@@ -202,7 +210,10 @@ export class FirebaseAppService {
     return reconciliation;
   }
 
-  private async reconcileFirebaseRuntime(): Promise<FirebaseAppRuntime | null> {
+  private async reconcileFirebaseRuntime(refreshConfiguration = false): Promise<FirebaseAppRuntime | null> {
+    if (refreshConfiguration) {
+      await this.deploymentConfiguration.reload();
+    }
     const config = await this.loadFirebaseConfig();
     if (!config) {
       await this.clearOwnedFirebaseApp();
