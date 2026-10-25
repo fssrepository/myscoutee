@@ -1,1 +1,0 @@
-import {cl as s,cg as r$1}from'./main-1f80e530.js';function r(e,n,t,i){if(e.isOpen(n)){e.close(n);return}e.open(s(r$1({id:n,kind:"select"},i()),{triggerRect:t.triggerRect,openUp:t.openUp,panelAlign:"auto",closeOnSelect:true,onClose:t.closeTrigger}),null);}export{r};

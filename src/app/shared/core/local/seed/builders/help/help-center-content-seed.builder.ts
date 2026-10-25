@@ -6,6 +6,7 @@ import GUIDE_VERSIONS from '../../data/help-center-guide-versions.json';
 import { APP_STATIC_DATA } from '../../../../common/app-static-data';
 
 import GUIDE_FIELDS_BY_PAGE from '../../data/help-center-guide-fields.json';
+import TRANSLATED_DOCUMENTS from '../../data/help-center-documents.json';
 
 const GUIDE_FIELDS_BY_SCREEN = GUIDE_FIELDS_BY_PAGE as Record<string, HelpCenterGuideFieldDto[]>;
 
@@ -28,6 +29,11 @@ export class SeedHelpCenterContentBuilder {
     if (kind === 'explanation' && context) {
       return this.explanationTourRevision(context, language, translate);
     }
+    if (kind !== 'explanation' && language !== 'en' && language !== 'hu') {
+      const revision = TRANSLATED_DOCUMENTS.find(row => row.documentKind === kind && row.lang === language);
+      if (!revision) throw new Error(`Missing translated content seed: ${kind}:${language}`);
+      return this.cloneRevision(revision as HelpCenterRevisionDto);
+    }
     const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
     const revision = this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en);
     if (language === 'en' || language === 'hu') return revision;
@@ -36,7 +42,6 @@ export class SeedHelpCenterContentBuilder {
       title: translate(revision.title), summary: translate(revision.summary), description: translate(revision.description),
       sections: revision.sections.map(section => ({ ...section, title: translate(section.title),
         blurb: translate(section.blurb), contentHtml: translate(section.contentHtml) })) };
-
   }
 
   private static explanationTourRevision(

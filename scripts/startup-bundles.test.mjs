@@ -487,12 +487,14 @@ test('the stamped worker installs the startup shell without fetching unused feat
     fs.writeFileSync(path.join(dir, 'styles-STYLE001.css'), '@font-face{font-family:Roboto;src:url(media/roboto-latin.woff2)}@font-face{font-family:Material Icons;src:url("./media/material-icons-FILLED001.woff2")}');
     fs.appendFileSync(path.join(dir, 'index.html'), '<script id="myscoutee-landing-debug-recorder" src="/assets/diagnostics/landing.js" async></script><link rel="stylesheet" href="styles-STYLE001.css">');
     const stamp = () => execFileSync(process.execPath, [new URL('./stamp-prod-build.js', import.meta.url).pathname], {
-      env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, MYSCOUTEE_UI_BUILD_ID:'startup-precache-test'},
+      env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, MYSCOUTEE_UI_BUILD_ID:'startup-precache-test', MYSCOUTEE_VERSION:'9.8.7-test'},
       stdio:'pipe'
     });
     stamp();
     stamp(); // Re-stamping must not bring the blanket precache back.
     const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+    assert.equal((html.match(/name="myscoutee-app-version" content="9.8.7-test"/g) ?? []).length, 1);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'app-version.json'))).version, '9.8.7-test');
     assert.equal((html.match(/data-myscoutee-icon-font/g) ?? []).length, 1);
     assert.ok(html.includes('href="media/material-icons-FILLED001.woff2" crossorigin'));
     assert.ok(html.indexOf('data-myscoutee-icon-font') < html.indexOf('rel="stylesheet"'));
@@ -509,8 +511,16 @@ test('the stamped worker installs the startup shell without fetching unused feat
         requests = Array.from(entries);
         fetched = requests.map(request => request.url);
       }})},
-      self: {addEventListener: (name, handler) => handlers.set(name, handler)}
+      self: {location: {origin: 'https://qa.example'}, addEventListener: (name, handler) => handlers.set(name, handler)}
     });
+    const replies = [];
+    const message = origin => handlers.get('message')({
+      origin, data: {type: 'GET_BUILD_ID'}, ports: [{postMessage: payload => replies.push(payload.buildId)}]
+    });
+    message('https://other.example');
+    assert.deepEqual(replies, []);
+    message('https://qa.example');
+    assert.deepEqual(replies, ['startup-precache-test']);
     let install;
     handlers.get('install')({waitUntil: promise => {install = promise;}});
     await install;
@@ -523,7 +533,7 @@ test('the stamped worker installs the startup shell without fetching unused feat
     assert.ok(!fetched.some(url => url.includes('/assets/diagnostics/')), 'Disabled diagnostics are not downloaded by worker installation');
     assert.ok(html.includes('id="myscoutee-landing-debug-recorder"'), 'HTTP builds retain the server-controlled recorder');
     execFileSync(process.execPath, [new URL('./stamp-prod-build.js', import.meta.url).pathname], {
-      env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, FRONTEND_BUILD_PROFILE:'standalone', MYSCOUTEE_UI_BUILD_ID:'startup-precache-test'},
+      env: {...process.env, FRONTEND_BUILD_OUTPUT_DIR:dir, FRONTEND_BUILD_PROFILE:'standalone', MYSCOUTEE_UI_BUILD_ID:'startup-precache-test', MYSCOUTEE_VERSION:'9.8.7-test'},
       stdio:'pipe'
     });
     assert.ok(!fs.readFileSync(path.join(dir, 'index.html'), 'utf8').includes('id="myscoutee-landing-debug-recorder"'),

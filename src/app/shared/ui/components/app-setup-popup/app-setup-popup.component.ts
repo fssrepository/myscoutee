@@ -28,14 +28,14 @@ export class AppSetupPopupComponent {
   readonly helpOpen = signal(false);
   readonly actionModel: AppMenuModel = { actionSizing: 'content' };
   readonly browserActions: AppMenuItem[] = [{ id: 'open-browser', icon: 'open_in_browser',
-    layout: 'pill', label: 'app.setup.open.browser', palette: 'ink' }];
+    layout: 'action', label: 'app.setup.open.browser', palette: 'blue' }];
   readonly privacyActions = computed<AppMenuItem[]>(() => [{ id: 'privacy', icon: 'policy',
     layout: 'pill', label: 'privacy', palette: this.store.privacyMissing() ? 'blue' : 'green',
     counter: this.store.privacyMissing() ? 1 : null, counterTone: 'alert', disabled: this.store.actionPending() }]);
   readonly installedActions: AppMenuItem[] = [{ id: 'install', icon: 'install_desktop',
     layout: 'pill', label: 'install.app', palette: 'green', disabled: true }];
   readonly model = computed<PopupModel>(() => ({
-    errorMessage: this.store.error(),
+    errorMessage: this.store.error() || (!this.store.locationSelected() ? 'entry.permissions.location.required' : null),
     title: 'app.setup.title', size: 'small', height: 'auto',
     mobilePresentation: 'fullscreen', headerTone: 'accent', headerPalette: 'violet',
     showClose: true, closeOnBackdrop: false, backdropTone: 'dim',
@@ -60,7 +60,7 @@ export class AppSetupPopupComponent {
     { id: 'location', kind: 'toggle', layout: 'pill', icon: 'location_on',
       label: 'app.setup.location',
       palette: 'blue',
-      togglePalette: this.store.locationPermission() === 'granted' ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
+      togglePalette: this.store.locationSelected() && this.store.locationAvailable() ? 'green' : this.store.locationPermission() === 'denied' ? 'red' : this.store.locationSelected() ? 'blue' : 'slate',
       checked: this.store.locationSelected(),
       showToggleIndicator: true,
       progress: this.controlProgress('location'),

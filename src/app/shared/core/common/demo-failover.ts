@@ -1,4 +1,4 @@
-import { reportBackendReadiness } from './backend-connectivity';
+import { reportBackendReadiness, reportFrontendAvailability } from './backend-connectivity';
 import { environment } from '../../../../environments/environment';
 
 // Resolve before importing App: storage keys and adapters
@@ -15,7 +15,7 @@ let local = false;
 let checking = false;
 let started = false;
 let statusEvents: EventSource | null = null;
-let streamReady = false;
+let streamReady: boolean | null = null;
 let streamDeadline: ReturnType<typeof setTimeout> | undefined;
 let writes = 0;
 let idsPromise: Promise<Map<string, string>> | null = null;
@@ -47,11 +47,21 @@ function eligibleSession(): DemoSession | null {
   return readSession(HTTP_SESSION);
 }
 
-async function backendReachable(): Promise<boolean> {
-  if (statusEvents) return streamReady;
+async function backendReachable(verifyFrontend = false): Promise<boolean | null> {
+  if (statusEvents && !verifyFrontend) return streamReady;
+  let response: Response;
   try {
     const url = new URL(`${API_BASE.replace(/\/$/, '')}/runtime-status`, document.baseURI);
-    const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(1000) });
+    response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(1000) });
+  } catch {
+    reportFrontendAvailability(false);
+    if (!statusEvents) reportBackendReadiness(false);
+    return false;
+  }
+  // A responding frontend can still report an unavailable API server.
+  reportFrontendAvailability(true);
+  if (verifyFrontend && statusEvents) return streamReady;
+  try {
     const status = response.ok ? await response.json() : null;
     const serverTime = Date.parse(response.headers.get('Date') ?? '');
     const reachable = readyStatus(status, Number.isFinite(serverTime) ? serverTime : Date.now());
@@ -70,9 +80,10 @@ function initialBackendReady(): boolean {
   // No startup fetch/timer: absent, stale or unprocessed static HTML is not green.
   let ready = false;
   try {
-    ready = navigator.onLine !== false
-      && readyStatus(JSON.parse(document.getElementById('myscoutee-runtime-status')?.textContent ?? ''), Date.now());
-  } catch { /* Native GitHub builds skip this entire HTTP startup path. */ }
+    const snapshot = JSON.parse(document.getElementById('myscoutee-runtime-status')?.textContent ?? 'null');
+    reportFrontendAvailability(navigator.onLine !== false && snapshot !== null);
+    ready = navigator.onLine !== false && readyStatus(snapshot, Date.now());
+  } catch { reportFrontendAvailability(false); }
   reportBackendReadiness(ready);
   return ready;
 }
@@ -99,7 +110,7 @@ function safeToSwitch(): boolean {
   const path = location.pathname.replace(/\/$/, '');
   return (path === '/game' || isLandingPage())
     && document.visibilityState === 'visible' && writes === 0
-    && !document.querySelector('.ui-popup, .firebase-auth-overlay')
+    && !document.querySelector('.ui-popup, .firebase-auth-overlay, .explanation-guide-overlay, .explanation-guide-loading')
     && !document.activeElement?.matches('input,textarea,[contenteditable="true"]');
 }
 
@@ -210,7 +221,7 @@ export async function checkDemoFailover(): Promise<void> {
       if (pair?.http !== session.userId || readSession(LOCAL_SESSION)?.userId !== pair.local) return;
     }
     const reachable = await backendReachable();
-    if (!local && !reachable && safeToSwitch() && eligibleSession()?.userId === session.userId) {
+    if (!local && reachable === false && safeToSwitch() && eligibleSession()?.userId === session.userId) {
       location.reload();
     }
   } finally { checking = false; }
@@ -224,17 +235,18 @@ export function startDemoFailover(): void {
   const connect = (): void => {
     const events = new EventSource(url.href);
     statusEvents = events;
-    const setReady = (ready: boolean): void => {
+    const setReady = (ready: boolean | null): void => {
       const changed = streamReady !== ready;
       streamReady = ready;
-      reportBackendReadiness(ready);
-      if (changed) void checkDemoFailover();
+      reportBackendReadiness(ready === true);
+      // Stream reconnects are not evidence that the backend went down.
+      if (changed && ready !== null) void checkDemoFailover();
     };
     const armDeadline = (): void => {
       clearTimeout(streamDeadline);
       streamDeadline = setTimeout(() => {
         events.close();
-        setReady(false);
+        setReady(null);
         connect();
       }, 45000);
     };
@@ -243,19 +255,23 @@ export function startDemoFailover(): void {
         const value = JSON.parse(event.data);
         if (typeof value.ready !== 'boolean' || typeof value.known !== 'boolean') throw new Error('Invalid runtime status');
         armDeadline();
-        setReady(value.known && value.ready);
-      } catch { setReady(false); }
+        reportFrontendAvailability(true);
+        setReady(value.known ? value.ready : null);
+      } catch { setReady(null); }
     };
     events.addEventListener('status', receive as EventListener);
     events.addEventListener('ping', receive as EventListener);
-    events.onerror = () => setReady(false);
+    events.onerror = () => {
+      setReady(null);
+      void backendReachable(true);
+    };
     armDeadline();
   };
   connect();
   window.addEventListener('pagehide', () => { statusEvents?.close(); clearTimeout(streamDeadline); });
   window.addEventListener('pageshow', event => { if (event.persisted) connect(); });
-  window.addEventListener('online', () => void checkDemoFailover());
-  window.addEventListener('offline', () => void checkDemoFailover());
+  window.addEventListener('online', () => void backendReachable(true).then(() => checkDemoFailover()));
+  window.addEventListener('offline', () => { reportFrontendAvailability(false); void checkDemoFailover(); });
   window.addEventListener('focus', () => void checkDemoFailover());
   document.addEventListener('visibilitychange', () => void checkDemoFailover());
   // This timer retries only local safe-to-switch decisions (e.g. a closed popup);

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.10.21.2",
+  "version": "2026.10.25.2",
   "messages": {
     "admin.jobs.rule.affinity-admin-signals": "Affinity statistics delivery",
     "admin.jobs.rule.events-admin-signals": "Event statistics delivery",
@@ -51,7 +51,7 @@
     "navigator.community": "Community",
     "payment.history.refund.preview.changed.terms": "Full remaining refund because the event terms changed.",
     "integration.token.ip": "IP:",
-    "entry.auth.unavailable": "Unavailable here",
+    "entry.auth.unavailable": "Service unavailable",
     "allow.location": "Allow location",
     "checking.location": "Checking location",
     "clipboard.paste.permission.help": "Allow clipboard access in site settings, then retry.",
@@ -252,8 +252,8 @@
     "firebase.auth.error.password.rules": "Complete the password requirements to create an account.",
     "firebase.auth.error.password.mismatch": "The two passwords do not match.",
     "operator.bootstrap.auth.invalid": "The installer operator email or password is incorrect.",
-    "operator.bootstrap.auth.throttled": "Too many operator sign-in attempts. Try again later.",
-    "operator.bootstrap.auth.failed": "The dedicated operator sign-in is temporarily unavailable.",
+    "auth.session.login.throttled": "Too many sign-in attempts. Try again later.",
+    "auth.session.login.failed": "Sign-in failed. Check your details and try again.",
     "operator.bootstrap.auth.response.invalid": "The server returned an invalid operator sign-in response.",
     "operator.bootstrap.auth.profile.unavailable": "The persisted Operator profile could not be loaded.",
     "This email is already registered. Use login instead.": "This email is already registered. Use login instead.",

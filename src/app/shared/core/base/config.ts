@@ -33,17 +33,17 @@ export interface ResolvedRouteConfig {
 }
 
 function demoRoutes(...routePrefixes: string[]): RouteConfigEntry[] {
-  return routePrefixes.map(routePrefix => ({ routePrefix, demoDelayMs: 1500 }));
+  return routePrefixes.map(routePrefix => ({ routePrefix, demoDelayMs: 0 }));
 }
 
 export const ROUTE_CONFIG: RouteConfig = {
-  defaultDemoDelayMs: 1500,
+  defaultDemoDelayMs: 0,
   defaultRequestTimeoutMs: 3000,
   defaultIntervalMs: 0,
   entries: [
     {
       routePrefix: '/payment-methods',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 3000
     },
     ...demoRoutes('/auth/demo-users', '/auth/me'),
@@ -67,56 +67,56 @@ export const ROUTE_CONFIG: RouteConfig = {
     ...demoRoutes('/auth/me/logout', '/auth/me/delete', '/help', '/help/active', '/privacy', '/privacy/active', '/privacy/consents', '/terms', '/terms/active', '/explanation', '/explanation/active', '/landing/content', '/landing/articles', '/admin', '/admin/help', '/admin/help/revisions', '/admin/privacy', '/admin/privacy/revisions', '/admin/explanation', '/admin/explanation/revisions', '/admin/ideas', '/admin/reports', '/admin/reports/blocked-users', '/admin/reports/warn', '/admin/reports/block', '/admin/reports/unblock', '/admin/feedback', '/admin/notifications', '/admin/notifications/save', '/admin/notifications/run', '/admin/params', '/admin/params/save', '/admin/params/history', '/admin/params/revert', '/admin/stats', '/admin/affinity-graph', '/admin/monitoring'),
     {
       routePrefix: '/operator/registry',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 30000
     },
     {
       routePrefix: '/operator',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 30000
     },
     ...demoRoutes('/game-cards/query', '/activities/chats'),
     {
-      routePrefix: '/admin/content-moderation', demoDelayMs: 1500, intervalMs: 60000, demoIntervalMs: 60000
+      routePrefix: '/admin/content-moderation', demoDelayMs: 0, intervalMs: 60000, demoIntervalMs: 60000
     },
     ...demoRoutes('/activities/feed', '/activities/events'),
     {
       routePrefix: '/activities/events/explore',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       intervalMs: 30000,
       demoIntervalMs: 10000
     },
     {
       routePrefix: '/activities/events/checkout/authorize',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 120000
     },
     {
       routePrefix: '/activities/events/checkout/pay',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 120000
     },
     ...demoRoutes('/activities/events/checkout', '/feedback', '/activities/events/subevent-resources', '/activities/events/members', '/activities/events/invite-candidates', '/activities/rates'),
     {
       routePrefix: '/notifications',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       intervalMs: 30000,
       demoIntervalMs: 10000
     },
     ...demoRoutes('/assets', '/assets/availability', '/assets/tickets'),
     {
       routePrefix: '/media/images/import',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 15000
     },
     {
       routePrefix: '/media/images',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 15000
     },
     {
       routePrefix: '/media/audio',
-      demoDelayMs: 1500,
+      demoDelayMs: 0,
       requestTimeoutMs: 20000
     },
     ...demoRoutes('/navigator/contacts')

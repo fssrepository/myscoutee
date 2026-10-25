@@ -4,7 +4,7 @@
       <section class="app-setup-section app-setup-browser" aria-labelledby="setup-browser">
         <h3 id="setup-browser">{{ 'app.setup.open.browser' | i18n }}</h3>
         <p>{{ 'app.setup.open.browser.help' | i18n }}</p>
-        <app-menu class="app-setup-toggle app-setup-action" kind="inline" [model]="actionModel" [items]="browserActions" (itemSelect)="action($event)"></app-menu>
+        <app-menu class="app-setup-action" kind="inline" [model]="actionModel" [items]="browserActions" (itemSelect)="action($event)"></app-menu>
       </section>
       <div class="app-setup-checklist">
       <section class="app-setup-section" aria-labelledby="setup-permissions">

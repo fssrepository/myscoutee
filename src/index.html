@@ -403,7 +403,15 @@
         showNoNetwork: function() {
           showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
         },
-        showFailure: showWarmupFailure
+        showFailure: function(title, message, error) {
+          // A caught bootstrap import failure does not emit a script-element
+          // error. Reuse the same guarded recovery for an obsolete lazy chunk.
+          if (error && /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(String(error.message || error))) {
+            recoverDeployment(false);
+            return;
+          }
+          showWarmupFailure(title, message);
+        }
       };
 
       window.addEventListener('offline', function() {

@@ -14,8 +14,8 @@ describe('HttpUsersService demo authority boundary', () => {
   const post = vi.fn();
   const readUser = vi.fn();
   const writeUser = vi.fn();
-  const setFirebaseAvatarPreview = vi.fn();
-  const setFirebaseAvatarPreviewData = vi.fn();
+  const setSessionAvatarPreview = vi.fn();
+  const setSessionAvatarPreviewData = vi.fn();
   const withRequestTimeout = vi.fn();
   let currentSession: AppSession | null;
 
@@ -25,8 +25,8 @@ describe('HttpUsersService demo authority boundary', () => {
     post.mockReset();
     readUser.mockReset();
     writeUser.mockReset();
-    setFirebaseAvatarPreview.mockReset();
-    setFirebaseAvatarPreviewData.mockReset();
+    setSessionAvatarPreview.mockReset();
+    setSessionAvatarPreviewData.mockReset();
     withRequestTimeout
       .mockReset()
       .mockImplementation((_route: string, task: Promise<unknown>) => task);
@@ -40,9 +40,9 @@ describe('HttpUsersService demo authority boundary', () => {
           provide: SessionService,
           useValue: {
             currentSession: () => currentSession,
-            activeUserId: () => currentSession?.kind === 'firebase' ? currentSession.profile.id
+            activeUserId: () => currentSession?.kind === 'authenticated' ? currentSession.profile.id
               : currentSession?.kind === 'demo' ? currentSession.userId : '',
-            setFirebaseAvatarPreview, setFirebaseAvatarPreviewData
+            setSessionAvatarPreview, setSessionAvatarPreviewData
           }
         },
         {
@@ -155,8 +155,7 @@ describe('HttpUsersService demo authority boundary', () => {
 
   it('retains read-through offline resilience for a Firebase user without making it a demo authority', async () => {
     currentSession = {
-      kind: 'firebase',
-      sessionId: 'test-session',
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'test-session',
       profile: {
         id: 'firebase-user',
         name: 'Firebase User',
@@ -173,32 +172,30 @@ describe('HttpUsersService demo authority boundary', () => {
     expect(readUser).toHaveBeenCalledWith('firebase-user');
   });
 
-  it('fails closed for an operator bootstrap profile instead of using browser cache', async () => {
+  it.each([401, 403])('rejects a denied account profile without authorizing from cache (%s)', async status => {
     currentSession = {
-      kind: 'operator-bootstrap',
-      email: 'operator@example.test',
-      expiresAt: '2099-07-29T12:00:00Z'
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'operator-session', profile: { id: 'persisted-operator-id', name: 'Operator', email: 'operator@example.test', initials: 'O' },
     };
-    get.mockReturnValue(throwError(() => new Error('network unavailable')));
+    get.mockReturnValue(throwError(() => ({ status })));
     readUser.mockReturnValue(cachedUserResponse('stale-user'));
 
     await expect(TestBed.inject(HttpUsersService).queryUserById())
-      .rejects.toThrow('network unavailable');
+      .rejects.toHaveProperty('status', status);
     expect(readUser).not.toHaveBeenCalled();
   });
 
   it('binds the server profile photo to the requesting Firebase session despite different user IDs', async () => {
-    currentSession = { kind: 'firebase', sessionId: 'current-session', profile: {
+    currentSession = { kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'current-session', profile: {
       id: 'firebase-uid', name: 'User', email: 'user@example.test', initials: 'U'
     } };
     const user = { ...cachedUserResponse('server-profile-id').user!, images: ['/api/media/private?key=private/images/owner/profile/upload/large.webp'] };
     get.mockReturnValue(of(user));
     await TestBed.inject(HttpUsersService).queryUserById();
-    expect(setFirebaseAvatarPreview).toHaveBeenCalledExactlyOnceWith('current-session', user.images[0]);
+    expect(setSessionAvatarPreview).toHaveBeenCalledExactlyOnceWith('current-session', user.images[0]);
   });
 
   it('restores the real server profile offline using the Firebase identity that owns the session', async () => {
-    currentSession = { kind: 'firebase', sessionId: 'current-session', profile: {
+    currentSession = { kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'current-session', profile: {
       id: 'firebase-uid', name: 'User', email: 'user@example.test', initials: 'U'
     } };
     const stored = new Map<string, UserByIdQueryResponse>();
@@ -215,7 +212,7 @@ describe('HttpUsersService demo authority boundary', () => {
   });
 
   function previewSession(imageUrl: string, dataUrl?: string) {
-    currentSession = { kind: 'firebase', sessionId: 'current-session',
+    currentSession = { kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'current-session',
       profile: { id: 'firebase-uid', name: 'User', email: 'user@example.test', initials: 'U' },
       avatarImageUrl: imageUrl, avatarImageDataUrl: dataUrl };
     return { ...cachedUserResponse('profile-id').user!, images: [imageUrl] };
@@ -226,7 +223,7 @@ describe('HttpUsersService demo authority boundary', () => {
     const user = previewSession(url);
     get.mockReturnValueOnce(of(user)).mockReturnValueOnce(of(new Blob(['RIFF'], { type: 'image/webp' })));
     expect((await TestBed.inject(HttpUsersService).queryUserById()).user).toBe(user);
-    await vi.waitFor(() => expect(setFirebaseAvatarPreviewData).toHaveBeenCalledExactlyOnceWith(
+    await vi.waitFor(() => expect(setSessionAvatarPreviewData).toHaveBeenCalledExactlyOnceWith(
       'current-session', url, 'data:image/webp;base64,UklGRg=='
     ));
     expect(get.mock.calls[1][0]).toContain('small.webp');
@@ -245,7 +242,7 @@ describe('HttpUsersService demo authority boundary', () => {
     get.mockReturnValue(of(user));
     await TestBed.inject(HttpUsersService).queryUserById();
     expect(get).toHaveBeenCalledTimes(1);
-    expect(setFirebaseAvatarPreviewData).not.toHaveBeenCalled();
+    expect(setSessionAvatarPreviewData).not.toHaveBeenCalled();
   });
 
   it.each([new Blob(['<svg/>'], { type: 'image/svg+xml' }), new Blob(['x'.repeat(65537)], { type: 'image/webp' })])(
@@ -253,7 +250,7 @@ describe('HttpUsersService demo authority boundary', () => {
       const user = previewSession('/api/media/private?key=private/images/owner/profile/upload/large.webp');
       get.mockReturnValueOnce(of(user)).mockReturnValueOnce(of(blob));
       expect((await TestBed.inject(HttpUsersService).queryUserById()).user).toBe(user);
-      expect(setFirebaseAvatarPreviewData).not.toHaveBeenCalled();
+      expect(setSessionAvatarPreviewData).not.toHaveBeenCalled();
     });
 });
 

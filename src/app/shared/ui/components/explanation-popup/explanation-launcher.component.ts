@@ -40,10 +40,11 @@ import { AppSetupStore } from '../../context/stores/app/app-setup.store';
       </div>
     }
     @if (guide.popupOpen() && !guide.loading()) {
-      <app-dialog [useStore]="false" [dialog]="contentDialog()"></app-dialog>
+      <app-dialog [useStore]="false" [dialog]="contentDialog()" [style.--explanation-guide-layer]="layer() + 1"></app-dialog>
     }`,
   changeDetection: ChangeDetectionStrategy.Eager,
-  styles: [`.explanation-guide-loading { position: fixed; inset: 0; display: grid; place-items: center;
+  styles: [`:host ::ng-deep app-tour-dialog .explanation-guide-overlay { z-index: var(--explanation-guide-layer); }
+    .explanation-guide-loading { position: fixed; inset: 0; display: grid; place-items: center;
     background: rgba(10, 18, 37, 0.73); }
     .floating-launcher-rail { position: fixed; right: 1.4rem;
     display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;

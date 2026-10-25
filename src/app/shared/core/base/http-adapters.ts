@@ -1,4 +1,5 @@
 import { HTTP_ENTRY_ADAPTER_TYPES } from './http-entry-adapters';
+import { HttpUsersService } from '../http/services/accounts/users.service';
 import { HttpActivityInviteCandidatesService } from '../http/services/events/activity-invite-candidates.service';
 import { HttpActivityMembersService } from '../http/services/events/activity-members.service';
 import { HttpActivityResourcesService } from '../http/services/events/activity-resources.service';
@@ -73,4 +74,5 @@ export const HTTP_ADAPTER_TYPES = {
   HttpServiceOfferingsService,
   HttpShareTokensService,
   HttpUserExperiencesService,
+  HttpUsersService,
 };

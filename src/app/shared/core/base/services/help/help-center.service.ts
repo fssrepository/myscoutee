@@ -18,6 +18,7 @@ import {
   BaseRouteModeService
 } from '../platform/base-route-mode.service';
 import { HelpCenterStore } from '../../../../ui/context/stores/app/help-center.store';
+import { I18nService } from '../localization/i18n.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 
@@ -29,6 +30,7 @@ export class HelpCenterService extends BaseRouteModeService {
   private readonly localHelpCenterService = this.transportAdapters.reference(LOCAL_ADAPTER.HELP_CENTER);
   private readonly httpHelpCenterService = this.transportAdapters.reference(HTTP_ADAPTER.HELP_CENTER);
   private readonly helpCenterStore = inject(HelpCenterStore);
+  private readonly i18n = inject(I18nService);
   private readonly workspace = inject(GroupWorkspaceContextService);
   readonly landingGroupId = signal<string | null>(null);
   private readonly contentGroupId = computed(() => this.workspace.accountUserId()
@@ -151,7 +153,7 @@ export class HelpCenterService extends BaseRouteModeService {
 
   private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
     const groupId = kind === 'privacy' ? null : this.contentGroupId();
-    const state = await this.helpService(kind).loadState(kind, lang, contextKey, groupId);
+    const state = await this.helpService(kind).loadState(kind, lang ?? this.i18n.currentLanguage(), contextKey, groupId);
     if (kind === 'privacy' || groupId === this.contentGroupId()) this.setState(kind, state);
     return this.cloneState(state);
   }

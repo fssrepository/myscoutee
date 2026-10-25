@@ -29,32 +29,32 @@ export class SeedHelpCenterRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly i18n = inject(I18nService);
 
-  async seedDefaults(): Promise<boolean> {
+  async seedDefaults(requestedLanguage?: string): Promise<boolean> {
     await this.memoryDb.whenReady();
     let changed = false;
-    for (const option of this.availableLanguages()) {
+    const language = requestedLanguage === undefined ? undefined : this.normalizeLang(requestedLanguage);
+    for (const option of this.availableLanguages().filter(option => !language || option.lang === language)) {
       const language = option.lang;
-      await this.i18n.ensureLanguageLoaded(language);
-      changed = await this.ensureSeeded('help', language) || changed;
-      changed = await this.ensureSeeded('privacy', language) || changed;
-      changed = await this.ensureSeeded('terms', language) || changed;
+      for (const kind of ['help', 'privacy', 'terms'] as const) {
+        changed = await this.ensureSeeded(kind, language) || changed;
+      }
       for (const contextKey of SeedHelpCenterContentBuilder.explanationBootstrapContextKeys()) {
         changed = await this.ensureSeeded('explanation', language, contextKey) || changed;
       }
     }
     changed = this.ensureGuideFields() || changed;
-    changed = this.ensureBaseSeeded('myscoutee-work', WORK_HELP) || changed;
-    changed = this.ensureBaseSeeded('myscoutee-community', COMMUNITY_HELP) || changed;
+    changed = this.ensureBaseSeeded('myscoutee-work', WORK_HELP, language) || changed;
+    changed = this.ensureBaseSeeded('myscoutee-community', COMMUNITY_HELP, language) || changed;
     if (changed) {
       await this.memoryDb.flushToIndexedDb();
     }
     return changed;
   }
 
-  private ensureBaseSeeded(baseId: string, sourceRows: typeof WORK_HELP): boolean {
+  private ensureBaseSeeded(baseId: string, sourceRows: typeof WORK_HELP, language?: string): boolean {
     const current = this.memoryDb.read()[HELP_CENTER_TABLE_NAME];
     const existing = current.baseGroups?.[baseId];
-    const revisions = sourceRows.map(source => LocalHelpCenterMapper.toRecord({
+    const revisions = sourceRows.filter(source => !language || source.lang === language).map(source => LocalHelpCenterMapper.toRecord({
       isSystem: 'isSystem' in source && source.isSystem === true,
       id: source._id, documentKind: source.documentType as HelpCenterDocumentKind,
       contextKey: 'contextKey' in source ? String(source.contextKey) : null,
@@ -131,12 +131,8 @@ export class SeedHelpCenterRepository {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey);
     const existingRevisions = this.revisionsForKind(table, kind, language, context);
-    const revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(
-      kind,
-      language,
-      context,
-      key => this.i18n.translateForLanguage(key, language)
-    ), kind);
+    // Identity/version checks do not need translation catalogs or translated sections.
+    let revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(kind, language, context), kind);
     const upgradeSystemRevision = kind === 'help' && existingRevisions.length > 0
       && existingRevisions.every(value => value.version < revision.version
         && value.createdByUserId === 'system' && value.updatedByUserId === 'system');
@@ -152,6 +148,11 @@ export class SeedHelpCenterRepository {
     if (existingRevisions.length > 0 && !upgradeSystemRevision && !shouldSeedExplanationTour) {
       return this.ensureActiveRevision(table, kind, language, context, existingRevisions);
     }
+
+    await this.i18n.ensureLanguageLoaded(language);
+    revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(
+      kind, language, context, key => this.i18n.translateForLanguage(key, language)
+    ), kind);
 
     const legacy = kind === 'explanation' && context === 'activities.rates' && existingRevisions.length === 0
       ? this.cloneRevision(language === 'hu'
@@ -279,7 +280,7 @@ export class SeedHelpCenterRepository {
     };
   }
 
-  private revisionKind(revision: HelpCenterRevisionDto | null | undefined): HelpCenterDocumentKind {
+  private revisionKind(revision: Pick<HelpCenterRevisionRecord, 'documentKind'> | null | undefined): HelpCenterDocumentKind {
     const kind = revision?.documentKind;
     if (kind === 'privacy' || kind === 'terms' || kind === 'explanation') {
       return kind;
@@ -287,11 +288,11 @@ export class SeedHelpCenterRepository {
     return 'help';
   }
 
-  private revisionLang(revision: HelpCenterRevisionDto | null | undefined): string {
+  private revisionLang(revision: Pick<HelpCenterRevisionRecord, 'lang'> | null | undefined): string {
     return this.normalizeLang(revision?.lang);
   }
 
-  private revisionContextKey(revision: HelpCenterRevisionDto | null | undefined): string | null {
+  private revisionContextKey(revision: Pick<HelpCenterRevisionRecord, 'documentKind' | 'contextKey'> | null | undefined): string | null {
     return this.normalizeContextKey(this.revisionKind(revision), revision?.contextKey);
   }
 

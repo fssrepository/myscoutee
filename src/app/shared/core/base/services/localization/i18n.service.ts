@@ -296,21 +296,26 @@ export class I18nService implements UiTranslations {
     generation: number,
     onReady?: () => void
   ): Promise<void> {
-    if (this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE) {
-      await this.loadDefaultSourceBundle(scope, generation);
-    }
+    const defaultSource = this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE
+      ? await this.loadDefaultSourceBundle(scope, generation)
+      : null;
     if (!this.isCurrentBundleLoad(scope, generation)) {
       return;
     }
 
     const candidates = this.localizedBrowserCandidates();
     const preferredLang = candidates[0] ?? I18nService.DEFAULT_LANGUAGE;
-    const stored = await this.bundleRepository.firstStoredBundle(scope, candidates);
+    // The HTTP source step already applied this exact catalog snapshot.
+    const stored = this.usesHttpBundles() && preferredLang === I18nService.DEFAULT_LANGUAGE && defaultSource
+      ? defaultSource
+      : await this.bundleRepository.firstStoredBundle(scope, candidates);
     if (!this.isCurrentBundleLoad(scope, generation)) {
       return;
     }
     if (stored?.lang === preferredLang) {
-      this.applyBundle(stored.lang, stored.version, stored.data);
+      if (!this.usesHttpBundles() || stored !== defaultSource) {
+        this.applyBundle(stored.lang, stored.version, stored.data);
+      }
       if (Object.keys(stored.data).length > 0 && this.compareVersions(stored.version, catalogVersion) >= 0) {
         onReady?.();
       }
@@ -336,7 +341,7 @@ export class I18nService implements UiTranslations {
       this.applyBundle(seed.lang, seed.version, seed.data);
       onReady?.();
     }
-    await this.refreshFromServer(scope, generation, candidates);
+    await this.refreshFromServer(scope, generation, candidates, stored);
     if (this.isCurrentBundleLoad(scope, generation) && stored && stored.lang !== preferredLang
       && Object.keys(this.messagesByLanguageSignal()).length === 0) {
       this.applyBundle(stored.lang, stored.version, stored.data);
@@ -346,14 +351,14 @@ export class I18nService implements UiTranslations {
   private async loadDefaultSourceBundle(
     scope: I18nBundleScope,
     generation: number
-  ): Promise<void> {
+  ): Promise<StoredI18nBundle | null> {
     const lang = I18nService.DEFAULT_LANGUAGE;
     const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
     const seed = !this.usesHttpBundles() && assetUrl
       ? await this.loadLocalSeedBundle(assetUrl, true)
       : null;
     if (!this.isCurrentBundleLoad(scope, generation)) {
-      return;
+      return null;
     }
     if (seed && seed.lang === lang && Object.keys(seed.data).length > 0) {
       this.applySourceBundle(seed.data);
@@ -361,39 +366,44 @@ export class I18nService implements UiTranslations {
 
     const stored = await this.bundleRepository.readStoredBundle(scope, lang);
     if (!this.isCurrentBundleLoad(scope, generation)) {
-      return;
+      return null;
     }
     const storedCanOverrideSeed = stored
       && Object.keys(stored.data).length > 0
       && (!seed || this.compareVersions(stored.version, seed.version) >= 0);
     if (storedCanOverrideSeed) {
       this.applySourceBundle(stored.data, true);
-      return;
+      return stored;
     }
     if (!this.usesHttpBundles() && seed) {
       await this.bundleRepository.writeStoredBundle(scope, seed);
     }
+    return null;
   }
 
   private async refreshFromServer(
     scope: I18nBundleScope,
     generation: number,
-    candidates: readonly string[]
+    candidates: readonly string[],
+    appliedBundle?: StoredI18nBundle | null
   ): Promise<void> {
     if (!this.usesHttpBundles()) {
       return;
     }
     await this.refreshLanguageFromServer(scope, generation,
-      candidates[0] ?? I18nService.DEFAULT_LANGUAGE, true);
+      candidates[0] ?? I18nService.DEFAULT_LANGUAGE, true, appliedBundle);
   }
 
   private async refreshLanguageFromServer(
     scope: I18nBundleScope,
     generation: number,
     requestedLang: string,
-    activateTranslation: boolean
+    activateTranslation: boolean,
+    appliedBundle?: StoredI18nBundle | null
   ): Promise<void> {
-    const stored = await this.bundleRepository.readStoredBundle(scope, requestedLang);
+    const stored = appliedBundle?.lang === requestedLang
+      ? appliedBundle
+      : await this.bundleRepository.readStoredBundle(scope, requestedLang);
     if (!this.isCurrentBundleLoad(scope, generation)) {
       return;
     }
@@ -437,7 +447,9 @@ export class I18nService implements UiTranslations {
         this.applyServerBundle(bundle, activateTranslation);
         return;
       }
-      if (stored && stored.lang === lang && version && version === stored.version) {
+      if (stored && stored.lang === lang && version && version === stored.version
+        && (this.messagesByLanguageSignal()[lang] !== stored.data
+          || (activateTranslation && this.currentLanguageSignal() !== lang))) {
         this.applyServerBundle(stored, activateTranslation);
       }
     } catch {
@@ -495,7 +507,7 @@ export class I18nService implements UiTranslations {
     for (const lang of candidates) {
       if (lang === I18nService.DEFAULT_LANGUAGE && this.sourceMessagesScope === this.activeBundleScope
         && Object.keys(this.sourceMessagesSignal()).length > 0) {
-        continue;
+        return null;
       }
       const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
       if (!assetUrl) {
@@ -591,18 +603,19 @@ export class I18nService implements UiTranslations {
 
   private buildSourceKeyIndex(data: Record<string, string>): Record<string, string> {
     const index: Record<string, string> = {};
-    Object.entries(data).forEach(([key, source]) => {
+    for (const key of Object.keys(data)) {
       const normalizedKey = this.normalizeSourceKey(key);
-      const normalizedSource = this.normalizeSourceKey(source);
+      const normalizedSource = this.normalizeSourceKey(data[key]);
       if (!normalizedKey || !normalizedSource) {
-        return;
+        continue;
       }
-      for (const candidate of this.sourceLookupCandidates(normalizedSource)) {
-        if (candidate && !index[candidate]) {
+      // The source is normalized already; duplicate case variants keep the first key.
+      for (const candidate of [normalizedSource, normalizedSource.toLowerCase(), normalizedSource.toUpperCase()]) {
+        if (!index[candidate]) {
           index[candidate] = normalizedKey;
         }
       }
-    });
+    }
     return index;
   }
 
@@ -622,12 +635,12 @@ export class I18nService implements UiTranslations {
     const candidates: string[] = [];
     for (const raw of rawLanguages) {
       const lang = this.normalizeLanguage(raw);
-      if (!lang || candidates.includes(lang)) {
+      if (!lang || !I18nService.LOCAL_SEED_ASSETS[lang] || candidates.includes(lang)) {
         continue;
       }
       candidates.push(lang);
     }
-    return candidates;
+    return candidates.length ? candidates : [I18nService.DEFAULT_LANGUAGE];
   }
 
   private browserLanguages(): string[] {

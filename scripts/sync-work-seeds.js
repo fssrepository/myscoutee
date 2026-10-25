@@ -43,7 +43,7 @@ function flush() {
   }
   for (const [file, value] of staged) {
     if (locationsOnly && !file.endsWith('/users.json')) continue;
-    if (contentOnly && !/(?:helpCenterRevisions|helpCenterGuideFields|ideaPosts|(?:work|community)-help-center)\.json$/.test(file)) continue;
+    if (contentOnly && !/(?:helpCenterRevisions|helpCenterGuideFields|ideaPosts|help-center-documents|(?:work|community)-help-center)\.json$/.test(file)) continue;
     if (file.endsWith('/helpCenterRevisions.json') && fs.existsSync(file)) {
       const previous = JSON.parse(fs.readFileSync(file, 'utf8'));
       const order = new Map(previous.map((row,index) => [row._id,index]));
@@ -458,6 +458,18 @@ for (const database of ['demo_db', 'e2e_db']) {
   write(file, rows);
   write(path.join(dir, 'users.json'), users);
 }
+// Reuse the translated HTTP seed documents without loading other UI catalogs
+// in the browser. EN/HU retain their existing local source definitions.
+write(path.join(data, 'help-center-documents.json'),
+ read(path.join(mongo, 'demo_db', 'helpCenterRevisions.json'))
+  .filter(row => !row.baseGroupId && row.active && row.documentType !== 'explanation'
+    && !['en', 'hu'].includes(row.lang))
+  .map(row => ({ id: row._id, documentKind: row.documentType, lang: row.lang,
+   languageLabel: row.languageLabel, version: row.version, active: row.active,
+   title: row.title, summary: row.summary, description: row.description,
+   headerColor: row.headerColor, sections: row.sections,
+   createdAtIso: row.createdDate, createdByUserId: row.createdUser,
+   updatedAtIso: row.updatedDate, updatedByUserId: row.updatedUser })));
 flush();
 if (stale) process.exitCode = 1;
 else console.log(check ? 'Work and Community content and demo seeds are synchronized.' : 'Updated Work and Community content and demo seeds.');

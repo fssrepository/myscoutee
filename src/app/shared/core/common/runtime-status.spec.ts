@@ -19,8 +19,19 @@ describe('landing runtime status', () => {
     ready, checkedAt: Math.floor(Date.now() / 1000) - age
   }), { headers: { Date: new Date().toUTCString() } });
 
+  class FakeEventSource extends EventTarget {
+    static instances: FakeEventSource[] = [];
+    onerror: (() => void) | null = null;
+    close = vi.fn();
+    constructor(public url: string) { super(); FakeEventSource.instances.push(this); }
+    status(ready: boolean, known = true) {
+      this.dispatchEvent(new MessageEvent('status', { data: JSON.stringify({ ready, known }) }));
+    }
+  }
+
   beforeEach(async () => {
     vi.resetModules();
+    FakeEventSource.instances = [];
     localStorage.clear();
     snapshot(true);
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
@@ -40,6 +51,37 @@ describe('landing runtime status', () => {
     localStorage.clear();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('keeps frontend access available when the API snapshot is down', async () => {
+    snapshot(false);
+    await failover.prepareDemoFailover();
+    expect(connectivity.backendUnavailable()).toBe(true);
+    expect(connectivity.frontendUnavailable()).toBe(false);
+    expect(mode.activitiesDataSource).toBe('local');
+  });
+
+  it('marks a cached offline shell as frontend-unavailable until the frontend responds', async () => {
+    document.getElementById('myscoutee-runtime-status')!.textContent = 'null';
+    await failover.prepareDemoFailover();
+    expect(connectivity.frontendUnavailable()).toBe(true);
+    fetchStatus.mockImplementation(async () => response(false));
+    await failover.checkDemoFailover();
+    expect(connectivity.frontendUnavailable()).toBe(false);
+    expect(connectivity.backendUnavailable()).toBe(true);
+    expect(location.reload).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes a lost frontend connection from a responding frontend with a stopped API', async () => {
+    snapshot(false);
+    await failover.prepareDemoFailover();
+    fetchStatus.mockRejectedValueOnce(new TypeError('Network unreachable'));
+    await failover.checkDemoFailover();
+    expect(connectivity.frontendUnavailable()).toBe(true);
+    fetchStatus.mockImplementation(async () => response(false));
+    await failover.checkDemoFailover();
+    expect(connectivity.frontendUnavailable()).toBe(false);
+    expect(connectivity.backendUnavailable()).toBe(true);
   });
 
   it('reads the HTML head immediately without waiting for a fetch or the poll', async () => {
@@ -79,7 +121,7 @@ describe('landing runtime status', () => {
   it('keeps a retained real HTTP identity authoritative over a local demo on reload', async () => {
     snapshot(false);
     vi.stubGlobal('location', { pathname: '/admin', reload: vi.fn() });
-    const real = JSON.stringify({ kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session' });
+    const real = JSON.stringify({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'real-user' }, sessionId: 'real-session' });
     localStorage.setItem('myscoutee.http.session.v1', real);
     localStorage.setItem('myscoutee.demo.session.v1', JSON.stringify({ kind: 'demo', userId: 'selected-local-demo' }));
     await failover.prepareDemoFailover();
@@ -111,7 +153,7 @@ describe('landing runtime status', () => {
     const [httpId] = [...await failover.demoSeedUserIds()][0];
     localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({ kind: 'demo', userId: httpId }));
     await failover.prepareDemoFailover();
-    const real = JSON.stringify({ kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session' });
+    const real = JSON.stringify({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'real-user' }, sessionId: 'real-session' });
     localStorage.setItem('myscoutee.http.session.v1', real);
     failover.endDemoFailoverSession();
     expect(localStorage.getItem('myscoutee.http.session.v1')).toBe(real);
@@ -127,7 +169,7 @@ describe('landing runtime status', () => {
     expect(fetchStatus.mock.calls[0][1].cache).toBe('no-store');
   });
 
-  it.each(['ui-popup', 'firebase-auth-overlay'])('defers landing recovery while %s is open', async popupClass => {
+  it.each(['ui-popup', 'firebase-auth-overlay', 'explanation-guide-overlay', 'explanation-guide-loading'])('defers landing recovery while %s is open', async popupClass => {
     await failover.prepareDemoFailover();
     const popup = document.createElement('div');
     popup.className = popupClass; popup.dataset['testPopup'] = '';
@@ -147,7 +189,7 @@ describe('landing runtime status', () => {
     fetchStatus.mockReturnValue(new Promise<Response>(resolve => complete = resolve));
     const check = failover.checkDemoFailover();
     localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({
-      kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session'
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'real-user' }, sessionId: 'real-session'
     }));
     complete(response(false));
     await check;
@@ -159,7 +201,7 @@ describe('landing runtime status', () => {
     await failover.prepareDemoFailover();
     expect(fetchStatus).not.toHaveBeenCalled();
     mode.activitiesDataSource = 'http';
-    const real = JSON.stringify({ kind: 'firebase', profile: { id: 'real-user' }, sessionId: 'real-session' });
+    const real = JSON.stringify({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'real-user' }, sessionId: 'real-session' });
     localStorage.setItem('myscoutee.http.session.v1', real);
     fetchStatus.mockImplementation(async () => response(false));
     await failover.prepareDemoFailover();
@@ -188,17 +230,43 @@ describe('landing runtime status', () => {
     await failover.checkDemoFailover();
     expect(fetchStatus).toHaveBeenCalledOnce();
   });
+
+  it.each(['disconnect', 'silent', 'unknown', 'malformed'])('does not reload a healthy landing on %s status transport', async failure => {
+    vi.useFakeTimers();
+    vi.stubGlobal('EventSource', FakeEventSource);
+    try {
+      await failover.prepareDemoFailover();
+      failover.startDemoFailover();
+      const events = FakeEventSource.instances[0]!;
+      events.status(true);
+      if (failure === 'disconnect') events.onerror?.();
+      if (failure === 'silent') await vi.advanceTimersByTimeAsync(45001);
+      if (failure === 'unknown') events.status(false, false);
+      if (failure === 'malformed') events.dispatchEvent(new MessageEvent('status', { data: 'invalid' }));
+      await vi.advanceTimersByTimeAsync(10001);
+      expect(connectivity.backendUnavailable()).toBe(true);
+      expect(location.reload).not.toHaveBeenCalled();
+      if (failure === 'disconnect') {
+        expect(fetchStatus).toHaveBeenCalledOnce();
+        expect(connectivity.frontendUnavailable()).toBe(false);
+      } else expect(fetchStatus).not.toHaveBeenCalled();
+      const reconnected = FakeEventSource.instances.at(-1)!;
+      reconnected.status(true);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(connectivity.backendUnavailable()).toBe(false);
+      expect(location.reload).not.toHaveBeenCalled();
+      reconnected.status(false);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(location.reload).toHaveBeenCalledOnce();
+    } finally {
+      window.dispatchEvent(new Event('pagehide'));
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   it('uses status events without repeated HTTP reads and fails closed on a silent stream', async () => {
     vi.useFakeTimers();
-    class FakeEventSource extends EventTarget {
-      static instances: FakeEventSource[] = [];
-      onerror: (() => void) | null = null;
-      close = vi.fn();
-      constructor(public url: string) { super(); FakeEventSource.instances.push(this); }
-      status(ready: boolean, known = true) {
-        this.dispatchEvent(new MessageEvent('status', { data: JSON.stringify({ ready, known }) }));
-      }
-    }
     vi.stubGlobal('EventSource', FakeEventSource);
     try {
       await failover.prepareDemoFailover();
@@ -225,7 +293,8 @@ describe('landing runtime status', () => {
       expect(events.close).toHaveBeenCalledOnce();
       expect(FakeEventSource.instances).toHaveLength(2);
       expect(connectivity.backendUnavailable()).toBe(true);
-      expect(fetchStatus).not.toHaveBeenCalled();
+      // The disconnect checks frontend reachability once; a silent stream adds no polling.
+      expect(fetchStatus).toHaveBeenCalledOnce();
     } finally {
       window.dispatchEvent(new Event('pagehide'));
       vi.clearAllTimers();

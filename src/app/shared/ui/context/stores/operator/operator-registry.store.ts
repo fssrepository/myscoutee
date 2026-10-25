@@ -454,10 +454,8 @@ export function operatorRegistryStoreContextKey(
 ): string {
   const sessionIdentity = session?.kind === 'demo'
     ? `demo:${session.userId.trim()}`
-    : session?.kind === 'firebase'
-      ? `firebase:${session.profile.id.trim()}`
-      : session?.kind === 'operator-bootstrap'
-        ? `operator-bootstrap:${session.email.trim()}`
+    : session?.kind === 'authenticated'
+      ? `authenticated:${session.profile.id.trim()}`
       : 'none';
   return `${dataSource}:${sessionIdentity}`;
 }

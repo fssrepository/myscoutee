@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 import { IdeaPostsService } from '../../../shared/core/base/services/content/idea-posts.service';
+import { LandingContentService } from '../../../shared/core/base/services/content/landing-content.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/platform/deployment-configuration.service';
 import { I18nService } from '../../../shared/core/base/services/localization/i18n.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
@@ -99,6 +100,27 @@ describe('EntryLandingComponent article lists', () => {
     TestBed.resetTestingModule();
   });
 
+  it('keeps both content surfaces visible with their existing error state after a failed load', async () => {
+    TestBed.overrideProvider(LandingContentService, { useValue: {
+      mode: signal('dating'),
+      loadOnce: () => Promise.reject(new Error('Content preparation failed'))
+    } });
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.componentRef.setInput('authMode', 'firebase');
+    fixture.componentRef.setInput('articlesLoading', false);
+    fixture.componentRef.setInput('contentError', 'Unable to load content');
+    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      for (const selector of ['.entry-how-smart-list', '.entry-ideas-carousel-smart-list']) {
+        const surface = fixture.nativeElement.querySelector(selector);
+        expect(surface).not.toBeNull();
+        expect(surface.textContent).toContain('Unable to load content');
+      }
+    });
+    fixture.destroy();
+  });
+
   it('renders landing actions and policy links using only the Hungarian catalog', () => {
     const messages = huBundle.messages as Record<string, string>;
     const requested: string[] = [];
@@ -122,7 +144,18 @@ describe('EntryLandingComponent article lists', () => {
     expect(text).not.toContain('Data privacy');
     fixture.componentRef.setInput('networkUnavailable', true);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain(messages['network.offline']);
+    expect(fixture.nativeElement.textContent).toContain(messages['landing.login']);
+    expect(fixture.nativeElement.textContent).not.toContain(messages['entry.auth.unavailable']);
+    const login = fixture.nativeElement.querySelector('.entry-auth-btn');
+    expect(login.disabled).toBe(true);
+    expect(login.textContent).toContain(messages['landing.login']);
+    expect(login.querySelector('mat-icon').textContent.trim()).toBe('login');
+    expect(login.classList.contains('entry-auth-btn-unavailable')).toBe(false);
+    expect(login.classList.contains('entry-auth-btn-network')).toBe(false);
+    const actions = view(fixture.componentInstance).entryHeroCtaItems();
+    expect(actions.find(item => item.id === 'explore')).toMatchObject({ label: 'landing.explore.action', icon: 'rocket_launch', disabled: true });
+    expect(actions.find(item => item.id === 'join')).toMatchObject({ label: 'landing.hero.free.to.join', icon: 'login', disabled: true });
+    expect(fixture.nativeElement.textContent).not.toContain(messages['network.offline']);
     expect(requested).not.toContain('No network');
     expect(requested).not.toContain('Start exploring');
   });
@@ -419,6 +452,7 @@ describe('EntryLandingComponent article lists', () => {
 });
 
 interface EntryLandingTestView {
+  entryHeroCtaItems(): Array<{ id: string; label: string; icon: string; disabled: boolean }>;
   featuredIdeaCards: () => InfoCardData<IdeaArticleDetailDto>[];
   entryIdeaSmartListLoadPage: SmartListLoadPage<InfoCardData<IdeaArticleDetailDto>>;
   entryIdeaSmartListConfig: SmartListConfig<InfoCardData<IdeaArticleDetailDto>>;

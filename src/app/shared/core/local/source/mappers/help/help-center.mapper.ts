@@ -24,13 +24,32 @@ export class LocalHelpCenterMapper {
   static revisionsForKind(table: {
     revisionIds: string[];
     revisionsById: Record<string, HelpCenterRevisionRecord>;
-  }, kind: HelpCenterDocumentKind, language: string, context: string | null, contextOf: (revision: HelpCenterRevisionDto) => string | null): HelpCenterRevisionDto[] { return table.revisionIds.map(id => table.revisionsById[id]).filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision)).map(revision => this.toDto(revision)).filter(revision => this.revisionKind(revision) === kind && HelpCenterContentBuilder.normalizeLang(revision.lang) === language && (kind !== 'explanation' || !context || contextOf(revision) === context)); }
+  }, kind: HelpCenterDocumentKind, language: string, context: string | null,
+  contextOf: (revision: Pick<HelpCenterRevisionRecord, 'documentKind' | 'contextKey'>) => string | null): HelpCenterRevisionDto[] {
+    return table.revisionIds.map(id => table.revisionsById[id])
+      .filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision))
+      .filter(revision => this.toDocumentKind(revision.documentKind) === kind
+        && HelpCenterContentBuilder.normalizeLang(revision.lang) === language
+        && (kind !== 'explanation' || !context || contextOf(revision) === context))
+      .map(revision => this.toDto(revision));
+  }
 
   static normalizedRevisionsById(table: {
     revisionIds: string[];
     revisionsById: Record<string, HelpCenterRevisionRecord>;
-  }, contextOf: (revision: HelpCenterRevisionDto) => string | null): Record<string, HelpCenterRevisionRecord> {
-    return Object.fromEntries(table.revisionIds.filter(id => Boolean(table.revisionsById[id])).map(id => { const revision = this.toDto(table.revisionsById[id]); const lang = HelpCenterContentBuilder.normalizeLang(revision.lang); return [id, this.toRecord({ ...revision, documentKind: this.revisionKind(revision), contextKey: contextOf(revision), lang, languageLabel: HelpCenterContentBuilder.languageLabel(lang) })]; }));
+  }, contextOf: (revision: Pick<HelpCenterRevisionRecord, 'documentKind' | 'contextKey'>) => string | null): Record<string, HelpCenterRevisionRecord> {
+    return Object.fromEntries(table.revisionIds.filter(id => Boolean(table.revisionsById[id])).map(id => {
+      const record = table.revisionsById[id];
+      const documentKind = this.toDocumentKind(record.documentKind);
+      const lang = HelpCenterContentBuilder.normalizeLang(record.lang);
+      const contextKey = contextOf(record);
+      const languageLabel = HelpCenterContentBuilder.languageLabel(lang);
+      // Current records already have normalized metadata. Reusing their sections
+      // avoids copying every existing guide again for each newly seeded guide.
+      if (record.documentKind === documentKind && record.lang === lang
+        && record.contextKey === contextKey && record.languageLabel === languageLabel) return [id, record];
+      return [id, this.toRecord({ ...this.toDto(record), documentKind, contextKey, lang, languageLabel })];
+    }));
   }
 
   static toDto(record: HelpCenterRevisionRecord): HelpCenterRevisionDto;

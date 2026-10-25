@@ -6,19 +6,23 @@ import type { HelpCenterStateDto, IdeaPostDto } from '../../../contracts';
 import { HttpHelpCenterService } from '../help/help-center.service';
 import { HttpIdeaPostsService } from './idea-posts.service';
 import { HttpLandingContentService } from './landing-content.service';
+import { I18nService } from '../../../base/services/localization/i18n.service';
 
 describe('HttpLandingContentService', () => {
   const get = vi.fn();
   const normalizeExternalState = vi.fn();
   const normalizePosts = vi.fn();
+  let language: string;
 
   beforeEach(() => {
+    language = 'en';
     get.mockReset();
     normalizeExternalState.mockReset().mockReturnValue(helpCenterState());
     normalizePosts.mockReset();
     TestBed.configureTestingModule({
       providers: [
         HttpLandingContentService,
+        { provide: I18nService, useValue: { currentLanguage: () => language } },
         { provide: HttpClient, useValue: { get } },
         { provide: HttpHelpCenterService, useValue: { normalizeExternalState } },
         { provide: HttpIdeaPostsService, useValue: { normalizePosts } }
@@ -49,6 +53,19 @@ describe('HttpLandingContentService', () => {
     const state = await TestBed.inject(HttpLandingContentService).loadContent();
 
     expect(state.ideasTotal).toBe(2);
+  });
+
+  it.each(['en', 'hu'])('requests the same selected %s language as the UI', async lang => {
+    const languages = vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-GB', 'hu-HU']);
+    try {
+      language = lang;
+      get.mockReturnValue(of({ ideas: [], ideasTotal: 0 }));
+      normalizePosts.mockReturnValue([]);
+      await TestBed.inject(HttpLandingContentService).loadContent();
+      expect(get).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('/landing/content'), { params: { lang } });
+    } finally {
+      languages.mockRestore();
+    }
   });
 });
 

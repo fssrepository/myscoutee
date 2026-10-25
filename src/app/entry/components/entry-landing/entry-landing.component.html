@@ -20,8 +20,6 @@
         <button
           type="button"
           class="entry-auth-btn" data-guide-field="login"
-          [class.entry-auth-btn-network]="networkUnavailable"
-          [class.entry-auth-btn-unavailable]="authUnavailable"
           [disabled]="networkUnavailable || authUnavailable"
           [attr.aria-label]="entryAuthButtonLabel | i18n"
           matRipple
@@ -74,6 +72,7 @@
               [filters]="howSmartListFilters()"
               [config]="entryHowSmartListConfig"
               [loadPage]="entryHowSmartListLoadPage"
+              [emptyError]="contentError"
               [itemTemplate]="entryHowCardTemplate"
             ></app-smart-list>
 
@@ -87,13 +86,13 @@
       </div>
     </section>
 
-    @if (articlesLoading || publishedIdeaCount() > 0) {
+    @if (articlesLoading || publishedIdeaCount() > 0 || contentError) {
       <section
         class="entry-ideas"
         id="articles"
         [attr.aria-label]="articlesTitle()"
       >
-        @if (articlesLoading || featuredIdeaCards().length > 0) {
+        @if (articlesLoading || featuredIdeaCards().length > 0 || contentError) {
           <div
             role="region"
             [attr.aria-label]="'landing.articles.carousel.aria' | i18n"
@@ -104,6 +103,7 @@
               [config]="entryFeaturedIdeaSmartListConfig"
               [filters]="featuredIdeaSmartListFilters"
               [loadPage]="entryFeaturedIdeaSmartListLoadPage"
+              [emptyError]="contentError"
               [itemTemplate]="entryFeaturedIdeaCardTemplate"
             ></app-smart-list>
 

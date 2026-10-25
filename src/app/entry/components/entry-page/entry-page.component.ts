@@ -5,7 +5,7 @@ import { type HelpCenterSectionDto } from '../../../shared/core/contracts/conten
 import { secureRandomUuid } from '../../../shared/core/common/secure-random';
 import { finishLandingDebug, markLandingDebug } from '../../../shared/core/common/landing-debug';
 import { baseGroupId, groupType, type GroupType } from '../../../shared/core/contracts/groups/group-type';
-import { backendUnavailable } from '../../../shared/core/common/backend-connectivity';
+import { backendUnavailable, frontendUnavailable } from '../../../shared/core/common/backend-connectivity';
 import { demoFailoverEnabled } from '../../../shared/core/common/demo-failover';
 import { environment } from '../../../../environments/environment';
 import { preloadAdapterMode } from '../../../shared/core/base/adapter-loaders';
@@ -28,6 +28,7 @@ import {
   ComponentRef,
   DestroyRef,
   ErrorHandler,
+  Injector,
   Type,
   untracked,
   DoCheck,
@@ -72,7 +73,7 @@ import type { SupportedCountryDto } from '../../../shared/core/contracts/content
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
-  FirebaseAuthProfileDto,
+  AccountAuthProfileDto,
   FirebaseAuthRequestDto,
   LocationCoordinates,
   UserDto,
@@ -80,15 +81,11 @@ import type {
   UserLocationEligibilityResponseDto
 } from '../../../shared/core/contracts/accounts/user.interface';
 import {
-  AdminWorkspaceDataService
-} from '../../../shared/core/base/services/administration/admin-workspace-data.service';
-import {
   HelpCenterService
 } from '../../../shared/core/base/services/help/help-center.service';
 import {
   FirebaseAppService
 } from '../../../shared/core/base/services/accounts/firebase-app.service';
-import { FirebaseMessagingService } from '../../../shared/core/base/services/notifications/firebase-messaging.service';
 import { AppLocationService } from '../../../shared/core/base/services/accounts/app-location.service';
 import { AppSetupStore } from '../../../shared/ui/context/stores/app/app-setup.store';
 import {
@@ -107,13 +104,7 @@ import {
 import {
   TermsPolicyService
 } from '../../../shared/core/base/services/help/terms-policy.service';
-import {
-  UsersService
-} from '../../../shared/core/base/services/accounts/users.service';
-
-import {
-  AdminWorkspaceStore
-} from '../../../shared/ui/context/stores/admin/admin-workspace.store';
+import type { UsersService } from '../../../shared/core/base/services/accounts/users.service';
 
 import {
   type DocumentViewerComponent,
@@ -191,11 +182,9 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
-  private readonly adminWorkspace = inject(AdminWorkspaceStore);
-  private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
+  private readonly injector = inject(Injector);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly firebaseAppService = inject(FirebaseAppService);
-  private readonly firebaseMessagingService = inject(FirebaseMessagingService);
   private readonly appLocationService = inject(AppLocationService);
   private readonly appSetupStore = inject(AppSetupStore);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -205,7 +194,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   private readonly landingGuide = inject(LANDING_EXPLANATION_GUIDE);
   private readonly dialogStore = inject(DialogStore);
   private readonly i18n = inject(I18nService);
-  private readonly usersService = inject(UsersService);
+  private usersService: UsersService | undefined;
   private loginEligibilityBusy = false;
   private firebaseEntryAccessApproved = false;
   private pendingFirebaseEntryCoordinates: LocationCoordinates | null = null;
@@ -227,6 +216,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   protected entryPrivacySaveMessage = '';
   protected entryPrivacySaveError = '';
   protected landingArticlesLoading = true;
+  protected landingContentError = '';
   protected landingIdeaCards: InfoCardData[] = [];
   protected landingIdeaCount = 0;
   protected landingSupportedCountries: SupportedCountryDto[] = [];
@@ -238,7 +228,10 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       || (environment.activitiesDataSource === 'http' && backendUnavailable());
   }
   protected set entryNetworkUnavailable(value: boolean) { this.entryTransportUnavailable = value; }
-  protected entryNetworkUnavailableLabel = 'network.offline';
+  protected get entryFrontendUnavailable(): boolean {
+    return (typeof navigator !== 'undefined' && navigator.onLine === false) || frontendUnavailable();
+  }
+  protected entryNetworkUnavailableLabel = 'entry.auth.unavailable';
   protected showFirebaseAuthPopup = false;
   private firebaseEntryTransitionBusy = false;
 
@@ -306,6 +299,12 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private readonly affiliateReferral = inject(AffiliateReferralService);
+
+  private async loadUsersService(): Promise<UsersService> {
+    if (this.usersService) return this.usersService;
+    const { UsersService } = await import('../../../shared/core/base/services/accounts/users.service');
+    return this.usersService ??= this.injector.get(UsersService);
+  }
 
   ngOnInit(): void {
     this.landingGuide.beginVisit();
@@ -379,16 +378,16 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     return this.sessionService.authMode;
   }
 
-  protected get firebaseAuthProfile(): FirebaseAuthProfileDto | null {
-    return this.sessionService.firebaseProfile();
+  protected get firebaseAuthProfile(): AccountAuthProfileDto | null {
+    return this.sessionService.accountProfile();
   }
 
   protected get firebaseAuthIsBusy(): boolean {
-    return this.firebaseEntryTransitionBusy || this.sessionService.firebaseBusy();
+    return this.firebaseEntryTransitionBusy || this.sessionService.authBusy();
   }
 
   protected get firebaseAuthMessage(): string {
-    return this.sessionService.firebaseNotice();
+    return this.sessionService.authNotice();
   }
 
   protected async openEntryDemo(): Promise<void> {
@@ -424,7 +423,6 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       this.openDemoUserSelectorPopup();
       return;
     }
-    if (this.showEntryLocationSetup(options.bypassConsumerEligibility)) return;
     if (!options.bypassConsumerEligibility && this.loginEligibilityBusy) {
       return;
     }
@@ -513,21 +511,12 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     }
   }
 
-  private showEntryLocationSetup(bypassLocationSetup = false): boolean {
-    this.appSetupStore.guideRequested.set(false);
-    this.landingGuide.closePopup();
-    if (!bypassLocationSetup && this.appSetupStore.locationSetupMissing()) {
-      this.appSetupStore.open();
-      return true;
-    }
-    return false;
-  }
-
   protected async openEntryOperator(): Promise<void> {
     if (this.entryNetworkUnavailable) {
       return;
     }
-    if (!this.usersService.localModeEnabled || this.authMode === 'firebase') {
+    const usersService = await this.loadUsersService();
+    if (!usersService.localModeEnabled || this.authMode === 'firebase') {
       await this.openEntryAuthPopup({
         forceAuthPopup: this.authMode !== 'firebase',
         bypassConsumerEligibility: true
@@ -752,13 +741,37 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private async ensureHttpLoginAccessAllowed(): Promise<boolean> {
-    // Device setup is optional. Only an already known regional security decision
-    // may reject entry; missing browser permissions never open a blocking dialog.
-    if (this.isLoginBlockedByLandingBundle()) {
-      this.openBundledLoginUnavailableInfo();
-      return false;
+    this.appSetupStore.guideRequested.set(false);
+    this.landingGuide.closePopup();
+    this.pendingFirebaseEntryCoordinates = null;
+    const identity = this.sessionService.identity();
+    const requestToken = ++this.grantedLocationEligibilityRequestToken;
+    const current = () => requestToken === this.grantedLocationEligibilityRequestToken
+      && identity === this.sessionService.identity();
+    const check = async (coordinates: LocationCoordinates, fromPopup = false): Promise<boolean> => {
+      const usersService = await this.loadUsersService();
+      const result = await usersService.checkLocationEligibility(coordinates);
+      if (!current() || (fromPopup && (!this.appSetupStore.loginRequested()
+        || !this.appSetupStore.isOpen()))) return false;
+      this.syncLandingLoginAvailability(result, 'coordinates');
+      if (!result.eligible) throw new Error(this.loginUnavailableMessage(result));
+      this.pendingFirebaseEntryCoordinates = coordinates;
+      return true;
+    };
+    const coordinates = await this.appLocationService.loadSavedCoordinates();
+    if (!current()) return false;
+    let error = '';
+    if (coordinates) {
+      try {
+        return await check(coordinates);
+      } catch (failure) {
+        if (!current()) return false;
+        error = failure instanceof Error ? failure.message : this.uiText('entry.permissions.location.unavailable');
+      }
     }
-    return true;
+    const pending = this.appSetupStore.requestForLogin(point => check(point, true));
+    if (error) this.appSetupStore.error.set(error);
+    return pending;
   }
 
   private openDemoUserSelectorPopup(
@@ -809,13 +822,14 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       await this.onDemoOperatorSelected(selection, normalizedUserId);
       return;
     }
-    const selectedUser = this.usersService.localModeEnabled
-      ? this.usersService.peekCachedUserById(normalizedUserId)
+    const usersService = await this.loadUsersService();
+    const selectedUser = usersService.localModeEnabled
+      ? usersService.peekCachedUserById(normalizedUserId)
       : null;
     const coordinates = selectedUser?.locationCoordinates ?? selection.user?.locationCoordinates;
     if (coordinates && Number.isFinite(coordinates.latitude) && Number.isFinite(coordinates.longitude)) {
       try {
-        const result = await this.usersService.checkLocationEligibility(coordinates);
+        const result = await usersService.checkLocationEligibility(coordinates);
         if (!result.eligible) {
           selection.fail(this.loginUnavailableMessage(result));
           return;
@@ -831,20 +845,20 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       selection.complete();
       return;
     }
-    const session = this.usersService.localModeEnabled
+    const session = usersService.localModeEnabled
       ? this.sessionService.startDemoSession(normalizedUserId)
       : await this.sessionService.startTrackedDemoSession(normalizedUserId);
     if (!session) {
-      selection.fail(this.sessionService.firebaseNotice());
+      selection.fail(this.sessionService.authNotice());
       return;
     }
     try {
       // The destination's existing avatar hydration owns profile loading.
-      if (this.usersService.localModeEnabled || (this.landingContent.mode() !== 'dating'
+      if (usersService.localModeEnabled || (this.landingContent.mode() !== 'dating'
         && selection.user?.baseGroupTypes?.includes(this.landingContent.mode()))) {
-        this.usersService.stageInitialWorkspace(baseGroupId(this.landingContent.mode()));
+        usersService.stageInitialWorkspace(baseGroupId(this.landingContent.mode()));
       }
-      const navigated = await (this.usersService.localModeEnabled
+      const navigated = await (usersService.localModeEnabled
         ? this.router.navigateByUrl(this.memberRedirectUrl())
         : this.router.navigateByUrl(this.memberRedirectUrl(), { state: { avatarLoading: true } }));
       if (!navigated) {
@@ -875,20 +889,22 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     selection: EntryDemoUserSelectionEvent,
     adminUserId: string
   ): Promise<void> {
-    const normalizedAdminUserId = this.adminWorkspace.prepareSelectedAdminSession(adminUserId);
-    if (!normalizedAdminUserId) {
-      selection.fail();
-      return;
-    }
-    const session = this.usersService.localModeEnabled
-      ? this.sessionService.startDemoSession(normalizedAdminUserId)
-      : await this.sessionService.startTrackedDemoSession(normalizedAdminUserId);
-    if (!session) {
-      selection.fail(this.sessionService.firebaseNotice());
-      return;
-    }
     try {
-      const profile = await this.usersService.loadProfileExtById(normalizedAdminUserId, undefined, baseGroupId(this.landingContent.mode()));
+      const { AdminWorkspaceStore } = await import('../../../shared/ui/context/stores/admin/admin-workspace.store');
+      const normalizedAdminUserId = this.injector.get(AdminWorkspaceStore).prepareSelectedAdminSession(adminUserId);
+      if (!normalizedAdminUserId) {
+        selection.fail();
+        return;
+      }
+      const usersService = await this.loadUsersService();
+      const session = usersService.localModeEnabled
+        ? this.sessionService.startDemoSession(normalizedAdminUserId)
+        : await this.sessionService.startTrackedDemoSession(normalizedAdminUserId);
+      if (!session) {
+        selection.fail(this.sessionService.authNotice());
+        return;
+      }
+      const profile = await usersService.loadProfileExtById(normalizedAdminUserId, undefined, baseGroupId(this.landingContent.mode()));
       if (!profile) { selection.fail(); return; }
       const navigated = await this.router.navigateByUrl('/admin');
       if (!navigated) {
@@ -905,11 +921,12 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     selection: EntryDemoUserSelectionEvent,
     operatorUserId: string
   ): Promise<void> {
-    const session = this.usersService.localModeEnabled
+    const usersService = await this.loadUsersService();
+    const session = usersService.localModeEnabled
       ? this.sessionService.startDemoSession(operatorUserId)
       : await this.sessionService.startTrackedDemoSession(operatorUserId);
     if (!session) {
-      selection.fail(this.sessionService.firebaseNotice());
+      selection.fail(this.sessionService.authNotice());
       return;
     }
     try {
@@ -933,7 +950,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       if (!session) {
         return;
       }
-      if (session.kind === 'firebase' && entryCoordinates) {
+      if (session.kind === 'authenticated' && entryCoordinates) {
         await this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
       }
       this.pendingFirebaseEntryCoordinates = null;
@@ -948,11 +965,16 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     this.firebaseEntryTransitionBusy = true;
     try {
       await preloadAdapterMode(environment.activitiesDataSource);
+      const entryCoordinates = this.pendingFirebaseEntryCoordinates;
       const entryAccessApproved = this.firebaseEntryAccessApproved;
-      const session = await this.sessionService.restoreFirebaseSession();
+      const session = await this.sessionService.restoreAuthSession();
       if (!session) {
         return;
       }
+      if (session.kind === 'authenticated' && entryCoordinates) {
+        await this.appLocationService.stageLoginCoordinates(session.profile.id, entryCoordinates);
+      }
+      this.pendingFirebaseEntryCoordinates = null;
       this.firebaseEntryAccessApproved = false;
       await this.runPostSessionGate(session, this.redirectUrl(), undefined, entryAccessApproved);
     } finally {
@@ -967,12 +989,13 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   protected async onOnboardingCompleted(_user: UserDto): Promise<void> {
+    const usersService = await this.loadUsersService();
     const redirect = this.pendingRedirectAfterOnboarding || this.redirectUrl();
     const demoSessionUserId = this.pendingDemoSessionUserId;
     this.pendingRedirectAfterOnboarding = '';
     this.pendingDemoSessionUserId = '';
     if (demoSessionUserId) {
-      const session = this.usersService.localModeEnabled
+      const session = usersService.localModeEnabled
         ? this.sessionService.startDemoSession(demoSessionUserId)
         : await this.sessionService.startTrackedDemoSession(demoSessionUserId);
       if (!session) {
@@ -982,10 +1005,10 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
       }
     }
     try {
-      if (demoSessionUserId && !this.usersService.localModeEnabled) {
+      if (demoSessionUserId && !usersService.localModeEnabled) {
         // Read under the registered session before displaying protected media,
         // just as the ordinary demo selector does after sign-in.
-        const user = await this.usersService.loadUserById(demoSessionUserId, 8000);
+        const user = await usersService.loadUserById(demoSessionUserId, 8000);
         if (!user) {
           await this.sessionService.logout();
           this.onboardingOpen = false;
@@ -1042,7 +1065,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   private async beginExistingSessionGate(): Promise<void> {
-    const session = await this.sessionService.ensureSession() ?? await this.sessionService.restoreFirebaseSession();
+    const session = await this.sessionService.ensureSession() ?? await this.sessionService.restoreAuthSession();
     if (!session) {
       return;
     }
@@ -1063,7 +1086,8 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     let user: UserDto | null = loadedUser ?? null;
     if (!loadedUser) {
       try {
-        user = await this.usersService.loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000);
+        const usersService = await this.loadUsersService();
+        user = await usersService.loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000);
       } catch {
         user = null;
       }
@@ -1071,7 +1095,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     if (gateToken !== this.postSessionGateToken || sessionIdentity !== this.sessionService.identity()) {
       return;
     }
-    if (!user && session.kind === 'firebase') {
+    if (!user && session.kind === 'authenticated') {
       this.openOnboardingGate(
         this.buildFirebaseRegistrationUser(session.profile),
         redirectUrl,
@@ -1079,13 +1103,6 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
           title: 'account.registration.required',
           message: 'profile.setup.registration.message'
         }
-      );
-      return;
-    }
-    if (!user && session.kind === 'operator-bootstrap') {
-      this.closeOnboardingGate();
-      this.sessionService.clearOperatorBootstrapSession(
-        'operator.bootstrap.auth.profile.unavailable'
       );
       return;
     }
@@ -1183,7 +1200,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     });
   }
 
-  private buildFirebaseRegistrationUser(profile: Extract<AppSession, { kind: 'firebase' }>['profile']): UserDto {
+  private buildFirebaseRegistrationUser(profile: Extract<AppSession, { kind: 'authenticated' }>['profile']): UserDto {
     const name = profile.name.trim() || profile.email.trim() || 'Firebase User';
     const imageUrl = profile.imageUrl?.trim();
     return {
@@ -1381,6 +1398,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     }
     const requestToken = ++this.landingContentRequestToken;
     const groupId = baseGroupId(this.landingContent.mode());
+    this.landingContentError = '';
     this.startEntryPrivacyLoadingWindow();
     this.startLandingArticlesLoadingWindow();
     this.entryContentLoadPromise = (async () => {
@@ -1408,6 +1426,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
           }
           this.landingIdeaCards = [];
           this.landingIdeaCount = 0;
+          this.landingContentError = 'content.load.error.title';
           this.landingSupportedCountries = [];
           this.markEntryNetworkUnavailable();
           markLandingDebug('landing.content.failed');
@@ -1636,7 +1655,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
   private markEntryNetworkUnavailable(): void {
     this.entryNetworkUnavailable = true;
-    this.entryNetworkUnavailableLabel = 'network.offline';
+    this.entryNetworkUnavailableLabel = 'entry.auth.unavailable';
     this.syncLandingLoginAvailability(null, 'reset');
   }
 
@@ -1644,7 +1663,7 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
     // A previous rejected browser sample must not turn Login into a permanent block.
     // The selected profile and the retryable Setup flow decide admission on click.
     this.entryAuthUnavailable = demoFailoverEnabled() && environment.activitiesDataSource === 'local';
-    this.entryAuthUnavailableLabel = this.entryAuthUnavailable ? 'network.offline' : 'entry.auth.unavailable';
+    this.entryAuthUnavailableLabel = 'entry.auth.unavailable';
     // Device setup stays available from its launcher during and after sign-in.
     this.changeDetectorRef.markForCheck();
   }
@@ -1710,7 +1729,9 @@ export class EntryPageComponent implements OnInit, OnDestroy, DoCheck {
 
       let result: UserLocationEligibilityResponseDto;
       try {
-        result = await this.usersService.checkLocationEligibility(coordinates);
+        const usersService = await this.loadUsersService();
+        if (requestToken !== this.grantedLocationEligibilityRequestToken) return;
+        result = await usersService.checkLocationEligibility(coordinates);
       } catch {
         if (requestToken === this.grantedLocationEligibilityRequestToken) {
           this.ngZone.run(() => this.markEntryNetworkUnavailable());

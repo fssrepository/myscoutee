@@ -1,13 +1,14 @@
 <app-entry-landing
   [authMode]="authMode"
   [articlesLoading]="landingArticlesLoading"
+  [contentError]="landingContentError"
   [ideaCards]="landingIdeaCards"
   (modeSelected)="changeLandingMode($event)"
   [ideaCount]="landingIdeaCount"
   [supportedCountries]="landingSupportedCountries"
   [authUnavailable]="entryAuthUnavailable"
   [authUnavailableLabel]="entryAuthUnavailableLabel"
-  [networkUnavailable]="entryNetworkUnavailable"
+  [networkUnavailable]="entryFrontendUnavailable"
   [networkUnavailableLabel]="entryNetworkUnavailableLabel"
   (demoRequested)="openEntryDemo()"
   (firebaseAuthRequested)="openEntryFirebaseAuth()"
@@ -38,4 +39,6 @@
   </app-popup>
 }
 
-<app-explanation-launcher [introduce]="!entryPrivacyLoading"></app-explanation-launcher>
+@if (!entryFrontendUnavailable) {
+  <app-explanation-launcher [introduce]="!entryPrivacyLoading"></app-explanation-launcher>
+}

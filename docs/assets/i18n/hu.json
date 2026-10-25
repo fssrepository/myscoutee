@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.10.21.2",
+  "version": "2026.10.25.2",
   "messages": {
     "admin.jobs.rule.affinity-admin-signals": "Affinitásstatisztika küldése",
     "admin.jobs.rule.events-admin-signals": "Eseménystatisztika küldése",
@@ -51,7 +51,7 @@
     "navigator.community": "Közösség",
     "payment.history.refund.preview.changed.terms": "A módosult eseményfeltételek miatt a teljes fennmaradó összeg visszajár.",
     "integration.token.ip": "IP:",
-    "entry.auth.unavailable": "Itt nem elérhető",
+    "entry.auth.unavailable": "Nem elérhető",
     "allow.location": "Hely engedélyezése",
     "checking.location": "Hely ellenőrzése",
     "clipboard.paste.permission.help": "Engedélyezd a vágólapot a webhelybeállításokban, majd próbáld újra.",
@@ -252,8 +252,8 @@
     "firebase.auth.error.password.rules": "A fiók létrehozásához teljesítsd a jelszó feltételeit.",
     "firebase.auth.error.password.mismatch": "A két jelszó nem egyezik.",
     "operator.bootstrap.auth.invalid": "A telepítői operátori e-mail-cím vagy jelszó helytelen.",
-    "operator.bootstrap.auth.throttled": "Túl sok operátori bejelentkezési kísérlet történt. Próbáld újra később.",
-    "operator.bootstrap.auth.failed": "A dedikált operátori bejelentkezés átmenetileg nem érhető el.",
+    "auth.session.login.throttled": "Túl sok bejelentkezési kísérlet történt. Próbáld újra később.",
+    "auth.session.login.failed": "A bejelentkezés sikertelen. Ellenőrizd az adataidat, majd próbáld újra.",
     "operator.bootstrap.auth.response.invalid": "A szerver érvénytelen operátori bejelentkezési választ küldött.",
     "operator.bootstrap.auth.profile.unavailable": "A mentett Operátor profil nem tölthető be.",
     "This email is already registered. Use login instead.": "Ez az email már regisztrálva van. Használd a belépést.",

@@ -36,6 +36,11 @@ function stampIndexHtml() {
   const buildMetaPattern = /<meta\s+name=["']myscoutee-build-id["']\s+content=["'][^"']*["']\s*\/?>/i;
   const dom = new JSDOM(fs.readFileSync(indexPath, 'utf8'));
   const document = dom.window.document;
+  const versionMeta = document.querySelector('meta[name="myscoutee-app-version"]')
+    || document.createElement('meta');
+  versionMeta.name = 'myscoutee-app-version';
+  versionMeta.content = appVersion;
+  document.head.appendChild(versionMeta);
   if (process.env.FRONTEND_BUILD_PROFILE === 'standalone') {
     for (const recorder of document.querySelectorAll('script[id="myscoutee-landing-debug-recorder"]')) {
       recorder.remove();

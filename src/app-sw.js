@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
 const CACHE_VERSION = 'v1';
+const BUILD_ID = '';
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -18,10 +19,6 @@ const PRECACHE_CORE_URLS = [
   './index.html',
   './manifest.webmanifest',
   './assets/icon/favicon.ico',
-  './assets/icon/apple-touch-icon.png',
-  './assets/icon/android-chrome-192x192.png',
-  './assets/icon/android-chrome-512x512.png',
-  './assets/logo/heart.png',
   './assets/logo/heart.webp',
   './assets/idea/article-fallback.svg'
 ];
@@ -79,6 +76,10 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('message', event => {
   if (event.origin !== self.location.origin) return;
+  if (event.data?.type === 'GET_BUILD_ID') {
+    event.ports?.[0]?.postMessage({ buildId: BUILD_ID });
+    return;
+  }
   if (event.data && event.data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
     return;
@@ -231,9 +232,10 @@ async function serveAppShell(request) {
 }
 
 async function networkFirstStaticAsset(request) {
-  // Angular content-hashed bundles are immutable, including lazy chunks.
+  // Angular content-hashed bundles and fonts are immutable, including lazy chunks.
   // Reuse the current/retained build cache before contacting the network.
-  if (/\/[\w.-]+-[A-Z0-9]{8}\.(?:js|css)$/i.test(new URL(request.url).pathname)) {
+  const immutable = /\/[\w.-]+-[A-Z0-9]{8}\.(?:js|css|woff2?)$/i.test(new URL(request.url).pathname);
+  if (immutable) {
     const cached = await matchAppBundleCache(request);
     if (cached) {
       return cached;
@@ -241,7 +243,7 @@ async function networkFirstStaticAsset(request) {
   }
   const cache = await caches.open(APP_CACHE);
   try {
-    const response = await fetch(request, { cache: 'no-store' });
+    const response = await fetch(request, { cache: immutable ? 'default' : 'no-store' });
     if (response && (response.ok || response.type === 'opaque')) {
       await cache.put(request, response.clone()).catch(() => undefined);
       return response;
@@ -294,7 +296,8 @@ async function fetchAndCache(request, cache) {
 
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
+  const cached = await cache.match(request)
+    || await caches.match(request, { cacheName: APP_CACHE });
   if (cached) {
     return cached;
   }

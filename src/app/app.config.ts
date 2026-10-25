@@ -1,8 +1,10 @@
+import { sessionAuthInterceptor } from './shared/core/http/interceptors/accounts/session-auth.interceptor';
 import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { ApplicationConfig, ErrorHandler, inject, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { I18nService } from './shared/core/base/services/localization/i18n.service';
 import { LandingContentService } from './shared/core/base/services/content/landing-content.service';
 import { SessionService } from './shared/core/base/services/accounts/session.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/platform/deployment-configuration.service';
 import { LazyBgImageDirective } from '@fssrepository/myscoutee-components';
 import { anonymousLanding, isLandingPage } from './shared/core/common/demo-failover';
 import { LandingDebugErrorHandler } from './shared/core/common/landing-debug';
@@ -10,9 +12,6 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { MYSCOUTEE_UI_PROVIDERS } from './shared/ui/context/ui.providers';
-import { adminAccessInterceptor } from './shared/core/http/interceptors/access/admin-access.interceptor';
-import { firebaseAuthInterceptor } from './shared/core/http/interceptors/accounts/firebase-auth.interceptor';
-import { operatorBootstrapAuthInterceptor } from './shared/core/http/interceptors/operator/operator-bootstrap-auth.interceptor';
 import { paymentProviderSyncInterceptor } from './shared/core/http/interceptors/payments/payment-provider-sync.interceptor';
 import { sessionModeInterceptor } from './shared/core/http/interceptors/accounts/session-mode.interceptor';
 import { connectivityInterceptor } from './shared/core/http/interceptors/platform/connectivity.interceptor';
@@ -30,9 +29,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withXhr(), withInterceptors([
       connectivityInterceptor,
       sessionModeInterceptor,
-      operatorBootstrapAuthInterceptor,
-      firebaseAuthInterceptor,
-      adminAccessInterceptor,
+      sessionAuthInterceptor,
       paymentProviderSyncInterceptor
     ]))
   ]
@@ -40,6 +37,9 @@ export const appConfig: ApplicationConfig = {
 
 export function initializeApplication(): Promise<void> {
   const translations = inject(I18nService).initialize();
+  void inject(DeploymentConfigurationService).initialize().catch(() => {
+    // The root component observes the same load and reports initialization errors.
+  });
   if (environment.activitiesDataSource === 'http'
     && isLandingPage()
     && !inject(SessionService).currentSession()) {
@@ -51,7 +51,7 @@ export function initializeApplication(): Promise<void> {
       // The routed landing retries a failed request and displays its normal error.
     });
   }
-  return translations;
+  return Promise.all([translations, inject(SessionService).ensureSession()]).then(() => undefined);
 }
 
 export async function loadAppConfig(): Promise<ApplicationConfig> {

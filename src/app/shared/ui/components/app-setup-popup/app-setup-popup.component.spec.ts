@@ -13,9 +13,9 @@ describe('Setup permission help', () => {
     const openInBrowser = vi.fn(), install = vi.fn(), allow = vi.fn();
     const store = {
       privacyMissing: signal(true), missingCount: () => 4, locationSetupMissing: () => true, openPrivacy: vi.fn(),
-      isOpen: signal(true), actionPending: signal(false), busy: signal(false),
+      isOpen: signal(true), loginRequested: signal(false), actionPending: signal(false), busy: signal(false),
       notificationConfigurationPending: signal(false), locationPermissionPending: signal(false),
-      locationPermission: signal('prompt'), locationSelected: signal(false),
+      locationPermission: signal('prompt'), locationAvailable: signal(false), locationSelected: signal(false),
       activeControl: signal(null), notificationsSelected: signal(false),
       saveSucceeded: signal(false), error: signal(''), allow, install,
       pwa: { installed: signal(false), externalBrowserAvailable, openInBrowser, installAvailable: signal(false), installActionPending: signal(false), installBusy: signal(false) },
@@ -40,6 +40,27 @@ describe('Setup permission help', () => {
     section!.querySelector<HTMLButtonElement>('button')!.click();
     expect(openInBrowser).toHaveBeenCalledOnce();
     const root = fixture.nativeElement as HTMLElement;
+    store.loginRequested.set(true);
+    store.locationPermission.set('granted');
+    store.locationSelected.set(false);
+    fixture.detectChanges();
+    const notice = root.querySelector('.ui-popup__error');
+    expect(notice?.getAttribute('role')).toBe('alert');
+    expect(notice?.textContent).toContain('entry.permissions.location.required');
+    expect(fixture.componentInstance.toggles()[0].checked).toBe(false);
+    expect(fixture.componentInstance.toggles()[0].togglePalette).toBe('slate');
+    store.error.set('Region is unavailable');
+    fixture.detectChanges();
+    expect(root.querySelector('.ui-popup__error')?.textContent).toContain('Region is unavailable');
+    store.error.set('');
+    store.loginRequested.set(false);
+    fixture.detectChanges();
+    expect(root.querySelector('.ui-popup__error')?.textContent).toContain('entry.permissions.location.required');
+    store.locationSelected.set(true);
+    fixture.detectChanges();
+    expect(root.querySelector('.ui-popup__error')).toBeNull();
+    store.locationSelected.set(false);
+
     const privacy = root.querySelector('[data-step="privacy"]')!;
     expect(privacy.querySelector('.app-setup-step-badge')?.textContent).toBe('priority_high');
     expect(privacy.querySelector('.app-menu__counter--alert')).not.toBeNull();
@@ -95,7 +116,7 @@ describe('Setup permission help', () => {
       privacyMissing: signal(true), missingCount: () => 4, locationSetupMissing: () => true, openPrivacy: vi.fn(),
       isOpen: signal(true), loginRequested: signal(false), actionPending: signal(false), busy: signal(false),
       notificationConfigurationPending: signal(false), locationPermissionPending: signal(false), locationMissing: signal(false),
-      locationPermission: signal('denied'), locationSelected: signal(false), locationGranted: signal(false),
+      locationPermission: signal('denied'), locationAvailable: signal(false), locationSelected: signal(false), locationGranted: signal(false),
       activeControl: signal(null), nativePending: signal(false),
       notificationsSelected: signal(false), saveSucceeded: signal(false), error: signal(''), allowDisabled: signal(false),
       allow, close,
@@ -140,7 +161,7 @@ describe('Setup permission progress', () => {
       privacyMissing: signal(true), missingCount: () => 4, locationSetupMissing: () => true, openPrivacy: vi.fn(),
       activeControl: signal(control), nativePending: signal(true), actionPending: signal(true), busy: signal(false),
       notificationConfigurationPending: signal(false), locationPermissionPending: signal(false),
-      locationPermission: signal('prompt'), locationSelected: signal(control === 'location'),
+      locationPermission: signal('prompt'), locationAvailable: signal(false), locationSelected: signal(control === 'location'),
       notificationsSelected: signal(control === 'notifications'), saveSucceeded: signal(false), error: signal(''),
       messaging: { deviceNotificationsEnabled: () => false, notificationPermission: signal('default'), notificationsConfigured: true }
     };
@@ -166,7 +187,7 @@ describe('Setup permission progress', () => {
       privacyMissing: signal(true), missingCount: () => 4, locationSetupMissing: () => true, openPrivacy: vi.fn(),
       activeControl: signal(null), actionPending: signal(false), busy: signal(false),
       notificationConfigurationPending: signal(true), locationPermissionPending: signal(true),
-      locationPermission: signal(null), locationSelected: signal(false), notificationsSelected: signal(false),
+      locationPermission: signal(null), locationAvailable: signal(false), locationSelected: signal(false), notificationsSelected: signal(false),
       saveSucceeded: signal(false), error: signal(''),
       messaging: { deviceNotificationsEnabled: () => false, notificationPermission: signal('default'), notificationsConfigured: false }
     };
@@ -202,7 +223,7 @@ describe('Setup automatic installation offer', () => {
     return { store, currentSession };
   }
 
-  it.each(['demo', 'firebase', 'operator-bootstrap'])('does not open automatically for a %s session before or after profile loading', kind => {
+  it.each(['demo', 'authenticated'])('does not open automatically for a %s session before or after profile loading', kind => {
     const { store } = setup({ kind });
     store.pwa.installPromptVisible.set(true);
     TestBed.tick();

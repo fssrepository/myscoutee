@@ -7,6 +7,7 @@ import type { UserLocationEligibilityResponseDto } from '../../../contracts/acco
 import type { SupportedCountryDto } from '../../../contracts/content/content.interface';
 import { HttpHelpCenterService } from '../help/help-center.service';
 import { HttpIdeaPostsService } from './idea-posts.service';
+import { I18nService } from '../../../base/services/localization/i18n.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,7 @@ export class HttpLandingContentService {
   private readonly http = inject(HttpClient);
   private readonly helpCenter = inject(HttpHelpCenterService);
   private readonly ideaPosts = inject(HttpIdeaPostsService);
+  private readonly i18n = inject(I18nService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadExplanationState(contextKey: string, language: string, groupId: string | null = null): Promise<HelpCenterStateDto> {
@@ -34,7 +36,7 @@ export class HttpLandingContentService {
       supportedCountries?: SupportedCountryDto[];
       loginAvailability?: Partial<UserLocationEligibilityResponseDto> | null;
     };
-    const lang = this.browserLanguage();
+    const lang = this.i18n.currentLanguage();
     const response = await this.http
       .get<LandingContentResponse | null>(`${this.apiBaseUrl}/landing/content`, {
         params: { lang, ...(groupId ? { groupId } : {}) }
@@ -76,29 +78,4 @@ export class HttpLandingContentService {
     };
   }
 
-  private browserLanguage(): string {
-    const languages = this.browserLanguages()
-      .map(value => this.normalizeLanguage(value))
-      .filter(Boolean);
-    return languages.find(lang => lang !== 'en') ?? languages[0] ?? 'en';
-  }
-
-  private browserLanguages(): string[] {
-    if (typeof navigator === 'undefined') {
-      return [];
-    }
-    return Array.isArray(navigator.languages) && navigator.languages.length > 0
-      ? navigator.languages
-      : [navigator.language];
-  }
-
-  private normalizeLanguage(value: string | null | undefined): string {
-    return `${value ?? ''}`
-      .trim()
-      .toLowerCase()
-      .split(',')[0]
-      .split(';')[0]
-      .split('-')[0]
-      .replace(/[^a-z]/g, '');
-  }
 }

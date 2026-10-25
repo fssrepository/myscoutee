@@ -40,12 +40,11 @@ describe('RouteDelayService', () => {
     expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(0);
   });
 
-  it('uses configured local delay regardless of the authentication provider', () => {
+  it('keeps local requests immediate regardless of the authentication provider', () => {
     environment.activitiesDataSource = 'local';
     environment.firebaseLoginEnabled = true;
     currentSession = {
-      kind: 'firebase',
-      sessionId: 'real-session',
+      kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'real-session',
       profile: {
         id: 'real-user',
         name: 'Real User',
@@ -56,6 +55,6 @@ describe('RouteDelayService', () => {
 
     const service = TestBed.inject(RouteDelayService);
 
-    expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(1500);
+    expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(0);
   });
 });

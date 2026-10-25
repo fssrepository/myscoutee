@@ -9,7 +9,7 @@ declare global {
   interface Window {
     __myscouteeWarmup?: {
       showNoNetwork?: () => void;
-      showFailure?: (title?: string, message?: string) => void;
+      showFailure?: (title?: string, message?: string, error?: unknown) => void;
     };
   }
 }
@@ -86,7 +86,8 @@ function markBootstrapFailed(err: unknown): void {
   console.error(err);
   window.__myscouteeWarmup?.showFailure?.(
     'Unable to start',
-    'The app could not finish starting. Please check the network and retry.'
+    'The app could not finish starting. Please check the network and retry.',
+    err
   );
 }
 

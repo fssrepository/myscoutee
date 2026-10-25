@@ -24,7 +24,7 @@
   <meta property="og:image:alt" content="MyScoutee app icon">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2d5f94">
-  <meta name="myscoutee-build-id" content="5ad0a06fcd21-20261024015533">
+  <meta name="myscoutee-build-id" content="327ef55b9600-20261025134954">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/x-icon" href="assets/icon/favicon.ico">
@@ -402,7 +402,15 @@
         showNoNetwork: function() {
           showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
         },
-        showFailure: showWarmupFailure
+        showFailure: function(title, message, error) {
+          // A caught bootstrap import failure does not emit a script-element
+          // error. Reuse the same guarded recovery for an obsolete lazy chunk.
+          if (error && /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(String(error.message || error))) {
+            recoverDeployment(false);
+            return;
+          }
+          showWarmupFailure(title, message);
+        }
       };
 
       window.addEventListener('offline', function() {
@@ -429,7 +437,7 @@
       }, FALLBACK_TIMEOUT_MS);
     })();
   </script>
-<link rel="preload" as="font" type="font/woff2" href="media/material-icons-LEZCGFVT.woff2" crossorigin data-myscoutee-icon-font><link rel="stylesheet" href="styles-RF4YJR7Z.css"></head>
+<link rel="preload" as="font" type="font/woff2" href="media/material-icons-LEZCGFVT.woff2" crossorigin data-myscoutee-icon-font><link rel="stylesheet" href="styles-WI3ZKQKX.css"><meta name="myscoutee-app-version" content="1.5.0"></head>
 <body>
   <app-root>
     <section class="app-warmup-fallback" role="status" aria-live="polite" aria-label="Loading MyScoutee">
@@ -442,6 +450,6 @@
       <button class="app-warmup-fallback-retry" type="button" data-warmup-retry="" hidden="">Retry</button>
     </section>
   </app-root>
-<link rel="modulepreload" href="chunk-a252562f.js"><script src="main-1f80e530.js" type="module"></script>
+<link rel="modulepreload" href="chunk-52421ac0.js"><script src="main-0d08a754.js" type="module"></script>
 
 </body></html>

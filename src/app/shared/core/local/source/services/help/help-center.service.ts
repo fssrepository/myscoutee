@@ -660,11 +660,11 @@ export class LocalHelpCenterService {
     return HelpCenterContentBuilder.defaultSectionIcon(kind);
   }
 
-  private revisionKind(revision: HelpCenterRevisionDto | null | undefined): HelpCenterDocumentKind {
+  private revisionKind(revision: Pick<HelpCenterRevisionRecord, 'documentKind'> | null | undefined): HelpCenterDocumentKind {
     return this.normalizeKind(revision?.documentKind);
   }
 
-  private revisionLang(revision: HelpCenterRevisionDto | null | undefined): string {
+  private revisionLang(revision: Pick<HelpCenterRevisionRecord, 'lang'> | null | undefined): string {
     return this.normalizeLang(revision?.lang);
   }
 
@@ -694,7 +694,7 @@ export class LocalHelpCenterService {
     return null;
   }
 
-  private revisionContextKey(revision: HelpCenterRevisionDto | null | undefined): string | null {
+  private revisionContextKey(revision: Pick<HelpCenterRevisionRecord, 'documentKind' | 'contextKey'> | null | undefined): string | null {
     return this.normalizeContextKey(this.revisionKind(revision), revision?.contextKey, false);
   }
 

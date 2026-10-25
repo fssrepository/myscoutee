@@ -44,18 +44,35 @@ export class I18nBundleRepository {
   ): Promise<StoredI18nBundle | null> {
     const stored = await this.readIndexedDbBundle(scope, lang);
     if (stored) {
-      this.writeLocalStorageBundle(scope, stored);
+      this.removeLocalStorageBundle(scope, lang);
       return stored;
     }
-    return this.readLocalStorageBundle(scope, lang);
+    const legacy = this.readLocalStorageBundle(scope, lang);
+    if (legacy && await this.writeIndexedDbBundle(scope, legacy)) {
+      this.removeLocalStorageBundle(scope, lang);
+    }
+    return legacy;
   }
 
   async writeStoredBundle(
     scope: I18nBundleScope,
     bundle: StoredI18nBundle
   ): Promise<void> {
-    await this.writeIndexedDbBundle(scope, bundle);
-    this.writeLocalStorageBundle(scope, bundle);
+    if (await this.writeIndexedDbBundle(scope, bundle)) {
+      this.removeLocalStorageBundle(scope, bundle.lang);
+    } else {
+      this.writeLocalStorageBundle(scope, bundle);
+    }
+  }
+
+  private removeLocalStorageBundle(scope: I18nBundleScope, lang: string): void {
+    try {
+      // Full catalogs belong in IndexedDB. Duplicating them here can exhaust
+      // the origin's small localStorage quota and prevent account-session saves.
+      localStorage.removeItem(this.storageKey(scope, lang));
+    } catch {
+      // Storage can be disabled even while IndexedDB remains available.
+    }
   }
 
   private readLocalStorageBundle(
@@ -118,18 +135,18 @@ export class I18nBundleRepository {
   private async writeIndexedDbBundle(
     scope: I18nBundleScope,
     bundle: StoredI18nBundle
-  ): Promise<void> {
+  ): Promise<boolean> {
     const db = await this.openIndexedDb();
     if (!db || !db.objectStoreNames.contains(APP_I18N_BUNDLES_STORE)) {
-      return;
+      return false;
     }
-    await new Promise<void>(resolve => {
+    return await new Promise<boolean>(resolve => {
       const tx = db.transaction(APP_I18N_BUNDLES_STORE, 'readwrite');
       tx.objectStore(APP_I18N_BUNDLES_STORE)
         .put(bundle, this.bundleKey(scope, bundle.lang));
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-      tx.onabort = () => resolve();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+      tx.onabort = () => resolve(false);
     });
   }
 

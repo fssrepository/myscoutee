@@ -44,6 +44,7 @@ function runtime({ bootstrapped = false, online = true, worker = true,
     state, data,
     boot: () => classes.add('app-bootstrapped'),
     error: (tagName = 'SCRIPT', rel = '', id = '') => events.get('error')({ target: { tagName, rel, id } }),
+    fail: error => context.window.__myscouteeWarmup.showFailure('Unable to start', 'Startup failed', error),
     retry: () => retry(),
     settle: () => new Promise(resolve => setImmediate(resolve))
   };
@@ -136,4 +137,37 @@ test('a completed bootstrap cancels an in-flight automatic recovery reload', asy
   finishUpdate();
   await app.settle();
   assert.equal(app.state.reloads, 0);
+});
+
+for (const message of [
+  'Failed to fetch dynamically imported module: https://qa.example/chunk-OLD.js',
+  'Importing a module script failed.',
+  'error loading dynamically imported module: https://qa.example/chunk-OLD.js'
+]) {
+  test(`caught startup import failure uses the guarded deployment recovery: ${message}`, async () => {
+    const app = runtime();
+    app.fail(new TypeError(message));
+    await app.settle();
+    assert.equal(app.state.reloads, 1);
+    const next = runtime({ data: app.data });
+    next.fail(new TypeError(message));
+    await next.settle();
+    assert.equal(next.state.reloads, 0);
+  });
+}
+
+test('ordinary startup exceptions do not trigger deployment reloads', async () => {
+  const app = runtime();
+  app.fail(new TypeError('Cannot read properties of undefined'));
+  await app.settle();
+  assert.equal(app.state.reloads, 0);
+  assert.equal(app.state.updates, 0);
+});
+
+test('a late import failure cannot reload an already running application', async () => {
+  const app = runtime({ bootstrapped: true });
+  app.fail(new TypeError('Failed to fetch dynamically imported module: https://qa.example/chunk-OLD.js'));
+  await app.settle();
+  assert.equal(app.state.reloads, 0);
+  assert.equal(app.state.updates, 0);
 });

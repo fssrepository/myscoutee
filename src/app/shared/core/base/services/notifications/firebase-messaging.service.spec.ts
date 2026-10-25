@@ -39,7 +39,7 @@ describe('Notification preference and background registration', () => {
     vi.resetAllMocks();
     messagingConfigured.set(true);
     activeUserId.set('user-1');
-    session.set({ kind: 'firebase', sessionId: 'session-1', profile: {
+    session.set({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'session-1', profile: {
       id: 'firebase-auth-uid', name: 'Member', email: 'member@example.test', initials: 'M'
     } });
     locationMissing.set(false);
@@ -73,6 +73,8 @@ describe('Notification preference and background registration', () => {
       } },
       { provide: I18nService, useValue: { revision: () => 0, currentLanguage: () => 'en', translate: (key: string) => key } },
       { provide: AppLocationService, useValue: {
+        browserCoordinates: () => locationMissing() ? null : { latitude: 47, longitude: 19 },
+        loadSavedCoordinates: vi.fn(async () => locationMissing() ? null : { latitude: 47, longitude: 19 }),
         trackingEnabled: signal(true), hasSavedTrackingApproval: () => false, setTrackingEnabled: vi.fn(),
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
         saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
@@ -126,7 +128,7 @@ describe('Notification preference and background registration', () => {
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
     const button = fixture.nativeElement.querySelector('button[aria-label="app.setup.location"]');
-    expect(button.getAttribute('aria-pressed')).toBe(String(state === 'granted'));
+    expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(button.disabled).toBe(false);
     expect(button.classList.contains('app-menu__button-row-item--progress-loading')).toBe(false);
     expect(TestBed.inject(AppLocationService).requestCurrentCoordinates).not.toHaveBeenCalled();
@@ -527,6 +529,7 @@ describe('Notification preference and background registration', () => {
   });
 
   it('starts the location control ring at native grant and keeps it while acquiring coordinates', async () => {
+    locationMissing.set(true);
     const permission = { state: 'prompt', onchange: null } as unknown as PermissionStatus;
     vi.mocked(navigator.permissions.query).mockResolvedValue(permission);
     await setup.refreshPermissions();

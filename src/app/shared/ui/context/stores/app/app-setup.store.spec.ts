@@ -15,17 +15,17 @@ describe('Setup launcher counts available device choices', () => {
     localStorage.removeItem(APP_STORAGE_KEYS.locationTrackingEnabled);
   });
 
-  it.each([true, false, null])('uses the saved location choice (%s) for Login without waiting for a native result', async saved => {
+  it.each([true, false, null])('opens Login with location off when coordinates are missing despite saved approval (%s)', async saved => {
     localStorage.removeItem(APP_STORAGE_KEYS.locationTrackingEnabled);
     if (saved !== null) localStorage.setItem(APP_STORAGE_KEYS.locationTrackingEnabled, String(saved));
-    const query = vi.fn(() => new Promise<PermissionStatus>(() => {}));
+    const query = vi.fn().mockResolvedValue({ state: 'granted', onchange: null });
     const getCurrentPosition = vi.fn();
     vi.stubGlobal('navigator', { permissions: { query }, geolocation: { getCurrentPosition } });
     TestBed.configureTestingModule({ providers: [
-      { provide: PwaService, useValue: {} },
+      { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn() } },
       { provide: AppLocationService, useValue: {
         trackingEnabled: () => saved !== false,
-        hasSavedTrackingApproval: AppLocationService.prototype.hasSavedTrackingApproval
+        browserCoordinates: signal(null), loadSavedCoordinates: vi.fn().mockResolvedValue(null)
       } },
       { provide: FirebaseMessagingService, useValue: {
         deviceNotificationsEnabled: () => false, refreshNotificationPermission: vi.fn(),
@@ -35,21 +35,27 @@ describe('Setup launcher counts available device choices', () => {
       { provide: I18nService, useValue: {} }
     ] });
     const store = TestBed.inject(AppSetupStore);
-    expect(store.locationSetupMissing()).toBe(saved !== true);
-    expect(query).not.toHaveBeenCalled();
     const entry = Object.assign(Object.create(EntryPageComponent.prototype), {
       entryNetworkUnavailable: false, entryAuthUnavailable: false, loginEligibilityBusy: false,
-      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', firebaseProfile: () => null },
+      grantedLocationEligibilityRequestToken: 0,
+      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', accountProfile: () => null, identity: () => null },
       synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
-      ensureEntryConsent: vi.fn().mockResolvedValue(true), isLoginBlockedByLandingBundle: () => false,
+      ensureEntryConsent: vi.fn().mockResolvedValue(true),
       landingGuide: { closePopup: vi.fn() }, appSetupStore: store,
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null) },
       ensureFirebaseAuthPopupLoaded: vi.fn().mockResolvedValue(undefined)
     });
-    await entry.openEntryAuthPopup();
-    expect(entry.showFirebaseAuthPopup).toBe(saved === true);
-    expect(store.isOpen()).toBe(saved !== true);
-    expect(query).toHaveBeenCalledTimes(saved === true ? 0 : 1);
+    const pending = entry.openEntryAuthPopup();
+    await vi.waitFor(() => expect(store.locationPermissionPending()).toBe(false));
+    await vi.waitFor(() => expect(store.isOpen()).toBe(true));
+    await store.refreshPermissions();
+    expect(store.locationSelected()).toBe(false);
+    expect(store.locationSetupMissing()).toBe(true);
+    expect(entry.showFirebaseAuthPopup).toBe(false);
     expect(getCurrentPosition).not.toHaveBeenCalled();
+    store.close();
+    await pending;
+    expect(entry.showFirebaseAuthPopup).toBe(false);
     expect(localStorage.getItem(APP_STORAGE_KEYS.locationTrackingEnabled)).toBe(saved === null ? null : String(saved));
   });
 
@@ -59,7 +65,7 @@ describe('Setup launcher counts available device choices', () => {
     const configured = signal(false), enabled = signal(false);
     TestBed.configureTestingModule({ providers: [
       { provide: PwaService, useValue: { installAvailable, installActionPending, installed } },
-      { provide: AppLocationService, useValue: { trackingEnabled: () => true, hasSavedTrackingApproval: () => false } },
+      { provide: AppLocationService, useValue: { trackingEnabled: () => true, browserCoordinates: signal(null), loadSavedCoordinates: vi.fn().mockResolvedValue(null) } },
       { provide: FirebaseMessagingService, useValue: {
         get notificationsConfigured() { return configured(); },
         deviceNotificationsEnabled: enabled, refreshNotificationPermission: vi.fn()
@@ -75,7 +81,7 @@ describe('Setup launcher counts available device choices', () => {
     expect(store.missingCount()).toBe(3);
     configured.set(false); installAvailable.set(false);
     expect(store.missingCount()).toBe(1);
-    store.locationGranted.set(true);
+    (TestBed.inject(AppLocationService).browserCoordinates as unknown as { set(point: { latitude: number; longitude: number }): void }).set({ latitude: 47, longitude: 19 });
     expect(store.missingCount()).toBe(0);
     expect(store.launcherVisible()).toBe(false);
     installAvailable.set(true);
@@ -119,13 +125,13 @@ describe('Setup acquisition timer starts at permission grant', () => {
       actionPending: () => store.nativePending() || store.busy(),
       allowDisabled: () => false, loggedIn: () => true, locationMissing: () => true,
       locationSelected: signal(true), notificationsSelected: signal(false),
-      locationGranted: signal(initialState === 'granted'), locationPermission: signal(initialState),
+      locationAvailable: signal(false), locationGranted: signal(initialState === 'granted'), locationPermission: signal(initialState),
       locationPermissionPending: signal(false), notificationConfigurationPending: signal(false),
       locationEdited: signal(true), error: signal(''), saveSucceeded: signal(false),
       generation: 1, permission: null, locationRequestPending: false,
       locationRequestAbort: null, locationRequestTimer: null, saveFeedbackTimer: null,
       completeLogin: null, checkLocation: null,
-      location: { requestCurrentCoordinates, saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
+      location: { browserCoordinates: () => null, requestCurrentCoordinates, saveCurrentCoordinates: vi.fn().mockResolvedValue(true),
         trackingEnabled: () => true, setTrackingEnabled: vi.fn() },
       messaging: { refreshNotificationPermission: vi.fn(), deviceNotificationsEnabled: () => false },
       pwa: { dismissInstallPrompt: vi.fn() },
@@ -235,14 +241,14 @@ describe('Setup explicit Login action and independent Close', () => {
       isOpen: signal(true), loginRequested: signal(false), nativePending: signal(false), busy: signal(false),
       allowDisabled: () => false, loggedIn: () => false,
       locationSelected: signal(true), notificationsSelected: signal(false),
-      locationGranted: signal(true), locationPermission: signal('granted'),
+      locationAvailable: signal(true), locationGranted: signal(true), locationPermission: signal('granted'),
       locationPermissionPending: signal(false), notificationConfigurationPending: signal(false),
       locationEdited: signal(false), error: signal(''), saveSucceeded: signal(false),
       actionPending: () => false, generation: 1, permission: null,
       saveFeedbackTimer: null,
       completeLogin: vi.fn(),
       checkLocation: checkLocation ? vi.fn().mockResolvedValue(true) : null,
-      location: {
+      location: { browserCoordinates: () => null,
         requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
         setTrackingEnabled: vi.fn()
       },
@@ -284,13 +290,26 @@ describe('Setup explicit Login action and independent Close', () => {
     expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
   });
 
+  it('does not finish Login through the notifications switch while location is off', async () => {
+    const store = setup(true);
+    store.loginRequested.set(true);
+    store.locationSelected.set(false);
+    const continuation = store.completeLogin;
+    await store.allow('notifications');
+    expect(continuation).not.toHaveBeenCalled();
+    expect(store.isOpen()).toBe(true);
+    expect(store.checkLocation).not.toHaveBeenCalled();
+    store.close();
+    expect(continuation).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
   it('applies notification changes from the switch without requiring location', async () => {
     const store = setup(false);
     let grant!: (permission: NotificationPermission) => void;
     let registered!: () => void;
     Object.assign(store, {
       completeLogin: null, activeControl: signal(null), notificationsEdited: signal(false),
-      locationSelected: signal(false), locationGranted: signal(false), notificationsSelected: signal(false),
+      locationSelected: signal(false), locationAvailable: signal(false), locationGranted: signal(false), notificationsSelected: signal(false),
       actionPending: () => store.nativePending() || store.busy()
     });
     Object.assign(store.messaging, { notificationsConfigured: true,
@@ -315,7 +334,7 @@ describe('Setup explicit Login action and independent Close', () => {
 
   it('applies location from its switch and disables tracking without another permission request', async () => {
     const store = setup(false);
-    Object.assign(store, { completeLogin: null, locationSelected: signal(false), locationGranted: signal(false),
+    Object.assign(store, { completeLogin: null, locationSelected: signal(false), locationAvailable: signal(false), locationGranted: signal(false),
       actionPending: () => store.nativePending() || store.busy() });
     store.toggleLocation();
     expect(store.activeControl()).toBe('location');
@@ -360,5 +379,72 @@ describe('Entry setup guidance only for missing location', () => {
     expect(store.explainMissingSetup()).toBe(true);
     expect(store.guideRequested()).toBe(true);
     expect(store.launcherDismissed()).toBe(false);
+  });
+});
+
+
+describe('Location choice is based on coordinates', () => {
+  afterEach(() => { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
+
+  it.each(['prompt', 'denied', 'granted'] as const)('starts off without coordinates despite %s permission and remembers the acquired point', async state => {
+    const permission = { state, onchange: null as (() => void) | null };
+    vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockResolvedValue(permission) } });
+    const point = { latitude: 47, longitude: 19 };
+    const browserCoordinates = signal<{ latitude: number; longitude: number } | null>(null);
+    const requestCurrentCoordinates = vi.fn(async () => { browserCoordinates.set(point); return point; });
+    TestBed.configureTestingModule({ providers: [
+      { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn() } },
+      { provide: AppLocationService, useValue: { browserCoordinates, loadSavedCoordinates: vi.fn(async () => browserCoordinates()), trackingEnabled: () => true,
+        requestCurrentCoordinates, setTrackingEnabled: vi.fn(), saveCurrentCoordinates: vi.fn() } },
+      { provide: FirebaseMessagingService, useValue: { deviceNotificationsEnabled: () => false,
+        refreshNotificationPermission: vi.fn(), prepareNotificationConfiguration: vi.fn().mockResolvedValue(undefined) } },
+      { provide: UserProfileStore, useValue: { activeUserId: () => 'member', activeUserLocationMissing: () => false } },
+      { provide: I18nService, useValue: { translate: (key: string) => key } }
+    ] });
+    const store = TestBed.inject(AppSetupStore);
+    const check = vi.fn().mockResolvedValue(true);
+    const pending = store.requestForLogin(check);
+    await store.refreshPermissions();
+    await Promise.resolve();
+    expect(store.locationSelected()).toBe(false);
+    expect(requestCurrentCoordinates).not.toHaveBeenCalled();
+    store.locationSelected.set(true);
+    await store.allow();
+    expect(await pending).toBe(true);
+    expect(requestCurrentCoordinates).toHaveBeenCalledExactlyOnceWith(expect.any(AbortSignal));
+    expect(check).toHaveBeenCalledExactlyOnceWith(point);
+    const nextLogin = store.requestForLogin(check);
+    await store.refreshPermissions();
+    expect(store.locationSelected()).toBe(true);
+    expect(requestCurrentCoordinates).toHaveBeenCalledOnce();
+    store.close();
+    expect(await nextLogin).toBe(false);
+  });
+});
+
+
+describe('A saved coordinate keeps setup on independently of native permission', () => {
+  afterEach(() => { TestBed.resetTestingModule(); vi.unstubAllGlobals(); });
+
+  it.each(['prompt', 'denied', 'granted'] as const)('opens on with coordinates while permission is %s', async state => {
+    vi.stubGlobal('navigator', { permissions: { query: vi.fn().mockResolvedValue({ state, onchange: null }) } });
+    const point = { latitude: 47, longitude: 19 };
+    const requestCurrentCoordinates = vi.fn();
+    TestBed.configureTestingModule({ providers: [
+      { provide: PwaService, useValue: { dismissInstallPrompt: vi.fn() } },
+      { provide: AppLocationService, useValue: { browserCoordinates: signal(point), loadSavedCoordinates: vi.fn().mockResolvedValue(point),
+        trackingEnabled: () => true, requestCurrentCoordinates } },
+      { provide: FirebaseMessagingService, useValue: { deviceNotificationsEnabled: () => false,
+        refreshNotificationPermission: vi.fn(), prepareNotificationConfiguration: vi.fn().mockResolvedValue(undefined) } },
+      { provide: UserProfileStore, useValue: { activeUserId: () => '', activeUserLocationMissing: () => false } },
+      { provide: I18nService, useValue: { translate: (key: string) => key } }
+    ] });
+    const store = TestBed.inject(AppSetupStore);
+    store.open();
+    await store.refreshPermissions();
+    expect(store.locationSelected()).toBe(true);
+    expect(store.locationAvailable()).toBe(true);
+    expect(requestCurrentCoordinates).not.toHaveBeenCalled();
+    store.close();
   });
 });

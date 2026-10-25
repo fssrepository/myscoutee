@@ -1,0 +1,572 @@
+[
+  {
+    "id": "privacy-default-de-v1",
+    "documentKind": "privacy",
+    "lang": "de",
+    "languageLabel": "Deutsch",
+    "version": 1,
+    "active": true,
+    "title": "Datenschutz",
+    "summary": "Datenschutz geht vor",
+    "description": "Bevor Sie fortfahren, überprüfen und akzeptieren Sie bitte die Verwendung Ihrer Daten in MyScoutee.",
+    "headerColor": "amber",
+    "sections": [
+      {
+        "id": "privacy",
+        "icon": "policy",
+        "title": "Datenschutz",
+        "blurb": "Wie MyScoutee mit personenbezogenen Daten für Profil, Veranstaltungen und soziale Aktivitäten umgeht (einschließlich DSGVO-Rechte).",
+        "contentHtml": "<p><strong>Letzte Aktualisierung:</strong> 1. Februar 2026</p>"
+      },
+      {
+        "id": "contact-details",
+        "icon": "contact_mail",
+        "title": "Kontaktdaten",
+        "blurb": "An wen Sie sich bezüglich Privatsphäre und Datenschutz wenden können.",
+        "contentHtml": "{{deployment.privacy.contactDetails}}"
+      },
+      {
+        "id": "legal-basis",
+        "icon": "gavel",
+        "title": "Rechtsgrundlage",
+        "blurb": "Warum MyScoutee Daten für Produkt- und Sicherheitsabläufe verarbeitet.",
+        "contentHtml": "<ul><li>Vertragserfüllung für Konto- und Eventfunktionen.</li><li>Berechtigtes Interesse an Plattformsicherheit und Missbrauchsprävention.</li><li>Einwilligung für optionale Profildetails, genaue Standortkoordinaten und Marketingkommunikation.</li><li>Gesetzliche Verpflichtung für Sicherheitsprotokolle und Compliance-Aufzeichnungen.</li></ul>"
+      },
+      {
+        "id": "your-rights",
+        "icon": "fact_check",
+        "title": "Ihre Rechte",
+        "blurb": "Rechte für Ihr Konto und Ihre persönlichen Daten.",
+        "contentHtml": "<h4>Zugriff</h4><ul><li>Fordern Sie eine Kopie Ihrer gespeicherten persönlichen Daten an.</li></ul><h4>Berichtigung</h4><ul><li>Falsche Profil- oder Kontodetails korrigieren.</li></ul><h4>Löschung</h4><ul><li>Fordern Sie die Löschung von Konten und personenbezogenen Daten an, sofern dies rechtlich möglich ist.</li></ul><h4>Portabilität</h4><ul><li>Exportieren Sie Ihre Daten in ein häufig verwendetes maschinenlesbares Format.</li></ul><h4>Einschränkung/Einspruch</h4><ul><li>Einschränkung oder Widerspruch gegen bestimmte Verarbeitungstätigkeiten.</li></ul>"
+      },
+      {
+        "id": "data-categories",
+        "icon": "category",
+        "title": "Datenkategorien",
+        "blurb": "Datentypen, die MyScoutee verarbeiten kann.",
+        "contentHtml": "<h4>Konto und Identität</h4><ul><li>Name</li><li>Geburtstag</li><li>Heimatstadt</li><li>Geschlecht</li><li>Profilbilder</li></ul><h4>Standort und Koordinaten</h4><ul><li>Ungefährer Standort (Stadt/Region)</li><li>Präzise GPS-Koordinaten (Breitengrad/Längengrad) auf Anfrage</li><li>Standortaktualisierungszeitstempel für die Veranstaltungslogistik</li></ul><h4>Aktivitätsdaten</h4><ul><li>Chats</li><li>Einladungen</li><li>Ereignisse</li><li>Hosting-Interaktionen</li><li>Bewertungen</li></ul><h4>Präferenzdaten</h4><ul><li>Interessen</li><li>Werte</li><li>Sichtbarkeitseinstellungen</li><li>Spracheinstellungen</li></ul><h4>Technische Daten</h4><ul><li>Geräte-/Browser-Metadaten</li><li>IP-/Protokolldatensätze</li><li>Sitzungsereignisse</li></ul>"
+      },
+      {
+        "id": "purposes",
+        "icon": "tips_and_updates",
+        "title": "Zwecke",
+        "blurb": "Wie Daten Profil-, Ereignis-, Chat- und Vertrauensfunktionen unterstützen.",
+        "contentHtml": "<ul><li>Betreiben von Profil-, Chat-, Event- und Hosting-Funktionen.</li><li>Bringen Sie relevante Mitglieder zusammen und verbessern Sie die Erkennungsqualität.</li><li>Unterstützt standortbasierten Abgleich und distanzbezogene Ereigniskoordination.</li><li>Erkennen Sie Missbrauch, Spam und verdächtige Plattformaktivitäten.</li><li>Unterstützen Sie Kontoanfragen und Compliance-Prozesse.</li></ul>"
+      },
+      {
+        "id": "retention",
+        "icon": "schedule",
+        "title": "Aufbewahrung",
+        "blurb": "Wie lange werden die Daten aufbewahrt?",
+        "contentHtml": "<ul><li>Kontoprofildaten: bleiben erhalten, solange das Konto aktiv ist.</li><li>Präzise Standortkoordinaten: werden nur für aktive standortaktivierte Features gespeichert und gelöscht, wenn sie nicht mehr benötigt werden.</li><li>Sicherheits- und Audit-Protokolle: werden aufgrund gesetzlicher/Compliance-Anforderungen aufbewahrt.</li><li>Gelöschte Konten: Daten werden nach dem Aufbewahrungszeitraum entfernt oder anonymisiert.</li></ul>"
+      },
+      {
+        "id": "account-data-deletion",
+        "icon": "manage_accounts",
+        "title": "Konto- und Datenlöschung",
+        "blurb": "Wie mit Kontolöschung, Reaktivierung und Meta-/Facebook-Löschanfragen umgegangen wird.",
+        "contentHtml": "<ul><li>„Konto löschen“ ist im Benutzereinstellungsmenü verfügbar. Durch die Bestätigung wird die Löschung des Kontos geplant und der Benutzer abgemeldet.</li><li>Wenn das Konto gelöscht, aber noch nicht bereinigt wurde, kann bei einer erneuten Anmeldung eine Reaktivierungsbestätigung angezeigt werden, bevor das 30-tägige Löschfenster abläuft.</li><li>Wenn nach der Facebook-Anmeldung in den Meta-/Facebook-Kontoeinstellungen eine Löschung angefordert wird, sendet Meta die Anfrage an den MyScoutee-Backend-Callback und übereinstimmende Konten folgen demselben Löschplan.</li></ul>{{deployment.privacy.deletionEmailRoute}}"
+      },
+      {
+        "id": "sharing",
+        "icon": "share",
+        "title": "Freigabe durch Dritte",
+        "blurb": "Wenn Daten außerhalb von MyScoutee geteilt werden dürfen.",
+        "contentHtml": "<ul><li>Dienstleister für Hosting, Analyse und Support.</li><li>Behörden nur, wenn dies nach geltendem Recht erforderlich ist.</li><li>Kein Verkauf personenbezogener Daten.</li></ul>"
+      },
+      {
+        "id": "security",
+        "icon": "security",
+        "title": "Sicherheit",
+        "blurb": "Kontrollen zum Schutz von Daten.",
+        "contentHtml": "<ul><li>Rolebasierte Zugriffskontrolle für interne Tools.</li><li>EVerschlüsselter Transport für Daten während der Übertragung.</li><li>Verfahren zur Betriebsüberwachung und Reaktion auf Vorfälle.</li></ul>"
+      }
+    ],
+    "createdAtIso": "2026-02-01T00:00:00.000Z",
+    "createdByUserId": "system",
+    "updatedAtIso": "2026-02-01T00:00:00.000Z",
+    "updatedByUserId": "system"
+  },
+  {
+    "id": "privacy-default-es-v1",
+    "documentKind": "privacy",
+    "lang": "es",
+    "languageLabel": "Español",
+    "version": 1,
+    "active": true,
+    "title": "Privacidad de datos",
+    "summary": "Privacidad primero",
+    "description": "Antes de continuar, por favor revisa y acepta cómo se utilizan tus datos en MyScoutee.",
+    "headerColor": "amber",
+    "sections": [
+      {
+        "id": "privacy",
+        "icon": "policy",
+        "title": "Privacidad",
+        "blurb": "Cómo maneja MyScoutee los datos personales para perfil, eventos y actividad social (incluidos los derechos GDPR).",
+        "contentHtml": "<p><strong>Última actualización:</strong> 1 de febrero de 2026</p>"
+      },
+      {
+        "id": "contact-details",
+        "icon": "contact_mail",
+        "title": "Datos de contacto",
+        "blurb": "A quién contactar en materia de privacidad y protección de datos.",
+        "contentHtml": "{{deployment.privacy.contactDetails}}"
+      },
+      {
+        "id": "legal-basis",
+        "icon": "gavel",
+        "title": "Base jurídica",
+        "blurb": "Por qué MyScoutee procesa datos para flujos de trabajo de seguridad y productos.",
+        "contentHtml": "<ul><li>Ejecución de contrato para funciones de cuenta y evento.</li><li>Interés legítimo por la seguridad de la plataforma y la prevención de abusos.</li><li>Consentimiento para detalles de perfil opcionales, coordenadas de ubicación precisas y comunicaciones de marketing.</li><li>Obligación legal para registros de seguridad y registros de cumplimiento.</li></ul>"
+      },
+      {
+        "id": "your-rights",
+        "icon": "fact_check",
+        "title": "Tus derechos",
+        "blurb": "Derechos disponibles para su cuenta y datos personales.",
+        "contentHtml": "<h4>Acceso</h4><ul><li>Solicite una copia de sus datos personales almacenados.</li></ul><h4>Rectificación</h4><ul><li>Corregir perfil o detalles de cuenta inexactos.</li></ul><h4>Borrado</h4><ul><li>Solicitar la eliminación de cuenta y datos personales cuando sea legalmente posible.</li></ul><h4>Portabilidad</h4><ul><li>Exporte sus datos en un formato legible por máquina de uso común.</li></ul><h4>Restricción/Objeción</h4><ul><li>Limitar u oponerse a actividades de procesamiento específicas.</li></ul>"
+      },
+      {
+        "id": "data-categories",
+        "icon": "category",
+        "title": "Categorías de datos",
+        "blurb": "Tipos de datos que puede procesar MyScoutee.",
+        "contentHtml": "<h4>Cuenta e identidad</h4><ul><li>Nombre</li><li>Cumpleaños</li><li>Ciudad de origen</li><li>Género</li><li>Imágenes de perfil</li></ul><h4>Ubicación y coordenadas</h4><ul><li>Ubicación aproximada (ciudad/región)</li><li>Coordenadas GPS precisas (latitud/longitud) cuando se solicita</li><li>Marcas de tiempo de actualización de ubicación para logística de eventos</li></ul><h4>Datos de actividad</h4><ul><li>Chats</li><li>Invitaciones</li><li>Eventos</li><li>Interacciones de hospedaje</li><li>Calificaciones</li></ul><h4>Datos de preferencia</h4><ul><li>Intereses</li><li>Valores</li><li>Configuración de visibilidad</li><li>Preferencias de idioma</li></ul><h4>Datos técnicos</h4><ul><li>Metadatos del dispositivo/navegador</li><li>IP/registros de registro</li><li>Eventos de sesión</li></ul>"
+      },
+      {
+        "id": "purposes",
+        "icon": "tips_and_updates",
+        "title": "Propósitos",
+        "blurb": "Cómo los datos respaldan las funciones de perfil, evento, chat y confianza.",
+        "contentHtml": "<ul><li>Operar funciones de perfil, chat, eventos y hospedaje.</li><li>haga coincidir miembros relevantes y mejore la calidad del descubrimiento.</li><li>Admite coincidencia basada en la ubicación y coordinación de eventos con reconocimiento de distancia.</li><li>Detecta abuso, spam y actividad sospechosa en la plataforma.</li><li>Solicitudes de cuentas de soporte y procesos de cumplimiento.</li></ul>"
+      },
+      {
+        "id": "retention",
+        "icon": "schedule",
+        "title": "Retención",
+        "blurb": "Durante cuánto tiempo se conservan los datos.",
+        "contentHtml": "<ul><li>Datos del perfil de la cuenta: se conservan mientras la cuenta está activa.</li><li>Coordenadas de ubicación precisas: se almacenan solo para funciones habilitadas para ubicación activa y se eliminan cuando ya no son necesarias.</li><li>Registros de seguridad y auditoría: se conservan en función de las necesidades legales/de cumplimiento.</li><li>Cuentas eliminadas: datos eliminados o anonimizados después de la ventana de retención.</li></ul>"
+      },
+      {
+        "id": "account-data-deletion",
+        "icon": "manage_accounts",
+        "title": "Eliminación de cuenta y datos",
+        "blurb": "Cómo se manejan las solicitudes de eliminación, reactivación y eliminación de Meta/Facebook de cuentas.",
+        "contentHtml": "<ul><li>Eliminar cuenta está disponible en el menú de configuración del usuario. Al confirmarlo, programa la cuenta para su eliminación y cierra la sesión del usuario.</li><li>Si la cuenta se eliminó pero aún no se elimina, iniciar sesión nuevamente puede mostrar una confirmación de reactivación antes de que finalice el período de eliminación de 30 días.</li><li>Si se solicita la eliminación desde la configuración de la cuenta Meta/Facebook después de iniciar sesión en Facebook, Meta envía la solicitud a la devolución de llamada del backend MyScoutee y las cuentas coincidentes siguen el mismo programa de eliminación.</li></ul>{{deployment.privacy.deletionEmailRoute}}"
+      },
+      {
+        "id": "sharing",
+        "icon": "share",
+        "title": "uso compartido con terceros",
+        "blurb": "Cuándo se pueden compartir datos fuera de MyScoutee.",
+        "contentHtml": "<ul><li>Proveedores de servicios para operaciones de alojamiento, análisis y soporte.</li><li>Autoridades solo cuando lo exige la ley aplicable.</li><li>No venta de datos personales.</li></ul>"
+      },
+      {
+        "id": "security",
+        "icon": "security",
+        "title": "Seguridad",
+        "blurb": "Controles utilizados para proteger los datos.",
+        "contentHtml": "<ul><li>Control de acceso basado en roles para herramientas internas.</li><li>Transporte cifrado para datos en tránsito.</li><li>Procedimientos de seguimiento operativo y respuesta a incidentes.</li></ul>"
+      }
+    ],
+    "createdAtIso": "2026-02-01T00:00:00.000Z",
+    "createdByUserId": "system",
+    "updatedAtIso": "2026-02-01T00:00:00.000Z",
+    "updatedByUserId": "system"
+  },
+  {
+    "id": "terms-default-de-v1",
+    "documentKind": "terms",
+    "lang": "de",
+    "languageLabel": "Deutsch",
+    "version": 1,
+    "active": true,
+    "title": "Nutzungsbedingungen",
+    "summary": "Nutzungsbedingungen",
+    "description": "Lesen Sie die Bedingungen, die gelten, wenn Sie MyScoutee-Funktionen, Konten, Ereignisse, Chats und Community-Tools nutzen.",
+    "headerColor": "slate",
+    "sections": [
+      {
+        "id": "terms",
+        "icon": "rule",
+        "title": "Nutzungsbedingungen",
+        "blurb": "Die Grundregeln für die Verwendung von MyScoutee.",
+        "contentHtml": "<p>Diese Bedingungen beschreiben die Regeln für die Nutzung von MyScoutee-Konten, Profilen, Ereignissen, Chats, Moderationstools und zugehörigen Diensten.</p><p><strong>Letzte Aktualisierung:</strong> 1. Februar 2026</p>"
+      },
+      {
+        "id": "account-access",
+        "icon": "manage_accounts",
+        "title": "Kontozugriff",
+        "blurb": "Sie sind für das von Ihnen verwendete Konto und die Anmeldemethode verantwortlich.",
+        "contentHtml": "<ul><li>Verwenden Sie genaue Kontoinformationen und achten Sie auf die Sicherheit Ihrer Anmeldemethode.</li><li>Nehmen Sie sich nicht als eine andere Person aus und erstellen Sie keine Konten mit der Absicht, andere Mitglieder in die Irre zu führen.</li><li>OAuth Die Anmeldung unterliegt ebenfalls dem Vorbehalt Es gelten die jeweiligen Anbieterbedingungen.</li></ul>"
+      },
+      {
+        "id": "community-conduct",
+        "icon": "groups",
+        "title": "Gemeinschaftsverhalten",
+        "blurb": "Durch respektvolles Verhalten bleiben Events und Chats für alle nutzbar.",
+        "contentHtml": "<ul><li>Belästigen, bedrohen, spammen, betrügen Sie andere Mitglieder nicht und führen Sie sie nicht absichtlich in die Irre.</li><li>Veröffentlichen Sie keine illegalen, hasserfüllten, ausbeuterischen oder unsicheren Inhalte.</li><li>Hosts und Administratoren können Inhalte und Konten, die gegen diese Bedingungen verstoßen, moderieren, einschränken oder entfernen.</li></ul>"
+      },
+      {
+        "id": "events-and-content",
+        "icon": "event_note",
+        "title": "Ereignisse und Inhalte",
+        "blurb": "Gastgeber und Mitglieder sind für die von ihnen erstellten Veranstaltungen und Inhalte verantwortlich.",
+        "contentHtml": "<ul><li>Erstellen Sie nur Veranstaltungen, Einladungen, Chats, Ressourcen und Beiträge, die Sie teilen dürfen.</li><li>Respektieren Sie die Privatsphäre, Bilder und das geistige Eigentum anderer Personen.</li><li>Veranstaltungsdetails, Verfügbarkeit und Teilnehmerverhalten werden von den jeweiligen Gastgebern und Teilnehmern verwaltet.</li></ul>"
+      },
+      {
+        "id": "safety-and-moderation",
+        "icon": "verified_user",
+        "title": "Sicherheit und Moderation",
+        "blurb": "MyScoutee kann handeln, wenn die Plattformsicherheit oder die Einhaltung von Richtlinien dies erfordern.",
+        "contentHtml": "<ul><li>Berichte, Supportfälle und automatisierte Signale können auf Sicherheit und Missbrauchsprävention überprüft werden.</li><li>Konten können gemäß den Plattformrichtlinien und geltendem Recht verwarnt, eingeschränkt, gesperrt, reaktiviert oder gelöscht werden.</li><li>Kritische Betriebs- und Sicherheitsaktionen können zu Prüfzwecken protokolliert werden.</li></ul>"
+      },
+      {
+        "id": "changes",
+        "icon": "history",
+        "title": "Änderungen an den Bedingungen",
+        "blurb": "Veröffentlichte Revisionen definieren die aktiven Begriffe.",
+        "contentHtml": "<ul><li>MyScoutee kann diese Bedingungen aktualisieren, wenn sich Funktionen, gesetzliche Anforderungen oder Sicherheitsanforderungen ändern.</li><li>Die aktive veröffentlichte Version wird auf der Seite mit den Bedingungen angezeigt und kann bei Bedarf überprüft werden, bevor Sie fortfahren.</li></ul>"
+      }
+    ],
+    "createdAtIso": "2026-02-01T00:00:00.000Z",
+    "createdByUserId": "system",
+    "updatedAtIso": "2026-02-01T00:00:00.000Z",
+    "updatedByUserId": "system"
+  },
+  {
+    "id": "terms-default-es-v1",
+    "documentKind": "terms",
+    "lang": "es",
+    "languageLabel": "Español",
+    "version": 1,
+    "active": true,
+    "title": "Términos de servicio",
+    "summary": "Términos de uso",
+    "description": "revise los términos que se aplican cuando utiliza las funciones, cuentas, eventos, chats y herramientas comunitarias de MyScoutee.",
+    "headerColor": "slate",
+    "sections": [
+      {
+        "id": "terms",
+        "icon": "rule",
+        "title": "Términos de servicio",
+        "blurb": "reglas básicas para usar MyScoutee.",
+        "contentHtml": "<p>estos términos describen las reglas para usar cuentas, perfiles, eventos, chats, herramientas de moderación y servicios relacionados de MyScoutee.</p><p><strong>Última actualización:</strong> 1 de febrero de 2026</p>"
+      },
+      {
+        "id": "account-access",
+        "icon": "manage_accounts",
+        "title": "Acceso a cuenta",
+        "blurb": "Usted es responsable de la cuenta y del método de inicio de sesión que utiliza.",
+        "contentHtml": "<ul><li>utilice información de cuenta precisa y mantenga seguro su método de inicio de sesión.</li><li>No se haga pasar por otra persona ni cree cuentas destinadas a engañar a otros miembros.</li><li>El inicio de sesión de OAuth también está sujeto a los términos del proveedor correspondiente.</li></ul>"
+      },
+      {
+        "id": "community-conduct",
+        "icon": "groups",
+        "title": "Conducta comunitaria",
+        "blurb": "El comportamiento respetuoso mantiene los eventos y chats accesibles para todos.",
+        "contentHtml": "<ul><li>No acose, amenace, envíe spam, estafe ni engañe intencionalmente a otros miembros.</li><li>No publique contenido ilegal, que incite al odio, que explote o que sea inseguro.</li><li>Los anfitriones y administradores pueden moderar, limitar o eliminar contenido y cuentas que violen estos términos.</li></ul>"
+      },
+      {
+        "id": "events-and-content",
+        "icon": "event_note",
+        "title": "Eventos y contenido",
+        "blurb": "Los anfitriones y miembros son responsables de los eventos y el contenido que crean.",
+        "contentHtml": "<ul><li>cree únicamente eventos, invitaciones, chats, recursos y publicaciones que pueda compartir.</li><li>Respetar la privacidad, las imágenes y la propiedad intelectual de otras personas.</li><li>Los anfitriones y participantes relevantes administran los detalles del evento, la disponibilidad y el comportamiento de los asistentes.</li></ul>"
+      },
+      {
+        "id": "safety-and-moderation",
+        "icon": "verified_user",
+        "title": "Seguridad y moderación",
+        "blurb": "MyScoutee puede actuar cuando la seguridad de la plataforma o el cumplimiento de políticas lo requieran.",
+        "contentHtml": "<ul><li>Es posible que se revisen informes, casos de soporte y señales automatizadas para fines de seguridad y prevención de abusos.</li><li>Las cuentas pueden ser advertidas, restringidas, bloqueadas, reactivadas o eliminadas de acuerdo con la política de la plataforma y la ley aplicable.</li><li>Es posible que se registren acciones operativas y de seguridad críticas con fines de auditoría.</li></ul>"
+      },
+      {
+        "id": "changes",
+        "icon": "history",
+        "title": "Cambios en los términos",
+        "blurb": "Las revisiones publicadas definen los términos activos.",
+        "contentHtml": "<ul><li>MyScoutee puede actualizar estos términos a medida que cambien las características, los requisitos legales o las necesidades de seguridad.</li><li>La versión publicada activa se muestra con la página de términos y se puede revisar antes de continuar cuando sea necesario.</li></ul>"
+      }
+    ],
+    "createdAtIso": "2026-02-01T00:00:00.000Z",
+    "createdByUserId": "system",
+    "updatedAtIso": "2026-02-01T00:00:00.000Z",
+    "updatedByUserId": "system"
+  },
+  {
+    "id": "help-default-de-v5",
+    "documentKind": "help",
+    "lang": "de",
+    "languageLabel": "Deutsch",
+    "version": 5,
+    "active": true,
+    "title": "MyScoutee Hilfe",
+    "summary": "Ein praktischer Leitfaden nach Themen",
+    "description": "Profile, Communities, Events, Chats und Tools: Finden Sie das relevante Thema und folgen Sie den Schritten.",
+    "headerColor": "amber",
+    "sections": [
+      {
+        "id": "start",
+        "icon": "explore",
+        "title": "Erste Schritte",
+        "blurb": "Wählen Sie ein Profil und entdecken Sie die verfügbaren Aktivitäten.",
+        "contentHtml": "<ul><li>Öffnen Sie Ihr Profil über den Avatar und füllen Sie die grundlegenden Felder aus. Das Abschluss-Badge hilft Ihnen, fehlende Informationen zu finden.</li><li>Verwenden Sie das Seitenmenü für Community, Impressionen, Aktivitäten und Meine Tools. Die verfügbaren Aktionen hängen von Ihrer Rolle und dem aktuellen Element ab.</li><li>A Die Fragezeichen-Schaltfläche öffnet die kontextbezogene Hilfe. Mobile Sheet-Menüs verfügen über eine Schließen-Schaltfläche in der Kopfzeile.</li></ul>"
+      },
+      {
+        "id": "integrations",
+        "icon": "api",
+        "title": "API und KI-Unterstützung",
+        "blurb": "Verwenden Sie die vorhandenen Profilberechtigungen für Integrationen.",
+        "contentHtml": "<p>Der Hauptlink MCP wird blockiert. Öffnen Sie das Schild, wählen Sie ein Paket aus, bestätigen Sie und speichern Sie dann mit dem Häkchen im Integrationsfenster. Die Client-Generierung bleibt getrennt.</p><ol><li>Kopieren Sie die URL MCP in Ihren AI-Client und wählen Sie „Verbinden“. Es ist keine manuelle Client-ID oder ein manuelles Geheimnis erforderlich.</li><li>Melden Sie sich bei MyScoutee an, überprüfen Sie das angezeigte Profil und die Gruppe und genehmigen Sie dann den Zugriff.</li><li>Kehren Sie zu Ihrem AI-Client zurück und aktivieren Sie die Verbindung für die Konversation.</li><li>Zugriff unter OAuth-Berechtigungen widerrufen. Verbindungen verfallen nach 90 Tagen.</li></ol><h4>Zugriffsebene</h4><ul><li><strong>Blockiert:</strong> Diese Verbindung kann keine persönlichen oder geschäftlichen Daten lesen oder schreiben.</li><li><strong>Schreiben:</strong> Unterstützte Erstellung und Organisation von Änderungen wie Veranstaltungen, Kampagnen, Community-Fällen und Einladungslinks. Gibt nur die Ergebnisse zurück, die für den Vorgang erforderlich sind.</li><li><strong>Lesen:</strong> Schreiben und Lesen von zugänglichen Veranstaltungen, Kampagnen, Community-Daten, Nachrichten und vorhandenen Bewertungen. Keine Überwachung von Hintergrundereignissen.</li><li><strong>Vollständig:</strong> Lesen und MCP Ereignisse: Erhalten Sie Updates zu Ressourcen, die Sie überwachen möchten. Erfordert eine zugelassene MCP-Verbindung und einen kompatiblen AI-Client.</li></ul><p>Ein MCP-Client ist sowohl durch sein eigenes Paket als auch durch den Hauptlink MCP eingeschränkt. Für Events ist in beiden Fällen die Vollversion erforderlich. API-Schlüssel empfangen keine MCP-Ereignisse.</p><h4>Hintergrundüberwachung · MCP Ereignisse</h4><p>Setzen Sie den Hauptlink MCP und den ausgewählten Client auf „Vollständig“ und speichern Sie. Geben Sie im AI-Client an, was überwacht werden soll und was bei Änderungen zu tun ist: Beobachten Sie beispielsweise eine von Ihnen organisierte Veranstaltung, um Mingle-Ergebnisse zu erhalten. Events unterstützt auch Änderungen an Ihren Assets. Der Kunde abonniert nach Ihrer Anfrage; Wenn Sie „Full“ allein aktivieren, wird die Überwachung nicht gestartet. Bitten Sie den Kunden, die Überwachung zu beenden, entweder die Packung zu senken oder die Verbindung zu unterbrechen, um die Lieferung zu stoppen. Verpasste Updates werden nicht wiederholt. Bewertungen, Stimmen und persönliche Entscheidungen bleiben in der App Ihr ​​Eigentum.</p><p>Veranstaltungsunterstützung, Abonnementpläne und Arbeitsbereichsberechtigungen hängen vom KI-Anbieter ab. ChatGPT dokumentiert Ereignisse in Arbeitschats im Web und im Desktop-Cloud-Modus. Gewöhnliche MCP-Konnektivität, einschließlich Claude-Anschlüssen, allein beweist nicht, dass Events unterstützt werden. MyScoutee überprüft Ihr AI-Abonnement nicht.</p><p>Verwenden Sie die API/MCP-Einstellungen Ihres Rollenprofils. Ein Administrator kann die vorhandenen Profil-/Registrierungsstatistiken und Aufmerksamkeitszahlen lesen. Ein Bediener kann seitenweise erfasste Mess- und Umsatzberichte lesen. Vollständiger MCP-Zugriff kann neue Registrierungen, Administratorberichte/Feedback oder Betreiberfreigaben signalisieren. Der Kunde kann die autorisierten Zusammenfassungen nach einem Zeichen lesen; Es ist nicht möglich, Aktualisierungen zu moderieren, zu genehmigen, Berichte zu synchronisieren, zu bezahlen oder die Konfiguration zu ändern. Für Anfragen und Lieferungen wird die aktuelle Rollenzugehörigkeit erneut überprüft. Der vorhandene Desktop-Administratorschlüssel behält seinen Übersichtsendpunkt.</p><p>Generate erstellt eine Client-ID und ein einmaliges Geheimnis. Kopieren Sie sie in die Einstellungen Ihres Kunden, niemals in den Chat.</p><p>Der lokale Nur-Browser-Modus kann keine externen OAuth-Anfragen empfangen. In der Entwicklung kann bei laufendem Backend die normale Demo-Anmeldung verwendet werden; Bereitgestellte Installationen verwenden ihre konfigurierten Anmeldemethoden.</p>"
+      },
+      {
+        "id": "profiles",
+        "icon": "person",
+        "title": "Profile und Sichtbarkeit",
+        "blurb": "Bearbeiten Sie das Profil Ihrer ausgewählten Community.",
+        "contentHtml": "<ul><li>Überprüfen Sie die aktive Gruppe, bevor Sie Ihr Profil, Ihre Fotos oder Sichtbarkeitseinstellungen bearbeiten. Gruppenprofile behalten ihre eigenen Einstellungen.</li><li>Sichtbarkeitskontrollen bestimmen, welche Profildetails Sie teilen. Gruppenregeln können vor der Teilnahme besondere Angaben erfordern.</li><li>Speichern Sie den Editor mit seiner Häkchenschaltfläche. Ein verschachtelter Regeleditor gehört zum umgebenden Editor; Zum Schluss speichern Sie auch diesen Editor.</li></ul>"
+      },
+      {
+        "id": "groups",
+        "icon": "groups",
+        "title": "Gruppen und Schalten",
+        "blurb": "Separate Communities, gemeinsame Konto-Tools.",
+        "contentHtml": "<ul><li>Der Header-Selektor wechselt zwischen Ihrem Basisprofil und den Gruppen, denen Sie angehören. Verschachtelte Community-Gruppen werden nicht unterstützt.</li><li>Community, Impressionen, Aktivitäten und ihre Popups verwenden die ausgewählte Gruppe. Auch die Ereigniserkennung folgt dieser Gruppe.</li><li>Meine Tools und die allgemeinen Header-Steuerelemente bleiben gruppenübergreifend verfügbar. Assets und Asset Discovery gehören zu Ihrem Basisprofil.</li><li>Warten Sie, bis ein Gruppenwechsel abgeschlossen ist. Wenn der Wechsel fehlschlägt, wird die vorherige Auswahl wiederhergestellt, sodass Sie es erneut versuchen können.</li></ul>"
+      },
+      {
+        "id": "group-membership",
+        "icon": "group_add",
+        "title": "Gruppen beitreten und verwalten",
+        "blurb": "Erkennung, ausstehende Anfragen und Mitgliedschaft sind unterschiedliche Zustände.",
+        "contentHtml": "<ul><li>Discovery zeigt Gruppen an, mit denen Sie nicht interagiert haben. Die Teilnahme umfasst ausstehende Anfragen; Ihre eigenen Gruppen werden separat verwaltet.</li><li>Öffnen Sie eine Gruppenkarte, um deren Regeln zu überprüfen und anzuwenden. Die Mitgliederliste ist nur sichtbar, wenn die Gruppe dies zulässt.</li><li>Gruppenadministratoren kümmern sich um die Moderation ihrer Community. Die Plattformmoderation der Gruppenerstellung hängt von der Anwendungskonfiguration ab.</li><li>Einladungslinks können die Gruppenmitgliedschaft in die Registrierung übertragen und anschließend die eingeladene Gruppe auswählen. Folgen Sie dem Link durch den gesamten Registrierungsablauf.</li></ul>"
+      },
+      {
+        "id": "ratings",
+        "icon": "star",
+        "title": "Erkennung, Bewertungen und Filter",
+        "blurb": "Passen Sie an, was Sie sehen, und überprüfen Sie Ihre Interaktionen.",
+        "contentHtml": "<ul><li>Verwenden Sie die Home-Filter, um die für Sie relevanten Profile auszuwählen. Bewertungen drücken Ihr Interesse aus; Sie garantieren kein gegenseitiges Interesse.</li><li>In den Abschnitten „Impressionen“ und „Aktivitäten“ werden die zugehörigen Bewertungen und Rückmeldungen in der ausgewählten Gruppe angezeigt.</li><li>Mehrfachauswahlmenüs zeigen ihr konfiguriertes Maximum im Titel an. Löschen Sie eine vorhandene Auswahl, bevor Sie eine weitere hinzufügen, wenn Sie das Limit erreicht haben.</li></ul>"
+      },
+      {
+        "id": "events",
+        "icon": "event_note",
+        "title": "Veranstaltungen und Teilnahme",
+        "blurb": "Entdecken Sie eine Veranstaltung in der aktiven Gruppe, nehmen Sie daran teil oder organisieren Sie sie.",
+        "contentHtml": "<ul><li>Überprüfen Sie vor der Anmeldung Datum, Ort, Kapazität, Preis und Teilnahmeregeln auf der Veranstaltungskarte.</li><li>Ein Antrag kann ausstehend bleiben, bis der erforderliche Genehmigungs- oder Zahlungsschritt abgeschlossen ist. Überprüfen Sie den Teilnahmestatus auf der Karte.</li><li>Organisatoren verwalten Einladungen, Mitglieder und Veranstaltungsdetails über die vorhandenen Veranstaltungsmenüs. Der Zugriff hängt von Ihrer Veranstaltungsrolle ab.</li><li>Der Kalenderexport umfasst exportierbare bevorstehende Ereignisse. Wenn keine verfügbar sind, wird ein Informations-Popup angezeigt, anstatt einen leeren Kalender herunterzuladen.</li></ul>"
+      },
+      {
+        "id": "stages",
+        "icon": "account_tree",
+        "title": "Unterveranstaltungen und Turniere",
+        "blurb": "Unterteilen Sie ein Ereignis in einen Zeitplan und überschaubare Phasen.",
+        "contentHtml": "<ul><li>Verwenden Sie Unterereignisse für einzelne Etappen, Nebenaktivitäten oder optionale Sitzungen. Jeder kann seinen eigenen Zeitplan und seine eigenen Ressourcen haben.</li><li>Das Turnier-Setup bietet die unterstützten Bühnen- und Bestenlistenoptionen. Befolgen Sie bei der Zuweisung von Teilnehmern die Veranstaltungseinstellungen.</li><li>Eine Veranstaltungsphase oder Teilnehmergruppe ist keine verschachtelte Community-Gruppe. Behalten Sie den Hauptereigniskontext bei, wenn Sie seine untergeordneten Elemente verwalten.</li></ul>"
+      },
+      {
+        "id": "resources",
+        "icon": "inventory_2",
+        "title": "Vermögenswerte und Kreditaufnahme",
+        "blurb": "Transport, Unterkunft, Versorgung und Veranstaltungseinsätze.",
+        "contentHtml": "<ul><li>Ihre Assets gehören zum Basisprofil und bleiben sichtbar, wenn Sie die Gruppe wechseln. Die Asset-Erkennung ist unabhängig von der aktiven Gruppe.</li><li>Geben Sie beim Erstellen eines Assets Verfügbarkeit, Kapazität und die relevanten Details an. Überprüfen Sie Anfragen über die vorhandenen Menüs.</li><li>Eine Veranstaltung kann ein Asset von außerhalb ihrer Community verwenden. Der Zugriff auf die Veranstaltung und ihre Teilnehmer unterliegt weiterhin den Veranstaltungsberechtigungen.</li><li>Zahlungen für die Ausleihe von Vermögenswerten bleiben mit dem Zahlerprofil verknüpft. Zahlungen für das eigene Vermögen kann der Eigentümer auch in der Zahlungshistorie einsehen.</li></ul>"
+      },
+      {
+        "id": "tickets",
+        "icon": "qr_code",
+        "title": "Tickets",
+        "blurb": "Finden und validieren Sie die Tickets, die Sie verwalten dürfen.",
+        "contentHtml": "<ul><li>Öffnen Sie Tickets in „Meine Tools“, um Ihre verfügbaren Ticketaktionen zu finden. Tickets bleiben über Gruppenschalter hinweg zugänglich.</li><li>Überprüfen Sie den Veranstaltungs- und Ticketstatus, bevor Sie einen QR-Code verwenden. Die Validierung hängt von den Veranstaltungsberechtigungen und dem aktuellen Ticketstatus ab.</li><li>Wenn das Scannen blockiert ist, überprüfen Sie die Browser- oder Gerätekameraberechtigung, bevor Sie es erneut versuchen.</li></ul>"
+      },
+      {
+        "id": "activities",
+        "icon": "forum",
+        "title": "Chats und Teilen",
+        "blurb": "Halten Sie Ereignis-, Kontakt- und Supportgespräche im Kontext.",
+        "contentHtml": "<ul><li>Verwenden Sie die Chatlistenfilter, um den relevanten Kanal zu finden. Ereigniskonversationen behalten ihre Ereignisberechtigungen.</li><li>Wählen Sie in „Vermögen teilen“ oder „Ereignisse teilen“ Karten aus und bestätigen Sie mit dem Warenkorb-Häkchen. Neu ausgewählte Elemente werden als separate Chat-Nachrichten gesendet.</li><li>Durch das Entfernen einer zuvor freigegebenen Auswahl wird diese Freigabe zurückgezogen. Eine ältere Nachricht kann auch dann als gelöscht angezeigt werden, wenn sie sich außerhalb der ersten Seite befindet.</li><li>Das Kopieren eines externen Einladungslinks unterscheidet sich vom Teilen einer Karte in einem bestehenden Chat. Überprüfen Sie, welche Aktion Sie verwenden.</li></ul>"
+      },
+      {
+        "id": "contacts",
+        "icon": "contacts",
+        "title": "Kontakte und Chat-Erlaubnis",
+        "blurb": "Durch das Speichern eines Kontakts wird nicht automatisch direkter Chat-Zugriff gewährt.",
+        "contentHtml": "<ul><li>Sie können Telefon-, E-Mail- oder soziale Kontaktdetails unabhängig voneinander speichern. Für den direkten Chat MyScoutee ist eine separate Anfrage erforderlich.</li><li>Wählen Sie das Chat-Badge MyScoutee, um Zugriff anzufordern. Ein ausstehender Antrag bleibt solange anhängig, bis das andere Mitglied entscheidet.</li><li>Der Filter „Anfragen“ zeigt eingehende Anfragen mit den neuesten zuerst an. Durch die Genehmigung wird der Kontakt hinzugefügt. Ablehnen ändert den Berechtigungsstatus.</li><li>Das rote Abzeichen im Seitenmenü zählt ausstehende eingehende Anfragen, nicht gespeicherte Kontakte. Das andere Mitglied erhält die entsprechende Benachrichtigung. Über den Kontakteinladungsablauf können nur Kontakte eingeladen werden.</li></ul>"
+      },
+      {
+        "id": "notifications",
+        "icon": "notifications",
+        "title": "Benachrichtigungen und Abzeichen",
+        "blurb": "Finden Sie heraus, was sich geändert hat und zu welcher Community es gehört.",
+        "contentHtml": "<ul><li>Die Benachrichtigungsleiste ist kontoweit gültig. Gruppenreferenzen helfen dabei, die Herkunft eines Artikels zu identifizieren, während Sie die verfügbaren Filter verwenden.</li><li>Ungelesene und ausstehende Abzeichen weisen auf unterschiedliche Dinge hin. Öffnen Sie die entsprechende Liste, um die Aktion oder Nachricht zu überprüfen.</li><li>Browser-Push-Benachrichtigungen erfordern eine Erlaubnis. Das Deaktivieren von Push bedeutet nicht, dass der In-App-Benachrichtigungsverlauf verschwindet.</li></ul>"
+      },
+      {
+        "id": "payments",
+        "icon": "payments",
+        "title": "Zahlungen und Verlauf",
+        "blurb": "Überprüfen Sie die Transaktion, den Empfänger und den Status.",
+        "contentHtml": "<ul><li>Der Zahlungsverlauf folgt dem ausgewählten Profil/der ausgewählten Gruppe. Zahlungen für Vermögenswerte, die Sie besitzen, können auch durch Eigentum erfolgen.</li><li>Prüfen Sie, ob es sich bei einem Artikel um einen Zahlungs-, Erstattungs- oder Kassenbeleg handelt. Ein Bargeldbeleg ist kein Beweis für eine Online-Überweisung und führt nicht zu einer Affiliate-Provision.</li><li>Eine ausstehende oder fehlgeschlagene Zahlung ist keine abgeschlossene Buchung. Verfolgen Sie den Status und die verfügbaren Wiederholungs- oder Rückerstattungsaktionen.</li></ul>"
+      },
+      {
+        "id": "invitations",
+        "icon": "share",
+        "title": "Einladungslinks und Partner",
+        "blurb": "Teilen Sie den richtigen Link für ein Profil, eine Veranstaltung oder eine Gruppe.",
+        "contentHtml": "<ul><li>Ein persönlicher Einladungslink erfasst den Einladenden, wenn die Registrierung gemäß den geltenden Regeln abgeschlossen ist.</li><li>Event- und Gruppeneinladungslinks enthalten auch das entsprechende Ziel. Ersetzen Sie sie nicht durch eine einfache Seiten-URL.</li><li>Der Teilnehmereinladungsablauf API unterstützt auch die Einladungszuordnung. Geben Sie die generierten Links an die Personen zurück, die Sie einladen möchten.</li><li>Affiliate-Informationen folgen dem ausgewählten Profil. Bei Kassenunterlagen wird keine Provision generiert.</li></ul>"
+      },
+      {
+        "id": "safety",
+        "icon": "verified_user",
+        "title": "Sicherheit, Moderation und Support",
+        "blurb": "Melden Sie ein Problem über das entsprechende Element.",
+        "contentHtml": "<ul><li>Verwenden Sie die Meldeaktion für die betroffene Karte oder Nachricht und geben Sie eine klare Erklärung an.</li><li>Gruppenadministratoren kümmern sich um die Gruppenmoderation; Anwendungsadministratoren kümmern sich je nach Konfiguration um die Plattformverantwortung. Ein Moderator erhält keinen Zugriff auf unabhängige Gruppen.</li><li>Der Moderationsstatus und ausstehende Abzeichen zeigen an, wann Aufmerksamkeit erforderlich ist. Supportgespräche nutzen den entsprechenden Kanal und die entsprechenden Filter.</li><li>Geben Sie nur die Informationen weiter, die für die Untersuchung erforderlich sind. Fügen Sie niemals Passwörter, API-Schlüssel oder Zahlungsgeheimnisse in einen Bericht ein.</li></ul>"
+      },
+      {
+        "id": "permissions",
+        "icon": "settings",
+        "title": "Installation, Standort und Benachrichtigungen",
+        "blurb": "Erlauben Sie, was Sie brauchen; Stellen Sie blockierte Berechtigungen in den Geräteeinstellungen wieder her.",
+        "contentHtml": "<ul><li>Installation, Standort und Push-Benachrichtigungen sind separate Optionen. Die Setup-Hilfe erklärt jedes einzelne.</li><li>Der gespeicherte Standort ermöglicht die Fortsetzung der Anwendung, wenn der spätere Standortzugriff deaktiviert wird. Bei aktivierter Standortverfolgung kann diese unter Einhaltung der Distanzregel aktualisiert werden.</li><li>Android: Überprüfen Sie die Site-Berechtigungen in Ihrem Browser und die Benachrichtigungsberechtigungen in den Android-App-Einstellungen. Installierte Web-Apps verfügen möglicherweise auch über eigene App-Einstellungen.</li><li>iPhone/iPad: Überprüfen Sie den Standortzugriff unter Datenschutz und Sicherheit und Benachrichtigungen für die installierte Web-App unter Einstellungen. Das verfügbare Push-Verhalten hängt von der Installation und der Plattformunterstützung ab.</li><li>Kehren Sie nach dem Ändern einer Berechtigung zur App zurück und versuchen Sie es erneut. Die Anwendung kann eine Browser- oder Betriebssystemblockierung nicht überschreiben.</li></ul>"
+      }
+    ],
+    "createdAtIso": "2026-09-26T00:00:00.000Z",
+    "createdByUserId": "system",
+    "updatedAtIso": "2026-10-07T00:00:00.000Z",
+    "updatedByUserId": "system"
+  },
+  {
+    "id": "help-default-es-v5",
+    "documentKind": "help",
+    "lang": "es",
+    "languageLabel": "Español",
+    "version": 5,
+    "active": true,
+    "title": "Ayuda MyScoutee",
+    "summary": "Una guía práctica por tema",
+    "description": "Perfiles, comunidades, eventos, chats y herramientas: busca el tema relevante y sigue los pasos.",
+    "headerColor": "amber",
+    "sections": [
+      {
+        "id": "start",
+        "icon": "explore",
+        "title": "Primeros pasos",
+        "blurb": "Elige un perfil y descubre las actividades disponibles.",
+        "contentHtml": "<ul><li>Abre tu perfil desde el avatar y completa los campos básicos. La insignia de finalización le ayuda a encontrar la información que falta.</li><li>Utilice el menú lateral para Comunidad, Impresiones, Actividades y Mis herramientas. Las acciones disponibles dependen de su rol y del elemento actual.</li><li>Un botón con un signo de interrogación abre la ayuda contextual. Los menús de hojas móviles tienen un botón de cerrar en su encabezado.</li></ul>"
+      },
+      {
+        "id": "integrations",
+        "icon": "api",
+        "title": "API y asistencia de IA",
+        "blurb": "Utilice los permisos de perfil existentes para integraciones.",
+        "contentHtml": "<p>El enlace principal MCP comienza bloqueado. Abra su escudo, elija un paquete, confirme y luego guarde con la marca en la ventana de integración. La generación de clientes permanece separada.</p><ol><li>Copie la URL MCP en su cliente AI y elija Conectar. No se necesita ningún secreto o ID de cliente manual.</li><li>inicie sesión en MyScoutee, verifique el perfil y el grupo mostrados y luego apruebe el acceso.</li><li>Regrese a su cliente AI y habilite la conexión para la conversación.</li><li>revocar el acceso bajo los permisos OAuth. Las conexiones caducan después de 90 días.</li></ol><h4>Nivel de acceso</h4><ul><li><strong>Bloqueado:</strong> Esta conexión no puede leer ni escribir datos personales o del espacio de trabajo.</li><li><strong>Escribir:</strong> Creación admitida y cambios de organización, como eventos, campañas, casos comunitarios y enlaces de invitación. Devuelve sólo los resultados necesarios para la operación.</li><li><strong>Leer:</strong> Escribe y lee eventos accesibles, campañas, datos de la comunidad, mensajes y calificaciones existentes. Sin seguimiento de eventos en segundo plano.</li><li><strong>Completo:</strong> Leer más MCP Eventos: reciba actualizaciones sobre los recursos que elija monitorear. Requiere una conexión MCP aprobada y un cliente AI compatible.</li></ul><p>Un cliente MCP está limitado tanto por su propio pack como por el enlace principal MCP. Eventos requiere Full en ambos. Las claves API no reciben eventos MCP.</p><h4>Monitoreo en segundo plano · Eventos MCP</h4><p>Establezca el enlace principal MCP y el cliente elegido en Completo y guarde. En el cliente de IA, especifique qué monitorear y qué hacer cuando cambie: por ejemplo, observe un evento que organice para obtener resultados de Mingle. Eventos también admite cambios en sus activos. El cliente se suscribe después de su solicitud; Al habilitar Full por sí solo no se inicia la supervisión. Pídale al cliente que deje de monitorear, baje el paquete o revoque la conexión para detener la entrega. Las actualizaciones perdidas no se reproducen. Las calificaciones, los votos y las decisiones personales siguen siendo suyos en la aplicación.</p><p>El soporte para eventos, los planes de suscripción y los permisos del espacio de trabajo dependen del proveedor de IA. ChatGPT documenta Eventos en chats de trabajo en la web y en modo Nube de escritorio. La conectividad ordinaria MCP, incluidos los conectores Claude, no demuestra por sí sola la compatibilidad con eventos. MyScoutee no verifica su suscripción a AI.</p><p>utilice la configuración API/MCP de su perfil de rol. Un administrador puede leer las estadísticas de perfil/registro existentes y los recuentos de atención. Un operador puede leer informes paginados de mediciones e ingresos. El acceso completo a MCP puede indicar nuevos registros, informes/comentarios de administradores o liberaciones de operadores. El cliente podrá leer los resúmenes autorizados previa señal; no puede moderar, aprobar actualizaciones, sincronizar informes, pagar ni cambiar la configuración. La membresía del rol actual se verifica nuevamente para solicitudes y entregas. La clave de administrador de escritorio existente mantiene su punto final de descripción general.</p><p>Generar crea un ID de cliente y un secreto de un solo uso. Cópialos en la configuración de tu cliente, nunca en el chat.</p><p>El modo local de solo navegador no puede recibir solicitudes OAuth externas. En desarrollo con el backend en ejecución, se puede utilizar el inicio de sesión de demostración normal; Las instalaciones implementadas utilizan sus métodos de inicio de sesión configurados.</p>"
+      },
+      {
+        "id": "profiles",
+        "icon": "person",
+        "title": "Perfiles y visibilidad",
+        "blurb": "Edite el perfil perteneciente a su comunidad seleccionada.",
+        "contentHtml": "<ul><li>Verifique el grupo activo antes de editar su perfil, fotos o configuración de visibilidad. Los perfiles de grupo mantienen su propia configuración.</li><li>Los controles de visibilidad determinan qué detalles de perfil comparte. Las reglas del grupo pueden requerir detalles particulares antes de la participación.</li><li>Guarde el editor con su botón de marca. Un editor de reglas anidadas pertenece al editor circundante; Termine guardando ese editor también.</li></ul>"
+      },
+      {
+        "id": "groups",
+        "icon": "groups",
+        "title": "Grupos y conmutación",
+        "blurb": "Comunidades separadas, herramientas de cuentas compartidas.",
+        "contentHtml": "<ul><li>El selector de encabezado cambia entre su perfil base y los grupos a los que pertenece. No se admiten grupos comunitarios anidados.</li><li>Comunidad, Impresiones, Actividades y sus ventanas emergentes utilizan el grupo seleccionado. El descubrimiento de eventos también sigue a ese grupo.</li><li>Mis herramientas y los controles generales del encabezado permanecen disponibles en todos los grupos. Los activos y el descubrimiento de activos pertenecen a su perfil base.</li><li>Espere a que finalice un cambio de grupo. Si el cambio falla, se restaura la selección anterior para que pueda volver a intentarlo.</li></ul>"
+      },
+      {
+        "id": "group-membership",
+        "icon": "group_add",
+        "title": "Unirse y administrar grupos",
+        "blurb": "Descubrimiento, solicitudes pendientes y membresía son estados diferentes.",
+        "contentHtml": "<ul><li>Discovery muestra grupos con los que no ha interactuado. La participación incluye solicitudes pendientes; sus propios grupos se administran por separado.</li><li>Abra una tarjeta de grupo para revisar sus reglas y aplicar. La lista de miembros es visible sólo cuando el grupo lo permite.</li><li>Los administradores de grupo manejan la moderación de su comunidad. La moderación de la plataforma en la creación de grupos depende de la configuración de la aplicación.</li><li>Los enlaces de invitación pueden incluir la membresía del grupo en el registro y luego seleccionar el grupo invitado. Siga el enlace a través del flujo de registro completo.</li></ul>"
+      },
+      {
+        "id": "ratings",
+        "icon": "star",
+        "title": "Descubrimiento, valoraciones y filtros",
+        "blurb": "Ajusta lo que ves y revisa tus interacciones.",
+        "contentHtml": "<ul><li>Utilice los filtros de inicio para elegir los perfiles relevantes para usted. Las calificaciones expresan su interés; no garantizan el interés mutuo.</li><li>Las secciones Impresiones y Actividades muestran las calificaciones y comentarios relacionados en el grupo seleccionado.</li><li>Los menús de selección múltiple muestran su máximo configurado en el título. Borre una selección existente antes de agregar otra cuando alcance el límite.</li></ul>"
+      },
+      {
+        "id": "events",
+        "icon": "event_note",
+        "title": "Eventos y participación",
+        "blurb": "Descubre, únete u organiza un evento en el grupo activo.",
+        "contentHtml": "<ul><li>revise la fecha, ubicación, capacidad, precio y reglas de inscripción en la tarjeta del evento antes de presentar la solicitud.</li><li>Una solicitud puede permanecer pendiente hasta que se complete el paso de aprobación o pago requerido. Consulta el estado de participación en la tarjeta.</li><li>Los organizadores gestionan las invitaciones, los miembros y los detalles del evento a través de los menús del evento existentes. El acceso depende de su rol en el evento.</li><li>La exportación del calendario incluye los próximos eventos exportables. Si no hay ninguno disponible, aparece una ventana emergente de información en lugar de descargar un calendario vacío.</li></ul>"
+      },
+      {
+        "id": "stages",
+        "icon": "account_tree",
+        "title": "Subeventos y torneos",
+        "blurb": "Divida un evento en un cronograma y etapas manejables.",
+        "contentHtml": "<ul><li>utilice subeventos para etapas individuales, actividades paralelas o sesiones opcionales. Cada uno puede tener su propio horario y recursos.</li><li>La configuración del torneo proporciona las opciones de tabla de clasificación y escenario admitidas. Siga la configuración del evento al asignar participantes.</li><li>Una etapa de evento o un grupo de participantes no es un grupo comunitario anidado. Mantenga el contexto del evento principal al gestionar sus hijos.</li></ul>"
+      },
+      {
+        "id": "resources",
+        "icon": "inventory_2",
+        "title": "Activos y endeudamiento",
+        "blurb": "Transporte, alojamiento, suministros y encargos de eventos.",
+        "contentHtml": "<ul><li>Sus activos pertenecen al perfil base y permanecen visibles cuando cambia de grupo. El descubrimiento de activos es independiente del grupo activo.</li><li>Proporcione disponibilidad, capacidad y los detalles relevantes al crear un activo. Revisar solicitudes a través de sus menús existentes.</li><li>Un evento puede utilizar un recurso externo a su comunidad. El acceso al evento y a sus participantes aún sigue los permisos del evento.</li><li>Los pagos de préstamos de activos permanecen asociados con el perfil de pagador. El propietario también puede ver los pagos de sus propios activos en el historial de pagos.</li></ul>"
+      },
+      {
+        "id": "tickets",
+        "icon": "qr_code",
+        "title": "Entradas",
+        "blurb": "Encuentra y valida los tickets que tienes permitido gestionar.",
+        "contentHtml": "<ul><li>Abra Tickets en Mis herramientas para encontrar las acciones de tickets disponibles. Los boletos siguen siendo accesibles a través de conmutadores de grupo.</li><li>Verifique el evento y el estado del boleto antes de usar un código QR. La validación depende de los permisos del evento y del estado actual del ticket.</li><li>Si el escaneo está bloqueado, verifique el permiso de la cámara del navegador o del dispositivo antes de volver a intentarlo.</li></ul>"
+      },
+      {
+        "id": "activities",
+        "icon": "forum",
+        "title": "Chats y uso compartido",
+        "blurb": "Mantenga en contexto las conversaciones de eventos, contactos y soporte.",
+        "contentHtml": "<ul><li>Utilice los filtros de la lista de chat para encontrar el canal relevante. Las conversaciones de eventos conservan sus permisos de eventos.</li><li>En Compartir activos o Compartir eventos, seleccione tarjetas y confirme con el tick de la cesta. Los elementos recién seleccionados se envían como mensajes de chat separados.</li><li>Al eliminar una selección previamente compartida, se retira esa parte; un mensaje antiguo puede aparecer como eliminado incluso cuando está fuera de la primera página.</li><li>Copiar un enlace de invitación externo es diferente a compartir una tarjeta dentro de un chat existente. Revise qué acción está utilizando.</li></ul>"
+      },
+      {
+        "id": "contacts",
+        "icon": "contacts",
+        "title": "Contactos y permiso de chat",
+        "blurb": "Guardar un contacto no otorga automáticamente acceso directo al chat.",
+        "contentHtml": "<ul><li>Puede guardar datos de teléfono, correo electrónico o contactos sociales de forma independiente. El chat directo MyScoutee requiere una solicitud por separado.</li><li>Elija la insignia de chat MyScoutee para solicitar acceso. Una solicitud pendiente permanece pendiente hasta que el otro miembro decida.</li><li>El filtro Solicitudes muestra las solicitudes entrantes con las más recientes primero. Al aprobar se agrega el contacto; Rechazar cambia el estado del permiso.</li><li>La insignia roja del menú lateral cuenta las solicitudes entrantes pendientes, no los contactos guardados. El otro miembro recibe la notificación pertinente. Solo se pueden invitar contactos a través del flujo de invitación de contactos.</li></ul>"
+      },
+      {
+        "id": "notifications",
+        "icon": "notifications",
+        "title": "Notificaciones e insignias",
+        "blurb": "Encuentre qué cambió y a qué comunidad pertenece.",
+        "contentHtml": "<ul><li>La barra de notificaciones abarca toda la cuenta. Las referencias de grupo ayudan a identificar el origen de un artículo mientras utiliza los filtros disponibles.</li><li>Las insignias no leídas y pendientes indican cosas diferentes. Abra la lista correspondiente para revisar la acción o mensaje.</li><li>Las notificaciones push del navegador requieren permiso. Desactivar el push no significa que desaparezca el historial de notificaciones en la aplicación.</li></ul>"
+      },
+      {
+        "id": "payments",
+        "icon": "payments",
+        "title": "Pagos e historial",
+        "blurb": "Revisar la transacción, el destinatario y el estado.",
+        "contentHtml": "<ul><li>El historial de pagos sigue el perfil/grupo seleccionado. Los pagos por activos que posee también pueden aparecer a través de la propiedad.</li><li>Verifique si un artículo es un registro de pago, reembolso o efectivo. Un registro de efectivo no es prueba de una transferencia en línea y no genera comisión de afiliado.</li><li>Un pago pendiente o fallido no es una reserva completa. Siga el estado y la acción de reembolso o reintento disponible.</li></ul>"
+      },
+      {
+        "id": "invitations",
+        "icon": "share",
+        "title": "Enlaces de invitación y afiliado",
+        "blurb": "comparta el enlace correcto para un perfil, evento o grupo.",
+        "contentHtml": "<ul><li>Un enlace de invitación personal registra al invitante cuando se completa el registro según las reglas aplicables.</li><li>Los enlaces de invitación a eventos y grupos también llevan el destino relevante. No los reemplace con una URL de página simple.</li><li>El flujo de invitación de participantes API también admite la atribución de invitaciones. Devuelve los enlaces generados a las personas que deseas invitar.</li><li>La información del afiliado sigue al perfil seleccionado. Los registros de caja no generan comisión.</li></ul>"
+      },
+      {
+        "id": "safety",
+        "icon": "verified_user",
+        "title": "Seguridad, moderación y apoyo",
+        "blurb": "Informar un problema a través del elemento correspondiente.",
+        "contentHtml": "<ul><li>Utilice la acción de informar en la tarjeta o mensaje afectado y proporcione una explicación clara.</li><li>Los administradores de grupo manejan la moderación del grupo; Los administradores de aplicaciones manejan las responsabilidades de la plataforma según la configuración. Un moderador no obtiene acceso a grupos no relacionados.</li><li>El estado de moderación y las insignias pendientes se muestran cuando se necesita atención. Las conversaciones de soporte utilizan sus canales y filtros relevantes.</li><li>Comparta solo la información necesaria para investigar. Nunca incluya contraseñas, claves API o secretos de pago en un informe.</li></ul>"
+      },
+      {
+        "id": "permissions",
+        "icon": "settings",
+        "title": "Instalación, ubicación y notificaciones",
+        "blurb": "Permite lo que necesites; recuperar permisos bloqueados en la configuración del dispositivo.",
+        "contentHtml": "<ul><li>La instalación, la ubicación y las notificaciones push son opciones independientes. La ayuda de configuración explica cada uno de ellos.</li><li>La ubicación guardada permite que la aplicación continúe cuando se deshabilita el acceso a la ubicación posterior. El seguimiento de ubicación habilitado puede actualizarlo según la regla de distancia.</li><li>Android: verifique los permisos del sitio en su navegador y los permisos de notificación en la configuración de la aplicación de Android. Las aplicaciones web instaladas también pueden tener su propia configuración de aplicación.</li><li>iPhone/iPad: verifique el acceso a la ubicación en Privacidad y seguridad y las notificaciones de la aplicación web instalada en Configuración. El comportamiento de inserción disponible depende de la instalación y el soporte de la plataforma.</li><li>Después de cambiar un permiso, regrese a la aplicación y vuelva a intentarlo. La aplicación no puede anular un bloqueo del navegador o del sistema operativo.</li></ul>"
+      }
+    ],
+    "createdAtIso": "2026-09-26T00:00:00.000Z",
+    "createdByUserId": "system",
+    "updatedAtIso": "2026-10-07T00:00:00.000Z",
+    "updatedByUserId": "system"
+  }
+]

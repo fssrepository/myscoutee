@@ -160,7 +160,10 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
-    return this.userService.checkLocationEligibility(coordinates);
+    const service = this.isLocalRouteEnabled('/auth/me')
+      ? this.localUsersService
+      : await this.transportAdapters.get(HTTP_ADAPTER.USERS);
+    return service.checkLocationEligibility(coordinates);
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
@@ -256,7 +259,7 @@ export class UsersService extends BaseRouteModeService {
 
     this.setLoadStatus(USER_PROFILE_EXT_LOAD_CONTEXT_KEY, 'loading');
     const accountId = this.session.activeUserId();
-    const location = this.session.currentSession()?.kind === 'firebase'
+    const location = this.session.currentSession()?.kind === 'authenticated'
       ? await this.location.pendingLoginCoordinates(accountId) : null;
 
     try {
@@ -417,14 +420,22 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
 
+    const session = this.session.identity();
+    const account = this.session.currentSession();
     const previousUser = this.userProfileStore.getUserProfile(profile.id);
     this.userProfileStore.setProfileExt(request);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
+      const coordinates = !profile.locationCoordinates && account?.kind === 'authenticated'
+        ? await this.location.pendingLoginCoordinates(account.profile.id) : null;
+      if (session !== this.session.identity()) return null;
       const savedUser = await this.userService.saveUserProfileExt({
-        ...request, affiliateCode: this.affiliateReferral.pending()
+        ...request,
+        profile: coordinates ? { ...profile, locationCoordinates: coordinates } : profile,
+        affiliateCode: this.affiliateReferral.pending()
       });
+      if (session !== this.session.identity()) return null;
       if (savedUser) {
         this.affiliateReferral.clear();
         this.userProfileStore.setProfileExt({

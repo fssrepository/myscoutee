@@ -97,13 +97,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() articlesLoading = false;
+  @Input() contentError = '';
   @Input() ideaCards: InfoCardData[] = [];
   @Input() ideaCount = 0;
   @Input() supportedCountries: readonly SupportedCountryDto[] = [];
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'entry.auth.unavailable';
   @Input() networkUnavailable = false;
-  @Input() networkUnavailableLabel = 'network.offline';
+  @Input() networkUnavailableLabel = 'entry.auth.unavailable';
 
   @Output() readonly modeSelected = new EventEmitter<GroupType>();
   @Output() readonly demoRequested = new EventEmitter<void>();
@@ -404,31 +405,19 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected get entryAuthButtonIcon(): string {
-    if (this.networkUnavailable) {
-      return 'wifi_off';
-    }
-    if (this.authUnavailable) {
-      return 'block';
-    }
     return 'login';
   }
 
   protected get entryAuthButtonLabel(): string {
-    if (this.networkUnavailable) {
-      return this.networkUnavailableLabel;
-    }
-    if (this.authUnavailable) {
-      return this.authUnavailableLabel;
-    }
     return 'landing.login';
   }
 
   protected get entryPrimaryCtaIcon(): string {
-    return this.networkUnavailable ? 'wifi_off' : 'rocket_launch';
+    return 'rocket_launch';
   }
 
   protected get entryPrimaryCtaLabel(): string {
-    return this.networkUnavailable ? this.networkUnavailableLabel : 'landing.explore.action';
+    return 'landing.explore.action';
   }
 
   protected readonly entryHeroCtaModel: AppMenuModel<EntryHeroCtaId> = { actionSizing: 'content' };

@@ -2,6 +2,8 @@ import { HTTP_ADAPTER, LOCAL_ADAPTER } from '../../adapter-loaders';
 import { AdapterProxyService } from '../platform/adapter-proxy.service';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
 
 import { type UiBranding as DeploymentBrandingDto } from '@fssrepository/myscoutee-components';
 import { DEFAULT_DEPLOYMENT_BRANDING, DEFAULT_DEPLOYMENT_PRIVACY_CONTACT, DEFAULT_DEPLOYMENT_SOCIAL_LINKS, type DeploymentConfigurationDto, type DeploymentPrivacyContactDto, type DeploymentConfigurationServiceContract, type DeploymentSocialLinkDto } from '../../../contracts/platform/deployment-configuration.interface';
@@ -19,6 +21,7 @@ export class DeploymentConfigurationService
   implements OnDestroy {
   private readonly transportAdapters = inject(AdapterProxyService);
   private readonly documentRef = inject(DOCUMENT);
+  private readonly router = inject(Router);
   private readonly localService = this.transportAdapters.reference(LOCAL_ADAPTER.DEPLOYMENT_CONFIGURATION);
   private readonly httpService = this.transportAdapters.reference(HTTP_ADAPTER.DEPLOYMENT_CONFIGURATION);
   private readonly brandingRef = signal<DeploymentBrandingDto>(
@@ -52,6 +55,16 @@ export class DeploymentConfigurationService
   }
   readonly firebaseMessagingConfigured = this.firebaseMessagingConfiguredRef.asReadonly();
   readonly loading = this.loadingRef.asReadonly();
+
+  constructor() {
+    super();
+    this.applyDocumentUrl(this.router.url);
+    this.router.events.pipe(takeUntilDestroyed()).subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        this.applyDocumentUrl(event.urlAfterRedirects);
+      }
+    });
+  }
 
   ngOnDestroy(): void {
     this.revokeManifestObjectUrl();
@@ -210,9 +223,7 @@ export class DeploymentConfigurationService
     this.setMetaContent('meta[property="og:title"]', branding.productName);
     this.setMetaContent('meta[property="og:site_name"]', branding.productName);
     this.setMetaContent('meta[property="og:description"]', branding.homeLabel);
-    const canonicalUrl = this.deploymentRootUrl();
-    this.setMetaContent('meta[property="og:url"]', canonicalUrl);
-    this.setLinkHref('link[rel="canonical"]', canonicalUrl);
+    this.applyDocumentUrl(this.router.url);
     const metadataLogoUrl = this.absoluteLogoUrl(branding.logoUrl);
     const logoMediaType = this.logoMediaType(branding.logoUrl);
     this.setMetaContent('meta[property="og:image"]', metadataLogoUrl);
@@ -230,7 +241,10 @@ export class DeploymentConfigurationService
     );
     this.setLinkHref('link[rel~="icon"]', branding.logoUrl);
     this.setLinkType('link[rel~="icon"]', logoMediaType);
-    this.setLinkHref('link[rel="apple-touch-icon"]', branding.logoUrl);
+    this.setLinkHref('link[rel="apple-touch-icon"]',
+      metadataLogoUrl === this.absoluteLogoUrl('assets/logo/heart.webp')
+        ? 'assets/icon/apple-touch-icon.png'
+        : branding.logoUrl);
     const deploymentThemeColor =
       this.documentRef.defaultView
         ?.getComputedStyle(documentElement)
@@ -284,9 +298,9 @@ export class DeploymentConfigurationService
       // custom logos without claiming dimensions or a maskable-safe layout.
       icons: usesBundledLogo
         ? [192, 512].map(size => ({
-            src: this.absoluteLogoUrl(`assets/icon/android-chrome-${size}x${size}.png`),
+            src: this.absoluteLogoUrl(`assets/icon/android-chrome-${size}x${size}.webp`),
             sizes: `${size}x${size}`,
-            type: 'image/png',
+            type: 'image/webp',
             purpose: 'any maskable'
           }))
         : logoUrl
@@ -390,12 +404,12 @@ export class DeploymentConfigurationService
     }
   }
 
-  private deploymentRootUrl(): string {
-    try {
-      return new URL('/', this.documentRef.baseURI).toString();
-    } catch {
-      return this.documentRef.baseURI;
-    }
+  private applyDocumentUrl(routeUrl: string): void {
+    const url = new URL(routeUrl.replace(/^\//, ''), this.documentRef.baseURI);
+    url.search = '';
+    url.hash = '';
+    this.setMetaContent('meta[property="og:url"]', url.href);
+    this.setLinkHref('link[rel="canonical"]', url.href);
   }
 
   private logoMediaType(logoUrl: string): string {

@@ -415,7 +415,7 @@ export class SideMenuComponent implements OnDestroy {
     const user = this.userProfileStore.activeUserProfile();
     const session = this.sessionService.currentSession();
     const profileImage = AppUtils.firstImageUrl(user?.images);
-    const previewMatches = session?.kind === 'firebase'
+    const previewMatches = session?.kind === 'authenticated'
       && (!this.canToggleAvatarMenu() || session.avatarImageUrl === profileImage);
     const previewImage = previewMatches
       ? session.avatarImageDataUrl ?? session.avatarImageUrl
@@ -1033,10 +1033,9 @@ export class SideMenuComponent implements OnDestroy {
         return;
       }
 
-      const requestKey = session.kind === 'firebase'
+      const requestKey = session.kind === 'authenticated'
         ? `firebase:${session.profile.id}`
-        : session.kind === 'operator-bootstrap'
-          ? `operator-bootstrap:${session.email}`
+
           : `demo:${session.userId}`;
 
       if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
@@ -1808,8 +1807,7 @@ export class SideMenuComponent implements OnDestroy {
     }
     const requestVersion = ++this.hydrationRequestVersion;
     const sessionKind = this.sessionService.currentSession()?.kind;
-    const serverIdentifiedSession = sessionKind === 'firebase'
-      || sessionKind === 'operator-bootstrap';
+    const serverIdentifiedSession = sessionKind === 'authenticated';
     const loadedProfileExt = await this.usersService.loadProfileExtById(
       serverIdentifiedSession ? undefined : userId
     );
@@ -2114,7 +2112,7 @@ export class SideMenuComponent implements OnDestroy {
             localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
-          await this.sessionService.logout().finally(() => this.router.navigate(['/']));
+          await this.sessionService.logout({ sessionAlreadyRevoked: !!activeUserId }).finally(() => this.router.navigate(['/']));
           return;
         }
         if (activeUserId) {
@@ -2132,7 +2130,7 @@ export class SideMenuComponent implements OnDestroy {
           }
         }
         this.clearHydratedUser();
-        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+        await this.sessionService.logout({ sessionAlreadyRevoked: !!activeUserId }).finally(() => this.router.navigate(['/entry']));
       }
     });
   }

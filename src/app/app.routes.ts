@@ -15,13 +15,10 @@ const entryAreaGuard: CanActivateFn = async () => {
   const router = inject(Router);
   // This public route only chooses a destination. Its protected guard verifies
   // the session and server-side role before activation; verifying here as well
-  // would reload Firebase twice during the same startup redirect.
+  // would validate the account twice during the same startup redirect.
   const session = sessionService.currentSession();
   if (!session) {
     return true;
-  }
-  if (session.kind === 'operator-bootstrap') {
-    return router.createUrlTree(['/operator']);
   }
 
   const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
@@ -44,17 +41,11 @@ const restrictedAreaGuard: CanActivateFn = async (route, state) => {
   const router = inject(Router);
   const session = await sessionService.ensureSession();
   const allowRoleProfiles = route.data['allowRoleProfiles'] === true;
-  if (allowRoleProfiles && session?.kind === 'operator-bootstrap') {
-    return entryRedirect(router, state.url);
-  }
   if (session) {
     const { UsersService } = await import('./shared/core/base/services/accounts/users.service');
     const usersService = injector.get(UsersService);
     if (!usersService.localModeEnabled) {
       if (isBrowserOffline()) {
-        if (session.kind === 'operator-bootstrap') {
-          return entryRedirect(router, state.url);
-        }
         const cachedUser = usersService.peekCachedUserById(
           session.kind === 'demo' ? session.userId : session.profile.id
         );

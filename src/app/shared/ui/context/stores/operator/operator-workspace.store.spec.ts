@@ -48,7 +48,7 @@ describe('OperatorWorkspaceStore', () => {
   const applyMutation = vi.fn();
   const invalidate = vi.fn();
   const session = signal({
-    kind: 'firebase' as const,
+    kind: 'authenticated' as const,
     profile: {
       id: 'operator-real',
       name: 'Operator Real',

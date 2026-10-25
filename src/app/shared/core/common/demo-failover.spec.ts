@@ -33,7 +33,7 @@ describe('demo seed startup eligibility', () => {
     expect(demoFailoverSeedWarmupNeeded()).toBe(false);
   });
 
-  it.each(['firebase', 'operator-bootstrap'])('does not warm synthetic data for a %s session', kind => {
+  it.each(['authenticated'])('does not warm synthetic data for a %s session', kind => {
     localStorage.setItem('myscoutee.http.session.v1', JSON.stringify({ kind, userId: 'real-user' }));
     expect(demoFailoverSeedWarmupNeeded()).toBe(false);
   });

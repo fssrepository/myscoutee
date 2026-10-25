@@ -1,6 +1,8 @@
 import { EntryPageComponent } from './entry-page.component';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { automaticPrivacyConsentEnabled } from '../../../shared/core/base/services/help/privacy-policy.service';
+import { reportBackendReadiness } from '../../../shared/core/common/backend-connectivity';
+import { environment } from '../../../../environments/environment';
 
 // Admission tests use prototype fixtures; component creation is covered separately.
 beforeEach(() => {
@@ -12,6 +14,23 @@ beforeEach(() => {
   vi.spyOn(prototype, 'ensureOnboardingPopupLoaded').mockResolvedValue(undefined);
 });
 afterEach(() => vi.restoreAllMocks());
+
+it('releases the admin selector when its lazy workspace cannot be initialized', async () => {
+  const selection = { userId: 'admin', mode: 'admin', complete: vi.fn(), fail: vi.fn() };
+  const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+    injector: { get: vi.fn(() => { throw new Error('Workspace initialization failed'); }) },
+    sessionService: { startDemoSession: vi.fn(), startTrackedDemoSession: vi.fn() },
+    router: { navigateByUrl: vi.fn() }
+  });
+
+  await component.onDemoUserSelected(selection);
+
+  expect(selection.fail).toHaveBeenCalledOnce();
+  expect(selection.complete).not.toHaveBeenCalled();
+  expect(component.sessionService.startDemoSession).not.toHaveBeenCalled();
+  expect(component.sessionService.startTrackedDemoSession).not.toHaveBeenCalled();
+  expect(component.router.navigateByUrl).not.toHaveBeenCalled();
+});
 
 describe('nginx automatic consent switch', () => {
   beforeEach(() => {
@@ -148,10 +167,42 @@ describe('EntryPageComponent new demo registration admission', () => {
 });
 
 describe('EntryPageComponent browser connection transitions', () => {
+  it('keeps Login disabled until backend readiness is confirmed', async () => {
+    const previousMode = environment.activitiesDataSource;
+    environment.activitiesDataSource = 'http';
+    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
+      entryNetworkUnavailable: false, entryAuthUnavailable: false, showFirebaseAuthPopup: false,
+      sessionService: { authMode: 'firebase', accountProfile: () => null },
+      synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined),
+      ensureEntryConsent: vi.fn().mockResolvedValue(true),
+      showEntryLocationSetup: () => false,
+      ensureHttpLoginAccessAllowed: vi.fn().mockResolvedValue(true)
+    });
+    try {
+      reportBackendReadiness(true);
+      // The SSE owner reports both unknown and unavailable readiness as false.
+      reportBackendReadiness(false);
+      expect(component.entryNetworkUnavailable).toBe(true);
+      await component.openEntryAuthPopup();
+      expect(component.showFirebaseAuthPopup).toBe(false);
+      expect(component.ensureEntryConsent).not.toHaveBeenCalled();
+      reportBackendReadiness(true);
+      expect(component.entryNetworkUnavailable).toBe(false);
+      await component.openEntryAuthPopup();
+      expect(component.showFirebaseAuthPopup).toBe(true);
+      component.entryNetworkUnavailable = true;
+      reportBackendReadiness(true);
+      expect(component.entryNetworkUnavailable).toBe(true);
+    } finally {
+      reportBackendReadiness(true);
+      environment.activitiesDataSource = previousMode;
+    }
+  });
+
   function entry() {
     return Object.assign(Object.create(EntryPageComponent.prototype), {
       sessionService: { activeUserId: () => 'member', identity: () => 'session-a' },
-      appLocationService: { stageLoginCoordinates: vi.fn() },
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null), stageLoginCoordinates: vi.fn() },
       landingContentRequestToken: 1,
       grantedLocationEligibilityRequestToken: 1,
       entryContentLoadPromise: null,
@@ -193,9 +244,7 @@ describe('EntryPageComponent browser connection transitions', () => {
       usersService: { checkLocationEligibility: () => { requestStarted(); return eligibility; } }
     });
     const pending = component.resolveBrowserLocationAccess(1);
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(requestStarted).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(requestStarted).toHaveBeenCalledOnce());
     component.onBrowserOffline();
     resolveEligibility({ eligible: true });
     await pending;
@@ -206,35 +255,27 @@ describe('EntryPageComponent browser connection transitions', () => {
 });
 
 describe('EntryPageComponent operator authentication gate', () => {
-  it.each(['prompt', 'denied', 'granted'])('opens setup directly for %s permission, otherwise Firebase', async permission => {
+  it.each(['prompt', 'denied', 'granted'])('waits in the location popup before Firebase even with %s permission', async permission => {
+    let complete!: (allowed: boolean) => void;
     const component = Object.assign(Object.create(EntryPageComponent.prototype), {
       entryNetworkUnavailable: false, entryAuthUnavailable: false, loginEligibilityBusy: false,
-      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', firebaseProfile: () => null },
+      showFirebaseAuthPopup: false, sessionService: { authMode: 'firebase', accountProfile: () => null, identity: () => null },
+      grantedLocationEligibilityRequestToken: 0,
       synchronizeDeploymentAuthMode: vi.fn().mockResolvedValue(undefined), ensureEntryConsent: () => true,
-      isLoginBlockedByLandingBundle: () => false,
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null) },
       queryGeolocationPermissionState: vi.fn().mockResolvedValue(permission),
-      landingGuide: { enabled: () => true, closePopup: vi.fn() },
-      appSetupStore: { locationSetupMissing: () => permission !== 'granted', open: vi.fn(),
-        explainMissingSetup: vi.fn(), requestForLogin: vi.fn(), guideRequested: { set: vi.fn() } }
+      landingGuide: { closePopup: vi.fn() },
+      ensureFirebaseAuthPopupLoaded: vi.fn().mockResolvedValue(undefined),
+      appSetupStore: { requestForLogin: vi.fn(() => new Promise(resolve => { complete = resolve; })), guideRequested: { set: vi.fn() } }
     });
-    await component.openEntryAuthPopup();
-    expect(component.showFirebaseAuthPopup).toBe(permission === 'granted');
-    expect(component.appSetupStore.open).toHaveBeenCalledTimes(permission === 'granted' ? 0 : 1);
-    expect(component.landingGuide.closePopup).toHaveBeenCalledOnce();
-    expect(component.appSetupStore.guideRequested.set).toHaveBeenCalledWith(false);
-    expect(component.appSetupStore.explainMissingSetup).not.toHaveBeenCalled();
-    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    const pending = component.openEntryAuthPopup();
+    await vi.waitFor(() => expect(component.appSetupStore.requestForLogin).toHaveBeenCalledOnce());
+    expect(component.showFirebaseAuthPopup).toBe(false);
     expect(component.queryGeolocationPermissionState).not.toHaveBeenCalled();
-  });
-
-  it('opens missing-location setup even when the optional guide is disabled', async () => {
-    const component = Object.assign(Object.create(EntryPageComponent.prototype), {
-      landingGuide: { enabled: () => false, closePopup: vi.fn() },
-      appSetupStore: { locationSetupMissing: () => true, open: vi.fn(), guideRequested: { set: vi.fn() } }
-    });
-    expect(component.showEntryLocationSetup()).toBe(true);
-    expect(component.appSetupStore.open).toHaveBeenCalledOnce();
-    expect(component.appSetupStore.guideRequested.set).toHaveBeenCalledWith(false);
+    complete(true);
+    await pending;
+    expect(component.showFirebaseAuthPopup).toBe(true);
+    expect(component.ensureFirebaseAuthPopupLoaded).toHaveBeenCalledOnce();
   });
 
   it('bypasses consumer region and coordinate checks but still requires privacy consent', async () => {
@@ -244,7 +285,7 @@ describe('EntryPageComponent operator authentication gate', () => {
       showFirebaseAuthPopup: boolean;
       sessionService: {
         authMode: 'firebase';
-        firebaseProfile: () => null;
+        accountProfile: () => null;
       };
       isLoginBlockedByLandingBundle: ReturnType<typeof vi.fn>;
       isLoginLocationRequiredByLandingBundle: ReturnType<typeof vi.fn>;
@@ -262,7 +303,7 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.showFirebaseAuthPopup = false;
     component.sessionService = {
       authMode: 'firebase',
-      firebaseProfile: () => null
+      accountProfile: () => null
     };
     component.isLoginBlockedByLandingBundle = vi.fn().mockReturnValue(true);
     component.isLoginLocationRequiredByLandingBundle = vi.fn().mockReturnValue(true);
@@ -292,7 +333,7 @@ describe('EntryPageComponent operator authentication gate', () => {
       loginEligibilityBusy: boolean;
       sessionService: {
         authMode: 'selector';
-        firebaseProfile: () => null;
+        accountProfile: () => null;
       };
       synchronizeDeploymentAuthMode: ReturnType<typeof vi.fn>;
       isLoginBlockedByLandingBundle: ReturnType<typeof vi.fn>;
@@ -306,7 +347,7 @@ describe('EntryPageComponent operator authentication gate', () => {
     component.loginEligibilityBusy = false;
     component.sessionService = {
       authMode: 'selector',
-      firebaseProfile: () => null
+      accountProfile: () => null
     };
     component.synchronizeDeploymentAuthMode = vi.fn().mockResolvedValue(undefined);
     Object.assign(component, { firebaseMessagingService: { entryPermissionPending: false },
@@ -331,7 +372,7 @@ describe('EntryPageComponent browser location permission gate', () => {
   function grantedPermissionsEntry() {
     return Object.assign(Object.create(EntryPageComponent.prototype), {
       sessionService: { activeUserId: () => 'member', identity: () => 'session-a' },
-      appLocationService: { stageLoginCoordinates: vi.fn() },
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null), stageLoginCoordinates: vi.fn() },
       locationEligibilityResolvedFromCoordinates: false,
       landingLoginAvailability: null,
       grantedLocationEligibilityRequestToken: 1,
@@ -350,23 +391,59 @@ describe('EntryPageComponent browser location permission gate', () => {
     });
   }
 
-  it.each(['prompt', 'denied', 'granted'])('does not wait for device setup when permission is %s', async state => {
+  it.each([true, false])('continues only from the current popup eligibility result (eligible=%s)', async eligible => {
     const component = grantedPermissionsEntry();
-    component.queryGeolocationPermissionState.mockResolvedValue(state);
-    component.firebaseMessagingService.entryPermissionPending = true;
-    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
-    expect(component.queryGeolocationPermissionState).not.toHaveBeenCalled();
+    const point = { latitude: 47, longitude: 19 };
+    Object.assign(component, { grantedLocationEligibilityRequestToken: 0, landingGuide: { closePopup: vi.fn() } });
+    Object.assign(component.appSetupStore, { guideRequested: { set: vi.fn() }, loginRequested: () => true, isOpen: () => true });
+    component.usersService.checkLocationEligibility.mockResolvedValue({ eligible, message: 'Outside supported region' });
+    component.appSetupStore.requestForLogin.mockImplementation(async (check: (point: { latitude: number; longitude: number }) => Promise<boolean>) => {
+      if (!eligible) {
+        await expect(check(point)).rejects.toThrow('Outside supported region');
+        return false;
+      }
+      return check(point);
+    });
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(eligible);
+    expect(component.usersService.checkLocationEligibility).toHaveBeenCalledExactlyOnceWith(point);
+    expect(component.pendingFirebaseEntryCoordinates).toEqual(eligible ? point : null);
     expect(component.requestCurrentLocation).not.toHaveBeenCalled();
-    expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
   });
 
-  it('retains an explicit regional security rejection without requesting device permissions', async () => {
+  it('uses the installer coordinate for eligibility and opens no setup popup', async () => {
     const component = grantedPermissionsEntry();
-    component.locationEligibilityResolvedFromCoordinates = true;
-    component.landingLoginAvailability = { eligible: false, securityGateEnabled: true };
-    expect(await component.ensureHttpLoginAccessAllowed()).toBe(false);
-    expect(component.dialogStore.openInfo).toHaveBeenCalledOnce();
+    const point = { latitude: 47, longitude: 19 };
+    Object.assign(component, { grantedLocationEligibilityRequestToken: 0, landingGuide: { closePopup: vi.fn() } });
+    Object.assign(component.appSetupStore, { guideRequested: { set: vi.fn() } });
+    component.appLocationService.loadSavedCoordinates.mockResolvedValue(point);
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(true);
+    expect(component.pendingFirebaseEntryCoordinates).toEqual(point);
+    expect(component.usersService.checkLocationEligibility).toHaveBeenCalledExactlyOnceWith(point);
     expect(component.appSetupStore.requestForLogin).not.toHaveBeenCalled();
+    expect(component.requestCurrentLocation).not.toHaveBeenCalled();
+    expect(component.queryGeolocationPermissionState).not.toHaveBeenCalled();
+  });
+
+  it('shows a rejected stored coordinate in the existing setup error badge', async () => {
+    const component = grantedPermissionsEntry();
+    Object.assign(component, { grantedLocationEligibilityRequestToken: 0, landingGuide: { closePopup: vi.fn() } });
+    Object.assign(component.appSetupStore, { guideRequested: { set: vi.fn() }, error: { set: vi.fn() } });
+    component.appLocationService.loadSavedCoordinates.mockResolvedValue({ latitude: 47, longitude: 19 });
+    component.usersService.checkLocationEligibility.mockResolvedValue({ eligible: false, message: 'Outside supported region' });
+    component.appSetupStore.requestForLogin.mockResolvedValue(false);
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(false);
+    expect(component.appSetupStore.requestForLogin).toHaveBeenCalledOnce();
+    expect(component.appSetupStore.error.set).toHaveBeenCalledExactlyOnceWith('Outside supported region');
+    expect(component.pendingFirebaseEntryCoordinates).toBeNull();
+  });
+
+  it('discards an eligibility response after the setup popup was closed', async () => {
+    const component = grantedPermissionsEntry();
+    Object.assign(component, { grantedLocationEligibilityRequestToken: 0, landingGuide: { closePopup: vi.fn() } });
+    Object.assign(component.appSetupStore, { guideRequested: { set: vi.fn() }, loginRequested: () => false, isOpen: () => false });
+    component.appSetupStore.requestForLogin.mockImplementation((check: (point: { latitude: number; longitude: number }) => Promise<boolean>) => check({ latitude: 47, longitude: 19 }));
+    expect(await component.ensureHttpLoginAccessAllowed()).toBe(false);
+    expect(component.pendingFirebaseEntryCoordinates).toBeNull();
   });
 
   it('waits for an explicit user action while browser permission is prompt', async () => {
@@ -453,7 +530,7 @@ describe('EntryPageComponent demo session routing', () => {
       sessionService: {
         startDemoSession: typeof startDemoSession;
         startTrackedDemoSession: typeof startTrackedDemoSession;
-        firebaseNotice: ReturnType<typeof vi.fn>;
+        authNotice: ReturnType<typeof vi.fn>;
       };
       router: { navigateByUrl: typeof navigateByUrl };
       memberRedirectUrl: ReturnType<typeof vi.fn>;
@@ -472,7 +549,7 @@ describe('EntryPageComponent demo session routing', () => {
     component.sessionService = {
       startDemoSession,
       startTrackedDemoSession,
-      firebaseNotice: vi.fn().mockReturnValue('')
+      authNotice: vi.fn().mockReturnValue('')
     };
     component.router = { navigateByUrl };
     component.memberRedirectUrl = vi.fn().mockReturnValue('/game');
@@ -483,7 +560,7 @@ describe('EntryPageComponent demo session routing', () => {
         loadProfileExtById: vi.fn(() => new Promise(() => {})),
         checkLocationEligibility: vi.fn().mockResolvedValue({ eligible: true })
       },
-      appLocationService: { pendingLoginCoordinates: () => null },
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null), pendingLoginCoordinates: () => null },
       landingContent: { mode: () => 'dating' }
     });
 
@@ -519,7 +596,7 @@ describe('EntryPageComponent demo session routing', () => {
       sessionService: {
         startDemoSession: typeof startDemoSession;
         startTrackedDemoSession: typeof startTrackedDemoSession;
-        firebaseNotice: ReturnType<typeof vi.fn>;
+        authNotice: ReturnType<typeof vi.fn>;
       };
       router: { navigateByUrl: typeof navigateByUrl };
       onDemoUserSelected: (selection: {
@@ -533,7 +610,7 @@ describe('EntryPageComponent demo session routing', () => {
     component.sessionService = {
       startDemoSession,
       startTrackedDemoSession,
-      firebaseNotice: vi.fn().mockReturnValue('')
+      authNotice: vi.fn().mockReturnValue('')
     };
     component.router = { navigateByUrl };
 
@@ -569,9 +646,9 @@ describe('Demo location admission before session creation', () => {
       sessionService: {
         startDemoSession: vi.fn().mockReturnValue(session),
         startTrackedDemoSession: vi.fn().mockResolvedValue(session),
-        firebaseNotice: () => ''
+        authNotice: () => ''
       },
-      appLocationService: {
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null),
         pendingLoginCoordinates: vi.fn().mockReturnValue(rejected),
         stageLoginCoordinates: vi.fn()
       },
@@ -663,13 +740,13 @@ describe('Authenticated entry location', () => {
       firebaseMessagingService: { entryPermissionPending: false },
       usersService: { loadUserById: vi.fn().mockResolvedValue({ id: 'member', locationCoordinates }) },
       sessionService: { activeUserId: () => 'member', identity: () => 'session-a' },
-      appLocationService: { pendingLoginCoordinates: vi.fn().mockReturnValue(null) },
+      appLocationService: { loadSavedCoordinates: vi.fn().mockResolvedValue(null), pendingLoginCoordinates: vi.fn().mockReturnValue(null) },
       ensureHttpLoginAccessAllowed: vi.fn().mockResolvedValue(true),
       requiresProfileOnboarding: () => false, closeOnboardingGate: vi.fn(),
       router: { navigateByUrl: vi.fn().mockResolvedValue(true) }
     });
   }
-  const session = { kind: 'firebase', sessionId: 'session-a', profile: { id: 'member' } };
+  const session = { kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', sessionId: 'session-a', profile: { id: 'member' } };
   for (const savedLocation of [false, true]) {
     it(`continues after authentication with ${savedLocation ? 'notifications missing' : 'no saved location'}`, async () => {
       const component = entry(savedLocation ? { latitude: 47, longitude: 19 } : undefined);
@@ -693,9 +770,9 @@ describe('Authenticated entry location', () => {
         redirectUrl: () => '/game', firebaseEntryAccessApproved: true
       });
       Object.assign(component.sessionService, {
-        firebaseBusy: () => false,
+        authBusy: () => false,
         startAuthSession: vi.fn().mockResolvedValue(session),
-        restoreFirebaseSession: vi.fn().mockResolvedValue(session)
+        restoreAuthSession: vi.fn().mockResolvedValue(session)
       });
       component.usersService.loadUserById.mockReturnValue(profile);
       component.router.navigateByUrl.mockReturnValue(navigation);
@@ -723,7 +800,7 @@ describe('Authenticated entry location', () => {
     expect(component.showFirebaseAuthPopup).toBe(true);
     expect(component.usersService.loadUserById).not.toHaveBeenCalled();
   });
-  it('binds the anonymous approved point to the successful Firebase account before its profile read', async () => {
+  it.each(['onFirebaseAuthRequested', 'onFirebaseSessionContinueRequested'])('%s binds the approved point to the successful account before its profile read', async method => {
     const component = entry();
     const point = { latitude: 47, longitude: 19 };
     Object.assign(component, {
@@ -735,8 +812,9 @@ describe('Authenticated entry location', () => {
       })
     });
     component.sessionService.startAuthSession = vi.fn().mockResolvedValue(session);
+    component.sessionService.restoreAuthSession = vi.fn().mockResolvedValue(session);
     component.appLocationService.stageLoginCoordinates = vi.fn();
-    await component.onFirebaseAuthRequested({ provider: 'google' });
+    await component[method]({ provider: 'google' });
     expect(component.runPostSessionGate).toHaveBeenCalledWith(session, '/game', undefined, true);
     expect(component.pendingFirebaseEntryCoordinates).toBeNull();
   });

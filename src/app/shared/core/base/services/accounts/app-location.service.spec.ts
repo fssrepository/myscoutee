@@ -1,5 +1,6 @@
 import { appLocationStorageKey, scopedStorageKey } from '../../../common/storage-scope';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
+import type { AppSession } from './session.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AppLocationService } from './app-location.service';
 import { DialogStore } from '@fssrepository/myscoutee-components';
@@ -11,7 +12,7 @@ describe('Explicit location request', () => {
     vi.useFakeTimers();
     const getCurrentPosition = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
-    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const service = Object.assign(Object.create(AppLocationService.prototype), { rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => ':entry' }) as AppLocationService;
     const settled = vi.fn();
     const request = service.requestCurrentCoordinates().then(settled);
     await vi.advanceTimersByTimeAsync(60_000);
@@ -26,7 +27,7 @@ describe('Explicit location request', () => {
   it('finishes without coordinates when the native acquisition times out', async () => {
     const getCurrentPosition = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { getCurrentPosition } });
-    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const service = Object.assign(Object.create(AppLocationService.prototype), { rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => ':entry' }) as AppLocationService;
     const request = service.requestCurrentCoordinates();
     getCurrentPosition.mock.calls[0][1]({ code: 3 });
     expect(await request).toBeNull();
@@ -36,7 +37,7 @@ describe('Explicit location request', () => {
     vi.useFakeTimers();
     const watchPosition = vi.fn().mockReturnValue(42), clearWatch = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
-    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const service = Object.assign(Object.create(AppLocationService.prototype), { rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => ':entry' }) as AppLocationService;
     const controller = new AbortController(), settled = vi.fn();
     const request = service.requestCurrentCoordinates(controller.signal).then(settled);
     expect(watchPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: false, maximumAge: 0 });
@@ -53,7 +54,7 @@ describe('Explicit location request', () => {
   it.each([1, 2])('stops the one-shot watch on native error %s without retry', async code => {
     const watchPosition = vi.fn().mockReturnValue(42), clearWatch = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
-    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const service = Object.assign(Object.create(AppLocationService.prototype), { rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => ':entry' }) as AppLocationService;
     const controller = new AbortController();
     const request = service.requestCurrentCoordinates(controller.signal);
     watchPosition.mock.calls[0][1]({ code });
@@ -66,7 +67,7 @@ describe('Explicit location request', () => {
   it('stops watching after the first coordinates and ignores later updates', async () => {
     const watchPosition = vi.fn().mockReturnValue(42), clearWatch = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
-    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const service = Object.assign(Object.create(AppLocationService.prototype), { rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => ':entry' }) as AppLocationService;
     const controller = new AbortController();
     const request = service.requestCurrentCoordinates(controller.signal);
     watchPosition.mock.calls[0][0]({ coords: { latitude: 47, longitude: 19 } });
@@ -78,7 +79,7 @@ describe('Explicit location request', () => {
   it('does not start a native request after cancellation', async () => {
     const watchPosition = vi.fn();
     vi.stubGlobal('navigator', { geolocation: { watchPosition } });
-    const service = Object.create(AppLocationService.prototype) as AppLocationService;
+    const service = Object.assign(Object.create(AppLocationService.prototype), { rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => ':entry' }) as AppLocationService;
     const controller = new AbortController();
     controller.abort();
     expect(await service.requestCurrentCoordinates(controller.signal)).toBeNull();
@@ -93,13 +94,13 @@ describe('Granted location background synchronization', () => {
     let profile = { id: 'member', admin: false, profileStatus: 'active', locationCoordinates: undefined as { latitude: number; longitude: number } | undefined };
     const save = vi.fn().mockImplementation(async user => user);
     const service = Object.assign(Object.create(AppLocationService.prototype), {
-      trackingEnabled: signal(true),
+      trackingEnabled: signal(true), rememberBrowserCoordinates: vi.fn(), browserCoordinatesCacheId: () => 'member:browser', locationCacheWrites: new Map(),
       workspace: { accountId: (id: string) => id },
       userProfileStore: {
         activeUserId: () => 'member',
         setUserProfile: vi.fn((user: typeof profile) => { profile = user; })
       },
-      sessionService: { currentSession: () => ({ kind: 'firebase', profile: { id: 'member' } }) },
+      sessionService: { currentSession: () => ({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'member' } }) },
       resolveTrackedUser: () => profile,
       isLocalUserRouteEnabled: () => false,
       requestCurrentCoordinates: vi.fn().mockResolvedValue({ latitude: 47, longitude: 19 }),
@@ -176,7 +177,7 @@ describe('Granted location background synchronization', () => {
 
   it('saves the active server profile when its ID differs from the Firebase identity', async () => {
     const { service, save, profile } = fixture();
-    service.sessionService.currentSession = () => ({ kind: 'firebase', profile: { id: 'firebase-provider-uid' } });
+    service.sessionService.currentSession = () => ({ kind: 'authenticated', accessToken: 'app-token', expiresAt: '2099-07-29T12:00:00Z', profile: { id: 'firebase-provider-uid' } });
     const coordinates = { latitude: 47, longitude: 19 };
     expect(await service.saveCurrentCoordinates(coordinates)).toBe(true);
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'member', locationCoordinates: coordinates }));
@@ -389,10 +390,16 @@ describe('Pending login coordinates', () => {
         return structuredClone(value);
       }
     };
-    const create = () => Object.assign(Object.create(AppLocationService.prototype), {
-      injector: { get: () => db }, pendingLoginByAccount: new Map(),
-      locationCacheWrites: new Map(), locationCacheKeyPromise: null, legacyLocationCacheCleared: false
-    }) as AppLocationService;
+    const create = (currentSession = signal<AppSession | null>(null)) => {
+      const sample = signal<{ cacheId: string; coordinates: { latitude: number; longitude: number } } | null>(null);
+      const service = Object.assign(Object.create(AppLocationService.prototype), {
+        injector: { get: () => db }, pendingLoginByAccount: new Map(), browserCoordinateSample: sample,
+        sessionService: { currentSession }, locationCacheWrites: new Map(), locationCacheKeyPromise: null, legacyLocationCacheCleared: false
+      });
+      service.browserCoordinates = computed(() => sample()?.cacheId === service.browserCoordinatesCacheId()
+        ? sample()?.coordinates ?? null : null);
+      return service as AppLocationService;
+    };
     return { create, keys, db };
   }
   const point = { latitude: 47.497912, longitude: 19.040235 };
@@ -410,6 +417,48 @@ describe('Pending login coordinates', () => {
     expect(await restored.pendingLoginCoordinates('one')).toEqual(newer);
     await restored.confirmLoginCoordinates('one', newer);
     expect(await create().pendingLoginCoordinates('one')).toBeNull();
+  });
+
+  it('binds the setup sample to its account and requests a new point after logout', async () => {
+    const { create } = fixture();
+    const currentSession = signal<AppSession | null>(null);
+    const service = create(currentSession);
+    await service.stageLoginCoordinates('one', point);
+    currentSession.set({ kind: 'authenticated', sessionId: 'login-one', accessToken: 'token', expiresAt: '2099-01-01',
+      profile: { id: 'one', name: 'One', initials: 'O', email: 'one@example.test' } });
+    expect(await service.loadSavedCoordinates()).toEqual(point);
+    await service.confirmLoginCoordinates('one', point);
+    expect(await create(currentSession).loadSavedCoordinates()).toEqual(point);
+    currentSession.set(null);
+    expect(service.browserCoordinates()).toBeNull();
+    expect(await service.loadSavedCoordinates()).toBeNull();
+    expect(await create().loadSavedCoordinates()).toBeNull();
+    currentSession.set({ kind: 'authenticated', sessionId: 'login-two', accessToken: 'token', expiresAt: '2099-01-01',
+      profile: { id: 'two', name: 'Two', initials: 'T', email: 'two@example.test' } });
+    expect(await service.loadSavedCoordinates()).toBeNull();
+    expect(await service.pendingLoginCoordinates('two')).toBeNull();
+    const raw = localStorage.getItem(appLocationStorageKey('one:browser'))!;
+    expect(raw).not.toContain('latitude');
+    expect(raw).not.toContain(String(point.latitude));
+  });
+
+  it('retains the anonymous installer coordinate across reload before the first login', async () => {
+    const { create } = fixture();
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: (success: (position: unknown) => void) => success({ coords: point }) } });
+    const installer = create();
+    expect(await installer.requestCurrentCoordinates()).toEqual(point);
+    const restored = create();
+    await vi.waitFor(async () => expect(await restored.loadSavedCoordinates()).toEqual(point));
+    await restored.stageLoginCoordinates('one', point);
+    expect(await create().loadSavedCoordinates()).toBeNull();
+  });
+
+  it('does not treat invalid or missing browser coordinates as available', async () => {
+    const { create } = fixture();
+    const service = create();
+    expect(await service.loadSavedCoordinates()).toBeNull();
+    await service.stageLoginCoordinates('one', { latitude: 999, longitude: 19 });
+    expect(await create().loadSavedCoordinates()).toBeNull();
   });
 
   it('stores authenticated ciphertext with a persisted non-extractable key and fresh nonces', async () => {
