@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#fff8ed"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#cfe2d9" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="140" y="140" width="680" height="304" rx="22" fill="#fff" stroke="#c7dbed" stroke-width="3"/>
+    <rect x="170" y="172" width="150" height="74" rx="12" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="186" y="198" font-family="Arial" font-size="17" font-weight="800" fill="#61728f">Név *</text><text x="186" y="227" font-family="Arial" font-size="19" font-weight="900" fill="#1d3354">Lina</text><rect x="390" y="172" width="150" height="74" rx="12" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="406" y="198" font-family="Arial" font-size="17" font-weight="800" fill="#61728f">Város *</text><text x="406" y="227" font-family="Arial" font-size="19" font-weight="900" fill="#1d3354">Austin</text><rect x="610" y="172" width="150" height="74" rx="12" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="626" y="198" font-family="Arial" font-size="17" font-weight="800" fill="#61728f">Magasság *</text><text x="626" y="227" font-family="Arial" font-size="19" font-weight="900" fill="#1d3354">172 cm</text>
+    <rect x="170" y="284" width="150" height="74" rx="12" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="186" y="310" font-family="Arial" font-size="17" font-weight="800" fill="#61728f">Születésnap *</text><text x="186" y="339" font-family="Arial" font-size="19" font-weight="900" fill="#1d3354">1994 / 06 / 12</text><rect x="390" y="284" width="150" height="74" rx="12" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="406" y="310" font-family="Arial" font-size="17" font-weight="800" fill="#61728f">Nyelvek *</text><text x="406" y="339" font-family="Arial" font-size="19" font-weight="900" fill="#1d3354">Angol</text><rect x="610" y="284" width="150" height="74" rx="12" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><text x="626" y="310" font-family="Arial" font-size="17" font-weight="800" fill="#61728f">Munkahely</text><text x="626" y="339" font-family="Arial" font-size="19" font-weight="900" fill="#1d3354">Designer</text>
+  </g>
+</svg>

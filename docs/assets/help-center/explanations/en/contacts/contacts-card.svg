@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eefbf7"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="30" fill="url(#bg)"/>
+  <rect x="6" y="6" width="948" height="528" rx="26" fill="#ffffff" opacity="0.82" stroke="#b8ddcf" stroke-width="3"/>
+  <g transform="matrix(1.16 0 0 1.16 -70 -78)">
+    <rect x="76" y="112" width="808" height="356" rx="24" fill="#f8fcff" stroke="#c7dbed" stroke-width="3"/>
+  <rect x="110" y="148" width="740" height="188" rx="24" fill="#fff" stroke="#c7d9ef" stroke-width="3"/>
+  <circle cx="178" cy="242" r="48" fill="#4f7fe8"/><text x="178" y="256" text-anchor="middle" font-family="Arial" font-size="31" font-weight="900" fill="#fff">NE</text>
+  <text x="252" y="214" font-family="Arial" font-size="31" font-weight="900" fill="#1d3354">Nagy Eszter</text>
+  <text x="252" y="254" font-family="Arial" font-size="22" font-weight="850" fill="#52677f">Creative weekends · Seattle</text>
+  <text x="252" y="292" font-family="Arial" font-size="21" font-weight="850" fill="#61728f">Quick reach card</text>
+  <circle cx="726" cy="230" r="34" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><path d="M 708.64 230 C 716.7 220.08, 735.3 220.08, 743.36 230 C 735.3 239.92, 716.7 239.92, 708.64 230 Z" fill="none" stroke="#245c9c" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="726" cy="230" r="4.96" fill="#245c9c"/>
+  <circle cx="794" cy="230" r="34" fill="#fff" stroke="#c7d9ef" stroke-width="3"/><circle cx="794" cy="218" r="4.6" fill="#245c9c"/><circle cx="794" cy="230" r="4.6" fill="#245c9c"/><circle cx="794" cy="242" r="4.6" fill="#245c9c"/>
+  <g transform="translate(124 360)"><rect x="0" y="0" width="150" height="44" rx="22" fill="#e8f8ef" stroke="#c7d9ef" stroke-width="3"/>
+  <circle cx="26" cy="22" r="10" fill="#24775e"/>
+  <text x="46" y="30" font-family="Arial" font-size="19" font-weight="900" fill="#24775e">Email</text><rect x="174" y="0" width="150" height="44" rx="22" fill="#edf6ff" stroke="#c7d9ef" stroke-width="3"/>
+  <circle cx="200" cy="22" r="10" fill="#245c9c"/>
+  <text x="220" y="30" font-family="Arial" font-size="19" font-weight="900" fill="#245c9c">Phone</text><rect x="348" y="0" width="150" height="44" rx="22" fill="#fff2df" stroke="#c7d9ef" stroke-width="3"/>
+  <circle cx="374" cy="22" r="10" fill="#a56017"/>
+  <text x="394" y="30" font-family="Arial" font-size="19" font-weight="900" fill="#a56017">Instagram</text></g>
+  <rect x="642" y="346" width="210" height="52" rx="13" fill="#f0eafa" stroke="#c7d9ef" stroke-width="3"/><text x="666" y="381" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Edit</text><rect x="642" y="406" width="210" height="52" rx="13" fill="#fdecef" stroke="#c7d9ef" stroke-width="3"/><text x="666" y="441" font-family="Arial" font-size="28" font-weight="900" fill="#1f4778">Delete</text>
+  </g>
+</svg>
