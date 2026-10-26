@@ -1,1 +1,0 @@
-import{ch as n,cc as i}from"./main-89133ea9.js";function l(e,r,o,c){if(e.isOpen(r)){e.close(r);return}e.open(n(i({id:r,kind:"select"},c()),{triggerRect:o.triggerRect,openUp:o.openUp,panelAlign:"auto",closeOnSelect:!0,onClose:o.closeTrigger}),null)}export{l as r};

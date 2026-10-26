@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-c63931204478-20261026145304";
-const BUILD_ID = "c63931204478-20261026145304";
+const CACHE_VERSION = "build-9f21466c3359-20261026150248";
+const BUILD_ID = "9f21466c3359-20261026150248";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -23,8 +23,8 @@ const PRECACHE_CORE_URLS = [
   './assets/idea/article-fallback.svg'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-c492844a.js",
-  "./main-89133ea9.js",
+  "./chunk-2d762cc6.js",
+  "./main-d6cee5d9.js",
   "./styles-WI3ZKQKX.css"
 ];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
