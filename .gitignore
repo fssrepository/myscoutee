@@ -15,8 +15,7 @@
 /bazel-out
 
 # Font binaries are packaged by myscoutee-components and emitted during builds.
-/docs/media/*.woff
-/docs/media/*.woff2
+/docs/
 
 # Node
 /node_modules

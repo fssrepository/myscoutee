@@ -1,0 +1,12 @@
+{
+  "project": "myscoutee",
+  "type": "frontend",
+  "depends_on": [
+    "myscoutee-components"
+  ],
+  "variables": {
+    "LAB_GITHUB_REPOSITORY": "fssrepository/myscoutee"
+  },
+  "release_notes": "guides/releases/v{version}.md",
+  "release_name": "MyScoutee"
+}

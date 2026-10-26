@@ -1,1 +1,0 @@
-import{co as c,ch as i}from"./main-0d08a754.js";function l(e,o,r,n){if(e.isOpen(o)){e.close(o);return}e.open(c(i({id:o,kind:"select"},n()),{triggerRect:r.triggerRect,openUp:r.openUp,panelAlign:"auto",closeOnSelect:!0,onClose:r.closeTrigger}),null)}export{l as r};

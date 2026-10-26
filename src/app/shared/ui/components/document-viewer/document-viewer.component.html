@@ -1,6 +1,6 @@
 @if (isOpen()) {
   <ng-template #documentViewerBody>
-    <div class="document-viewer-content">
+    <div class="document-viewer-content" [class.document-viewer-content-loading]="loading()">
       @if (loading()) {
         <article class="document-viewer-status document-viewer-status-loading">
           <app-indicator
