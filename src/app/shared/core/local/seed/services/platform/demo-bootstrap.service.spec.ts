@@ -392,7 +392,7 @@ describe('Demo bootstrap seeding', () => {
         update: expect.objectContaining({
           version: '1.1.0',
           artifact: expect.objectContaining({
-            downloadUrl: 'https://github.com/fssrepository/myscoutee/releases/download/v1.1.0/myscoutee_1.1.0_amd64.deb',
+            downloadUrl: 'https://github.com/fssrepository/myscoutee-frontend/releases/download/v1.1.0/myscoutee_1.1.0_amd64.deb',
             downloadUrlVerified: true
           })
         })

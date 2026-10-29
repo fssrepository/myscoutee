@@ -410,7 +410,7 @@ describe('EntryLandingComponent article lists', () => {
 
     expect(fixture.nativeElement.querySelector('.entry-preview-guide-body')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.entry-preview-guide-report-btn')?.getAttribute('href'))
-      .toBe('https://github.com/fssrepository/myscoutee/issues');
+      .toBe('https://github.com/fssrepository/myscoutee-frontend/issues');
   });
 
   it('renders deployment-controlled social links with the generic icon fallback', () => {
@@ -424,7 +424,7 @@ describe('EntryLandingComponent article lists', () => {
     expect(link?.getAttribute('aria-label')).toBe('Community · @community');
     expect(link?.querySelector('.mat-icon')?.textContent?.trim()).toBe('public');
     expect(fixture.nativeElement.textContent).not.toContain(
-      'github.com/fssrepository/myscoutee/issues'
+      'github.com/fssrepository/myscoutee-frontend/issues'
     );
   });
 

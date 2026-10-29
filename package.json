@@ -17,7 +17,7 @@
     "build:local": "NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration local",
     "build:dev": "NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration dev",
     "build:e2e": "NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration e2e",
-    "build:github": "NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration github --base-href /myscoutee/ && FRONTEND_BUILD_OUTPUT_DIR=docs FRONTEND_BUILD_PROFILE=standalone node scripts/stamp-prod-build.js && touch docs/.nojekyll",
+    "build:github": "NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration github --base-href /myscoutee-frontend/ && FRONTEND_BUILD_OUTPUT_DIR=docs FRONTEND_BUILD_PROFILE=standalone node scripts/stamp-prod-build.js && touch docs/.nojekyll",
     "build:pcores": "npm run build:local",
     "build:log": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration local 2>&1 | tee .agent/logs/ng-build-local.log'",
     "build:prod": "NG_BUILD_MAX_WORKERS=12 ng build myscoutee --configuration production && FRONTEND_BUILD_OUTPUT_DIR=prod node scripts/stamp-prod-build.js",

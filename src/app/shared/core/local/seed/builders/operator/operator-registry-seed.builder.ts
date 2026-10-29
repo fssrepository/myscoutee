@@ -213,7 +213,7 @@ export class SeedOperatorRegistryBuilder {
                 {
                   id: 'release-notes',
                   label: 'operator.community.announcement.link.release.notes',
-                  url: 'https://github.com/fssrepository/myscoutee/releases/tag/v1.1.0',
+                  url: 'https://github.com/fssrepository/myscoutee-frontend/releases/tag/v1.1.0',
                   verified: true
                 }
               ],
@@ -225,7 +225,7 @@ export class SeedOperatorRegistryBuilder {
                   'operator.community.announcement.update.1_1_0.note.workspace'
                 ],
                 artifact: {
-                  downloadUrl: 'https://github.com/fssrepository/myscoutee/releases/download/v1.1.0/myscoutee_1.1.0_amd64.deb',
+                  downloadUrl: 'https://github.com/fssrepository/myscoutee-frontend/releases/download/v1.1.0/myscoutee_1.1.0_amd64.deb',
                   downloadUrlVerified: true,
                   sha256Digest: 'sha256:7e3d57c2c68793c0d4a25e94db5f4ba1d9a50e2b3f62c789417eaa35b610cd28',
                   packageSigningKeyId: 'pkey_86dfce4288ce436029e7236ac60b0604',
@@ -250,7 +250,7 @@ export class SeedOperatorRegistryBuilder {
                 {
                   id: 'project-status',
                   label: 'operator.community.announcement.link.project',
-                  url: 'https://github.com/fssrepository/myscoutee',
+                  url: 'https://github.com/fssrepository/myscoutee-frontend',
                   verified: true
                 }
               ],

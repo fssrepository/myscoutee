@@ -678,7 +678,7 @@ export class SideMenuComponent implements OnDestroy {
         id: 'report-bugs',
         label: 'report.bugs',
         icon: 'bug_report',
-        href: 'https://github.com/fssrepository/myscoutee/issues',
+        href: 'https://github.com/fssrepository/myscoutee-frontend/issues',
         target: '_blank',
         rel: 'noopener noreferrer',
         ariaLabel: 'bug.report.action'

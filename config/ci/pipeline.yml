@@ -6,5 +6,5 @@ include:
 variables:
   LAB_APPLICATION: "false"
   LAB_FRONTEND: "true"
-  LAB_GITHUB_REPOSITORY: "fssrepository/myscoutee"
+  LAB_GITHUB_REPOSITORY: "fssrepository/myscoutee-frontend"
   LAB_HEAVY_BUILD: "false"

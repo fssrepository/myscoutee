@@ -813,7 +813,7 @@ function operatorCommunityStatus(): OperatorCommunityStatusDto {
         releaseNotes: [],
         artifact: {
           downloadUrl:
-            'https://github.com/fssrepository/myscoutee/releases/download/v1.2.3/myscoutee_1.2.3_amd64.deb',
+            'https://github.com/fssrepository/myscoutee-frontend/releases/download/v1.2.3/myscoutee_1.2.3_amd64.deb',
           downloadUrlVerified: true,
           sha256Digest:
             'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
